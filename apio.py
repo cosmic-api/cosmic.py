@@ -1,7 +1,5 @@
 __version__ = "0.0.1"
 
-import json
-
 api_schema = {
     "type": "object",
     "name": {
@@ -12,17 +10,24 @@ api_schema = {
     },
     "homepage": {
         "type": "string"
+    },
+    "models": {
+        "type": "object"
     }
 }
 
 class API(object):
-    def __init__(self, name, **kwargs):
+    def __init__(self, name, url, **kwargs):
         self.name = name
-        self.url = kwargs.get('url')
-        self.homepage = kwargs.get('url')
+        self.url = url
+        self.homepage = kwargs.get('homepage')
+        self.models = {}
     def serialize(self):
-        return json.stringify({
+        spec = {
             "name": self.name,
             "url": self.url,
-            "homepage": self.homepage
-        })
+        }
+        if self.homepage:
+            spec['homepage'] = self.homepage
+        return spec
+
