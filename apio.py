@@ -2,17 +2,24 @@ __version__ = "0.0.1"
 
 api_schema = {
     "type": "object",
-    "name": {
-        "type": "string"
-    },
-    "url": {
-        "type": "string"
-    },
-    "homepage": {
-        "type": "string"
-    },
-    "models": {
-        "type": "object"
+    "properties": {
+        "name": {
+            "type": "string",
+            "required": True
+        },
+        "url": {
+            "type": "string",
+            "required": True
+        },
+        "homepage": {
+            "type": "string"
+        },
+        "models": {
+            "type": "object",
+            "patternProperties": {
+                r'^[a-zA-Z0-9_]+$': {}
+            }
+        }
     }
 }
 
