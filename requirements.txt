@@ -1,1 +1,9 @@
--e git://github.com/boronine/jsonschema.git@master#egg=jsonschema
+Django==1.4.2
+annopyte==0.2.1
+argparse==1.2.1
+jsonpointer==0.3
+-e git://github.com/boronine/jsonschema.git@48655a50a8d7c119b5bff7b110c53cdfc91f0959#egg=jsonschema-dev
+py==1.4.11
+tox==1.4.2
+virtualenv==1.8.2
+wsgiref==0.1.2
