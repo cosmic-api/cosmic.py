@@ -1,27 +1,6 @@
 __version__ = "0.0.1"
 
-api_schema = {
-    "type": "object",
-    "properties": {
-        "name": {
-            "type": "string",
-            "required": True
-        },
-        "url": {
-            "type": "string",
-            "required": True
-        },
-        "homepage": {
-            "type": "string"
-        },
-        "models": {
-            "type": "object",
-            "patternProperties": {
-                r'^[a-zA-Z0-9_]+$': {}
-            }
-        }
-    }
-}
+cache = dict()
 
 class API(object):
     def __init__(self, name, url, **kwargs):
@@ -38,3 +17,11 @@ class API(object):
             spec['homepage'] = self.homepage
         return spec
 
+class Model(object):
+    def __init__(self, name, schema):
+        self.name = name
+        self.schema = schema
+
+apis = {"facebook":1, "twitter":2}
+
+locals = lambda: {"facebook":2}
