@@ -60,6 +60,13 @@ class TestApio(unittest.TestCase):
             else:
                 return "Sauerkraut"
 
+        @cookbook.action(spicy=types.Boolean())
+        def mystery(spicy=False):
+            if spicy:
+                return 1
+            else:
+                return "Sauerkraut"
+
     def test_serialize(self):
         self.assertEqual(self.cookbook.serialize(), {
             'name': 'cookbook',
@@ -74,6 +81,17 @@ class TestApio(unittest.TestCase):
                     },
                     'returns': {
                         'type': 'string'
+                    }
+                },
+                'mystery': {
+                    'accepts': {
+                        'type': 'object',
+                        'properties': {
+                            'spicy': { 'type': 'boolean' }
+                        }
+                    },
+                    'returns': {
+                        'type': 'any'
                     }
                 }
             }
