@@ -2,7 +2,6 @@ import unittest
 import json
 
 from jsonschema import validate
-from annopyte.annotations.signature import annotate_f
 
 from apio import API, types
 
@@ -48,9 +47,15 @@ api_schema = {
 def deep_equal(obj1, obj2):
     return json.dumps(obj1, sort_keys=True) == json.dumps(obj2, sort_keys=True)
 
+class TestTypes(unittest.TestCase):
+
+    def test(self):
+        pass
+
 class TestApio(unittest.TestCase):
 
     def setUp(self):
+        self.maxDiff = None
         self.cookbook = cookbook = API('cookbook', "http://localhost:8881/api/")
 
         @cookbook.action(types.String(), spicy=types.Boolean())
@@ -62,10 +67,11 @@ class TestApio(unittest.TestCase):
 
         @cookbook.action(spicy=types.Boolean())
         def mystery(spicy=False):
-            if spicy:
-                return 1
-            else:
-                return "Sauerkraut"
+            pass
+
+        @cookbook.action(types.Any(), types.Array(types.Boolean()))
+        def checklist(checklist=[True, True, True]):
+            pass
 
     def test_serialize(self):
         self.assertEqual(self.cookbook.serialize(), {
@@ -93,7 +99,16 @@ class TestApio(unittest.TestCase):
                     'returns': {
                         'type': 'any'
                     }
-                }
+                },
+                'checklist': {
+                    'accepts': {
+                        'type': 'array',
+                        'items': { 'type': 'boolean' }
+                    },
+                    'returns': {
+                        'type': 'any'
+                    }
+                },
             }
         })
 

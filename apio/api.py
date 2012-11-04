@@ -1,4 +1,6 @@
 from annopyte.annotations.signature import SignatureAnnotator
+import inspect
+
 from apio import types
 
 cache = dict()
@@ -16,9 +18,18 @@ class API(object):
             self.spec['homepage'] = kwargs['homepage']
     def serialize(self):
         return self.spec
-    def action(self, _return=types.Any(), **kwargs):
-        annotator = SignatureAnnotator(_return, **kwargs)
+    def action(self, *args, **kwargs):
         def decorator(func):
+            if len(args) == 0:
+                _return = types.Any()
+            elif len(args) == 1:
+                _return = args[0]
+            elif len(args) == 2:
+                _return = args[0]
+                kwargs[inspect.getargspec(func)[0][0]] = args[1]
+            else:
+                raise Exception("Invalid action annotation")
+            annotator = SignatureAnnotator(_return, **kwargs)
             annotated = annotator(func)
             action = {
                 "accepts": {

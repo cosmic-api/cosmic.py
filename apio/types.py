@@ -19,3 +19,9 @@ class Boolean(Type):
 	def __init__(self, *args, **kwargs):
 		super(Boolean, self).__init__(*args, **kwargs)
 		self.schema['type'] = 'boolean'
+
+class Array(Type):
+	def __init__(self, item, *args, **kwargs):
+		super(Array, self).__init__(*args, **kwargs)
+		self.schema['type'] = 'array'
+		self.schema['items'] = item.serialize()
