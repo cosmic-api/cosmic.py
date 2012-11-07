@@ -1,7 +1,4 @@
-from annopyte.annotations.signature import SignatureAnnotator
 from apio import types
-
-cache = dict()
 
 class API(object):
     def __init__(self, name, url, **kwargs):
@@ -16,24 +13,19 @@ class API(object):
             self.spec['homepage'] = kwargs['homepage']
     def serialize(self):
         return self.spec
-    def action(self, _return=types.Any(), **kwargs):
-        annotator = SignatureAnnotator(_return, **kwargs)
+    def action(self):
         def decorator(func):
-            annotated = annotator(func)
             action = {
                 "accepts": {
-                    "type": "object",
-                    "properties": {}
+                    "type": "any"
+                },
+                "returns": {
+                    "type": "any"
                 }
             }
-            for arg, arg_type in annotated.__annotations__.items():
-                if arg == "return":
-                    action["returns"] = arg_type.serialize()
-                else:
-                    action["accepts"]["properties"][arg] = arg_type.serialize()
             self.spec['actions'][func.__name__] = action
-            self.actions[func.__name__] = annotated
-            return annotated
+            self.actions[func.__name__] = func
+            return func
         return decorator
 
 class Model(object):

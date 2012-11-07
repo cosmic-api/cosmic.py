@@ -53,17 +53,10 @@ class TestApio(unittest.TestCase):
     def setUp(self):
         self.cookbook = cookbook = API('cookbook', "http://localhost:8881/api/")
 
-        @cookbook.action(types.String(), spicy=types.Boolean())
+        @cookbook.action()
         def cabbage(spicy=False):
             if spicy:
                 return "Kimchi"
-            else:
-                return "Sauerkraut"
-
-        @cookbook.action(spicy=types.Boolean())
-        def mystery(spicy=False):
-            if spicy:
-                return 1
             else:
                 return "Sauerkraut"
 
@@ -74,21 +67,7 @@ class TestApio(unittest.TestCase):
             'actions': {
                 'cabbage': {
                     'accepts': {
-                        'type': 'object',
-                        'properties': {
-                            'spicy': { 'type': 'boolean' }
-                        }
-                    },
-                    'returns': {
-                        'type': 'string'
-                    }
-                },
-                'mystery': {
-                    'accepts': {
-                        'type': 'object',
-                        'properties': {
-                            'spicy': { 'type': 'boolean' }
-                        }
+                        'type': 'any'
                     },
                     'returns': {
                         'type': 'any'
