@@ -1,0 +1,4 @@
+include *.md
+include tox.ini
+include tests
+include requirements.txt

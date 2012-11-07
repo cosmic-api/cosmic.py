@@ -35,6 +35,11 @@ class API(object):
             def action(*args, **kwargs):
                 return func(*args, **kwargs)
         return blueprint
+    def run(self):
+        from flask import Flask
+        app = Flask(__name__, static_folder=None)
+        app.register_blueprint(self.get_blueprint())
+        app.run()
 
 
 class Model(object):

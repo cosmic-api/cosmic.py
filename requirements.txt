@@ -1,12 +1,4 @@
-Django==1.4.2
 Flask==0.9
-Jinja2==2.6
-Werkzeug==0.8.3
-annopyte==0.2.1
-argparse==1.2.1
 jsonpointer==0.3
--e git://github.com/boronine/jsonschema.git@48655a50a8d7c119b5bff7b110c53cdfc91f0959#egg=jsonschema-dev
-py==1.4.11
+-e git://github.com/boronine/jsonschema.git@391916e71b946db3bf5d92cbb767f620a869fc82#egg=jsonschema
 tox==1.4.2
-virtualenv==1.8.2
-wsgiref==0.1.2
