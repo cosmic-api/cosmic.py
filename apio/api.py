@@ -1,4 +1,5 @@
 from apio import types
+from flask import Blueprint
 
 class API(object):
     def __init__(self, name, url, **kwargs):
@@ -27,6 +28,14 @@ class API(object):
             self.actions[func.__name__] = func
             return func
         return decorator
+    def get_blueprint(self):
+        blueprint = Blueprint(self.spec['name'], __name__)
+        for name, func in self.actions.items():
+            @blueprint.route('/actions/%s' % name)
+            def action(*args, **kwargs):
+                return func(*args, **kwargs)
+        return blueprint
+
 
 class Model(object):
     def __init__(self, name, schema):

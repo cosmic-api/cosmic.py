@@ -2,9 +2,8 @@ import unittest
 import json
 
 from jsonschema import validate
-from annopyte.annotations.signature import annotate_f
 
-from apio import API, types
+from apio import API
 
 api_schema = {
     "type": "object",
@@ -51,6 +50,7 @@ def deep_equal(obj1, obj2):
 class TestApio(unittest.TestCase):
 
     def setUp(self):
+
         self.cookbook = cookbook = API('cookbook', "http://localhost:8881/api/")
 
         @cookbook.action()
@@ -76,10 +76,17 @@ class TestApio(unittest.TestCase):
             }
         })
 
+    def test_blueprint(self):
+
+        from flask import Flask
+        app = Flask(__name__, static_folder=None)
+        app.register_blueprint(self.cookbook.get_blueprint(), url_prefix="/api")
+        # http://werkzeug.pocoo.org/docs/routing/#werkzeug.routing.Map
+        urls = app.url_map.bind('example.com')
+        self.assertTrue(urls.test('/api/actions/cabbage'))
+
     def test_schema(self):
         validate(self.cookbook.serialize(), api_schema)
-
-
 
 if __name__ == '__main__':
     unittest.main()
