@@ -2,7 +2,7 @@ from apio import types
 from flask import Blueprint
 
 class API(object):
-    def __init__(self, name, url, **kwargs):
+    def __init__(self, name, url=None, **kwargs):
         self.models = {}
         self.actions = {}
         self.spec = {
@@ -35,11 +35,11 @@ class API(object):
             def action(*args, **kwargs):
                 return func(*args, **kwargs)
         return blueprint
-    def run(self):
+    def run(self, *args, **kwargs):
         from flask import Flask
         app = Flask(__name__, static_folder=None)
         app.register_blueprint(self.get_blueprint())
-        app.run()
+        app.run(*args, **kwargs)
 
 
 class Model(object):
