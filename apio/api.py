@@ -1,5 +1,7 @@
+import json
+
+from flask import Blueprint, Response
 from apio import types
-from flask import Blueprint
 
 class API(object):
     def __init__(self, name, url=None, **kwargs):
@@ -34,6 +36,10 @@ class API(object):
             @blueprint.route('/actions/%s' % name)
             def action(*args, **kwargs):
                 return func(*args, **kwargs)
+            @blueprint.route('/spec.json')
+            def getspec():
+                spec = json.dumps(self.serialize())
+                return Response(spec, mimetype="application/json")
         return blueprint
     def run(self, *args, **kwargs):
         from flask import Flask

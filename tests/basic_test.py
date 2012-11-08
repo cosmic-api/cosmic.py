@@ -44,9 +44,6 @@ api_schema = {
     }
 }
 
-def deep_equal(obj1, obj2):
-    return json.dumps(obj1, sort_keys=True) == json.dumps(obj2, sort_keys=True)
-
 class TestApio(unittest.TestCase):
 
     def setUp(self):
@@ -60,8 +57,12 @@ class TestApio(unittest.TestCase):
             else:
                 return "Sauerkraut"
 
-    def test_serialize(self):
-        self.assertEqual(self.cookbook.serialize(), {
+        from flask import Flask
+        self.app = Flask(__name__, static_folder=None)
+        self.app.register_blueprint(self.cookbook.get_blueprint(), url_prefix="/api")
+        self.client = self.app.test_client()
+
+        self.expected_schema = {
             'name': 'cookbook',
             'url': 'http://localhost:8881/api/',
             'actions': {
@@ -74,16 +75,19 @@ class TestApio(unittest.TestCase):
                     }
                 }
             }
-        })
+        }
+
+    def test_serialize(self):
+        assert self.cookbook.serialize() == self.expected_schema
 
     def test_blueprint(self):
-
-        from flask import Flask
-        app = Flask(__name__, static_folder=None)
-        app.register_blueprint(self.cookbook.get_blueprint(), url_prefix="/api")
         # http://werkzeug.pocoo.org/docs/routing/#werkzeug.routing.Map
-        urls = app.url_map.bind('example.com')
-        self.assertTrue(urls.test('/api/actions/cabbage'))
+        urls = self.app.url_map.bind('example.com')
+        assert urls.test('/api/actions/cabbage')
+
+    def test_spec_endpoint(self):
+        res = self.client.get('/api/spec.json')
+        assert json.loads(res.data) == self.expected_schema
 
     def test_schema(self):
         validate(self.cookbook.serialize(), api_schema)
