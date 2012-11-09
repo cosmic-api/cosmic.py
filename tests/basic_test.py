@@ -48,9 +48,9 @@ class TestApio(FlaskTestCase):
 
     def setup(self):
 
-        self.apio_client = apio.MockClient()
+        self.testing_client = apio.MockClient()
 
-        self.cookbook = apio.API('cookbook', "http://localhost:8881/api/", client=self.apio_client)
+        self.cookbook = apio.API('cookbook', "http://localhost:8881/api/", client=self.testing_client)
 
         @self.cookbook.action()
         def cabbage(params):
@@ -94,7 +94,7 @@ class TestApio(FlaskTestCase):
         assert json.loads(res.data) == self.expected_schema
 
     def test_load(self):
-        cookbook = apio.API.load('cookbook', client=self.apio_client)
+        cookbook = apio.API.load('cookbook', client=self.testing_client)
         assert cookbook.call('cabbage', {'spicy': True}) == "Kimchi"
 
     def test_schema(self):

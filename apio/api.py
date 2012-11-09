@@ -47,7 +47,8 @@ class API(object):
             return Response(spec, mimetype="application/json")
         return blueprint
     def run(self, *args, **kwargs):
-        self.client.register_api(self)
+        if kwargs.get('register_api', True):
+            self.client.register_api(self)
         self.client.run(self)
     def call(self, action_name, obj):
         if action_name in self.actions.keys():
