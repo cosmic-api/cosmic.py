@@ -1,7 +1,7 @@
 import json
 from urllib2 import urlopen
 
-from flask import Flask, Blueprint, Response
+from flask import Flask, Blueprint, Response, request
 
 from apio import types
 
@@ -38,12 +38,13 @@ class API(object):
         blueprint = Blueprint(self.spec['name'], __name__)
         for name, func in self.actions.items():
             @blueprint.route('/actions/%s' % name)
-            def action(*args, **kwargs):
-                return func(*args, **kwargs)
-            @blueprint.route('/spec.json')
-            def getspec():
-                spec = json.dumps(self.serialize())
-                return Response(spec, mimetype="application/json")
+            def action():
+                data = json.loads(request.data)
+                return json.dumps(func(data))
+        @blueprint.route('/spec.json')
+        def getspec():
+            spec = json.dumps(self.serialize())
+            return Response(spec, mimetype="application/json")
         return blueprint
     def run(self, *args, **kwargs):
         self.client.register_api(self)
@@ -86,7 +87,7 @@ class MockClient(object):
         werkzeug_client = app.test_client()
         url = "/actions/%s" % action_name
         data = json.dumps(obj)
-        res = werkzeug_client.get(url)
+        res = werkzeug_client.get(url, data=data)
         return json.loads(res.data)
     # We don't want any real HTTP action during testing
     def run(self, api):

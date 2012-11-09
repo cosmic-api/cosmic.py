@@ -1,4 +1,4 @@
-import unittest
+from flask.testsuite import FlaskTestCase
 import json
 
 from jsonschema import validate
@@ -44,20 +44,20 @@ api_schema = {
     }
 }
 
-class TestApio(unittest.TestCase):
+class TestApio(FlaskTestCase):
 
-    def setUp(self):
+    def setup(self):
 
         self.apio_client = apio.MockClient()
 
         self.cookbook = apio.API('cookbook', "http://localhost:8881/api/", client=self.apio_client)
 
         @self.cookbook.action()
-        def cabbage(spicy=False):
-            if spicy:
-                return json.dumps("Kimchi")
+        def cabbage(params):
+            if params['spicy']:
+                return "Kimchi"
             else:
-                return json.dumps("Sauerkraut")
+                return "Sauerkraut"
 
         self.cookbook.run()
 
@@ -79,6 +79,9 @@ class TestApio(unittest.TestCase):
     def test_serialize(self):
         assert self.cookbook.serialize() == self.expected_schema
 
+    def test_call(self):
+        assert self.cookbook.call('cabbage', {'spicy': False}) == "Sauerkraut"
+
     def test_blueprint(self):
         from flask import Flask
         app = Flask(__name__, static_folder=None)
@@ -92,7 +95,7 @@ class TestApio(unittest.TestCase):
 
     def test_load(self):
         cookbook = apio.API.load('cookbook', client=self.apio_client)
-        assert cookbook.call('cabbage', None) == "Sauerkraut"
+        assert cookbook.call('cabbage', {'spicy': True}) == "Kimchi"
 
     def test_schema(self):
         validate(self.cookbook.serialize(), api_schema)
