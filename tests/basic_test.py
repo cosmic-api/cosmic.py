@@ -3,7 +3,7 @@ import json
 
 from jsonschema import validate
 
-from apio import API
+import apio
 
 api_schema = {
     "type": "object",
@@ -48,19 +48,18 @@ class TestApio(unittest.TestCase):
 
     def setUp(self):
 
-        self.cookbook = cookbook = API('cookbook', "http://localhost:8881/api/")
+        self.apio_client = apio.MockClient()
 
-        @cookbook.action()
+        self.cookbook = apio.API('cookbook', "http://localhost:8881/api/", client=self.apio_client)
+
+        @self.cookbook.action()
         def cabbage(spicy=False):
             if spicy:
-                return "Kimchi"
+                return json.dumps("Kimchi")
             else:
-                return "Sauerkraut"
+                return json.dumps("Sauerkraut")
 
-        from flask import Flask
-        self.app = Flask(__name__, static_folder=None)
-        self.app.register_blueprint(self.cookbook.get_blueprint(), url_prefix="/api")
-        self.client = self.app.test_client()
+        self.cookbook.run()
 
         self.expected_schema = {
             'name': 'cookbook',
@@ -81,13 +80,19 @@ class TestApio(unittest.TestCase):
         assert self.cookbook.serialize() == self.expected_schema
 
     def test_blueprint(self):
+        from flask import Flask
+        app = Flask(__name__, static_folder=None)
+        app.register_blueprint(self.cookbook.get_blueprint(), url_prefix="/api")
+        werkzeug_client = app.test_client()
         # http://werkzeug.pocoo.org/docs/routing/#werkzeug.routing.Map
-        urls = self.app.url_map.bind('example.com')
+        urls = app.url_map.bind('example.com')
         assert urls.test('/api/actions/cabbage')
-
-    def test_spec_endpoint(self):
-        res = self.client.get('/api/spec.json')
+        res = werkzeug_client.get('/api/spec.json')
         assert json.loads(res.data) == self.expected_schema
+
+    def test_load(self):
+        cookbook = apio.API.load('cookbook', client=self.apio_client)
+        assert cookbook.call('cabbage', None) == "Sauerkraut"
 
     def test_schema(self):
         validate(self.cookbook.serialize(), api_schema)

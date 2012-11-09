@@ -21,7 +21,7 @@ from multiprocessing import Process
 import urllib2
 import time
 
-def quickstart_test():
+def _quickstart_test():
 
     p = Process(target=quickstart)
     p.start()
