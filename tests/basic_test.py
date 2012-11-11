@@ -61,6 +61,11 @@ class TestApio(FlaskTestCase):
 
         self.cookbook.run()
 
+        from flask import Flask
+        app = Flask(__name__, static_folder=None)
+        app.register_blueprint(self.cookbook.get_blueprint(), url_prefix="/api")
+        self.werkzeug_client = app.test_client()
+
         self.expected_schema = {
             'name': 'cookbook',
             'url': 'http://localhost:8881/api/',
@@ -77,25 +82,33 @@ class TestApio(FlaskTestCase):
         }
 
     def test_serialize(self):
-        assert self.cookbook.serialize() == self.expected_schema
+        self.assertEqual(self.cookbook.serialize(), self.expected_schema)
 
     def test_call(self):
-        assert self.cookbook.call('cabbage', {'spicy': False}) == "Sauerkraut"
+        self.assertEqual(self.cookbook.call('cabbage', {'spicy': False}), "Sauerkraut")
 
-    def test_blueprint(self):
-        from flask import Flask
-        app = Flask(__name__, static_folder=None)
-        app.register_blueprint(self.cookbook.get_blueprint(), url_prefix="/api")
-        werkzeug_client = app.test_client()
-        # http://werkzeug.pocoo.org/docs/routing/#werkzeug.routing.Map
-        urls = app.url_map.bind('example.com')
-        assert urls.test('/api/actions/cabbage')
-        res = werkzeug_client.get('/api/spec.json')
-        assert json.loads(res.data) == self.expected_schema
+    def test_spec_endpoint(self):
+        res = self.werkzeug_client.get('/api/spec.json')
+        self.assertEqual(json.loads(res.data), self.expected_schema)
+
+    def test_action_wrong_method(self):
+        # Actions can only be POST requests
+        res = self.werkzeug_client.open('/api/actions/cabbage', data='{"spicy":False}', method="GET")
+        self.assertEqual(res.status_code, 405)
+
+    def test_action_wrong_content_type(self):
+        # Content type must be "application/json"
+        res = self.werkzeug_client.open('/api/actions/cabbage', data='{"spicy":False}', method="POST", content_type="application/homer")
+        self.assertEqual(res.status_code, 400)
+
+    def test_action_no_data(self):
+        # Actions that declare parameters must be passed JSON data
+        res = self.werkzeug_client.open('/api/actions/cabbage', method="POST")
+        self.assertEqual(res.status_code, 400)
 
     def test_load(self):
         cookbook = apio.API.load('cookbook', client=self.testing_client)
-        assert cookbook.call('cabbage', {'spicy': True}) == "Kimchi"
+        self.assertEqual(cookbook.call('cabbage', {'spicy': True}), "Kimchi")
 
     def test_schema(self):
         validate(self.cookbook.serialize(), api_schema)
