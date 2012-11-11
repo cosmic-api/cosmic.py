@@ -93,23 +93,29 @@ class TestApio(FlaskTestCase):
 
     def test_action_wrong_method(self):
         # Actions can only be POST requests
-        res = self.werkzeug_client.open('/api/actions/cabbage', data='{"spicy":false}', method="GET")
+        res = self.werkzeug_client.get('/api/actions/cabbage', data='{"spicy":false}')
         self.assertEqual(res.status_code, 405)
 
     def test_action_wrong_content_type(self):
         # Content type must be "application/json"
-        res = self.werkzeug_client.open('/api/actions/cabbage', data='{"spicy":false}', method="POST", content_type="application/homer")
+        res = self.werkzeug_client.post('/api/actions/cabbage', data='{"spicy":false}', content_type="application/homer")
         self.assertEqual(res.status_code, 400)
 
     def test_action_invalid_json(self):
         # Content type must be "application/json"
-        res = self.werkzeug_client.open('/api/actions/cabbage', data='{"spicy":farse}', method="POST", content_type="application/json")
+        res = self.werkzeug_client.post('/api/actions/cabbage', data='{"spicy":farse}', content_type="application/json")
         self.assertEqual(res.status_code, 400)
 
     def test_action_no_data(self):
         # Actions that declare parameters must be passed JSON data
-        res = self.werkzeug_client.open('/api/actions/cabbage', method="POST")
+        res = self.werkzeug_client.post('/api/actions/cabbage')
         self.assertEqual(res.status_code, 400)
+
+    def test_action_okay(self):
+        # Actions that declare parameters must be passed JSON data
+        res = self.werkzeug_client.post('/api/actions/cabbage', data='{"spicy":true}', content_type="application/json")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(json.loads(res.data), "Kimchi")
 
     def test_load(self):
         cookbook = apio.API.load('cookbook', client=self.testing_client)
