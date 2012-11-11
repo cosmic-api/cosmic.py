@@ -1,4 +1,4 @@
 include *.md
 include tox.ini
-include tests
+recursive-include tests *
 include requirements.txt
