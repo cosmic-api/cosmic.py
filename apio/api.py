@@ -34,16 +34,20 @@ class API(object):
             self.actions[func.__name__] = func
             return func
         return decorator
+    def _get_action_view(self, name):
+        func = self.actions[name]
+        def action_view():
+            if not request.json:
+                abort(400)
+            return json.dumps(func(request.json))
+        return action_view
     def get_blueprint(self):
         blueprint = Blueprint(self.spec['name'], __name__)
-        for name, func in self.actions.items():
+        for name in self.actions.keys():
             # If enpoint isn't specified unique, Flask confuses the actions by assuming
             # that all endpoints are named 'action'
-            @blueprint.route('/actions/%s' % name, methods=['POST'], endpoint=name)
-            def action():
-                if not request.json:
-                    abort(400)
-                return json.dumps(func(request.json))
+            func = self._get_action_view(name)
+            blueprint.add_url_rule('/actions/%s' % name, name, func, methods=['POST'])
         @blueprint.route('/spec.json')
         def getspec():
             spec = json.dumps(self.serialize())

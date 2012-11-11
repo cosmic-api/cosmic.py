@@ -127,7 +127,7 @@ class TestApio(FlaskTestCase):
         # Actions that declare parameters must be passed JSON data
         res = self.werkzeug_client.post('/api/actions/cabbage', data='{"spicy":true}', content_type="application/json")
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(json.loads(res.data), "Kimchi")
+        self.assertEqual(json.loads(res.data), "kimchi")
 
     def test_load(self):
         cookbook = apio.API.load('cookbook', client=self.testing_client)
