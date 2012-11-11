@@ -93,12 +93,17 @@ class TestApio(FlaskTestCase):
 
     def test_action_wrong_method(self):
         # Actions can only be POST requests
-        res = self.werkzeug_client.open('/api/actions/cabbage', data='{"spicy":False}', method="GET")
+        res = self.werkzeug_client.open('/api/actions/cabbage', data='{"spicy":false}', method="GET")
         self.assertEqual(res.status_code, 405)
 
     def test_action_wrong_content_type(self):
         # Content type must be "application/json"
-        res = self.werkzeug_client.open('/api/actions/cabbage', data='{"spicy":False}', method="POST", content_type="application/homer")
+        res = self.werkzeug_client.open('/api/actions/cabbage', data='{"spicy":false}', method="POST", content_type="application/homer")
+        self.assertEqual(res.status_code, 400)
+
+    def test_action_invalid_json(self):
+        # Content type must be "application/json"
+        res = self.werkzeug_client.open('/api/actions/cabbage', data='{"spicy":farse}', method="POST", content_type="application/json")
         self.assertEqual(res.status_code, 400)
 
     def test_action_no_data(self):
