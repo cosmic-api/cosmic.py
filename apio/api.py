@@ -49,7 +49,7 @@ class API(object):
     def run(self, *args, **kwargs):
         if kwargs.get('register_api', True):
             self.client.register_api(self)
-        self.client.run(self)
+        self.client.run(self, *args, **kwargs)
     def call(self, action_name, obj):
         if action_name in self.actions.keys():
             return self.actions[action_name](obj)
@@ -67,7 +67,7 @@ class Client(object):
         raise NotImplementedError()
     def call_action(self, api_name, action_name, obj=None):
         raise NotImplementedError()
-    def run(self, api):
+    def run(self, api, *args, **kwargs):
         app = Flask(__name__, static_folder=None)
         app.register_blueprint(api.get_blueprint())
         app.run(*args, **kwargs)
