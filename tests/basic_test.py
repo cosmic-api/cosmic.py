@@ -55,9 +55,13 @@ class TestApio(FlaskTestCase):
         @self.cookbook.action()
         def cabbage(params):
             if params['spicy']:
-                return "Kimchi"
+                return "kimchi"
             else:
-                return "Sauerkraut"
+                return "sauerkraut"
+
+        @self.cookbook.action()
+        def pounds_to_kilos(pounds):
+            return pounds * 0.453592
 
         self.cookbook.run()
 
@@ -77,6 +81,14 @@ class TestApio(FlaskTestCase):
                     'returns': {
                         'type': 'any'
                     }
+                },
+                'pounds_to_kilos': {
+                    'accepts': {
+                        'type': 'any'
+                    },
+                    'returns': {
+                        'type': 'any'
+                    }
                 }
             }
         }
@@ -85,7 +97,7 @@ class TestApio(FlaskTestCase):
         self.assertEqual(self.cookbook.serialize(), self.expected_schema)
 
     def test_call(self):
-        self.assertEqual(self.cookbook.call('cabbage', {'spicy': False}), "Sauerkraut")
+        self.assertEqual(self.cookbook.call('cabbage', {'spicy': False}), "sauerkraut")
 
     def test_spec_endpoint(self):
         res = self.werkzeug_client.get('/api/spec.json')
@@ -119,7 +131,7 @@ class TestApio(FlaskTestCase):
 
     def test_load(self):
         cookbook = apio.API.load('cookbook', client=self.testing_client)
-        self.assertEqual(cookbook.call('cabbage', {'spicy': True}), "Kimchi")
+        self.assertEqual(cookbook.call('cabbage', {'spicy': True}), "kimchi")
 
     def test_schema(self):
         validate(self.cookbook.serialize(), api_schema)

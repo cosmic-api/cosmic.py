@@ -37,7 +37,9 @@ class API(object):
     def get_blueprint(self):
         blueprint = Blueprint(self.spec['name'], __name__)
         for name, func in self.actions.items():
-            @blueprint.route('/actions/%s' % name, methods=['POST'])
+            # If enpoint isn't specified unique, Flask confuses the actions by assuming
+            # that all endpoints are named 'action'
+            @blueprint.route('/actions/%s' % name, methods=['POST'], endpoint=name)
             def action():
                 if not request.json:
                     abort(400)
