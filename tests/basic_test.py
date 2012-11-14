@@ -1,5 +1,7 @@
 from flask.testsuite import FlaskTestCase
 import json
+from mock import patch
+import requests
 
 from jsonschema import validate
 
@@ -48,9 +50,7 @@ class TestApio(FlaskTestCase):
 
     def setup(self):
 
-        self.testing_client = apio.MockClient()
-
-        self.cookbook = apio.API('cookbook', "http://localhost:8881/api/", client=self.testing_client)
+        self.cookbook = apio.API('cookbook', "http://localhost:8881/api")
 
         @self.cookbook.action()
         def cabbage(params):
@@ -63,7 +63,25 @@ class TestApio(FlaskTestCase):
         def pounds_to_kilos(pounds):
             return pounds * 0.453592
 
-        self.cookbook.run()
+        with patch.object(requests, 'post') as mock_post:
+            mock_post.return_value.json = {
+                'url': 'http://api.apio.io',
+                'name': 'apio-index',
+                'actions': {
+                    'register_api': {
+                        'returns': {'type': 'any'},
+                        'accepts': {'type': 'any'}
+                    },
+                    'get_spec': {
+                        'returns': {'type': 'any'},
+                        'accepts': {'type': 'any'}
+                    }
+                }
+            }
+            apio.ensure_bootstrapped()
+            mock_post.return_value.json = True
+            self.cookbook.run(register_api=True, dry_run=True)
+            mock_post.assert_called_with('http://api.apio.io/actions/register_api', data=json.dumps(self.cookbook.serialize()))
 
         from flask import Flask
         app = Flask(__name__, static_folder=None)
@@ -72,7 +90,7 @@ class TestApio(FlaskTestCase):
 
         self.expected_schema = {
             'name': 'cookbook',
-            'url': 'http://localhost:8881/api/',
+            'url': 'http://localhost:8881/api',
             'actions': {
                 'cabbage': {
                     'accepts': {
@@ -130,8 +148,14 @@ class TestApio(FlaskTestCase):
         self.assertEqual(json.loads(res.data), "kimchi")
 
     def test_load(self):
-        cookbook = apio.API.load('cookbook', client=self.testing_client)
-        self.assertEqual(cookbook.call('cabbage', {'spicy': True}), "kimchi")
+        with patch.object(requests, 'post') as mock_post:
+            mock_post.return_value.json = self.cookbook.serialize()
+            cookbook = apio.API.load('cookbook')
+            mock_post.assert_called_with('http://api.apio.io/actions/get_spec', data=json.dumps("cookbook"))
+
+            mock_post.return_value.json = 'kimchi'
+            self.assertEqual(cookbook.call('cabbage', {'spicy': True}), "kimchi")
+            mock_post.assert_called_with('http://localhost:8881/api/actions/cabbage', data=json.dumps({'spicy': True}))
 
     def test_schema(self):
         validate(self.cookbook.serialize(), api_schema)

@@ -5,11 +5,19 @@ from flask import Flask, Blueprint, Response, request, abort, make_response
 
 from apio import types
 
+# API objects
+apis = {}
+
+def ensure_bootstrapped():
+    if 'apio-index' not in apis.keys():
+        res = requests.post("http://api.apio.io/actions/get_spec", data=json.dumps("apio-index"))
+        index = API('apio-index')
+        index.spec = res.json
+        apis['apio-index'] = index
+
 class API(object):
 
-    def __init__(self, name=None, url=None, client=None, homepage=None, spec=None, **kwargs):
-        if not client: client = Client()
-        self.client = client
+    def __init__(self, name=None, url=None, homepage=None, spec=None, **kwargs):
         self.actions = {}
         if spec:
             self.spec = spec
@@ -61,66 +69,24 @@ class API(object):
         return blueprint
     def run(self, *args, **kwargs):
         if kwargs.pop('register_api', True):
-            self.client.register_api(self)
-        self.client.run(self, *args, **kwargs)
+            ensure_bootstrapped()
+            apis['apio-index'].call('register_api', self.spec)
+        if 'dry_run' in kwargs.keys(): return
+        app = Flask(__name__, static_folder=None)
+        app.register_blueprint(self.get_blueprint())
+        app.run(*args, **kwargs)
     def call(self, action_name, obj):
         if action_name in self.actions.keys():
             return self.actions[action_name](obj)
         else:
-            return self.client.call_action(self.name, action_name, obj)
+            url = self.spec['url'] + '/actions/' + action_name
+            res = requests.post(url, data=json.dumps(obj))
+            return res.json
     @classmethod
-    def load(cls, name, client=None):
-        if not client: client = Client()
-        return client.get_api(name)
-
-class Client(object):
-    # API objects
-    apis = {}
-    def _ensure_bootstrapped(self):
-        if 'apio-index' not in self.apis.keys():
-            res = requests.post("http://api.apio.io/actions/get_spec", data=json.dumps("apio-index"))
-            index = API('apio-index', client=self)
-            index.spec = res.json
-            self.apis['apio-index'] = index
-    def get_spec(self, api_name):
-        self._ensure_bootstrapped()
-        return self.apis['apio-index'].call('get_spec', api_name)
-    def register_api(self, api):
-        self._ensure_bootstrapped()
-        return self.apis['apio-index'].call('register_api', api.spec)
-    def get_api(self, api_name):
-        api = API(spec=self.get_spec(api_name), client=self)
-        self.apis[api_name] = api
+    def load(cls, api_name):
+        ensure_bootstrapped()
+        spec = apis['apio-index'].call('get_spec', api_name)
+        api = API(spec=spec)
+        apis[api_name] = api
         return api
-    def call_action(self, api_name, action_name, obj=None):
-        url = self.apis[api_name].spec['url'] + '/actions/' + action_name
-        res = requests.post(url, data=json.dumps(obj))
-        return res.json
-    def run(self, api, *args, **kwargs):
-        app = Flask(__name__, static_folder=None)
-        app.register_blueprint(api.get_blueprint())
-        app.run(*args, **kwargs)
-
-class MockClient(object):
-    apis = {}
-    def register_api(self, api):
-        self.apis[api.name] = api
-        return True
-    def get_spec(self, api_name):
-        return self.apis[api_name].spec
-    def get_api(self, api_name):
-        spec = self.get_spec(api_name)
-        return API(spec=spec, client=self)
-    def call_action(self, api_name, action_name, obj=None):
-        app = Flask(__name__, static_folder=None)
-        app.register_blueprint(self.apis[api_name].get_blueprint())
-        werkzeug_client = app.test_client()
-        url = "/actions/%s" % action_name
-        data = json.dumps(obj)
-        res = werkzeug_client.post(url, data=data, content_type="application/json", method="POST")
-        return json.loads(res.data)
-    # We don't want any real HTTP action during testing
-    def run(self, api):
-        pass
-
 
