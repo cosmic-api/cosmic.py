@@ -21,6 +21,9 @@ class API(object):
             }
             if homepage:
                 self.spec['homepage'] = homepage
+    @property
+    def name(self):
+        return self.spec['name']
     def serialize(self):
         return self.spec
     def action(self):
@@ -45,7 +48,7 @@ class API(object):
             return json.dumps(func(request.json))
         return action_view
     def get_blueprint(self):
-        blueprint = Blueprint(self.spec['name'], __name__)
+        blueprint = Blueprint(self.name, __name__)
         for name in self.actions.keys():
             # If enpoint isn't specified unique, Flask confuses the actions by assuming
             # that all endpoints are named 'action'
@@ -64,7 +67,7 @@ class API(object):
         if action_name in self.actions.keys():
             return self.actions[action_name](obj)
         else:
-            return self.client.call_action(self.spec['name'], action_name, obj)
+            return self.client.call_action(self.name, action_name, obj)
     @classmethod
     def load(cls, name, client=None):
         if not client: client = Client()
@@ -99,7 +102,7 @@ class Client(object):
 class MockClient(object):
     apis = {}
     def register_api(self, api):
-        self.apis[api.spec['name']] = api
+        self.apis[api.name] = api
         return True
     def get_spec(self, api_name):
         return self.apis[api_name].spec
