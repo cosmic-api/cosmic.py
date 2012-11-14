@@ -76,15 +76,17 @@ class API(object):
 class Client(object):
     # API objects
     apis = {}
-    def __init__(self):
-        # Bootstrap the client
-        res = requests.post("http://api.apio.io/actions/get_spec", data=json.dumps("apio-index"))
-        index = API('apio-index', client=self)
-        index.spec = res.json
-        self.apis['apio-index'] = index
+    def _ensure_bootstrapped(self):
+        if 'apio-index' not in self.apis.keys():
+            res = requests.post("http://api.apio.io/actions/get_spec", data=json.dumps("apio-index"))
+            index = API('apio-index', client=self)
+            index.spec = res.json
+            self.apis['apio-index'] = index
     def get_spec(self, api_name):
+        self._ensure_bootstrapped()
         return self.apis['apio-index'].call('get_spec', api_name)
     def register_api(self, api):
+        self._ensure_bootstrapped()
         return self.apis['apio-index'].call('register_api', api.spec)
     def get_api(self, api_name):
         api = API(spec=self.get_spec(api_name), client=self)

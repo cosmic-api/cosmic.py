@@ -21,9 +21,11 @@ def test_client():
             }
         }
         cookbook = apio.API('cookbook', 'http://example.com')
+
+        index = apio.API.load('apio-index')
         mock_post.assert_called_with("http://api.apio.io/actions/get_spec", data=json.dumps("apio-index"))
-        mock_post.return_value.json = True
-        assert cookbook.client.register_api(cookbook) == True
+
+        index.call('register_api', cookbook.serialize())
         mock_post.assert_called_with("http://api.apio.io/actions/register_api", data=json.dumps(cookbook.serialize()))
 
 
