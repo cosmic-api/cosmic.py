@@ -1,5 +1,5 @@
 import json
-from urllib2 import urlopen
+import requests
 
 from flask import Flask, Blueprint, Response, request, abort, make_response
 
@@ -7,17 +7,20 @@ from apio import types
 
 class API(object):
 
-    def __init__(self, name, url=None, client=None, homepage=None, **kwargs):
+    def __init__(self, name=None, url=None, client=None, homepage=None, spec=None, **kwargs):
         if not client: client = Client()
-        self.actions = {}
         self.client = client
-        self.spec = {
-            "actions": {},
-            "name": name,
-            "url": url
-        }
-        if homepage:
-            self.spec['homepage'] = homepage
+        self.actions = {}
+        if spec:
+            self.spec = spec
+        else:
+            self.spec = {
+                "actions": {},
+                "name": name,
+                "url": url
+            }
+            if homepage:
+                self.spec['homepage'] = homepage
     def serialize(self):
         return self.spec
     def action(self):
@@ -68,12 +71,28 @@ class API(object):
         return client.get_api(name)
 
 class Client(object):
+    # APIO index API
+    index = None
+    # API specs
+    apis = {}
+    def __init__(self):
+        # Bootstrap the client
+        res = requests.post("http://api.apio.io/actions/get_spec", data=json.dumps("apio-index"))
+        self.index = API('apio-index', client=self)
+        self.index.spec = res.json
+        self.apis['apio-index'] = self.index
+    def get_spec(self, api_name):
+        return self.index.call('get_spec', api_name)
     def register_api(self, api):
-        raise NotImplementedError()
+        return self.index.call('register_api', api.spec)
     def get_api(self, api_name):
-        raise NotImplementedError()
+        api = API(spec=self.get_spec(api_name), client=self)
+        self.apis[api_name] = api
+        return api
     def call_action(self, api_name, action_name, obj=None):
-        raise NotImplementedError()
+        url = self.apis[api_name].spec['url'] + '/actions/' + action_name
+        res = requests.post(url, data=json.dumps(obj))
+        return res.json
     def run(self, api, *args, **kwargs):
         app = Flask(__name__, static_folder=None)
         app.register_blueprint(api.get_blueprint())
@@ -82,13 +101,13 @@ class Client(object):
 class MockClient(object):
     apis = {}
     def register_api(self, api):
-        name = api.spec['name']
-        self.apis[name] = api
+        self.apis[api.spec['name']] = api
+        return True
+    def get_spec(self, api_name):
+        return self.apis[api_name].spec
     def get_api(self, api_name):
-        spec = self.apis[api_name].spec
-        api = API(spec['name'], client=self)
-        api.spec = spec
-        return api
+        spec = self.get_spec(api_name)
+        return API(spec=spec, client=self)
     def call_action(self, api_name, action_name, obj=None):
         app = Flask(__name__, static_folder=None)
         app.register_blueprint(self.apis[api_name].get_blueprint())
