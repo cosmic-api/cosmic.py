@@ -48,8 +48,10 @@ API_SCHEMA = {
 apis = {}
 
 def ensure_bootstrapped():
+    """Ensures the APIO index API is loaded. Call this before trying API.load"""
     if 'apio-index' not in apis.keys():
-        res = requests.post("http://api.apio.io/actions/get_spec", data=json.dumps("apio-index"))
+        data = json.dumps("apio-index")
+        res = requests.post("http://api.apio.io/actions/get_spec", data=data)
         index = RemoteAPI('apio-index')
         index.spec = res.json['data']
         apis['apio-index'] = index
@@ -63,7 +65,6 @@ class APIError(Exception):
 class BaseAPI(object):
     def __init__(self, spec):
         self.spec = spec
-        self.actions = {}
     @property
     def name(self):
         return self.spec['name']
@@ -72,6 +73,7 @@ class BaseAPI(object):
 class API(BaseAPI):
 
     def __init__(self, name=None, url=None, homepage=None, **kwargs):
+        self.actions = {}
         spec = {
             "actions": {},
             "name": name,
@@ -139,7 +141,8 @@ class API(BaseAPI):
         app.run(*args, **kwargs)
 
     def action(self):
-        """Registers the given action with the API. To be used as a decorator.
+        """Registers the given function as an API action. To be used as a 
+        decorator.
         """
         def decorator(func):
             action = {
@@ -156,12 +159,18 @@ class API(BaseAPI):
         return decorator
 
     @staticmethod
-    def load(api_name):
-        """Given an API name, loads the API and returns an API object."""
-        ensure_bootstrapped()
-        spec = apis['apio-index'].call('get_spec', api_name)
+    def load(name_or_url):
+        """Given an API name, loads the API and returns an API object. If given
+        a spec URL, loads the API from the spec.
+        """
+        if name_or_url.startswith('http'):
+            res = requests.get(url)
+            spec = res.json
+        else:
+            ensure_bootstrapped()
+            spec = apis['apio-index'].call('get_spec', name_or_url)
         api = RemoteAPI(spec)
-        apis[api_name] = api
+        apis[name_or_url] = api
         return api
 
 class RemoteAPI(BaseAPI):
