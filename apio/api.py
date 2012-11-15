@@ -5,13 +5,52 @@ from flask import Flask, Blueprint, Response, request, abort, make_response
 
 from apio import types
 
+API_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "name": {
+            "type": "string",
+            "required": True
+        },
+        "url": {
+            "type": "string",
+            "required": True
+        },
+        "homepage": {
+            "type": "string"
+        },
+        "models": {
+            "type": "object",
+            "patternProperties": {
+                r'^[a-zA-Z0-9_]+$': {
+                    "$ref": "http://json-schema.org/draft-03/schema#"
+                }
+            }
+        },
+        "actions": {
+            "type": "object",
+            "patternProperties": {
+                r'^[a-zA-Z0-9_]+$': {
+                    "type": "object",
+                    "accepts": {
+                        "$ref": "http://json-schema.org/draft-03/schema#"
+                    },
+                    "returns": {
+                        "$ref": "http://json-schema.org/draft-03/schema#"
+                    }
+                }
+            }
+        }
+    }
+}
+
 # API objects
 apis = {}
 
 def ensure_bootstrapped():
     if 'apio-index' not in apis.keys():
         res = requests.post("http://api.apio.io/actions/get_spec", data=json.dumps("apio-index"))
-        index = API('apio-index')
+        index = RemoteAPI('apio-index')
         index.spec = res.json['data']
         apis['apio-index'] = index
 
@@ -20,41 +59,34 @@ class APIError(Exception):
         self.message = message
         self.http_code = http_code
 
-class API(object):
 
-    def __init__(self, name=None, url=None, homepage=None, spec=None, **kwargs):
+class BaseAPI(object):
+    def __init__(self, spec):
+        self.spec = spec
         self.actions = {}
-        if spec:
-            self.spec = spec
-        else:
-            self.spec = {
-                "actions": {},
-                "name": name,
-                "url": url
-            }
-            if homepage:
-                self.spec['homepage'] = homepage
     @property
     def name(self):
         return self.spec['name']
-    def serialize(self):
-        return self.spec
-    def action(self):
-        def decorator(func):
-            action = {
-                "accepts": {
-                    "type": "any"
-                },
-                "returns": {
-                    "type": "any"
-                }
-            }
-            self.spec['actions'][func.__name__] = action
-            self.actions[func.__name__] = func
-            return func
-        return decorator
-    def _get_action_view(self, name):
-        func = self.actions[name]
+
+
+class API(BaseAPI):
+
+    def __init__(self, name=None, url=None, homepage=None, **kwargs):
+        spec = {
+            "actions": {},
+            "name": name,
+            "url": url
+        }
+        if homepage: spec['homepage'] = homepage
+        super(API, self).__init__(spec)
+
+    def call(self, action_name, obj):
+        return self.actions[action_name](obj)
+
+    @staticmethod
+    def _get_action_view(func):
+        """Wraps a user-defined action function to return a Flask view function
+        that handles errors and returns proper HTTP responses"""
         def action_view():
             if request.json == None:
                 return json.dumps({
@@ -76,19 +108,28 @@ class API(object):
                 "data": data
             })
         return action_view
+
     def get_blueprint(self):
+        """Returns a Flask Blueprint object with all of the API's routes set up.
+        Use this if you want to integrate your API into a Flask application.
+        """
         blueprint = Blueprint(self.name, __name__)
-        for name in self.actions.keys():
-            # If enpoint isn't specified unique, Flask confuses the actions by assuming
-            # that all endpoints are named 'action'
-            func = self._get_action_view(name)
-            blueprint.add_url_rule('/actions/%s' % name, name, func, methods=['POST'])
+        for name, func in self.actions.items():
+            func = API._get_action_view(func)
+            url = "/actions/%s" % name
+            blueprint.add_url_rule(url, name, func, methods=['POST'])
         @blueprint.route('/spec.json')
         def getspec():
-            spec = json.dumps(self.serialize())
+            spec = json.dumps(self.spec)
             return Response(spec, mimetype="application/json")
         return blueprint
+
     def run(self, *args, **kwargs):
+        """Runs the API as a Flask app. All arguments channelled into Flask#run
+        except for `register_api`, which is a boolean that defaults to True
+        and determines whether you want your API pushed to APIO index.
+        """
+
         if kwargs.pop('register_api', True):
             ensure_bootstrapped()
             apis['apio-index'].call('register_api', self.spec)
@@ -96,20 +137,38 @@ class API(object):
         app = Flask(__name__, static_folder=None)
         app.register_blueprint(self.get_blueprint())
         app.run(*args, **kwargs)
-    def call(self, action_name, obj):
-        if action_name in self.actions.keys():
-            return self.actions[action_name](obj)
-        else:
-            url = self.spec['url'] + '/actions/' + action_name
-            res = requests.post(url, data=json.dumps(obj))
-            if 'error' in res.json:
-                raise APIError(res.json['error'])
-            return res.json['data']
-    @classmethod
-    def load(cls, api_name):
+
+    def action(self):
+        """Registers the given action with the API. To be used as a decorator.
+        """
+        def decorator(func):
+            action = {
+                "accepts": {
+                    "type": "any"
+                },
+                "returns": {
+                    "type": "any"
+                }
+            }
+            self.spec['actions'][func.__name__] = action
+            self.actions[func.__name__] = func
+            return func
+        return decorator
+
+    @staticmethod
+    def load(api_name):
+        """Given an API name, loads the API and returns an API object."""
         ensure_bootstrapped()
         spec = apis['apio-index'].call('get_spec', api_name)
-        api = API(spec=spec)
+        api = RemoteAPI(spec)
         apis[api_name] = api
         return api
+
+class RemoteAPI(BaseAPI):
+    def call(self, action_name, obj):
+        url = self.spec['url'] + '/actions/' + action_name
+        res = requests.post(url, data=json.dumps(obj))
+        if 'error' in res.json:
+            raise APIError(res.json['error'])
+        return res.json['data']
 

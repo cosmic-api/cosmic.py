@@ -8,45 +8,6 @@ from jsonschema import validate
 
 import apio
 
-api_schema = {
-    "type": "object",
-    "properties": {
-        "name": {
-            "type": "string",
-            "required": True
-        },
-        "url": {
-            "type": "string",
-            "required": True
-        },
-        "homepage": {
-            "type": "string"
-        },
-        "models": {
-            "type": "object",
-            "patternProperties": {
-                r'^[a-zA-Z0-9_]+$': {
-                    "$ref": "http://json-schema.org/draft-03/schema#"
-                }
-            }
-        },
-        "actions": {
-            "type": "object",
-            "patternProperties": {
-                r'^[a-zA-Z0-9_]+$': {
-                    "type": "object",
-                    "accepts": {
-                        "$ref": "http://json-schema.org/draft-03/schema#"
-                    },
-                    "returns": {
-                        "$ref": "http://json-schema.org/draft-03/schema#"
-                    }
-                }
-            }
-        }
-    }
-}
-
 index_spec = {
     'url': 'http://api.apio.io',
     'name': 'apio-index',
@@ -115,7 +76,7 @@ class TestAPI(TestCase):
                 "data": True
             }
             self.cookbook.run(register_api=True, dry_run=True)
-            mock_post.assert_called_with('http://api.apio.io/actions/register_api', data=json.dumps(self.cookbook.serialize()))
+            mock_post.assert_called_with('http://api.apio.io/actions/register_api', data=json.dumps(self.cookbook.spec))
             # Load API
             mock_post.return_value.json = {
                 "data": cookbook_spec
@@ -133,7 +94,7 @@ class TestAPI(TestCase):
         apio.apis = {}
 
     def test_serialize(self):
-        self.assertEqual(self.cookbook.serialize(), cookbook_spec)
+        self.assertEqual(self.cookbook.spec, cookbook_spec)
 
     def test_call(self):
         self.assertEqual(self.cookbook.call('cabbage', {'spicy': False}), "sauerkraut")
@@ -163,7 +124,7 @@ class TestAPI(TestCase):
         self.assertEqual(res.status_code, 400)
 
     def test_schema(self):
-        validate(self.cookbook.serialize(), api_schema)
+        validate(self.cookbook.spec, apio.API_SCHEMA)
 
 
 
