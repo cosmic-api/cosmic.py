@@ -1,5 +1,0 @@
-Flask==0.9
-jsonpointer==0.3
--e git://github.com/boronine/jsonschema.git@391916e71b946db3bf5d92cbb767f620a869fc82#egg=jsonschema
-requests==0.14.2
-mock==1.0.1
