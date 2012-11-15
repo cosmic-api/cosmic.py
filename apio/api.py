@@ -12,8 +12,13 @@ def ensure_bootstrapped():
     if 'apio-index' not in apis.keys():
         res = requests.post("http://api.apio.io/actions/get_spec", data=json.dumps("apio-index"))
         index = API('apio-index')
-        index.spec = res.json
+        index.spec = res.json['data']
         apis['apio-index'] = index
+
+class APIError(Exception):
+    def __init__(self, message, http_code=500):
+        self.message = message
+        self.http_code = http_code
 
 class API(object):
 
@@ -51,9 +56,25 @@ class API(object):
     def _get_action_view(self, name):
         func = self.actions[name]
         def action_view():
-            if not request.json:
-                abort(400)
-            return json.dumps(func(request.json))
+            if request.json == None:
+                return json.dumps({
+                    "error": "Bad request"
+                }), 400
+            try:
+                data = func(request.json)
+            # If the user threw an APIError
+            except APIError as err:
+                return json.dumps({
+                    "error": err.message
+                }), err.http_code
+            # Any other exception should be handled gracefully
+            except:
+                return json.dumps({
+                    "error": "Internal Server Error"
+                }), 500
+            return json.dumps({
+                "data": data
+            })
         return action_view
     def get_blueprint(self):
         blueprint = Blueprint(self.name, __name__)
@@ -81,7 +102,9 @@ class API(object):
         else:
             url = self.spec['url'] + '/actions/' + action_name
             res = requests.post(url, data=json.dumps(obj))
-            return res.json
+            if 'error' in res.json:
+                raise APIError(res.json['error'])
+            return res.json['data']
     @classmethod
     def load(cls, api_name):
         ensure_bootstrapped()
