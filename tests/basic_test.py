@@ -35,6 +35,14 @@ cookbook_spec = {
                 'type': 'any'
             }
         },
+        'noop': {
+            'accepts': {
+                'type': 'null'
+            },
+            'returns': {
+                'type': 'any'
+            }
+        },
         'pounds_to_kilos': {
             'accepts': {
                 'type': 'any'
@@ -64,6 +72,10 @@ class TestAPI(TestCase):
             if pounds > 100:
                 raise apio.APIError('Too many pounds', http_code=501)
             return 0.453592 * pounds * pounds / pounds
+
+        @self.cookbook.action()
+        def noop():
+            pass
 
         with patch.object(requests, 'post') as mock_post:
             # Test initializing apio module
@@ -146,6 +158,22 @@ class TestAPI(TestCase):
             self.assertEqual(self.remote_cookbook.call('cabbage', {'spicy': True}), "kimchi")
             mock_post.assert_called_with('http://localhost:8881/api/actions/cabbage', data=json.dumps({'spicy': True}))
 
+
+
+    def test_local_no_return_action(self):
+        res = self.werkzeug_client.post('/api/actions/noop', data='true', content_type="application/json")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(json.loads(res.data), {
+            "data": None
+        })
+
+    def _test_remote_no_return_action(self):
+        with patch.object(requests, 'post') as mock_post:
+            mock_post.return_value.json = {
+                "data": None
+            }
+            self.assertEqual(self.remote_cookbook.call('noop', True), None)
+            mock_post.assert_called_with('http://localhost:8881/api/actions/noop', data=json.dumps(True))
 
 
 

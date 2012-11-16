@@ -1,5 +1,6 @@
 import json
 import requests
+import inspect
 
 from flask import Flask, Blueprint, Response, request, abort, make_response
 
@@ -82,11 +83,13 @@ class API(BaseAPI):
         if homepage: spec['homepage'] = homepage
         super(API, self).__init__(spec)
 
-    def call(self, action_name, obj):
+    def call(self, action_name, obj=None):
+        # If it's a no argument function, don't pass in anything to avoid error
+        if self.spec['actions'][action_name]["accepts"]["type"] == "null":
+            return self.actions[action_name]()
         return self.actions[action_name](obj)
 
-    @staticmethod
-    def _get_action_view(func):
+    def _get_action_view(self, action_name):
         """Wraps a user-defined action function to return a Flask view function
         that handles errors and returns proper HTTP responses"""
         def action_view():
@@ -95,7 +98,7 @@ class API(BaseAPI):
                     "error": "Bad request"
                 }), 400
             try:
-                data = func(request.json)
+                data = self.call(action_name, request.json)
             # If the user threw an APIError
             except APIError as err:
                 return json.dumps({
@@ -117,9 +120,9 @@ class API(BaseAPI):
         """
         blueprint = Blueprint(self.name, __name__)
         for name, func in self.actions.items():
-            func = API._get_action_view(func)
+            view = self._get_action_view(name)
             url = "/actions/%s" % name
-            blueprint.add_url_rule(url, name, func, methods=['POST'])
+            blueprint.add_url_rule(url, name, view, methods=['POST'])
         @blueprint.route('/spec.json')
         def getspec():
             spec = json.dumps(self.spec)
@@ -146,13 +149,17 @@ class API(BaseAPI):
         """
         def decorator(func):
             action = {
-                "accepts": {
-                    "type": "any"
-                },
                 "returns": {
                     "type": "any"
                 }
             }
+            # If provided function has no arguments, note it in the spec
+            argspec = inspect.getargspec(func)
+            args = argspec[0]
+            if len(args) == 0:
+                action["accepts"] = { "type": "null" }
+            else:
+                action["accepts"] = { "type": "any" }
             self.spec['actions'][func.__name__] = action
             self.actions[func.__name__] = func
             return func
@@ -174,7 +181,7 @@ class API(BaseAPI):
         return api
 
 class RemoteAPI(BaseAPI):
-    def call(self, action_name, obj):
+    def call(self, action_name, obj=None):
         url = self.spec['url'] + '/actions/' + action_name
         res = requests.post(url, data=json.dumps(obj))
         if 'error' in res.json:
