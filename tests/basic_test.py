@@ -7,6 +7,7 @@ import requests
 from jsonschema import validate
 
 import apio
+from apio.exceptions import *
 
 index_spec = {
     'url': 'http://api.apio.io',
@@ -70,7 +71,7 @@ class TestAPI(TestCase):
         @self.cookbook.action()
         def pounds_to_kilos(pounds):
             if pounds > 100:
-                raise apio.APIError('Too many pounds', http_code=501)
+                raise APIError('Too many pounds', http_code=501)
             return 0.453592 * pounds * pounds / pounds
 
         @self.cookbook.action()
@@ -190,7 +191,7 @@ class TestAPI(TestCase):
             mock_post.return_value.json = {
                 "error": 'Too many pounds'
             }
-            with self.assertRaises(apio.APIError):
+            with self.assertRaises(APIError):
                 self.remote_cookbook.call('pounds_to_kilos', 101)
 
 
@@ -208,7 +209,7 @@ class TestAPI(TestCase):
             mock_post.return_value.json = {
                 "error": 'Internal Server Error'
             }
-            with self.assertRaises(apio.APIError) as cm:
+            with self.assertRaises(APIError) as cm:
                 self.remote_cookbook.call('pounds_to_kilos', 101)
                 self.assertEqual(cm.exception.message, "Internal Server Error")
 
@@ -224,8 +225,8 @@ class TestAPI(TestCase):
     def test_apierror_repr(self):
         """Make sure when APIError gets printed in stack trace we can see the message"""
         try:
-            raise apio.APIError("Blah")
-        except apio.APIError as e:
+            raise APIError("Blah")
+        except APIError as e:
             self.assertEqual(unicode(e), "Blah")
 
 

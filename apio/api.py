@@ -4,7 +4,7 @@ import inspect
 
 from flask import Flask, Blueprint, Response, request, abort, make_response
 
-from apio import types
+from apio.exceptions import *
 
 API_SCHEMA = {
     "type": "object",
@@ -57,10 +57,6 @@ def ensure_bootstrapped():
         index.spec = res.json['data']
         apis['apio-index'] = index
 
-class APIError(Exception):
-    def __init__(self, message, http_code=500):
-        self.args = [message]
-        self.http_code = http_code
 
 class BaseAPI(object):
     def __init__(self, spec):
