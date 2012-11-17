@@ -116,22 +116,22 @@ class TestAPI(TestCase):
         self.assertEqual(json.loads(res.data), cookbook_spec)
 
     def test_action_wrong_method(self):
-        # Actions can only be POST requests
+        """Actions can only be POST requests"""
         res = self.werkzeug_client.get('/api/actions/cabbage', data='{"spicy":false}')
         self.assertEqual(res.status_code, 405)
 
     def test_action_wrong_content_type(self):
-        # Content type must be "application/json"
+        """Content type must be "application/json"""
         res = self.werkzeug_client.post('/api/actions/cabbage', data='{"spicy":false}', content_type="application/homer")
         self.assertEqual(res.status_code, 400)
 
     def test_action_invalid_json(self):
-        # Content type must be "application/json"
+        """Content type must be "application/json"""
         res = self.werkzeug_client.post('/api/actions/cabbage', data='{"spicy":farse}', content_type="application/json")
         self.assertEqual(res.status_code, 400)
 
     def test_action_no_data(self):
-        # Actions that declare parameters must be passed JSON data
+        """Actions that declare parameters must be passed JSON data"""
         res = self.werkzeug_client.post('/api/actions/cabbage')
         self.assertEqual(res.status_code, 400)
 
@@ -140,17 +140,16 @@ class TestAPI(TestCase):
 
 
 
-
-    # First make sure provider returns the right HTTP response for the right HTTP request
     def test_local_successful_action(self):
+        """First make sure provider returns the right HTTP response for the right HTTP request"""
         res = self.werkzeug_client.post('/api/actions/cabbage', data='{"spicy":true}', content_type="application/json")
         self.assertEqual(res.status_code, 200)
         self.assertEqual(json.loads(res.data), {
             "data": "kimchi"
         })
 
-    # ... Then make sure that this response is interpreted correctly on the consumer
     def test_remote_successful_action(self):
+        """... Then make sure that this response is interpreted correctly on the consumer"""
         with patch.object(requests, 'post') as mock_post:
             mock_post.return_value.json = {
                 "data": 'kimchi'
@@ -213,10 +212,19 @@ class TestAPI(TestCase):
 
 
     def test_load_url(self):
+        """Test the API.load function when given a spec URL"""
         with patch.object(requests, 'get') as mock_get:
             mock_get.return_value.json = cookbook_spec
             cookbook_decentralized = apio.API.load('http://example.com/spec.json')
             self.assertEqual(cookbook_decentralized.spec, cookbook_spec)
+
+
+    def test_apierror_repr(self):
+        """Make sure when APIError gets printed in stack trace we can see the message"""
+        try:
+            raise apio.APIError("Blah")
+        except apio.APIError as e:
+            self.assertEqual(unicode(e), "Blah")
 
 
 if __name__ == '__main__':

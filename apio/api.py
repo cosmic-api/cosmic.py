@@ -59,10 +59,8 @@ def ensure_bootstrapped():
 
 class APIError(Exception):
     def __init__(self, message, http_code=500):
-        self.message = message
+        self.args = [message]
         self.http_code = http_code
-    def __unicode__(self):
-        return self.message
 
 class BaseAPI(object):
     def __init__(self, spec):
@@ -103,7 +101,7 @@ class API(BaseAPI):
             # If the user threw an APIError
             except APIError as err:
                 return json.dumps({
-                    "error": err.message
+                    "error": err.args[0]
                 }), err.http_code
             # Any other exception should be handled gracefully
             except:
