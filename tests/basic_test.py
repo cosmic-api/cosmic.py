@@ -129,9 +129,9 @@ class TestAPI(TestCase):
         self.assertRegexpMatches(res.data, "Content-Type")
 
     def test_action_invalid_json(self):
-        """Content type must be "application/json"""
         res = self.werkzeug_client.post('/api/actions/cabbage', data='{"spicy":farse}', content_type="application/json")
         self.assertEqual(res.status_code, 400)
+        self.assertRegexpMatches(res.data, "Invalid JSON")
 
     def test_action_no_data(self):
         """Actions that declare parameters must be passed JSON data"""
@@ -163,19 +163,19 @@ class TestAPI(TestCase):
 
 
     def test_local_no_return_action(self):
-        res = self.werkzeug_client.post('/api/actions/noop', data='true', content_type="application/json")
+        res = self.werkzeug_client.post('/api/actions/noop', data='null', content_type="application/json")
         self.assertEqual(res.status_code, 200)
         self.assertEqual(json.loads(res.data), {
             "data": None
         })
 
-    def _test_remote_no_return_action(self):
+    def test_remote_no_return_action(self):
         with patch.object(requests, 'post') as mock_post:
             mock_post.return_value.json = {
                 "data": None
             }
-            self.assertEqual(self.remote_cookbook.call('noop', True), None)
-            mock_post.assert_called_with('http://localhost:8881/api/actions/noop', headers={'Content-Type': 'application/json'}, data=json.dumps(True))
+            self.assertEqual(self.remote_cookbook.call('noop'), None)
+            mock_post.assert_called_with('http://localhost:8881/api/actions/noop', headers={'Content-Type': 'application/json'}, data=json.dumps(None))
 
 
 
@@ -230,11 +230,11 @@ class TestAPI(TestCase):
 
 
 
-    def test_undefined_action_local(self):
+    def test_local_undefined_action(self):
         with self.assertRaisesRegexp(SpecError, "not defined"):
             self.cookbook.call('kilos_to_pounds', 101)
 
-    def test_undefined_action_remote(self):
+    def test_remote_undefined_action(self):
         with self.assertRaisesRegexp(SpecError, "not defined"):
             self.remote_cookbook.call('kilos_to_pounds', 101)
 

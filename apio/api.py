@@ -3,6 +3,7 @@ import requests
 import inspect
 
 from flask import Flask, Blueprint, Response, request, abort, make_response
+from flask.exceptions import JSONBadRequest
 
 from apio.exceptions import *
 
@@ -96,12 +97,12 @@ class API(BaseAPI):
                 return json.dumps({
                     "error": 'Content-Type must be "application/json"'
                 }), 400
-            if request.json == None:
-                return json.dumps({
-                    "error": "Bad request"
-                }), 400
             try:
                 data = self.call(action_name, request.json)
+            except JSONBadRequest:
+                return json.dumps({
+                    "error": "Invalid JSON"
+                }), 400
             # If the user threw an APIError
             except APIError as err:
                 return json.dumps({
