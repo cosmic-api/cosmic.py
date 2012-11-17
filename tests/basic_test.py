@@ -88,13 +88,13 @@ class TestAPI(TestCase):
                 "data": True
             }
             self.cookbook.run(register_api=True, dry_run=True)
-            mock_post.assert_called_with('http://api.apio.io/actions/register_api', data=json.dumps(self.cookbook.spec))
+            mock_post.assert_called_with('http://api.apio.io/actions/register_api', headers={'Content-Type': 'application/json'}, data=json.dumps(self.cookbook.spec))
             # Load API
             mock_post.return_value.json = {
                 "data": cookbook_spec
             }
             self.remote_cookbook = apio.API.load('cookbook')
-            mock_post.assert_called_with('http://api.apio.io/actions/get_spec', data=json.dumps("cookbook"))
+            mock_post.assert_called_with('http://api.apio.io/actions/get_spec', headers={'Content-Type': 'application/json'}, data=json.dumps("cookbook"))
 
         # Create test client for some HTTP tests
         from flask import Flask
@@ -157,7 +157,7 @@ class TestAPI(TestCase):
                 "data": 'kimchi'
             }
             self.assertEqual(self.remote_cookbook.call('cabbage', {'spicy': True}), "kimchi")
-            mock_post.assert_called_with('http://localhost:8881/api/actions/cabbage', data=json.dumps({'spicy': True}))
+            mock_post.assert_called_with('http://localhost:8881/api/actions/cabbage', headers={'Content-Type': 'application/json'}, data=json.dumps({'spicy': True}))
 
 
 
@@ -174,7 +174,7 @@ class TestAPI(TestCase):
                 "data": None
             }
             self.assertEqual(self.remote_cookbook.call('noop', True), None)
-            mock_post.assert_called_with('http://localhost:8881/api/actions/noop', data=json.dumps(True))
+            mock_post.assert_called_with('http://localhost:8881/api/actions/noop', headers={'Content-Type': 'application/json'}, data=json.dumps(True))
 
 
 

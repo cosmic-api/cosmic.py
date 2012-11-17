@@ -186,7 +186,8 @@ class API(BaseAPI):
 class RemoteAPI(BaseAPI):
     def call(self, action_name, obj=None):
         url = self.spec['url'] + '/actions/' + action_name
-        res = requests.post(url, data=json.dumps(obj))
+        headers = { 'Content-Type': 'application/json' }
+        res = requests.post(url, data=json.dumps(obj), headers=headers)
         if 'error' in res.json:
             raise APIError(res.json['error'])
         return res.json['data']
