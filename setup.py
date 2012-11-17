@@ -7,7 +7,7 @@ with open("README.rst") as readme:
 
 setup(
     name = 'apio',
-    version = "0.0.2",
+    version = "0.0.3",
     packages = ['apio'],
     description = 'Human-friendly APIs',
     license = "MIT",
