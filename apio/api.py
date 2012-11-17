@@ -61,7 +61,8 @@ class APIError(Exception):
     def __init__(self, message, http_code=500):
         self.message = message
         self.http_code = http_code
-
+    def __unicode__(self):
+        return self.message
 
 class BaseAPI(object):
     def __init__(self, spec):
@@ -171,7 +172,7 @@ class API(BaseAPI):
         a spec URL, loads the API from the spec.
         """
         if name_or_url.startswith('http'):
-            res = requests.get(url)
+            res = requests.get(name_or_url)
             spec = res.json
         else:
             ensure_bootstrapped()

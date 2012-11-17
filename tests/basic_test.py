@@ -212,5 +212,12 @@ class TestAPI(TestCase):
                 self.assertEqual(cm.exception.message, "Internal Server Error")
 
 
+    def test_load_url(self):
+        with patch.object(requests, 'get') as mock_get:
+            mock_get.return_value.json = cookbook_spec
+            cookbook_decentralized = apio.API.load('http://example.com/spec.json')
+            self.assertEqual(cookbook_decentralized.spec, cookbook_spec)
+
+
 if __name__ == '__main__':
     unittest.main()
