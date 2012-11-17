@@ -93,3 +93,15 @@ If you'd like to see a custom error message, you can raise an ``apio.APIError`` 
 
 Consuming an API
 """"""""""""""""
+
+Now that we've launched our API on Heroku (see `this page <https://devcenter.heroku.com/articles/python>`_ for instructions), we can consume it using the same library we used to build it.
+
+.. code:: python
+
+    >>> from apio import API
+    >>> lamagotchi = API.load("http://lamagotchi.herokuapp.com/spec.json")
+    >>> steve = lamagotchi.call("create", "steve")
+    >>> lamagotchi.call("state", "steve")
+    u'seeking'
+    >>> lamagotchi.call("meditate", "steve")
+    u'True'
