@@ -124,6 +124,8 @@ class TestAPI(TestCase):
         """Content type must be "application/json"""
         res = self.werkzeug_client.post('/api/actions/cabbage', data='{"spicy":false}', content_type="application/homer")
         self.assertEqual(res.status_code, 400)
+        # Make sure Content-Type is mentioned in the error
+        self.assertRegexpMatches(res.data, "Content-Type")
 
     def test_action_invalid_json(self):
         """Content type must be "application/json"""

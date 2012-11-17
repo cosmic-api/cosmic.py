@@ -92,6 +92,10 @@ class API(BaseAPI):
         """Wraps a user-defined action function to return a Flask view function
         that handles errors and returns proper HTTP responses"""
         def action_view():
+            if request.headers.get('Content-Type', None) != "application/json":
+                return json.dumps({
+                    "error": 'Content-Type must be "application/json"'
+                }), 400
             if request.json == None:
                 return json.dumps({
                     "error": "Bad request"
