@@ -54,40 +54,66 @@ def ensure_bootstrapped():
     if 'apio-index' not in apis.keys():
         data = json.dumps("apio-index")
         res = requests.post("http://api.apio.io/actions/get_spec", data=data)
-        index = RemoteAPI('apio-index')
-        index.spec = res.json['data']
+        index = RemoteAPI(res.json['data'])
         apis['apio-index'] = index
 
 
 class BaseAPI(object):
-    def __init__(self, spec):
-        self.spec = spec
-    @property
-    def name(self):
-        return self.spec['name']
-    def assert_action_defined(self, action_name):
-        if action_name not in self.spec['actions'].keys():
-            raise SpecError("Action %s is not defined" % action_name)
+    def call(self, action_name, obj=None):
+        return self.actions._call(action_name, obj)
 
 
 class API(BaseAPI):
 
     def __init__(self, name=None, url=None, homepage=None, **kwargs):
-        self.actions = {}
-        spec = {
-            "actions": {},
-            "name": name,
-            "url": url
-        }
-        if homepage: spec['homepage'] = homepage
-        super(API, self).__init__(spec)
+        self.actions = API.ActionDispatcher()
+        self.name = name
+        self.url = url
+        self.homepage = homepage
 
-    def call(self, action_name, obj=None):
-        self.assert_action_defined(action_name)
-        # If it's a no argument function, don't pass in anything to avoid error
-        if self.spec['actions'][action_name]["accepts"]["type"] == "null":
-            return self.actions[action_name]()
-        return self.actions[action_name](obj)
+    @property
+    def spec(self):
+        spec = {
+            "actions": self.actions._specs,
+            "name": self.name,
+            "url": self.url
+        }
+        if self.homepage: spec['homepage'] = self.homepage
+        return spec
+
+    class ActionDispatcher(object):
+
+        def __init__(self):
+            self.__funcs = {}
+            self._specs = {}
+
+        def _register_action_func(self, func):
+            action_spec = {
+                "returns": {
+                    "type": "any"
+                }
+            }
+            # If provided function has no arguments, note it in the spec
+            argspec = inspect.getargspec(func)
+            args = argspec[0]
+            if len(args) == 0:
+                action_spec["accepts"] = { "type": "null" }
+            else:
+                action_spec["accepts"] = { "type": "any" }
+            self.__funcs[func.__name__] = func
+            self._specs[func.__name__] = action_spec
+            return action_spec
+
+        def _assert_action_defined(self, action_name):
+            if action_name not in self.__funcs.keys():
+                raise SpecError("Action %s is not defined" % action_name)
+
+        def _call(self, action_name, obj=None):
+            self._assert_action_defined(action_name)
+            # If it's a no argument function, don't pass in anything to avoid error
+            if self._specs[action_name]["accepts"]["type"] == "null":
+                return self.__funcs[action_name]()
+            return self.__funcs[action_name](obj)
 
     def _get_action_view(self, action_name):
         """Wraps a user-defined action function to return a Flask view function
@@ -98,7 +124,7 @@ class API(BaseAPI):
                     "error": 'Content-Type must be "application/json"'
                 }), 400
             try:
-                data = self.call(action_name, request.json)
+                data = self.actions._call(action_name, request.json)
             except JSONBadRequest:
                 return json.dumps({
                     "error": "Invalid JSON"
@@ -123,7 +149,7 @@ class API(BaseAPI):
         Use this if you want to integrate your API into a Flask application.
         """
         blueprint = Blueprint(self.name, __name__)
-        for name, func in self.actions.items():
+        for name in self.actions._specs.keys():
             view = self._get_action_view(name)
             url = "/actions/%s" % name
             blueprint.add_url_rule(url, name, view, methods=['POST'])
@@ -147,27 +173,12 @@ class API(BaseAPI):
         app.register_blueprint(self.get_blueprint())
         app.run(*args, **kwargs)
 
-    def action(self):
+    def action(self, func):
         """Registers the given function as an API action. To be used as a 
         decorator.
         """
-        def decorator(func):
-            action = {
-                "returns": {
-                    "type": "any"
-                }
-            }
-            # If provided function has no arguments, note it in the spec
-            argspec = inspect.getargspec(func)
-            args = argspec[0]
-            if len(args) == 0:
-                action["accepts"] = { "type": "null" }
-            else:
-                action["accepts"] = { "type": "any" }
-            self.spec['actions'][func.__name__] = action
-            self.actions[func.__name__] = func
-            return func
-        return decorator
+        action_spec = self.actions._register_action_func(func)
+        return func
 
     @staticmethod
     def load(name_or_url):
@@ -185,12 +196,40 @@ class API(BaseAPI):
         return api
 
 class RemoteAPI(BaseAPI):
-    def call(self, action_name, obj=None):
-        self.assert_action_defined(action_name)
-        url = self.spec['url'] + '/actions/' + action_name
-        headers = { 'Content-Type': 'application/json' }
-        res = requests.post(url, data=json.dumps(obj), headers=headers)
-        if 'error' in res.json:
-            raise APIError(res.json['error'])
-        return res.json['data']
+
+    def __init__(self, spec):
+        self.spec = spec
+        self.actions = RemoteAPI.ActionDispatcher(self)
+
+    class ActionDispatcher(object):
+
+        def __init__(self, api):
+            self._api = api
+            print api.spec
+            self._specs = api.spec['actions']
+
+        def _assert_action_defined(self, action_name):
+            if action_name not in self._specs.keys():
+                raise SpecError("Action %s is not defined" % action_name)
+
+        def _call(self, action_name, obj=None):
+            self._assert_action_defined(action_name)
+            url = self._api.url + '/actions/' + action_name
+            headers = { 'Content-Type': 'application/json' }
+            res = requests.post(url, data=json.dumps(obj), headers=headers)
+            if 'error' in res.json:
+                raise APIError(res.json['error'])
+            return res.json['data']
+
+    def assert_action_defined(self, action_name):
+        if action_name not in self.spec['actions'].keys():
+            raise SpecError("Action %s is not defined" % action_name)
+
+    @property
+    def name(self):
+        return self.spec['name']
+
+    @property
+    def url(self):
+        return self.spec['url']
 

@@ -61,20 +61,20 @@ class TestAPI(TestCase):
 
         self.cookbook = apio.API('cookbook', "http://localhost:8881/api")
 
-        @self.cookbook.action()
+        @self.cookbook.action
         def cabbage(params):
             if params['spicy']:
                 return "kimchi"
             else:
                 return "sauerkraut"
 
-        @self.cookbook.action()
+        @self.cookbook.action
         def pounds_to_kilos(pounds):
             if pounds > 100:
                 raise APIError('Too many pounds', http_code=501)
             return 0.453592 * pounds * pounds / pounds
 
-        @self.cookbook.action()
+        @self.cookbook.action
         def noop():
             pass
 

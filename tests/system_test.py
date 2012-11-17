@@ -4,7 +4,7 @@ def quickstart():
     from apio import API
     cookbook = API('cookbook')
 
-    @cookbook.action()
+    @cookbook.action
     def cabbage(spicy=False):
         if spicy:
             return "Kimchi"
