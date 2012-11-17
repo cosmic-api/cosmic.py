@@ -209,9 +209,8 @@ class TestAPI(TestCase):
             mock_post.return_value.json = {
                 "error": 'Internal Server Error'
             }
-            with self.assertRaises(APIError) as cm:
+            with self.assertRaisesRegexp(APIError, "Internal Server Error"):
                 self.remote_cookbook.call('pounds_to_kilos', 101)
-                self.assertEqual(cm.exception.message, "Internal Server Error")
 
 
     def test_load_url(self):
@@ -228,6 +227,16 @@ class TestAPI(TestCase):
             raise APIError("Blah")
         except APIError as e:
             self.assertEqual(unicode(e), "Blah")
+
+
+
+    def test_undefined_action_local(self):
+        with self.assertRaisesRegexp(SpecError, "not defined"):
+            self.cookbook.call('kilos_to_pounds', 101)
+
+    def test_undefined_action_remote(self):
+        with self.assertRaisesRegexp(SpecError, "not defined"):
+            self.remote_cookbook.call('kilos_to_pounds', 101)
 
 
 if __name__ == '__main__':

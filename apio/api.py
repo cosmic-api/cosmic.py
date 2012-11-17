@@ -64,6 +64,9 @@ class BaseAPI(object):
     @property
     def name(self):
         return self.spec['name']
+    def assert_action_defined(self, action_name):
+        if action_name not in self.spec['actions'].keys():
+            raise SpecError("Action %s is not defined" % action_name)
 
 
 class API(BaseAPI):
@@ -79,6 +82,7 @@ class API(BaseAPI):
         super(API, self).__init__(spec)
 
     def call(self, action_name, obj=None):
+        self.assert_action_defined(action_name)
         # If it's a no argument function, don't pass in anything to avoid error
         if self.spec['actions'][action_name]["accepts"]["type"] == "null":
             return self.actions[action_name]()
@@ -181,6 +185,7 @@ class API(BaseAPI):
 
 class RemoteAPI(BaseAPI):
     def call(self, action_name, obj=None):
+        self.assert_action_defined(action_name)
         url = self.spec['url'] + '/actions/' + action_name
         headers = { 'Content-Type': 'application/json' }
         res = requests.post(url, data=json.dumps(obj), headers=headers)

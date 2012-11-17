@@ -3,3 +3,5 @@ class APIError(Exception):
         self.args = [message]
         self.http_code = http_code
 
+class SpecError(Exception):
+    pass
