@@ -100,10 +100,10 @@ Now that we've launched our API on Heroku (see `this page <https://devcenter.her
 
     >>> from apio import API
     >>> lamagotchi = API.load("http://lamagotchi.herokuapp.com/spec.json")
-    >>> steve = lamagotchi.call("create", "steve")
-    >>> lamagotchi.call("state", "steve")
+    >>> steve = lamagotchi.actions.create("steve")
+    >>> lamagotchi.actions.state("steve")
     u'seeking'
-    >>> lamagotchi.call("state", "joe")
+    >>> lamagotchi.actions.state("joe")
     Traceback (most recent call last):
       File "<stdin>", line 1, in <module>
       File "apio/api.py", line 193, in call

@@ -115,6 +115,11 @@ class API(BaseAPI):
                 return self.__funcs[action_name]()
             return self.__funcs[action_name](obj)
 
+        def __getattr__(self, action_name):
+            def func(obj=None):
+                return self._call(action_name, obj)
+            return func
+
     def _get_action_view(self, action_name):
         """Wraps a user-defined action function to return a Flask view function
         that handles errors and returns proper HTTP responses"""
@@ -220,6 +225,11 @@ class RemoteAPI(BaseAPI):
             if 'error' in res.json:
                 raise APIError(res.json['error'])
             return res.json['data']
+
+        def __getattr__(self, action_name):
+            def func(obj=None):
+                return self._call(action_name, obj)
+            return func
 
     def assert_action_defined(self, action_name):
         if action_name not in self.spec['actions'].keys():

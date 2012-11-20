@@ -110,7 +110,7 @@ class TestAPI(TestCase):
         self.assertEqual(self.cookbook.spec, cookbook_spec)
 
     def test_call(self):
-        self.assertEqual(self.cookbook.call('cabbage', {'spicy': False}), "sauerkraut")
+        self.assertEqual(self.cookbook.actions.cabbage({'spicy': False}), "sauerkraut")
 
     def test_spec_endpoint(self):
         res = self.werkzeug_client.get('/api/spec.json')
@@ -157,7 +157,7 @@ class TestAPI(TestCase):
             mock_post.return_value.json = {
                 "data": 'kimchi'
             }
-            self.assertEqual(self.remote_cookbook.call('cabbage', {'spicy': True}), "kimchi")
+            self.assertEqual(self.remote_cookbook.actions.cabbage({'spicy': True}), "kimchi")
             mock_post.assert_called_with('http://localhost:8881/api/actions/cabbage', headers={'Content-Type': 'application/json'}, data=json.dumps({'spicy': True}))
 
 
@@ -174,7 +174,7 @@ class TestAPI(TestCase):
             mock_post.return_value.json = {
                 "data": None
             }
-            self.assertEqual(self.remote_cookbook.call('noop'), None)
+            self.assertEqual(self.remote_cookbook.actions.noop(), None)
             mock_post.assert_called_with('http://localhost:8881/api/actions/noop', headers={'Content-Type': 'application/json'}, data=json.dumps(None))
 
 
@@ -192,7 +192,7 @@ class TestAPI(TestCase):
                 "error": 'Too many pounds'
             }
             with self.assertRaises(APIError):
-                self.remote_cookbook.call('pounds_to_kilos', 101)
+                self.remote_cookbook.actions.pounds_to_kilos(101)
 
 
 
@@ -210,7 +210,7 @@ class TestAPI(TestCase):
                 "error": 'Internal Server Error'
             }
             with self.assertRaisesRegexp(APIError, "Internal Server Error"):
-                self.remote_cookbook.call('pounds_to_kilos', 101)
+                self.remote_cookbook.actions.pounds_to_kilos(101)
 
 
     def test_load_url(self):
@@ -232,11 +232,11 @@ class TestAPI(TestCase):
 
     def test_local_undefined_action(self):
         with self.assertRaisesRegexp(SpecError, "not defined"):
-            self.cookbook.call('kilos_to_pounds', 101)
+            self.cookbook.actions.kilos_to_pounds(101)
 
     def test_remote_undefined_action(self):
         with self.assertRaisesRegexp(SpecError, "not defined"):
-            self.remote_cookbook.call('kilos_to_pounds', 101)
+            self.remote_cookbook.actions.kilos_to_pounds(101)
 
 
 if __name__ == '__main__':
