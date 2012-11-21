@@ -80,20 +80,17 @@ class TestAPI(TestCase):
 
         with patch.object(requests, 'post') as mock_post:
             # Test initializing apio module
-            mock_post.return_value.json = {
-                "data": index_spec
-            }
+            mock_post.return_value.status_code = 200
+            mock_post.return_value.json = index_spec
             ensure_bootstrapped()
             # Register API
-            mock_post.return_value.json = {
-                "data": True
-            }
+            mock_post.return_value.status_code = 200
+            mock_post.return_value.json = True
             self.cookbook.run(register_api=True, dry_run=True)
             mock_post.assert_called_with('http://api.apio.io/actions/register_api', headers={'Content-Type': 'application/json'}, data=json.dumps(self.cookbook.spec))
             # Load API
-            mock_post.return_value.json = {
-                "data": cookbook_spec
-            }
+            mock_post.return_value.status_code = 200
+            mock_post.return_value.json = cookbook_spec
             self.remote_cookbook = API.load('cookbook')
             mock_post.assert_called_with('http://api.apio.io/actions/get_spec', headers={'Content-Type': 'application/json'}, data=json.dumps("cookbook"))
 
@@ -147,16 +144,13 @@ class TestAPI(TestCase):
         """First make sure provider returns the right HTTP response for the right HTTP request"""
         res = self.werkzeug_client.post('/api/actions/cabbage', data='{"spicy":true}', content_type="application/json")
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(json.loads(res.data), {
-            "data": "kimchi"
-        })
+        self.assertEqual(json.loads(res.data), "kimchi")
 
     def test_remote_successful_action(self):
         """... Then make sure that this response is interpreted correctly on the consumer"""
         with patch.object(requests, 'post') as mock_post:
-            mock_post.return_value.json = {
-                "data": 'kimchi'
-            }
+            mock_post.return_value.status_code = 200
+            mock_post.return_value.json = "kimchi"
             self.assertEqual(self.remote_cookbook.actions.cabbage({'spicy': True}), "kimchi")
             mock_post.assert_called_with('http://localhost:8881/api/actions/cabbage', headers={'Content-Type': 'application/json'}, data=json.dumps({'spicy': True}))
 
@@ -165,15 +159,12 @@ class TestAPI(TestCase):
     def test_local_no_return_action(self):
         res = self.werkzeug_client.post('/api/actions/noop', data='null', content_type="application/json")
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(json.loads(res.data), {
-            "data": None
-        })
+        self.assertEqual(json.loads(res.data), None)
 
     def test_remote_no_return_action(self):
         with patch.object(requests, 'post') as mock_post:
-            mock_post.return_value.json = {
-                "data": None
-            }
+            mock_post.return_value.status_code = 200
+            mock_post.return_value.json = None
             self.assertEqual(self.remote_cookbook.actions.noop(), None)
             mock_post.assert_called_with('http://localhost:8881/api/actions/noop', headers={'Content-Type': 'application/json'}, data=json.dumps(None))
 
@@ -188,6 +179,7 @@ class TestAPI(TestCase):
 
     def test_remote_raise_exception(self):
         with patch.object(requests, 'post') as mock_post:
+            mock_post.return_value.status_code = 501
             mock_post.return_value.json = {
                 "error": 'Too many pounds'
             }
@@ -206,6 +198,7 @@ class TestAPI(TestCase):
 
     def test_remote_raise_exception(self):
         with patch.object(requests, 'post') as mock_post:
+            mock_post.return_value.status_code = 500
             mock_post.return_value.json = {
                 "error": 'Internal Server Error'
             }
@@ -217,6 +210,7 @@ class TestAPI(TestCase):
         """Test the API.load function when given a spec URL"""
         with patch.object(requests, 'get') as mock_get:
             mock_get.return_value.json = cookbook_spec
+            mock_get.return_value.status_code = 200
             cookbook_decentralized = API.load('http://example.com/spec.json')
             self.assertEqual(cookbook_decentralized.spec, cookbook_spec)
 

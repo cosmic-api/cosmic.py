@@ -66,7 +66,7 @@ def ensure_bootstrapped():
         headers = { 'Content-Type': 'application/json' }
         res = requests.post("http://api.apio.io/actions/get_spec", data=data,
             headers=headers)
-        apio_index = RemoteAPI(res.json['data'])
+        apio_index = RemoteAPI(res.json)
         sys.modules.setdefault('apio.apio_index', apio_index)
 
 
@@ -156,9 +156,7 @@ class API(BaseAPI):
                 return json.dumps({
                     "error": "Internal Server Error"
                 }), 500
-            return json.dumps({
-                "data": data
-            })
+            return json.dumps(data)
         return action_view
 
     def get_blueprint(self):
@@ -234,9 +232,9 @@ class RemoteAPI(BaseAPI):
             url = self._api.url + '/actions/' + action_name
             headers = { 'Content-Type': 'application/json' }
             res = requests.post(url, data=json.dumps(obj), headers=headers)
-            if 'error' in res.json:
+            if res.status_code != requests.codes.ok:
                 raise APIError(res.json['error'])
-            return res.json['data']
+            return res.json
 
         def __getattr__(self, action_name):
             def func(obj=None):
