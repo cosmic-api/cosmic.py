@@ -12,23 +12,26 @@ from apio.api import ensure_bootstrapped, API, API_SCHEMA, clear_module_cache
 index_spec = {
     'url': 'http://api.apio.io',
     'name': 'apio-index',
-    'actions': {
-        'register_api': {
+    'actions': [
+        {
+            'name': 'register_api',
             'returns': {'type': 'any'},
             'accepts': {'type': 'any'}
         },
-        'get_spec': {
+        {
+            'name': 'get_spec',
             'returns': {'type': 'any'},
             'accepts': {'type': 'any'}
         }
-    }
+    ]
 }
 
 cookbook_spec = {
     'name': 'cookbook',
     'url': 'http://localhost:8881/api',
-    'actions': {
-        'cabbage': {
+    'actions': [
+        {
+            'name': 'cabbage',
             'accepts': {
                 'type': 'any'
             },
@@ -36,23 +39,25 @@ cookbook_spec = {
                 'type': 'any'
             }
         },
-        'noop': {
+        {
+            'name': 'pounds_to_kilos',
+            'accepts': {
+                'type': 'any'
+            },
+            'returns': {
+                'type': 'any'
+            }
+        },
+        {
+            'name': 'noop',
             'accepts': {
                 'type': 'null'
             },
             'returns': {
                 'type': 'any'
             }
-        },
-        'pounds_to_kilos': {
-            'accepts': {
-                'type': 'any'
-            },
-            'returns': {
-                'type': 'any'
-            }
         }
-    }
+    ]
 }
 
 class TestAPI(TestCase):

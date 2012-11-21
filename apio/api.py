@@ -22,19 +22,12 @@ API_SCHEMA = {
         "homepage": {
             "type": "string"
         },
-        "models": {
-            "type": "object",
-            "patternProperties": {
-                r'^[a-zA-Z0-9_]+$': {
-                    "$ref": "http://json-schema.org/draft-03/schema#"
-                }
-            }
-        },
         "actions": {
-            "type": "object",
-            "patternProperties": {
-                r'^[a-zA-Z0-9_]+$': {
-                    "type": "object",
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": { "type": "string" },
                     "accepts": {
                         "$ref": "http://json-schema.org/draft-03/schema#"
                     },
@@ -97,10 +90,11 @@ class API(BaseAPI):
 
         def __init__(self):
             self.__funcs = {}
-            self._specs = {}
+            self._specs = []
 
         def _register_action_func(self, func):
             action_spec = {
+                "name": func.__name__,
                 "returns": {
                     "type": "any"
                 }
@@ -113,7 +107,7 @@ class API(BaseAPI):
             else:
                 action_spec["accepts"] = { "type": "any" }
             self.__funcs[func.__name__] = func
-            self._specs[func.__name__] = action_spec
+            self._specs.append(action_spec)
             return action_spec
 
         def _assert_action_defined(self, action_name):
@@ -123,8 +117,10 @@ class API(BaseAPI):
         def _call(self, action_name, obj=None):
             self._assert_action_defined(action_name)
             # If it's a no argument function, don't pass in anything to avoid error
-            if self._specs[action_name]["accepts"]["type"] == "null":
-                return self.__funcs[action_name]()
+            for spec in self._specs:
+                if spec['name'] == action_name:
+                    if spec["accepts"]["type"] == "null":
+                        return self.__funcs[action_name]()
             return self.__funcs[action_name](obj)
 
         def __getattr__(self, action_name):
@@ -164,7 +160,8 @@ class API(BaseAPI):
         Use this if you want to integrate your API into a Flask application.
         """
         blueprint = Blueprint(self.name, __name__)
-        for name in self.actions._specs.keys():
+        for action_spec in self.actions._specs:
+            name = action_spec['name']
             view = self._get_action_view(name)
             url = "/actions/%s" % name
             blueprint.add_url_rule(url, name, view, methods=['POST'])
@@ -221,10 +218,10 @@ class RemoteAPI(BaseAPI):
             self._api = api
             self._specs = api.spec['actions']
             # Needed for >>> from apio.cookbook.actions import *
-            self.__all__ = map(str, self._specs.keys())
+            self.__all__ = map(lambda spec: str(spec['name']), self._specs)
 
         def _assert_action_defined(self, action_name):
-            if action_name not in self._specs.keys():
+            if action_name not in self.__all__:
                 raise SpecError("Action %s is not defined" % action_name)
 
         def _call(self, action_name, obj=None):
