@@ -1,3 +1,4 @@
+import sys
 import json
 import requests
 import inspect
@@ -46,18 +47,27 @@ API_SCHEMA = {
     }
 }
 
-# API objects
-apis = {}
+# The apio-index API is saved here for convenience
+apio_index = None
+
+# Clears 
+def clear_module_cache():
+    global apio_index
+    for name in sys.modules.keys():
+        if name.startswith('apio') and name not in ['apio.api', 'apio.exceptions']:
+            del sys.modules[name]
+    apio_index = None
 
 def ensure_bootstrapped():
     """Ensures the APIO index API is loaded. Call this before trying API.load"""
-    if 'apio-index' not in apis.keys():
+    global apio_index
+    if not apio_index:
         data = json.dumps("apio-index")
         headers = { 'Content-Type': 'application/json' }
         res = requests.post("http://api.apio.io/actions/get_spec", data=data,
             headers=headers)
-        index = RemoteAPI(res.json['data'])
-        apis['apio-index'] = index
+        apio_index = RemoteAPI(res.json['data'])
+        sys.modules.setdefault('apio.apio_index', apio_index)
 
 
 class BaseAPI(object):
@@ -174,7 +184,7 @@ class API(BaseAPI):
 
         if kwargs.pop('register_api', True):
             ensure_bootstrapped()
-            apis['apio-index'].call('register_api', self.spec)
+            apio_index.call('register_api', self.spec)
         if 'dry_run' in kwargs.keys(): return
         app = Flask(__name__, static_folder=None)
         app.register_blueprint(self.get_blueprint())
@@ -197,9 +207,8 @@ class API(BaseAPI):
             spec = res.json
         else:
             ensure_bootstrapped()
-            spec = apis['apio-index'].call('get_spec', name_or_url)
+            spec = apio_index.call('get_spec', name_or_url)
         api = RemoteAPI(spec)
-        apis[name_or_url] = api
         return api
 
 class RemoteAPI(BaseAPI):

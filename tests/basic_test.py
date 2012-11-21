@@ -7,7 +7,7 @@ import requests
 from jsonschema import validate
 
 from apio.exceptions import *
-from apio.api import ensure_bootstrapped, API, API_SCHEMA, apis
+from apio.api import ensure_bootstrapped, API, API_SCHEMA, clear_module_cache
 
 index_spec = {
     'url': 'http://api.apio.io',
@@ -104,7 +104,7 @@ class TestAPI(TestCase):
         self.werkzeug_client = app.test_client()
 
     def tearDown(self):
-        apis = {}
+        clear_module_cache()
 
     def test_serialize(self):
         self.assertEqual(self.cookbook.spec, cookbook_spec)
