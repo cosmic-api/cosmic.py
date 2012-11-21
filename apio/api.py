@@ -53,7 +53,9 @@ def ensure_bootstrapped():
     """Ensures the APIO index API is loaded. Call this before trying API.load"""
     if 'apio-index' not in apis.keys():
         data = json.dumps("apio-index")
-        res = requests.post("http://api.apio.io/actions/get_spec", data=data)
+        headers = { 'Content-Type': 'application/json' }
+        res = requests.post("http://api.apio.io/actions/get_spec", data=data,
+            headers=headers)
         index = RemoteAPI(res.json['data'])
         apis['apio-index'] = index
 
@@ -210,7 +212,6 @@ class RemoteAPI(BaseAPI):
 
         def __init__(self, api):
             self._api = api
-            print api.spec
             self._specs = api.spec['actions']
 
         def _assert_action_defined(self, action_name):

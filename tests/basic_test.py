@@ -6,8 +6,8 @@ import requests
 
 from jsonschema import validate
 
-import apio
 from apio.exceptions import *
+from apio.api import ensure_bootstrapped, API, API_SCHEMA, apis
 
 index_spec = {
     'url': 'http://api.apio.io',
@@ -59,7 +59,7 @@ class TestAPI(TestCase):
 
     def setUp(self):
 
-        self.cookbook = apio.API('cookbook', "http://localhost:8881/api")
+        self.cookbook = API('cookbook', "http://localhost:8881/api")
 
         @self.cookbook.action
         def cabbage(params):
@@ -83,7 +83,7 @@ class TestAPI(TestCase):
             mock_post.return_value.json = {
                 "data": index_spec
             }
-            apio.ensure_bootstrapped()
+            ensure_bootstrapped()
             # Register API
             mock_post.return_value.json = {
                 "data": True
@@ -94,7 +94,7 @@ class TestAPI(TestCase):
             mock_post.return_value.json = {
                 "data": cookbook_spec
             }
-            self.remote_cookbook = apio.API.load('cookbook')
+            self.remote_cookbook = API.load('cookbook')
             mock_post.assert_called_with('http://api.apio.io/actions/get_spec', headers={'Content-Type': 'application/json'}, data=json.dumps("cookbook"))
 
         # Create test client for some HTTP tests
@@ -104,7 +104,7 @@ class TestAPI(TestCase):
         self.werkzeug_client = app.test_client()
 
     def tearDown(self):
-        apio.apis = {}
+        apis = {}
 
     def test_serialize(self):
         self.assertEqual(self.cookbook.spec, cookbook_spec)
@@ -139,7 +139,7 @@ class TestAPI(TestCase):
         self.assertEqual(res.status_code, 400)
 
     def test_schema(self):
-        validate(self.cookbook.spec, apio.API_SCHEMA)
+        validate(self.cookbook.spec, API_SCHEMA)
 
 
 
@@ -217,7 +217,7 @@ class TestAPI(TestCase):
         """Test the API.load function when given a spec URL"""
         with patch.object(requests, 'get') as mock_get:
             mock_get.return_value.json = cookbook_spec
-            cookbook_decentralized = apio.API.load('http://example.com/spec.json')
+            cookbook_decentralized = API.load('http://example.com/spec.json')
             self.assertEqual(cookbook_decentralized.spec, cookbook_spec)
 
 
