@@ -4,7 +4,7 @@ import json
 from mock import patch
 import requests
 
-from jsonschema import validate
+import jsonschema
 
 from apio.exceptions import *
 from apio.api import ensure_bootstrapped, API, API_SCHEMA, clear_module_cache
@@ -141,7 +141,10 @@ class TestAPI(TestCase):
         self.assertEqual(res.status_code, 400)
 
     def test_schema(self):
-        validate(self.cookbook.spec, API_SCHEMA)
+        store = {
+            "http://json-schema.org/draft-03/schema": jsonschema.Draft3Validator.META_SCHEMA
+        }
+        jsonschema.validate(self.cookbook.spec, API_SCHEMA, schema_store=store)
 
 
 

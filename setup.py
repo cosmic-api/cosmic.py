@@ -7,7 +7,7 @@ with open("README.rst") as readme:
 
 setup(
     name = 'apio',
-    version = "0.0.8",
+    version = "0.0.6",
     packages = ['apio'],
     description = 'Human-friendly APIs',
     license = "MIT",
@@ -18,10 +18,10 @@ setup(
         "jsonpointer==0.3",
         "requests==0.14.2",
         "mock==1.0.1",
-        "jsonschema",
+        "jsonschema==0.7-patched",
     ],
     dependency_links = [
         "http://github.com/boronine/jsonschema/tarball\
-        /391916e71b946db3bf5d92cbb767f620a869fc82#egg=jsonschema"
+/391916e71b946db3bf5d92cbb767f620a869fc82#egg=jsonschema-0.7-patched"
     ]
 )
