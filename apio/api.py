@@ -213,6 +213,8 @@ class RemoteAPI(BaseAPI):
         def __init__(self, api):
             self._api = api
             self._specs = api.spec['actions']
+            # Needed for >>> from apio.cookbook.actions import *
+            self.__all__ = map(str, self._specs.keys())
 
         def _assert_action_defined(self, action_name):
             if action_name not in self._specs.keys():
