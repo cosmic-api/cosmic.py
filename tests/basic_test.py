@@ -105,6 +105,12 @@ class TestAPI(TestCase):
         app.register_blueprint(self.cookbook.get_blueprint(), url_prefix="/api")
         self.werkzeug_client = app.test_client()
 
+        # Test debug mode
+        app = Flask(__name__, static_folder=None)
+        app.config['PROPAGATE_EXCEPTIONS'] = True
+        app.register_blueprint(self.cookbook.get_blueprint(debug=True), url_prefix="/api")
+        self.werkzeug_client_debug = app.test_client()
+
     def tearDown(self):
         clear_module_cache()
 
@@ -203,6 +209,10 @@ class TestAPI(TestCase):
         self.assertEqual(json.loads(res.data), {
             "error": "Internal Server Error"
         })
+
+    def test_local_accidental_exception_debug(self):
+        with self.assertRaises(ZeroDivisionError):
+            self.werkzeug_client_debug.post('/api/actions/pounds_to_kilos', data='0', content_type="application/json")
 
     def test_remote_raise_exception(self):
         with patch.object(requests, 'post') as mock_post:

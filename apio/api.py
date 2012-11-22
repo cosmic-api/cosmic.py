@@ -149,8 +149,7 @@ class API(BaseAPI):
                 }), err.http_code
             # Any other exception should be handled gracefully
             except Exception as e:
-                if debug:
-                    raise e
+                if debug: raise e
                 return json.dumps({
                     "error": "Internal Server Error"
                 }), 500
@@ -185,7 +184,10 @@ class API(BaseAPI):
             apio_index.call('register_api', self.spec)
         if 'dry_run' in kwargs.keys(): return
         app = Flask(__name__, static_folder=None)
-        bluepring = self.get_blueprint(debug=debug)
+        # Flask will catch exceptions to return a nice HTTP response
+        # in debug mode, we want things to FAIL!
+        app.config['PROPAGATE_EXCEPTIONS'] = debug
+        blueprint = self.get_blueprint(debug=debug)
         app.register_blueprint(blueprint)
         app.run(*args, **kwargs)
 
