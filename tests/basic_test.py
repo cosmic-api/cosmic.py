@@ -98,7 +98,7 @@ class TestAPI(TestCase):
             # Load API
             mock_post.return_value.status_code = 200
             mock_post.return_value.json = cookbook_spec
-            from apio import cookbook as remote_cookbook
+            from apio.index import cookbook as remote_cookbook
             self.remote_cookbook = remote_cookbook
             mock_post.assert_called_with('http://api.apio.io/actions/get_spec', headers={'Content-Type': 'application/json'}, data=json.dumps("cookbook"))
 
@@ -118,18 +118,18 @@ class TestAPI(TestCase):
         clear_module_cache()
 
     def test_import_actions(self):
-        from apio.cookbook import actions
+        from apio.index.cookbook import actions
         self.assertEqual(actions, self.remote_cookbook.actions)
     
     def test_import_specific_action(self):
-        from apio.cookbook.actions import cabbage
+        from apio.index.cookbook.actions import cabbage
         #self.assertEqual(cabbage, self.remote_cookbook.actions.cabbage)
 
     def test_import_all_actions(self):
         with warnings.catch_warnings():
             # Warning about importing * at non-module level. Thanks mom..
             warnings.simplefilter("ignore")
-            from apio.cookbook.actions import *
+            from apio.index.cookbook.actions import *
             self.assertEqual(cabbage, self.remote_cookbook.actions.cabbage)
             self.assertEqual(pounds_to_kilos, self.remote_cookbook.actions.pounds_to_kilos)
             self.assertEqual(noop, self.remote_cookbook.actions.noop)
