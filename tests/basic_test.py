@@ -35,7 +35,8 @@ cookbook_spec = {
         {
             'name': 'cabbage',
             'accepts': {
-                'type': 'any'
+                'type': 'any',
+                'required': True
             },
             'returns': {
                 'type': 'any'
@@ -44,7 +45,8 @@ cookbook_spec = {
         {
             'name': 'pounds_to_kilos',
             'accepts': {
-                'type': 'any'
+                'type': 'any',
+                'required': True
             },
             'returns': {
                 'type': 'any'
@@ -52,9 +54,6 @@ cookbook_spec = {
         },
         {
             'name': 'noop',
-            'accepts': {
-                'type': 'null'
-            },
             'returns': {
                 'type': 'any'
             }
@@ -191,7 +190,7 @@ class TestAPI(TestCase):
 
 
     def test_local_no_return_action(self):
-        res = self.werkzeug_client.post('/api/actions/noop', data='null', content_type="application/json")
+        res = self.werkzeug_client.post('/api/actions/noop', content_type="application/json")
         self.assertEqual(res.status_code, 200)
         self.assertEqual(json.loads(res.data), None)
 

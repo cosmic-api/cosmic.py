@@ -1,12 +1,12 @@
 import sys
 import json
 import requests
-import inspect
 
 from flask import Flask, Blueprint, Response, request, abort, make_response
 from flask.exceptions import JSONBadRequest
 
 from apio.exceptions import *
+from apio.tools import get_arg_spec
 
 API_SCHEMA = {
     "type": "object",
@@ -99,26 +99,10 @@ class API(BaseAPI):
                     "type": "any"
                 }
             }
-            # Based on the passed in function's arguments, there are
-            # three choices:
-            argspec = inspect.getargspec(func)
-            args = argspec[0]
-            # No arguments: accepts null (TODO: Content-Length should be zero)
-            if len(args) == 0:
-                action_spec["accepts"] = { "type": "null" }
-            # One argument: accepts a single JSON object
-            elif len(args) == 1:
-                action_spec["accepts"] = { "type": "any" }
-            # Multiple arguments: accepts a JSON object with a property for
-            # each argument, each property being of type 'any'
-            else:
-                action_spec["accepts"] = {
-                    "type": "object",
-                    "properties": {}
-                }
-                for arg in args:
-                    action_spec["accepts"]["properties"] = { "type": "any" }
             self.__funcs[func.__name__] = func
+            arg_spec = get_arg_spec(func)
+            if arg_spec:
+                action_spec["accepts"] = arg_spec
             self._specs.append(action_spec)
             return action_spec
 
@@ -127,14 +111,14 @@ class API(BaseAPI):
                 raise SpecError("Action %s is not defined" % action_name)
 
         def __getattr__(self, action_name):
-            def func(obj):
+            def func(obj=None):
                 self._assert_action_defined(action_name)
                 action_spec = None
                 for spec in self._specs:
                     if spec['name'] == action_name:
                         action_spec = spec
                 func = self.__funcs[action_name]
-                if action_spec["accepts"]["type"] == "null":
+                if "accepts" not in action_spec:
                     return func()
                 return func(obj)
             return func
@@ -147,6 +131,8 @@ class API(BaseAPI):
                 return json.dumps({
                     "error": 'Content-Type must be "application/json"'
                 }), 400
+            if request.data == "":
+                return json.dumps(self.actions.__getattr__(action_name)())
             try:
                 data = self.actions.__getattr__(action_name)(request.json)
             except JSONBadRequest:
