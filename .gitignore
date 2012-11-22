@@ -1,8 +1,13 @@
 *.py[co]
 
+# Vim swap files
 *.swp
 *.swo
+
+# Emacs swap and write-lock files
 *~
+.\#*
+\#*
 
 # Packages
 *.egg
