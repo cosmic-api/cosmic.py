@@ -1,9 +1,11 @@
+import warnings
+import json
+
 from flask.testsuite import FlaskTestCase
 from unittest2 import TestCase
-import json
 from mock import patch
-import requests
 
+import requests
 import jsonschema
 
 from apio.exceptions import *
@@ -96,7 +98,8 @@ class TestAPI(TestCase):
             # Load API
             mock_post.return_value.status_code = 200
             mock_post.return_value.json = cookbook_spec
-            self.remote_cookbook = API.load('cookbook')
+            from apio import cookbook as remote_cookbook
+            self.remote_cookbook = remote_cookbook
             mock_post.assert_called_with('http://api.apio.io/actions/get_spec', headers={'Content-Type': 'application/json'}, data=json.dumps("cookbook"))
 
         # Create test client for some HTTP tests
@@ -114,6 +117,23 @@ class TestAPI(TestCase):
     def tearDown(self):
         clear_module_cache()
 
+    def test_import_actions(self):
+        from apio.cookbook import actions
+        self.assertEqual(actions, self.remote_cookbook.actions)
+    
+    def test_import_specific_action(self):
+        from apio.cookbook.actions import cabbage
+        #self.assertEqual(cabbage, self.remote_cookbook.actions.cabbage)
+
+    def test_import_all_actions(self):
+        with warnings.catch_warnings():
+            # Warning about importing * at non-module level. Thanks mom..
+            warnings.simplefilter("ignore")
+            from apio.cookbook.actions import *
+            self.assertEqual(cabbage, self.remote_cookbook.actions.cabbage)
+            self.assertEqual(pounds_to_kilos, self.remote_cookbook.actions.pounds_to_kilos)
+            self.assertEqual(noop, self.remote_cookbook.actions.noop)
+        
     def test_serialize(self):
         self.assertEqual(self.cookbook.spec, cookbook_spec)
 

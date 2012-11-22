@@ -1,6 +1,8 @@
-import imp
+from __future__ import absolute_import
+
 import sys
-from api import API
+import imp
+from .api import API
 
 class DynamicLoader(object):
 
@@ -9,7 +11,7 @@ class DynamicLoader(object):
         if names[0] != 'apio':
             return None
         # If we are trying to import apio.x where x is not a real module
-        if len(names) >= 2 and names[1] not in ['api', 'exceptions']:
+        if len(names) > 1 and names[1] not in ['api', 'exceptions']:
             return self
         return None
 
@@ -21,14 +23,13 @@ class DynamicLoader(object):
         else:
             api = API.load(api_name)
             package = sys.modules.setdefault(package_name, api)
-            package.__file__ = "<apio.%s>" % api_name
+            package.__file__ = "<%s>" % package_name
             package.__loader__ = self
             package.__path__ = []
             package.__package__ = package_name
         return package
 
     def load_module(self, fullname):
-        print "LOADING %s" % fullname
         names = fullname.split('.')
         api_name = names[1]
         package = self.get_package(api_name)
@@ -40,6 +41,9 @@ class DynamicLoader(object):
             raise ImportError()
         # We just want actions
         if len(specifics) == 1:
+            package.actions.__file__ = "<%s>" % fullname
+            package.actions.__loader__ = self
+            package.actions.__package__ = fullname
             return package.actions
         elif len(specifics) == 2:
             return package.actions.__getattr__(specifics[1])

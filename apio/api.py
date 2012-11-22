@@ -65,7 +65,7 @@ def ensure_bootstrapped():
 
 class BaseAPI(object):
     def call(self, action_name, obj=None):
-        return self.actions._call(action_name, obj)
+        return self.actions.__getattr__(action_name)(obj)
 
 
 class API(BaseAPI):
@@ -224,29 +224,26 @@ class RemoteAPI(BaseAPI):
             self._api = api
             self._specs = api.spec['actions']
             # Needed for >>> from apio.cookbook.actions import *
-            self.__all__ = map(lambda spec: str(spec['name']), self._specs)
+            self.__all__ = []
+            self.__funcs = {}
+            for spec in self._specs:
+                self.__all__.append(str(spec['name']))
+                self.__funcs[spec['name']] = self._get_func(spec['name'])
 
-        def _assert_action_defined(self, action_name):
-            if action_name not in self.__all__:
-                raise SpecError("Action %s is not defined" % action_name)
-
-        def _call(self, action_name, obj=None):
-            self._assert_action_defined(action_name)
-            url = self._api.url + '/actions/' + action_name
-            headers = { 'Content-Type': 'application/json' }
-            res = requests.post(url, data=json.dumps(obj), headers=headers)
-            if res.status_code != requests.codes.ok:
-                raise APIError(res.json['error'])
-            return res.json
-
-        def __getattr__(self, action_name):
+        def _get_func(self, action_name):
             def func(obj=None):
-                return self._call(action_name, obj)
+                url = self._api.url + '/actions/' + action_name
+                headers = { 'Content-Type': 'application/json' }
+                res = requests.post(url, data=json.dumps(obj), headers=headers)
+                if res.status_code != requests.codes.ok:
+                    raise APIError(res.json['error'])
+                return res.json
             return func
 
-    def assert_action_defined(self, action_name):
-        if action_name not in self.spec['actions'].keys():
-            raise SpecError("Action %s is not defined" % action_name)
+        def __getattr__(self, action_name):
+            if action_name not in self.__all__:
+                raise SpecError("Action %s is not defined" % action_name)
+            return self.__funcs[action_name]
 
     @property
     def name(self):
