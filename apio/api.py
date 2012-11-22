@@ -99,13 +99,25 @@ class API(BaseAPI):
                     "type": "any"
                 }
             }
-            # If provided function has no arguments, note it in the spec
+            # Based on the passed in function's arguments, there are
+            # three choices:
             argspec = inspect.getargspec(func)
             args = argspec[0]
+            # No arguments: accepts null (TODO: Content-Length should be zero)
             if len(args) == 0:
                 action_spec["accepts"] = { "type": "null" }
-            else:
+            # One argument: accepts a single JSON object
+            elif len(args) == 1:
                 action_spec["accepts"] = { "type": "any" }
+            # Multiple arguments: accepts a JSON object with a property for
+            # each argument, each property being of type 'any'
+            else:
+                action_spec["accepts"] = {
+                    "type": "object",
+                    "properties": {}
+                }
+                for arg in args:
+                    action_spec["accepts"]["properties"] = { "type": "any" }
             self.__funcs[func.__name__] = func
             self._specs.append(action_spec)
             return action_spec
@@ -114,18 +126,17 @@ class API(BaseAPI):
             if action_name not in self.__funcs.keys():
                 raise SpecError("Action %s is not defined" % action_name)
 
-        def _call(self, action_name, obj=None):
-            self._assert_action_defined(action_name)
-            # If it's a no argument function, don't pass in anything to avoid error
-            for spec in self._specs:
-                if spec['name'] == action_name:
-                    if spec["accepts"]["type"] == "null":
-                        return self.__funcs[action_name]()
-            return self.__funcs[action_name](obj)
-
         def __getattr__(self, action_name):
-            def func(obj=None):
-                return self._call(action_name, obj)
+            def func(obj):
+                self._assert_action_defined(action_name)
+                action_spec = None
+                for spec in self._specs:
+                    if spec['name'] == action_name:
+                        action_spec = spec
+                func = self.__funcs[action_name]
+                if action_spec["accepts"]["type"] == "null":
+                    return func()
+                return func(obj)
             return func
 
     def _get_action_view(self, action_name, debug=False):
@@ -137,7 +148,7 @@ class API(BaseAPI):
                     "error": 'Content-Type must be "application/json"'
                 }), 400
             try:
-                data = self.actions._call(action_name, request.json)
+                data = self.actions.__getattr__(action_name)(request.json)
             except JSONBadRequest:
                 return json.dumps({
                     "error": "Invalid JSON"
