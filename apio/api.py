@@ -128,7 +128,7 @@ class API(BaseAPI):
                 return self._call(action_name, obj)
             return func
 
-    def _get_action_view(self, action_name):
+    def _get_action_view(self, action_name, debug=False):
         """Wraps a user-defined action function to return a Flask view function
         that handles errors and returns proper HTTP responses"""
         def action_view():
@@ -148,21 +148,23 @@ class API(BaseAPI):
                     "error": err.args[0]
                 }), err.http_code
             # Any other exception should be handled gracefully
-            except:
+            except Exception as e:
+                if debug:
+                    raise e
                 return json.dumps({
                     "error": "Internal Server Error"
                 }), 500
             return json.dumps(data)
         return action_view
 
-    def get_blueprint(self):
+    def get_blueprint(self, debug=False):
         """Returns a Flask Blueprint object with all of the API's routes set up.
         Use this if you want to integrate your API into a Flask application.
         """
         blueprint = Blueprint(self.name, __name__)
         for action_spec in self.actions._specs:
             name = action_spec['name']
-            view = self._get_action_view(name)
+            view = self._get_action_view(name, debug=debug)
             url = "/actions/%s" % name
             blueprint.add_url_rule(url, name, view, methods=['POST'])
         @blueprint.route('/spec.json')
@@ -177,12 +179,14 @@ class API(BaseAPI):
         and determines whether you want your API pushed to APIO index.
         """
 
+        debug = kwargs.get('debug', False)
         if kwargs.pop('register_api', True):
             ensure_bootstrapped()
             apio_index.call('register_api', self.spec)
         if 'dry_run' in kwargs.keys(): return
         app = Flask(__name__, static_folder=None)
-        app.register_blueprint(self.get_blueprint())
+        bluepring = self.get_blueprint(debug=debug)
+        app.register_blueprint(blueprint)
         app.run(*args, **kwargs)
 
     def action(self, func):
