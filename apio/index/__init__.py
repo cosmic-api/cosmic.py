@@ -16,7 +16,7 @@ class DynamicLoader(object):
         return None
 
     def get_package(self, api_name):
-        package_name = "apio.%s" % api_name
+        package_name = "apio.index.%s" % api_name
         # Fetch the base package
         if package_name in sys.modules.keys():
             package = sys.modules[package_name]
@@ -26,7 +26,6 @@ class DynamicLoader(object):
             package.__file__ = "<%s>" % package_name
             package.__loader__ = self
             package.__path__ = []
-            package.__package__ = package_name
         return package
 
     def load_module(self, fullname):
@@ -35,7 +34,9 @@ class DynamicLoader(object):
         package = self.get_package(api_name)
         # Do we need to go deeper?
         specifics = names[3:]
-        if not specifics: return package
+        if not specifics:
+            print "OKAY"
+            return package
         # Yes we do!
         if specifics[0] != 'actions':
             print names
@@ -44,10 +45,10 @@ class DynamicLoader(object):
         if len(specifics) == 1:
             package.actions.__file__ = "<%s>" % fullname
             package.actions.__loader__ = self
-            package.actions.__package__ = fullname
+            sys.modules.setdefault(fullname, package.actions)
             return package.actions
         elif len(specifics) == 2:
-            return package.actions.__getattr__(specifics[1])
+            return getattr(package.actions, specifics[1])
         else:
             raise ImportError()
 

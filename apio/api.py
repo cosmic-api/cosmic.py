@@ -223,6 +223,28 @@ class API(BaseAPI):
         api = RemoteAPI(spec)
         return api
 
+class RemoteAction(object):
+
+    def __init__(self, api, spec):
+        self.api = api
+        self.spec = spec
+
+    def call(self, *args, **kwargs):
+        json_data = serialize_action_arguments(*args, **kwargs)
+        if json_data:
+            data = json.dumps(json_data.json)
+        else:
+            if 'accepts' in self.spec:
+                raise SpecError("%s takes arguments" % action_name)
+            data = ""
+        url = self.api.url + '/actions/' + self.spec['name']
+        headers = { 'Content-Type': 'application/json' }
+        res = requests.post(url, data=data, headers=headers)
+        if res.status_code != requests.codes.ok:
+            raise APIError(res.json['error'])
+        return res.json
+
+ 
 class RemoteAPI(BaseAPI):
 
     def __init__(self, spec):
@@ -233,41 +255,19 @@ class RemoteAPI(BaseAPI):
 
         def __init__(self, api):
             self._api = api
-            self._specs = api.spec['actions']
-            # Needed for >>> from apio.cookbook.actions import *
+            self._actions = []
             self.__all__ = []
-            self.__funcs = {}
-            for spec in self._specs:
+            for spec in api.spec['actions']:
+                action = RemoteAction(api, spec)
+                self._actions.append(action)
                 self.__all__.append(str(spec['name']))
-                self.__funcs[spec['name']] = self._make_func(spec['name'])
-
-        def _make_func(self, action_name):
-            spec = self._get_spec(action_name)
-            def func(*args, **kwargs):
-                json_data = serialize_action_arguments(*args, **kwargs)
-                if not json_data:
-                    if 'accepts' in spec:
-                        raise SpecError("%s takes arguments" % action_name)
-                    data = ""
-                else:
-                    data = json.dumps(json_data.json)
-                url = self._api.url + '/actions/' + action_name
-                headers = { 'Content-Type': 'application/json' }
-                res = requests.post(url, data=data, headers=headers)
-                if res.status_code != requests.codes.ok:
-                    raise APIError(res.json['error'])
-                return res.json
-            return func
         
-        def _get_spec(self, action_name):
-            for spec in self._specs:
-                if action_name == spec['name']:
-                    return spec
-
         def __getattr__(self, action_name):
             if action_name not in self.__all__:
                 raise SpecError("Action %s is not defined" % action_name)
-            return self.__funcs[action_name]
+            for action in self._actions:
+                if action.spec['name'] == action_name:
+                    return action.call
 
     @property
     def name(self):
