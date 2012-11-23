@@ -65,116 +65,114 @@ def ensure_bootstrapped():
 class BaseAPI(object):
     pass
 
+class ActionDispatcher(object):
+
+    def __init__(self, api):
+        self._api = api
+        self._actions = []
+        self.__all__ = []
+        for spec in api.spec['actions']:
+            action = RemoteAction(api, spec)
+            self._actions.append(action)
+            self.__all__.append(spec['name'])
+
+    def __getattr__(self, action_name):
+        print action_name, self.__all__
+        if action_name not in self.__all__:
+            raise SpecError("Action %s is not defined" % action_name)
+        for action in self._actions:
+            if action.spec['name'] == action_name:
+                return action.call
+
+class Action(object):
+
+    def __init__(self, func):
+        self.name = func.__name__
+        self.spec = {
+            "name": self.name,
+            "returns": {
+                "type": "any"
+            }
+        }
+        self.raw_func = func
+        arg_spec = get_arg_spec(func)
+        if arg_spec:
+            self.spec["accepts"] = arg_spec
+
+    def call(self, *args, **kwargs):
+        # This seems redundant, but is necessary to make sure local
+        # actions behave same as remote ones
+        data = serialize_action_arguments(*args, **kwargs)
+        return apply_to_action_func(self.raw_func, data)
+
+    def get_view(self, debug=False):
+        """Wraps a user-defined action function to return a Flask view function
+        that handles errors and returns proper HTTP responses"""
+        def action_view():
+            if request.headers.get('Content-Type', None) != "application/json":
+                return json.dumps({
+                    "error": 'Content-Type must be "application/json"'
+                }), 400
+            # If function takes no arguments, request must be empty
+            if 'accepts' not in self.spec and request.data != "":
+                return json.dumps({
+                    "error": "%s takes no arguments. Request content must be empty" % self.name 
+                }), 400
+            # If function takes arguments, request cannot be empty
+            if 'accepts' in self.spec and request.data == "":
+                return json.dumps({
+                    "error": "%s takes arguments. Request content cannot be empty" % self.name
+                }), 400
+            try:
+                if request.data == "":
+                    data = apply_to_action_func(self.raw_func, None)
+                else:
+                    data = apply_to_action_func(self.raw_func, JSONPayload(request.json))
+            except JSONBadRequest:
+                return json.dumps({
+                    "error": "Invalid JSON"
+                }), 400
+            # If the user threw an APIError
+            except APIError as err:
+                return json.dumps({
+                    "error": err.args[0]
+                }), err.http_code
+            # Any other exception should be handled gracefully
+            except Exception as e:
+                if debug: raise e
+                return json.dumps({
+                    "error": "Internal Server Error"
+                }), 500
+            return json.dumps(data)
+        return action_view
+
 class API(BaseAPI):
 
     def __init__(self, name=None, url=None, homepage=None, **kwargs):
-        self.actions = API.ActionDispatcher()
+        self._actions = []
         self.name = name
         self.url = url
         self.homepage = homepage
+        self.actions = ActionDispatcher(self)
 
     @property
     def spec(self):
         spec = {
-            "actions": self.actions._specs,
+            "actions": [action.spec for action in self._actions],
             "name": self.name,
             "url": self.url
         }
         if self.homepage: spec['homepage'] = self.homepage
         return spec
 
-    class ActionDispatcher(object):
-
-        def __init__(self):
-            self.__raw_funcs = {}
-            self.__funcs = {}
-            self._specs = []
-
-        def _register_action_func(self, func):
-            action_name = func.__name__
-            action_spec = {
-                "name": action_name,
-                "returns": {
-                    "type": "any"
-                }
-            }
-            self.__raw_funcs[action_name] = func
-            arg_spec = get_arg_spec(func)
-            if arg_spec:
-                action_spec["accepts"] = arg_spec
-            self._specs.append(action_spec)
-            self.__funcs[action_name] = self._make_func(action_name)
-            return action_spec
-
-        def __getattr__(self, action_name):
-            if action_name not in self.__funcs.keys():
-                raise SpecError("Action %s is not defined" % action_name)
-            return self.__funcs[action_name]
-
-        def _make_func(self, action_name):
-            raw_func = self.__raw_funcs[action_name]
-            def func(*args, **kwargs):
-                # This seems redundant, but is necessary to make sure local
-                # actions behave same as remote ones
-                data = serialize_action_arguments(*args, **kwargs)
-                return apply_to_action_func(raw_func, data)
-            return func
-
-        def _get_spec(self, action_name):
-            for spec in self._specs:
-                if action_name == spec['name']:
-                    return spec
-
-        def _get_view(self, action_name, debug=False):
-            """Wraps a user-defined action function to return a Flask view function
-            that handles errors and returns proper HTTP responses"""
-            def action_view():
-                if request.headers.get('Content-Type', None) != "application/json":
-                    return json.dumps({
-                        "error": 'Content-Type must be "application/json"'
-                    }), 400
-                func = self.__raw_funcs[action_name]
-                # If function takes no arguments, request must be empty
-                if 'accepts' not in self._get_spec(action_name) and request.data != "":
-                    return json.dumps({
-                        "error": "%s takes no arguments. Request content must be empty" % action_name
-                    }), 400
-                # If function takes arguments, request cannot be empty
-                if 'accepts' in self._get_spec(action_name) and request.data == "":
-                    return json.dumps({
-                        "error": "%s takes arguments. Request content cannot be empty" % action_name
-                    }), 400
-                try:
-                    if request.data == "":
-                        data = apply_to_action_func(func, None)
-                    else:
-                        data = apply_to_action_func(func, JSONPayload(request.json))
-                except JSONBadRequest:
-                    return json.dumps({
-                        "error": "Invalid JSON"
-                    }), 400
-                # If the user threw an APIError
-                except APIError as err:
-                    return json.dumps({
-                        "error": err.args[0]
-                    }), err.http_code
-                # Any other exception should be handled gracefully
-                except Exception as e:
-                    if debug: raise e
-                    return json.dumps({
-                        "error": "Internal Server Error"
-                    }), 500
-                return json.dumps(data)
-            return action_view
-
     def get_blueprint(self, debug=False):
         """Returns a Flask Blueprint object with all of the API's routes set up.
         Use this if you want to integrate your API into a Flask application.
         """
         blueprint = Blueprint(self.name, __name__)
-        for action_spec in self.actions._specs:
-            name = action_spec['name']
-            view = self.actions._get_view(name, debug=debug)
+        for action in self._actions:
+            name = action.spec['name']
+            view = action.get_view(debug=debug)
             url = "/actions/%s" % name
             blueprint.add_url_rule(url, name, view, methods=['POST'])
         @blueprint.route('/spec.json')
@@ -206,7 +204,10 @@ class API(BaseAPI):
         """Registers the given function as an API action. To be used as a 
         decorator.
         """
-        action_spec = self.actions._register_action_func(func)
+        action = Action(func)
+        self._actions.append(action)
+        self.actions._actions.append(action)
+        self.actions.__all__.append(func.__name__)
         return func
 
     @staticmethod
@@ -249,25 +250,7 @@ class RemoteAPI(BaseAPI):
 
     def __init__(self, spec):
         self.spec = spec
-        self.actions = RemoteAPI.ActionDispatcher(self)
-
-    class ActionDispatcher(object):
-
-        def __init__(self, api):
-            self._api = api
-            self._actions = []
-            self.__all__ = []
-            for spec in api.spec['actions']:
-                action = RemoteAction(api, spec)
-                self._actions.append(action)
-                self.__all__.append(str(spec['name']))
-        
-        def __getattr__(self, action_name):
-            if action_name not in self.__all__:
-                raise SpecError("Action %s is not defined" % action_name)
-            for action in self._actions:
-                if action.spec['name'] == action_name:
-                    return action.call
+        self.actions = ActionDispatcher(self)
 
     @property
     def name(self):

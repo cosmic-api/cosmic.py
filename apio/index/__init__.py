@@ -35,7 +35,6 @@ class DynamicLoader(object):
         # Do we need to go deeper?
         specifics = names[3:]
         if not specifics:
-            print "OKAY"
             return package
         # Yes we do!
         if specifics[0] != 'actions':
