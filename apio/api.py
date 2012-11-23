@@ -6,7 +6,7 @@ from flask import Flask, Blueprint, Response, request, abort, make_response
 from flask.exceptions import JSONBadRequest
 
 from apio.exceptions import APIError, SpecError, InvalidCallError
-from apio.tools import get_arg_spec, apply_to_action_func, serialize_action_arguments
+from apio.tools import get_arg_spec, apply_to_action_func, serialize_action_arguments, JSONPayload
 
 API_SCHEMA = {
     "type": "object",
@@ -114,13 +114,10 @@ class API(BaseAPI):
         def _make_func(self, action_name):
             raw_func = self.__raw_funcs[action_name]
             def func(*args, **kwargs):
-                if not args and not kwargs:
-                    return apply_to_action_func(raw_func)
-                else:
-                    # This seems redundant, but is necessary to make sure local
-                    # actions behave same as remote ones
-                    data = serialize_action_arguments(*args, **kwargs)
-                    return apply_to_action_func(raw_func, data)
+                # This seems redundant, but is necessary to make sure local
+                # actions behave same as remote ones
+                data = serialize_action_arguments(*args, **kwargs)
+                return apply_to_action_func(raw_func, data)
             return func
 
         def _get_spec(self, action_name):
@@ -149,9 +146,9 @@ class API(BaseAPI):
                     }), 400
                 try:
                     if request.data == "":
-                        data = apply_to_action_func(func)
+                        data = apply_to_action_func(func, None)
                     else:
-                        data = apply_to_action_func(func, request.json)
+                        data = apply_to_action_func(func, JSONPayload(request.json))
                 except JSONBadRequest:
                     return json.dumps({
                         "error": "Invalid JSON"
@@ -247,13 +244,13 @@ class RemoteAPI(BaseAPI):
         def _make_func(self, action_name):
             spec = self._get_spec(action_name)
             def func(*args, **kwargs):
-                if not args and not kwargs:
+                json_data = serialize_action_arguments(*args, **kwargs)
+                if not json_data:
                     if 'accepts' in spec:
                         raise SpecError("%s takes arguments" % action_name)
                     data = ""
                 else:
-                    json_data = serialize_action_arguments(*args, **kwargs)
-                    data = json.dumps(json_data)
+                    data = json.dumps(json_data.json)
                 url = self._api.url + '/actions/' + action_name
                 headers = { 'Content-Type': 'application/json' }
                 res = requests.post(url, data=data, headers=headers)
