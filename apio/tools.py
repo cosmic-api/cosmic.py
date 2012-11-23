@@ -10,7 +10,7 @@ def get_arg_spec(func):
     args, varargs, keywords, defaults = inspect.getargspec(func)
     if varargs or keywords:
         raise SpecError("Cannot define action with splats (* or **)")
-    # No arguments: accepts null
+    # No arguments
     if len(args) == 0:
         return None
     # One argument: accepts a single JSON object
@@ -24,8 +24,8 @@ def get_arg_spec(func):
     }
     # Number of non-keyword arguments (required ones)
     numargs = len(args)
-    if defaults:
-        numargs -= len(defaults)
+    if defaults: numargs -= len(defaults)
+
     for i, arg in enumerate(args):
         if i < numargs:
             s = { "type": "any", "required": True }
@@ -79,3 +79,16 @@ def apply_to_action_func(func, *obj_or_nothing):
         raise SpecError("Unknown arguments: %s" % ", ".join(obj.keys()))
     return func(*apply_args, **apply_kwargs)
 
+def serialize_action_arguments(*args, **kwargs):
+    """Takes arbitrary arguments, serializes them into a JSON object to
+    be passed over the wire then deserialized by `apply_to_action_func`.
+    Must be passed at least one arg or kwarg, the no-argument case must
+    be handled outside of this function due to None value ambiguity.
+    """
+    if len(args) == 1 and len(kwargs) == 0:
+        return args[0]
+    if len(args) == 0 and len(kwargs) > 0:
+        return kwargs
+    if len(args) == 0 and len(kwargs) == 0:
+        raise Exception("serialize_action_arguments must be called with at least one arg or kwarg")
+    raise SpecError("Action must be called either with one argument or with one or more keyword arguments")

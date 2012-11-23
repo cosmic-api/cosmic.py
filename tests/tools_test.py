@@ -132,3 +132,27 @@ class TestApplyToActionFunc(TestCase):
         with self.assertRaises(SpecError):
             def f(a, b=1): return a, b
             apply_to_action_func(f, {})
+
+class TestSerializeActionArguments(TestCase):
+
+    def test_one_arg(self):
+        self.assertEqual(serialize_action_arguments("universe"), "universe")
+    
+    def test_one_kwarg(self):
+        self.assertEqual(serialize_action_arguments(what="universe"), {"what": "universe"})
+
+    def test_many_kwargs(self):
+        ser = serialize_action_arguments(what="universe", when="now")
+        self.assertEqual(ser, {"what": "universe", "when": "now"})
+
+    def test_multiple_args(self):
+        with self.assertRaises(SpecError):
+            serialize_action_arguments("universe", "now")
+
+    def test_no_args_no_kwargs(self):
+        with self.assertRaises(Exception):
+            serialize_action_arguments()
+
+    def test_mixed_args_and_kwargs(self):
+        with self.assertRaises(SpecError):
+            serialize_action_arguments("universe", when="now")

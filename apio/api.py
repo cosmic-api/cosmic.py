@@ -6,7 +6,7 @@ from flask import Flask, Blueprint, Response, request, abort, make_response
 from flask.exceptions import JSONBadRequest
 
 from apio.exceptions import APIError, SpecError
-from apio.tools import get_arg_spec, apply_to_action_func
+from apio.tools import get_arg_spec, apply_to_action_func, serialize_action_arguments
 
 API_SCHEMA = {
     "type": "object",
@@ -43,7 +43,6 @@ API_SCHEMA = {
 # The apio-index API is saved here for convenience
 apio_index = None
 
-# Clears 
 def clear_module_cache():
     global apio_index
     for name in sys.modules.keys():
@@ -228,17 +227,30 @@ class RemoteAPI(BaseAPI):
             self.__funcs = {}
             for spec in self._specs:
                 self.__all__.append(str(spec['name']))
-                self.__funcs[spec['name']] = self._get_func(spec['name'])
+                self.__funcs[spec['name']] = self._make_func(spec['name'])
 
-        def _get_func(self, action_name):
-            def func(obj=None):
+        def _make_func(self, action_name):
+            spec = self._get_spec(action_name)
+            def func(*args, **kwargs):
+                if not args and not kwargs:
+                    if 'accepts' in spec:
+                        raise SpecError("%s takes arguments" % action_name)
+                    data = ""
+                else:
+                    json_data = serialize_action_arguments(*args, **kwargs)
+                    data = json.dumps(json_data)
                 url = self._api.url + '/actions/' + action_name
                 headers = { 'Content-Type': 'application/json' }
-                res = requests.post(url, data=json.dumps(obj), headers=headers)
+                res = requests.post(url, data=data, headers=headers)
                 if res.status_code != requests.codes.ok:
                     raise APIError(res.json['error'])
                 return res.json
             return func
+        
+        def _get_spec(self, action_name):
+            for spec in self._specs:
+                if action_name == spec['name']:
+                    return spec
 
         def __getattr__(self, action_name):
             if action_name not in self.__all__:

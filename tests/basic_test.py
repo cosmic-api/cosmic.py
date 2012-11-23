@@ -201,7 +201,7 @@ class TestAPI(TestCase):
             mock_post.return_value.status_code = 200
             mock_post.return_value.json = None
             self.assertEqual(self.remote_cookbook.actions.noop(), None)
-            mock_post.assert_called_with('http://localhost:8881/api/actions/noop', headers={'Content-Type': 'application/json'}, data=json.dumps(None))
+            mock_post.assert_called_with('http://localhost:8881/api/actions/noop', headers={'Content-Type': 'application/json'}, data="")
 
 
 
