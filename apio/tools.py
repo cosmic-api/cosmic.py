@@ -1,5 +1,5 @@
 import inspect
-from apio.exceptions import SpecError
+from apio.exceptions import SpecError, InvalidCallError
 
 def get_arg_spec(func):
     """Calculate JSON schema spec for action.
@@ -90,5 +90,5 @@ def serialize_action_arguments(*args, **kwargs):
     if len(args) == 0 and len(kwargs) > 0:
         return kwargs
     if len(args) == 0 and len(kwargs) == 0:
-        raise Exception("serialize_action_arguments must be called with at least one arg or kwarg")
+        raise InvalidCallError("serialize_action_arguments must be called with at least one arg or kwarg")
     raise SpecError("Action must be called either with one argument or with one or more keyword arguments")

@@ -34,7 +34,11 @@ cookbook_spec = {
         {
             'name': 'cabbage',
             'accepts': {
-                'type': 'any'
+                'type': 'object',
+                'properties': {
+                    'spicy': { 'type': 'any', 'required': True },
+                    'capitalize': { 'type': 'any' }
+                }
             },
             'returns': {
                 'type': 'any'
@@ -65,11 +69,15 @@ class TestAPI(TestCase):
         self.cookbook = API('cookbook', "http://localhost:8881/api")
 
         @self.cookbook.action
-        def cabbage(params):
-            if params['spicy']:
-                return "kimchi"
+        def cabbage(spicy, capitalize=False):
+            if spicy:
+                c = "kimchi"
             else:
-                return "sauerkraut"
+                c = "sauerkraut"
+            if capitalize:
+                return c.capitalize()
+            else:
+                return c
 
         @self.cookbook.action
         def pounds_to_kilos(pounds):
@@ -134,7 +142,7 @@ class TestAPI(TestCase):
         self.assertEqual(self.cookbook.spec, cookbook_spec)
 
     def test_call(self):
-        self.assertEqual(self.cookbook.actions.cabbage({'spicy': False}), "sauerkraut")
+        self.assertEqual(self.cookbook.actions.cabbage(spicy=False), "sauerkraut")
 
     def test_spec_endpoint(self):
         res = self.werkzeug_client.get('/api/spec.json')

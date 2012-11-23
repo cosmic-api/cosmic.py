@@ -5,3 +5,6 @@ class APIError(Exception):
 
 class SpecError(Exception):
     pass
+
+class InvalidCallError(Exception):
+    pass

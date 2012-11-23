@@ -150,7 +150,7 @@ class TestSerializeActionArguments(TestCase):
             serialize_action_arguments("universe", "now")
 
     def test_no_args_no_kwargs(self):
-        with self.assertRaises(Exception):
+        with self.assertRaises(InvalidCallError):
             serialize_action_arguments()
 
     def test_mixed_args_and_kwargs(self):

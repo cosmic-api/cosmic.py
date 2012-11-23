@@ -5,7 +5,7 @@ import requests
 from flask import Flask, Blueprint, Response, request, abort, make_response
 from flask.exceptions import JSONBadRequest
 
-from apio.exceptions import APIError, SpecError
+from apio.exceptions import APIError, SpecError, InvalidCallError
 from apio.tools import get_arg_spec, apply_to_action_func, serialize_action_arguments
 
 API_SCHEMA = {
@@ -86,27 +86,42 @@ class API(BaseAPI):
     class ActionDispatcher(object):
 
         def __init__(self):
+            self.__raw_funcs = {}
             self.__funcs = {}
             self._specs = []
 
         def _register_action_func(self, func):
+            action_name = func.__name__
             action_spec = {
-                "name": func.__name__,
+                "name": action_name,
                 "returns": {
                     "type": "any"
                 }
             }
-            self.__funcs[func.__name__] = func
+            self.__raw_funcs[action_name] = func
             arg_spec = get_arg_spec(func)
             if arg_spec:
                 action_spec["accepts"] = arg_spec
             self._specs.append(action_spec)
+            self.__funcs[action_name] = self._make_func(action_name)
             return action_spec
 
         def __getattr__(self, action_name):
             if action_name not in self.__funcs.keys():
                 raise SpecError("Action %s is not defined" % action_name)
             return self.__funcs[action_name]
+
+        def _make_func(self, action_name):
+            raw_func = self.__raw_funcs[action_name]
+            def func(*args, **kwargs):
+                if not args and not kwargs:
+                    return apply_to_action_func(raw_func)
+                else:
+                    # This seems redundant, but is necessary to make sure local
+                    # actions behave same as remote ones
+                    data = serialize_action_arguments(*args, **kwargs)
+                    return apply_to_action_func(raw_func, data)
+            return func
 
         def _get_spec(self, action_name):
             for spec in self._specs:
@@ -121,7 +136,7 @@ class API(BaseAPI):
                     return json.dumps({
                         "error": 'Content-Type must be "application/json"'
                     }), 400
-                func = self.__getattr__(action_name)
+                func = self.__raw_funcs[action_name]
                 # If function takes no arguments, request must be empty
                 if 'accepts' not in self._get_spec(action_name) and request.data != "":
                     return json.dumps({
