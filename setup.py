@@ -18,10 +18,9 @@ setup(
         "jsonpointer==0.3",
         "requests==0.14.2",
         "mock==1.0.1",
-        "jsonschema==0.7-patched",
+        "jsonschema==0.7-ref",
     ],
     dependency_links = [
-        "http://github.com/boronine/jsonschema/tarball\
-/391916e71b946db3bf5d92cbb767f620a869fc82#egg=jsonschema-0.7-patched"
+        "http://github.com/Julian/jsonschema/tarball/2690f948bb238cccedd1ce8278257003fc18f642#egg=jsonschema-0.7-ref"
     ]
 )
