@@ -1,4 +1,5 @@
 import inspect
+from apio.exceptions import SpecError
 
 def get_arg_spec(func):
     """ Calculate JSON schema spec for action.
@@ -14,11 +15,7 @@ def get_arg_spec(func):
         return None
     # One argument: accepts a single JSON object
     if len(args) == 1:
-        # Is it a keyword argument?
-        if defaults:
-            return { "type": "any" }
-        else:
-            return { "type": "any", "required": True }                    
+        return { "type": "any" }
     # Multiple arguments: accepts a JSON object with a property for
     # each argument, each property being of type 'any'
     spec = {
@@ -26,12 +23,14 @@ def get_arg_spec(func):
         "properties": {}
     }
     # Number of non-keyword arguments (required ones)
-    numargs = len(args) - len(defaults)
+    numargs = len(args)
+    if defaults:
+        numargs -= len(defaults)
     for i, arg in enumerate(args):
         if i < numargs:
             s = { "type": "any", "required": True }
         else:
             s = { "type": "any" }
-            spec["properties"][arg] = s
+        spec["properties"][arg] = s
     return spec
         

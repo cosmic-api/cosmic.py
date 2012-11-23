@@ -1,7 +1,6 @@
 import warnings
 import json
 
-from flask.testsuite import FlaskTestCase
 from unittest2 import TestCase
 from mock import patch
 
@@ -35,8 +34,7 @@ cookbook_spec = {
         {
             'name': 'cabbage',
             'accepts': {
-                'type': 'any',
-                'required': True
+                'type': 'any'
             },
             'returns': {
                 'type': 'any'
@@ -45,8 +43,7 @@ cookbook_spec = {
         {
             'name': 'pounds_to_kilos',
             'accepts': {
-                'type': 'any',
-                'required': True
+                'type': 'any'
             },
             'returns': {
                 'type': 'any'
