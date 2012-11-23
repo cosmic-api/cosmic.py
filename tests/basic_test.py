@@ -79,7 +79,7 @@ class TestAPI(TestCase):
 
         @self.cookbook.action
         def noop():
-            pass
+            return None
 
         with patch.object(requests, 'post') as mock_post:
             # Test initializing apio module
@@ -157,10 +157,15 @@ class TestAPI(TestCase):
         self.assertEqual(res.status_code, 400)
         self.assertRegexpMatches(res.data, "Invalid JSON")
 
-    def test_action_no_data(self):
-        """Actions that declare parameters must be passed JSON data"""
-        res = self.werkzeug_client.post('/api/actions/cabbage')
+    def test_action_yes_args_no_data(self):
+        res = self.werkzeug_client.post('/api/actions/cabbage', data='', content_type="application/json")
         self.assertEqual(res.status_code, 400)
+        self.assertRegexpMatches(res.data, "cannot be empty")
+
+    def test_action_no_args_no_data(self):
+        res = self.werkzeug_client.post('/api/actions/noop', data='', content_type="application/json")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data, "null")
 
     def test_schema(self):
         store = {

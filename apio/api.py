@@ -5,8 +5,8 @@ import requests
 from flask import Flask, Blueprint, Response, request, abort, make_response
 from flask.exceptions import JSONBadRequest
 
-from apio.exceptions import *
-from apio.tools import get_arg_spec
+from apio.exceptions import APIError, SpecError
+from apio.tools import get_arg_spec, apply_to_action_func
 
 API_SCHEMA = {
     "type": "object",
@@ -64,9 +64,7 @@ def ensure_bootstrapped():
 
 
 class BaseAPI(object):
-    def call(self, action_name, obj=None):
-        return self.actions.__getattr__(action_name)(obj)
-
+    pass
 
 class API(BaseAPI):
 
@@ -106,52 +104,57 @@ class API(BaseAPI):
             self._specs.append(action_spec)
             return action_spec
 
-        def _assert_action_defined(self, action_name):
+        def __getattr__(self, action_name):
             if action_name not in self.__funcs.keys():
                 raise SpecError("Action %s is not defined" % action_name)
+            return self.__funcs[action_name]
 
-        def __getattr__(self, action_name):
-            def func(obj=None):
-                self._assert_action_defined(action_name)
-                action_spec = None
-                for spec in self._specs:
-                    if spec['name'] == action_name:
-                        action_spec = spec
-                func = self.__funcs[action_name]
-                if "accepts" not in action_spec:
-                    return func()
-                return func(obj)
-            return func
+        def _get_spec(self, action_name):
+            for spec in self._specs:
+                if action_name == spec['name']:
+                    return spec
 
-    def _get_action_view(self, action_name, debug=False):
-        """Wraps a user-defined action function to return a Flask view function
-        that handles errors and returns proper HTTP responses"""
-        def action_view():
-            if request.headers.get('Content-Type', None) != "application/json":
-                return json.dumps({
-                    "error": 'Content-Type must be "application/json"'
-                }), 400
-            if request.data == "":
-                return json.dumps(self.actions.__getattr__(action_name)())
-            try:
-                data = self.actions.__getattr__(action_name)(request.json)
-            except JSONBadRequest:
-                return json.dumps({
-                    "error": "Invalid JSON"
-                }), 400
-            # If the user threw an APIError
-            except APIError as err:
-                return json.dumps({
-                    "error": err.args[0]
-                }), err.http_code
-            # Any other exception should be handled gracefully
-            except Exception as e:
-                if debug: raise e
-                return json.dumps({
-                    "error": "Internal Server Error"
-                }), 500
-            return json.dumps(data)
-        return action_view
+        def _get_view(self, action_name, debug=False):
+            """Wraps a user-defined action function to return a Flask view function
+            that handles errors and returns proper HTTP responses"""
+            def action_view():
+                if request.headers.get('Content-Type', None) != "application/json":
+                    return json.dumps({
+                        "error": 'Content-Type must be "application/json"'
+                    }), 400
+                func = self.__getattr__(action_name)
+                # If function takes no arguments, request must be empty
+                if 'accepts' not in self._get_spec(action_name) and request.data != "":
+                    return json.dumps({
+                        "error": "%s takes no arguments. Request content must be empty" % action_name
+                    }), 400
+                # If function takes arguments, request cannot be empty
+                if 'accepts' in self._get_spec(action_name) and request.data == "":
+                    return json.dumps({
+                        "error": "%s takes arguments. Request content cannot be empty" % action_name
+                    }), 400
+                try:
+                    if request.data == "":
+                        data = apply_to_action_func(func)
+                    else:
+                        data = apply_to_action_func(func, request.json)
+                except JSONBadRequest:
+                    return json.dumps({
+                        "error": "Invalid JSON"
+                    }), 400
+                # If the user threw an APIError
+                except APIError as err:
+                    return json.dumps({
+                        "error": err.args[0]
+                    }), err.http_code
+                # Any other exception should be handled gracefully
+                except Exception as e:
+                    if debug: raise e
+                    return json.dumps({
+                        "error": "Internal Server Error"
+                    }), 500
+                return json.dumps(data)
+            return action_view
 
     def get_blueprint(self, debug=False):
         """Returns a Flask Blueprint object with all of the API's routes set up.
@@ -160,7 +163,7 @@ class API(BaseAPI):
         blueprint = Blueprint(self.name, __name__)
         for action_spec in self.actions._specs:
             name = action_spec['name']
-            view = self._get_action_view(name, debug=debug)
+            view = self.actions._get_view(name, debug=debug)
             url = "/actions/%s" % name
             blueprint.add_url_rule(url, name, view, methods=['POST'])
         @blueprint.route('/spec.json')
@@ -178,7 +181,7 @@ class API(BaseAPI):
         debug = kwargs.get('debug', False)
         if kwargs.pop('register_api', True):
             ensure_bootstrapped()
-            apio_index.call('register_api', self.spec)
+            apio_index.actions.register_api(self.spec)
         if 'dry_run' in kwargs.keys(): return
         app = Flask(__name__, static_folder=None)
         # Flask will catch exceptions to return a nice HTTP response
@@ -205,7 +208,7 @@ class API(BaseAPI):
             spec = res.json
         else:
             ensure_bootstrapped()
-            spec = apio_index.call('get_spec', name_or_url)
+            spec = apio_index.actions.get_spec(name_or_url)
         api = RemoteAPI(spec)
         return api
 
