@@ -1,9 +1,16 @@
 import inspect
+import json
+
 from apio.exceptions import SpecError, InvalidCallError
 
 class JSONPayload(object):
     def __init__(self, json):
         self.json = json
+    @classmethod
+    def from_string(cls, s):
+        if s == "":
+            return None
+        return cls(json.loads(s))
 
 def get_arg_spec(func):
     """Calculate JSON schema spec for action.

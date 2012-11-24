@@ -75,7 +75,6 @@ class ActionDispatcher(object):
         return [action.spec['name'] for action in self._api._actions]
 
     def __getattr__(self, action_name):
-        print action_name, self.__all__
         if action_name not in self.__all__:
             raise SpecError("Action %s is not defined" % action_name)
         for action in self._api._actions:

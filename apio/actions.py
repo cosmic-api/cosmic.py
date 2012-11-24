@@ -36,25 +36,24 @@ class Action(object):
                 return json.dumps({
                     "error": 'Content-Type must be "application/json"'
                 }), 400
+            try:
+                payload = JSONPayload.from_string(request.data)
+            except ValueError:
+                return json.dumps({
+                    "error": "Invalid JSON"
+                }), 400
             # If function takes no arguments, request must be empty
-            if 'accepts' not in self.spec and request.data != "":
+            if 'accepts' not in self.spec and payload:
                 return json.dumps({
                     "error": "%s takes no arguments. Request content must be empty" % self.name 
                 }), 400
             # If function takes arguments, request cannot be empty
-            if 'accepts' in self.spec and request.data == "":
+            if 'accepts' in self.spec and not payload:
                 return json.dumps({
                     "error": "%s takes arguments. Request content cannot be empty" % self.name
                 }), 400
             try:
-                if request.data == "":
-                    data = apply_to_action_func(self.raw_func, None)
-                else:
-                    data = apply_to_action_func(self.raw_func, JSONPayload(request.json))
-            except JSONBadRequest:
-                return json.dumps({
-                    "error": "Invalid JSON"
-                }), 400
+                data = apply_to_action_func(self.raw_func, payload)
             # If the user threw an APIError
             except APIError as err:
                 return json.dumps({
