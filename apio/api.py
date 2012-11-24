@@ -2,11 +2,11 @@ import sys
 import json
 import requests
 
-from flask import Flask, Blueprint, Response, request, abort, make_response
+from flask import Flask, Blueprint, Response, request
 from flask.exceptions import JSONBadRequest
 
 from apio.exceptions import APIError, SpecError, InvalidCallError
-from apio.tools import get_arg_spec, apply_to_action_func, serialize_action_arguments, JSONPayload
+from apio.actions import Action, RemoteAction
 
 API_SCHEMA = {
     "type": "object",
@@ -69,82 +69,18 @@ class ActionDispatcher(object):
 
     def __init__(self, api):
         self._api = api
-        self._actions = []
-        self.__all__ = []
-        for spec in api.spec['actions']:
-            action = RemoteAction(api, spec)
-            self._actions.append(action)
-            self.__all__.append(spec['name'])
+    
+    @property
+    def __all__(self):
+        return [action.spec['name'] for action in self._api._actions]
 
     def __getattr__(self, action_name):
         print action_name, self.__all__
         if action_name not in self.__all__:
             raise SpecError("Action %s is not defined" % action_name)
-        for action in self._actions:
+        for action in self._api._actions:
             if action.spec['name'] == action_name:
-                return action.call
-
-class Action(object):
-
-    def __init__(self, func):
-        self.name = func.__name__
-        self.spec = {
-            "name": self.name,
-            "returns": {
-                "type": "any"
-            }
-        }
-        self.raw_func = func
-        arg_spec = get_arg_spec(func)
-        if arg_spec:
-            self.spec["accepts"] = arg_spec
-
-    def call(self, *args, **kwargs):
-        # This seems redundant, but is necessary to make sure local
-        # actions behave same as remote ones
-        data = serialize_action_arguments(*args, **kwargs)
-        return apply_to_action_func(self.raw_func, data)
-
-    def get_view(self, debug=False):
-        """Wraps a user-defined action function to return a Flask view function
-        that handles errors and returns proper HTTP responses"""
-        def action_view():
-            if request.headers.get('Content-Type', None) != "application/json":
-                return json.dumps({
-                    "error": 'Content-Type must be "application/json"'
-                }), 400
-            # If function takes no arguments, request must be empty
-            if 'accepts' not in self.spec and request.data != "":
-                return json.dumps({
-                    "error": "%s takes no arguments. Request content must be empty" % self.name 
-                }), 400
-            # If function takes arguments, request cannot be empty
-            if 'accepts' in self.spec and request.data == "":
-                return json.dumps({
-                    "error": "%s takes arguments. Request content cannot be empty" % self.name
-                }), 400
-            try:
-                if request.data == "":
-                    data = apply_to_action_func(self.raw_func, None)
-                else:
-                    data = apply_to_action_func(self.raw_func, JSONPayload(request.json))
-            except JSONBadRequest:
-                return json.dumps({
-                    "error": "Invalid JSON"
-                }), 400
-            # If the user threw an APIError
-            except APIError as err:
-                return json.dumps({
-                    "error": err.args[0]
-                }), err.http_code
-            # Any other exception should be handled gracefully
-            except Exception as e:
-                if debug: raise e
-                return json.dumps({
-                    "error": "Internal Server Error"
-                }), 500
-            return json.dumps(data)
-        return action_view
+                return action
 
 class API(BaseAPI):
 
@@ -206,8 +142,6 @@ class API(BaseAPI):
         """
         action = Action(func)
         self._actions.append(action)
-        self.actions._actions.append(action)
-        self.actions.__all__.append(func.__name__)
         return func
 
     @staticmethod
@@ -224,33 +158,17 @@ class API(BaseAPI):
         api = RemoteAPI(spec)
         return api
 
-class RemoteAction(object):
-
-    def __init__(self, api, spec):
-        self.api = api
-        self.spec = spec
-
-    def call(self, *args, **kwargs):
-        json_data = serialize_action_arguments(*args, **kwargs)
-        if json_data:
-            data = json.dumps(json_data.json)
-        else:
-            if 'accepts' in self.spec:
-                raise SpecError("%s takes arguments" % action_name)
-            data = ""
-        url = self.api.url + '/actions/' + self.spec['name']
-        headers = { 'Content-Type': 'application/json' }
-        res = requests.post(url, data=data, headers=headers)
-        if res.status_code != requests.codes.ok:
-            raise APIError(res.json['error'])
-        return res.json
-
  
 class RemoteAPI(BaseAPI):
 
     def __init__(self, spec):
         self.spec = spec
         self.actions = ActionDispatcher(self)
+
+        self._actions = []
+        for spec in self.spec['actions']:
+            action = RemoteAction(self, spec)
+            self._actions.append(action)
 
     @property
     def name(self):
