@@ -46,7 +46,7 @@ apio_index = None
 def clear_module_cache():
     global apio_index
     for name in sys.modules.keys():
-        if name.startswith('apio') and name not in ['apio.api', 'apio.exceptions']:
+        if name.startswith('apio.index'):
             del sys.modules[name]
     apio_index = None
 
@@ -140,8 +140,7 @@ class API(BaseAPI):
         """Registers the given function as an API action. To be used as a 
         decorator.
         """
-        action = Action(func)
-        self._actions.append(action)
+        self._actions.append(Action(func))
         return func
 
     @staticmethod
@@ -167,7 +166,7 @@ class RemoteAPI(BaseAPI):
 
         self._actions = []
         for spec in self.spec['actions']:
-            action = RemoteAction(self, spec)
+            action = RemoteAction(spec, self.url)
             self._actions.append(action)
 
     @property

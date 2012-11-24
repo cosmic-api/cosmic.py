@@ -72,9 +72,9 @@ class Action(object):
 
 class RemoteAction(object):
 
-    def __init__(self, api, spec):
-        self.api = api
+    def __init__(self, spec, api_url):
         self.spec = spec
+        self.api_url = api_url
 
     def __call__(self, *args, **kwargs):
         json_data = serialize_action_arguments(*args, **kwargs)
@@ -84,7 +84,7 @@ class RemoteAction(object):
             if 'accepts' in self.spec:
                 raise SpecError("%s takes arguments" % action_name)
             data = ""
-        url = self.api.spec['url'] + '/actions/' + self.spec['name']
+        url = self.api_url + '/actions/' + self.spec['name']
         headers = { 'Content-Type': 'application/json' }
         res = requests.post(url, data=data, headers=headers)
         if res.status_code != requests.codes.ok:
