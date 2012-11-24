@@ -8,7 +8,8 @@ import requests
 import jsonschema
 
 from apio.exceptions import *
-from apio.api import ensure_bootstrapped, API, API_SCHEMA, clear_module_cache
+from apio.api import API, RemoteAPI, API_SCHEMA
+from apio import api
 
 index_spec = {
     'url': 'http://api.apio.io',
@@ -62,6 +63,20 @@ cookbook_spec = {
     ]
 }
 
+class TestBootstrapping(TestCase):
+
+    def test_successful(self):
+        with patch.object(requests, 'post') as mock_post:
+            # Test initializing apio module
+            mock_post.return_value.status_code = 200
+            mock_post.return_value.json = index_spec
+            api.ensure_bootstrapped()
+            mock_post.assert_called_with('http://api.apio.io/actions/get_spec', headers={'Content-Type': 'application/json'}, data=json.dumps("apio-index"))
+        self.assertTrue(isinstance(api.apio_index, RemoteAPI))
+
+    def tearDown(self):
+        api.clear_module_cache()
+
 class TestAPI(TestCase):
 
     def setUp(self):
@@ -89,16 +104,9 @@ class TestAPI(TestCase):
         def noop():
             return None
 
+        api.apio_index = RemoteAPI(index_spec)
+
         with patch.object(requests, 'post') as mock_post:
-            # Test initializing apio module
-            mock_post.return_value.status_code = 200
-            mock_post.return_value.json = index_spec
-            ensure_bootstrapped()
-            # Register API
-            mock_post.return_value.status_code = 200
-            mock_post.return_value.json = True
-            self.cookbook.run(register_api=True, dry_run=True)
-            mock_post.assert_called_with('http://api.apio.io/actions/register_api', headers={'Content-Type': 'application/json'}, data=json.dumps(self.cookbook.spec))
             # Load API
             mock_post.return_value.status_code = 200
             mock_post.return_value.json = cookbook_spec
@@ -119,7 +127,15 @@ class TestAPI(TestCase):
         self.werkzeug_client_debug = app.test_client()
 
     def tearDown(self):
-        clear_module_cache()
+        api.clear_module_cache()
+
+    def test_register_api(self):
+        with patch.object(requests, 'post') as mock_post:
+            # Register API
+            mock_post.return_value.status_code = 200
+            mock_post.return_value.json = True
+            self.cookbook.run(register_api=True, dry_run=True)
+            mock_post.assert_called_with('http://api.apio.io/actions/register_api', headers={'Content-Type': 'application/json'}, data=json.dumps(self.cookbook.spec))
 
     def test_import_actions(self):
         from apio.index.cookbook import actions
