@@ -82,12 +82,15 @@ class RemoteAction(object):
             data = json.dumps(json_data.json)
         else:
             if 'accepts' in self.spec:
-                raise SpecError("%s takes arguments" % action_name)
+                raise SpecError("%s takes arguments" % self.spec['name'])
             data = ""
         url = self.api_url + '/actions/' + self.spec['name']
         headers = { 'Content-Type': 'application/json' }
         res = requests.post(url, data=data, headers=headers)
         if res.status_code != requests.codes.ok:
-            raise APIError(res.json['error'])
+            if res.json and 'error' in res.json:
+                raise APIError(res.json['error'])
+            else:
+                raise APIError("Call to %s failed with improper error response")
         return res.json
 
