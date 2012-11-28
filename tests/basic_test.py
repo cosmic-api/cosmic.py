@@ -191,11 +191,11 @@ class TestAPI(TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.data, "null")
 
-    def _test_schema(self):
-        resolver = jsonschema.RefResolver(store={
+    def test_schema(self):
+        store = {
             "http://json-schema.org/draft-03/schema": jsonschema.Draft3Validator.META_SCHEMA
-        })
-        jsonschema.validate(self.cookbook.spec, API_SCHEMA, resolver=resolver)
+        }
+        jsonschema.validate(self.cookbook.spec, API_SCHEMA, schema_store=store)
 
 
 
