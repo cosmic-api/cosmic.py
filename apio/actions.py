@@ -5,7 +5,7 @@ from flask import request
 from flask.exceptions import JSONBadRequest
 
 from apio.tools import get_arg_spec, serialize_action_arguments, apply_to_action_func, JSONPayload
-from apio.exceptions import APIError, SpecError
+from apio.exceptions import APIError, SpecError, AuthenticationError
 
 class Action(object):
 
@@ -59,6 +59,10 @@ class Action(object):
                 return json.dumps({
                     "error": err.args[0]
                 }), err.http_code
+            except AuthenticationError:
+                return json.dumps({
+                    "error": "Authentication failed"
+                }), 401
             # Any other exception should be handled gracefully
             except Exception as e:
                 if debug: raise e

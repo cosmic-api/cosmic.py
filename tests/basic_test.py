@@ -76,6 +76,7 @@ class TestAPI(TestCase):
 
         @self.cookbook.action
         def cabbage(spicy, capitalize=False):
+            user = self.cookbook.authenticate()
             if spicy:
                 c = "kimchi"
             else:
@@ -88,6 +89,12 @@ class TestAPI(TestCase):
         @self.cookbook.action
         def noop():
             return None
+
+        @self.cookbook.authentication
+        def authenticate(headers):
+            if headers['X-Wacky'] != 'Tobacky':
+                raise AuthenticationError()
+            return "boronine"
 
         api.apio_index = RemoteAPI(index_spec)
 
@@ -164,6 +171,11 @@ class TestAPI(TestCase):
             mock_post.return_value.json = None
             self.assertEqual(self.remote_cookbook.actions.noop(), None)
             mock_post.assert_called_with('http://localhost:8881/api/actions/noop', headers={'Content-Type': 'application/json'}, data="")
+
+    def test_authentication_error(self):
+        headers = { "X-Wacky": "Bananas" }
+        res = self.werkzeug_client.post('/api/actions/cabbage', data='{"spicy": true}', headers=headers, content_type="application/json")
+        self.assertEqual(res.status_code, 401)
 
     def test_load_url(self):
         """Test the API.load function when given a spec URL"""

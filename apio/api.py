@@ -156,6 +156,18 @@ class API(BaseAPI):
         self.actions.add(Action(func))
         return func
 
+    def authentication(self, func):
+        """Registers the given function as an authentication function for
+        the API. The authentication function takes a dict of headers as its
+        single argument and returns user-related data or raises AuthenticationError
+        """
+        def authenticate():
+            if not request:
+                return None
+            return func(request.headers)
+        self.authenticate = authenticate
+        return func
+
     @staticmethod
     def load(name_or_url):
         """Given an API name, loads the API and returns an API object. If given

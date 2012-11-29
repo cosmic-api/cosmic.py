@@ -8,3 +8,6 @@ class SpecError(Exception):
 
 class InvalidCallError(Exception):
     pass
+
+class AuthenticationError(Exception):
+    pass
