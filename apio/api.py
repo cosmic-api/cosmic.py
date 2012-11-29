@@ -66,6 +66,9 @@ class BaseAPI(object):
     pass
 
 class ActionDispatcher(object):
+    """Essentially a sorted dictionary. Allows to reference actions as attributes
+    and implements __all__ so that the instance can be treated as a module.
+    """
 
     def __init__(self):
         self._list = []

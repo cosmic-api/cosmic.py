@@ -46,15 +46,6 @@ cookbook_spec = {
             }
         },
         {
-            'name': 'pounds_to_kilos',
-            'accepts': {
-                'type': 'any'
-            },
-            'returns': {
-                'type': 'any'
-            }
-        },
-        {
             'name': 'noop',
             'returns': {
                 'type': 'any'
@@ -93,12 +84,6 @@ class TestAPI(TestCase):
                 return c.capitalize()
             else:
                 return c
-
-        @self.cookbook.action
-        def pounds_to_kilos(pounds):
-            if pounds > 100:
-                raise APIError('Too many pounds', http_code=501)
-            return 0.453592 * pounds * pounds / pounds
 
         @self.cookbook.action
         def noop():
@@ -151,7 +136,6 @@ class TestAPI(TestCase):
             warnings.simplefilter("ignore")
             from apio.index.cookbook.actions import *
             self.assertEqual(cabbage, self.remote_cookbook.actions.cabbage)
-            self.assertEqual(pounds_to_kilos, self.remote_cookbook.actions.pounds_to_kilos)
             self.assertEqual(noop, self.remote_cookbook.actions.noop)
         
     def test_serialize(self):
@@ -163,28 +147,6 @@ class TestAPI(TestCase):
     def test_spec_endpoint(self):
         res = self.werkzeug_client.get('/api/spec.json')
         self.assertEqual(json.loads(res.data), cookbook_spec)
-
-    def test_action_wrong_method(self):
-        """Actions can only be POST requests"""
-        res = self.werkzeug_client.get('/api/actions/cabbage', data='{"spicy":false}')
-        self.assertEqual(res.status_code, 405)
-
-    def test_action_wrong_content_type(self):
-        """Content type must be "application/json"""
-        res = self.werkzeug_client.post('/api/actions/cabbage', data='{"spicy":false}', content_type="application/homer")
-        self.assertEqual(res.status_code, 400)
-        # Make sure Content-Type is mentioned in the error
-        self.assertRegexpMatches(res.data, "Content-Type")
-
-    def test_action_invalid_json(self):
-        res = self.werkzeug_client.post('/api/actions/cabbage', data='{"spicy":farse}', content_type="application/json")
-        self.assertEqual(res.status_code, 400)
-        self.assertRegexpMatches(res.data, "Invalid JSON")
-
-    def test_action_yes_args_no_data(self):
-        res = self.werkzeug_client.post('/api/actions/cabbage', data='', content_type="application/json")
-        self.assertEqual(res.status_code, 400)
-        self.assertRegexpMatches(res.data, "cannot be empty")
 
     def test_action_no_args_no_data(self):
         res = self.werkzeug_client.post('/api/actions/noop', data='', content_type="application/json")
@@ -199,19 +161,6 @@ class TestAPI(TestCase):
 
 
 
-    def test_local_successful_action(self):
-        """First make sure provider returns the right HTTP response for the right HTTP request"""
-        res = self.werkzeug_client.post('/api/actions/cabbage', data='{"spicy":true}', content_type="application/json")
-        self.assertEqual(res.status_code, 200)
-        self.assertEqual(json.loads(res.data), "kimchi")
-
-    def test_remote_successful_action(self):
-        """... Then make sure that this response is interpreted correctly on the consumer"""
-        with patch.object(requests, 'post') as mock_post:
-            mock_post.return_value.status_code = 200
-            mock_post.return_value.json = "kimchi"
-            self.assertEqual(self.remote_cookbook.actions.cabbage({'spicy': True}), "kimchi")
-            mock_post.assert_called_with('http://localhost:8881/api/actions/cabbage', headers={'Content-Type': 'application/json'}, data=json.dumps({'spicy': True}))
 
 
 
@@ -228,45 +177,6 @@ class TestAPI(TestCase):
             mock_post.assert_called_with('http://localhost:8881/api/actions/noop', headers={'Content-Type': 'application/json'}, data="")
 
 
-
-    def test_local_raise_exception(self):
-        res = self.werkzeug_client.post('/api/actions/pounds_to_kilos', data='101', content_type="application/json")
-        self.assertEqual(res.status_code, 501)
-        self.assertEqual(json.loads(res.data), {
-            "error": "Too many pounds"
-        })
-
-    def test_remote_raise_exception(self):
-        with patch.object(requests, 'post') as mock_post:
-            mock_post.return_value.status_code = 501
-            mock_post.return_value.json = {
-                "error": 'Too many pounds'
-            }
-            with self.assertRaises(APIError):
-                self.remote_cookbook.actions.pounds_to_kilos(101)
-
-
-
-
-    def test_local_accidental_exception(self):
-        res = self.werkzeug_client.post('/api/actions/pounds_to_kilos', data='0', content_type="application/json")
-        self.assertEqual(res.status_code, 500)
-        self.assertEqual(json.loads(res.data), {
-            "error": "Internal Server Error"
-        })
-
-    def test_local_accidental_exception_debug(self):
-        with self.assertRaises(ZeroDivisionError):
-            self.werkzeug_client_debug.post('/api/actions/pounds_to_kilos', data='0', content_type="application/json")
-
-    def test_remote_raise_exception(self):
-        with patch.object(requests, 'post') as mock_post:
-            mock_post.return_value.status_code = 500
-            mock_post.return_value.json = {
-                "error": 'Internal Server Error'
-            }
-            with self.assertRaisesRegexp(APIError, "Internal Server Error"):
-                self.remote_cookbook.actions.pounds_to_kilos(101)
 
 
     def test_load_url(self):
