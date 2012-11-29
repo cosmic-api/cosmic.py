@@ -67,33 +67,44 @@ class BaseAPI(object):
 
 class ActionDispatcher(object):
 
-    def __init__(self, api):
-        self._api = api
+    def __init__(self):
+        self._list = []
+        self._dict = {}
+    
+    def __iter__(self):
+        """Allow iterating through actions"""
+        return self._list.__iter__()
     
     @property
     def __all__(self):
-        return [action.spec['name'] for action in self._api._actions]
+        return [action.spec['name'] for action in self._list]
+
+    @property
+    def specs(self):
+        return [action.spec for action in self._list]
+
+    def add(self, action):
+        self._list.append(action)
+        self._dict[action.spec['name']] = action
 
     def __getattr__(self, action_name):
-        if action_name not in self.__all__:
+        try:
+            return self._dict[action_name]
+        except KeyError:
             raise SpecError("Action %s is not defined" % action_name)
-        for action in self._api._actions:
-            if action.spec['name'] == action_name:
-                return action
 
 class API(BaseAPI):
 
     def __init__(self, name=None, url=None, homepage=None, **kwargs):
-        self._actions = []
         self.name = name
         self.url = url
         self.homepage = homepage
-        self.actions = ActionDispatcher(self)
+        self.actions = ActionDispatcher()
 
     @property
     def spec(self):
         spec = {
-            "actions": [action.spec for action in self._actions],
+            "actions": self.actions.specs,
             "name": self.name,
             "url": self.url
         }
@@ -105,7 +116,7 @@ class API(BaseAPI):
         Use this if you want to integrate your API into a Flask application.
         """
         blueprint = Blueprint(self.name, __name__)
-        for action in self._actions:
+        for action in self.actions:
             name = action.spec['name']
             view = action.get_view(debug=debug)
             url = "/actions/%s" % name
@@ -139,7 +150,8 @@ class API(BaseAPI):
         """Registers the given function as an API action. To be used as a 
         decorator.
         """
-        self._actions.append(Action(func))
+        action = Action(func)
+        self.actions.add(action)
         return func
 
     @staticmethod
@@ -161,12 +173,10 @@ class RemoteAPI(BaseAPI):
 
     def __init__(self, spec):
         self.spec = spec
-        self.actions = ActionDispatcher(self)
+        self.actions = ActionDispatcher()
 
-        self._actions = []
         for spec in self.spec['actions']:
-            action = RemoteAction(spec, self.url)
-            self._actions.append(action)
+            self.actions.add(RemoteAction(spec, self.url))
 
     @property
     def name(self):

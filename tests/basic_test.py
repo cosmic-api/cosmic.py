@@ -143,7 +143,7 @@ class TestAPI(TestCase):
     
     def test_import_specific_action(self):
         from apio.index.cookbook.actions import cabbage
-        #self.assertEqual(cabbage, self.remote_cookbook.actions.cabbage)
+        self.assertEqual(cabbage, self.remote_cookbook.actions.cabbage)
 
     def test_import_all_actions(self):
         with warnings.catch_warnings():
