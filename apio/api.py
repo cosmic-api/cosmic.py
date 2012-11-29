@@ -150,8 +150,7 @@ class API(BaseAPI):
         """Registers the given function as an API action. To be used as a 
         decorator.
         """
-        action = Action(func)
-        self.actions.add(action)
+        self.actions.add(Action(func))
         return func
 
     @staticmethod

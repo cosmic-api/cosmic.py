@@ -286,15 +286,5 @@ class TestAPI(TestCase):
             self.assertEqual(unicode(e), "Blah")
 
 
-
-    def test_local_undefined_action(self):
-        with self.assertRaisesRegexp(SpecError, "not defined"):
-            self.cookbook.actions.kilos_to_pounds(101)
-
-    def test_remote_undefined_action(self):
-        with self.assertRaisesRegexp(SpecError, "not defined"):
-            self.remote_cookbook.actions.kilos_to_pounds(101)
-
-
 if __name__ == '__main__':
     unittest.main()
