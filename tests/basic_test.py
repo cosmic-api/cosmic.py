@@ -105,12 +105,6 @@ class TestAPI(TestCase):
         app.register_blueprint(self.cookbook.get_blueprint(), url_prefix="/api")
         self.werkzeug_client = app.test_client()
 
-        # Test debug mode
-        app = Flask(__name__, static_folder=None)
-        app.config['PROPAGATE_EXCEPTIONS'] = True
-        app.register_blueprint(self.cookbook.get_blueprint(debug=True), url_prefix="/api")
-        self.werkzeug_client_debug = app.test_client()
-
     def tearDown(self):
         api.clear_module_cache()
 
@@ -159,11 +153,6 @@ class TestAPI(TestCase):
         }
         jsonschema.validate(self.cookbook.spec, API_SCHEMA, schema_store=store)
 
-
-
-
-
-
     def test_local_no_return_action(self):
         res = self.werkzeug_client.post('/api/actions/noop', content_type="application/json")
         self.assertEqual(res.status_code, 200)
@@ -176,9 +165,6 @@ class TestAPI(TestCase):
             self.assertEqual(self.remote_cookbook.actions.noop(), None)
             mock_post.assert_called_with('http://localhost:8881/api/actions/noop', headers={'Content-Type': 'application/json'}, data="")
 
-
-
-
     def test_load_url(self):
         """Test the API.load function when given a spec URL"""
         with patch.object(requests, 'get') as mock_get:
@@ -186,7 +172,6 @@ class TestAPI(TestCase):
             mock_get.return_value.status_code = 200
             cookbook_decentralized = API.load('http://example.com/spec.json')
             self.assertEqual(cookbook_decentralized.spec, cookbook_spec)
-
 
     def test_apierror_repr(self):
         """Make sure when APIError gets printed in stack trace we can see the message"""

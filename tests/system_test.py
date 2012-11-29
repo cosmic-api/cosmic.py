@@ -1,17 +1,17 @@
 
 def quickstart():
 
-    from apio import API
+    from apio.api import API
     cookbook = API('cookbook')
 
     @cookbook.action
     def cabbage(spicy=False):
         if spicy:
-            return "Kimchi"
+            return "kimchi"
         else:
-            return "Sauerkraut"
+            return "sauerkraut"
 
-    cookbook.run(port=9873)
+    cookbook.run(port=9873, register_api=False)
 
 
 
@@ -21,11 +21,15 @@ from multiprocessing import Process
 import urllib2
 import time
 
-def _quickstart_test():
+import requests
+
+def quickstart_test():
 
     p = Process(target=quickstart)
     p.start()
     time.sleep(0.2)
-    assert urllib2.urlopen('http://localhost:9873/actions/cabbage').read().strip() == "Sauerkraut"
+    headers = { 'Content-Type': 'application/json' }
+    res = requests.post('http://localhost:9873/actions/cabbage', data='{"spicy": true}', headers=headers)
+    assert res.json == "kimchi"
     p.terminate()
 
