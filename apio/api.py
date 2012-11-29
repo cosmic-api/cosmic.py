@@ -162,8 +162,6 @@ class API(BaseAPI):
         single argument and returns user-related data or raises AuthenticationError
         """
         def authenticate():
-            if not request:
-                return None
             return func(request.headers)
         self.authenticate = authenticate
         return func

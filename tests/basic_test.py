@@ -108,9 +108,9 @@ class TestAPI(TestCase):
 
         # Create test client for some HTTP tests
         from flask import Flask
-        app = Flask(__name__, static_folder=None)
-        app.register_blueprint(self.cookbook.get_blueprint(), url_prefix="/api")
-        self.werkzeug_client = app.test_client()
+        self.app = Flask(__name__, static_folder=None)
+        self.app.register_blueprint(self.cookbook.get_blueprint(), url_prefix="/api")
+        self.werkzeug_client = self.app.test_client()
 
     def tearDown(self):
         api.clear_module_cache()
@@ -143,7 +143,10 @@ class TestAPI(TestCase):
         self.assertEqual(self.cookbook.spec, cookbook_spec)
 
     def test_call(self):
-        self.assertEqual(self.cookbook.actions.cabbage(spicy=False), "sauerkraut")
+        headers = { "X-Wacky": "Tobacky" }
+        data = '{"spicy": true}'
+        with self.app.test_request_context('/api/actions/cabbage', data=data, headers=headers, content_type="application/json"):
+            self.assertEqual(self.cookbook.actions.cabbage(spicy=False), "sauerkraut")
 
     def test_spec_endpoint(self):
         res = self.werkzeug_client.get('/api/spec.json')
@@ -174,7 +177,8 @@ class TestAPI(TestCase):
 
     def test_authentication_error(self):
         headers = { "X-Wacky": "Bananas" }
-        res = self.werkzeug_client.post('/api/actions/cabbage', data='{"spicy": true}', headers=headers, content_type="application/json")
+        data = '{"spicy": true}'
+        res = self.werkzeug_client.post('/api/actions/cabbage', data=data, headers=headers, content_type="application/json")
         self.assertEqual(res.status_code, 401)
 
     def test_load_url(self):
