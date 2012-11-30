@@ -68,6 +68,7 @@ class TestBootstrapping(TestCase):
     def tearDown(self):
         api.clear_module_cache()
 
+
 class TestAPI(TestCase):
 
     def setUp(self):
@@ -123,21 +124,6 @@ class TestAPI(TestCase):
             self.cookbook.run(register_api=True, dry_run=True)
             mock_post.assert_called_with('http://api.apio.io/actions/register_api', headers={'Content-Type': 'application/json'}, data=json.dumps(self.cookbook.spec))
 
-    def test_import_actions(self):
-        from apio.index.cookbook import actions
-        self.assertEqual(actions, self.remote_cookbook.actions)
-    
-    def test_import_specific_action(self):
-        from apio.index.cookbook.actions import cabbage
-        self.assertEqual(cabbage, self.remote_cookbook.actions.cabbage)
-
-    def test_import_all_actions(self):
-        with warnings.catch_warnings():
-            # Warning about importing * at non-module level. Thanks mom..
-            warnings.simplefilter("ignore")
-            from apio.index.cookbook.actions import *
-            self.assertEqual(cabbage, self.remote_cookbook.actions.cabbage)
-            self.assertEqual(noop, self.remote_cookbook.actions.noop)
         
     def test_serialize(self):
         self.assertEqual(self.cookbook.spec, cookbook_spec)

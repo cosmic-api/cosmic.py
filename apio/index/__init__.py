@@ -32,24 +32,17 @@ class DynamicLoader(object):
         names = fullname.split('.')
         api_name = names[2]
         package = self.get_package(api_name)
-        # Do we need to go deeper?
-        specifics = names[3:]
-        if not specifics:
+        # Do we need to go deeper?]
+        if len(names) == 3:
             return package
         # Yes we do!
-        if specifics[0] != 'actions':
-            print names
+        if names[3] != 'actions':
             raise ImportError()
         # We just want actions
-        if len(specifics) == 1:
-            package.actions.__file__ = "<%s>" % fullname
-            package.actions.__loader__ = self
-            sys.modules.setdefault(fullname, package.actions)
-            return package.actions
-        elif len(specifics) == 2:
-            return getattr(package.actions, specifics[1])
-        else:
-            raise ImportError()
+        package.actions.__file__ = "<%s>" % fullname
+        package.actions.__loader__ = self
+        sys.modules.setdefault(fullname, package.actions)
+        return package.actions
 
 sys.meta_path.append(DynamicLoader())
 
