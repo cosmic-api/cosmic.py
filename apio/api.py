@@ -140,15 +140,15 @@ class API(BaseAPI):
         if kwargs.pop('register_api', True):
             ensure_bootstrapped()
             apio_index.actions.register_api(self.spec)
-        if 'dry_run' in kwargs.keys(): return
-        app = Flask(__name__, static_folder=None)
-        # Flask will catch exceptions to return a nice HTTP response
-        # in debug mode, we want things to FAIL!
-        app.config['PROPAGATE_EXCEPTIONS'] = debug
-        blueprint = self.get_blueprint(debug=debug)
-        app.register_blueprint(blueprint)
-        app.run(*args, **kwargs)
-
+        if 'dry_run' not in kwargs.keys(): # pragma: no cover
+            app = Flask(__name__, static_folder=None)
+            # Flask will catch exceptions to return a nice HTTP response
+            # in debug mode, we want things to FAIL!
+            app.config['PROPAGATE_EXCEPTIONS'] = debug
+            blueprint = self.get_blueprint(debug=debug)
+            app.register_blueprint(blueprint)
+            app.run(*args, **kwargs)
+ 
     def action(self, func):
         """Registers the given function as an API action. To be used as a 
         decorator.
