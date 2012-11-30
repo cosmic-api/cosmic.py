@@ -34,8 +34,7 @@ def get_arg_spec(func):
         "properties": {}
     }
     # Number of non-keyword arguments (required ones)
-    numargs = len(args)
-    if defaults: numargs -= len(defaults)
+    numargs = len(args) - (len(defaults) if defaults else 0)
 
     for i, arg in enumerate(args):
         if i < numargs:
@@ -69,9 +68,7 @@ def apply_to_action_func(func, data):
     if not data or type(data.json) is not dict:
         raise SpecError("%s expects an object" % func.__name__)
     # Number of non-keyword arguments (required ones)
-    numargs = len(args)
-    if defaults:
-        numargs -= len(defaults)
+    numargs = len(args) - (len(defaults) if defaults else 0)
     apply_args = []
     apply_kwargs = {}
     for i, arg in enumerate(args):

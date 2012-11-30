@@ -70,54 +70,60 @@ class TestBasicAction(TestCase):
         
         self.action = Action(cabbage)
 
+        def noop():
+            return None
+
+        self.noop = Action(noop)
+
         # Create test client for some HTTP tests
         app = Flask(__name__, static_folder=None)
-        app.add_url_rule('/', 'cabbage', self.action.get_view(), methods=["POST"])
+        app.add_url_rule('/cabbage', 'cabbage', self.action.get_view(), methods=["POST"])
+        app.add_url_rule('/noop', 'noop', self.noop.get_view(), methods=["POST"])
         self.werkzeug_client = app.test_client()
 
         # Test debug mode
         app_debug = Flask(__name__, static_folder=None)
         app_debug.config['PROPAGATE_EXCEPTIONS'] = True
-        app_debug.add_url_rule('/', 'cabbage', self.action.get_view(debug=True), methods=["POST"])
+        app_debug.add_url_rule('/cabbage', 'cabbage', self.action.get_view(debug=True), methods=["POST"])
         self.werkzeug_client_debug = app_debug.test_client()
 
     def test_successful_call(self):
         """First make sure provider returns the right HTTP response for the right HTTP request"""
-        res = self.werkzeug_client.post('/', data='{"spicy":true}', content_type="application/json")
+        res = self.werkzeug_client.post('/cabbage', data='{"spicy":true}', content_type="application/json")
         self.assertEqual(res.status_code, 200)
         self.assertEqual(json.loads(res.data), "12.0 pounds of kimchi")
 
     def test_wrong_method(self):
         """Actions can only be POST requests"""
-        res = self.werkzeug_client.get('/', data='{"spicy":false}')
+        res = self.werkzeug_client.get('/cabbage', data='{"spicy":false}')
         self.assertEqual(res.status_code, 405)
 
     def test_wrong_content_type(self):
         """Content type must be "application/json"""
-        res = self.werkzeug_client.post('/', data='{"spicy":false}', content_type="application/homer")
+        res = self.werkzeug_client.post('/cabbage', data='{"spicy":false}', content_type="application/homer")
         self.assertEqual(res.status_code, 400)
         # Make sure Content-Type is mentioned in the error
         self.assertRegexpMatches(res.data, "Content-Type")
 
     def test_invalid_json(self):
-        res = self.werkzeug_client.post('/', data='{"spicy":farse}', content_type="application/json")
+        res = self.werkzeug_client.post('/cabbage', data='{"spicy":farse}', content_type="application/json")
         self.assertEqual(res.status_code, 400)
         self.assertRegexpMatches(res.data, "Invalid JSON")
 
     def test_no_data(self):
-        res = self.werkzeug_client.post('/', data='', content_type="application/json")
+        res = self.werkzeug_client.post('/cabbage', data='', content_type="application/json")
         self.assertEqual(res.status_code, 400)
         self.assertRegexpMatches(res.data, "cannot be empty")
 
     def test_handled_exception(self):
-        res = self.werkzeug_client_debug.post('/', data='{"spicy":true,"servings":25}', content_type="application/json")
+        res = self.werkzeug_client_debug.post('/cabbage', data='{"spicy":true,"servings":25}', content_type="application/json")
         self.assertEqual(res.status_code, 501)
         self.assertEqual(json.loads(res.data), {
             "error": "Too many servings"
         })
 
     def test_unhandled_exception(self):
-        res = self.werkzeug_client.post('/', data='{"spicy":true,"servings":0}', content_type="application/json")
+        res = self.werkzeug_client.post('/cabbage', data='{"spicy":true,"servings":0}', content_type="application/json")
         self.assertEqual(res.status_code, 500)
         self.assertEqual(json.loads(res.data), {
             "error": "Internal Server Error"
@@ -125,7 +131,17 @@ class TestBasicAction(TestCase):
 
     def test_unhandled_exception_debug(self):
         with self.assertRaises(ZeroDivisionError):
-            self.werkzeug_client_debug.post('/', data='{"spicy":true,"servings":0}', content_type="application/json")
+            self.werkzeug_client_debug.post('/cabbage', data='{"spicy":true,"servings":0}', content_type="application/json")
+
+    def test_action_no_args_no_data(self):
+        res = self.werkzeug_client.post('/noop', data='', content_type="application/json")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data, "null")
+
+    def test_action_no_args_with_data(self):
+        res = self.werkzeug_client.post('/noop', data='true', content_type="application/json")
+        self.assertEqual(res.status_code, 400)
+        self.assertRegexpMatches(res.data, "must be empty")
 
 class TestActionDispatcher(TestCase):
     

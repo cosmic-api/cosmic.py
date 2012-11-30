@@ -123,7 +123,6 @@ class TestAPI(TestCase):
             mock_post.return_value.json = True
             self.cookbook.run(register_api=True, dry_run=True)
             mock_post.assert_called_with('http://api.apio.io/actions/register_api', headers={'Content-Type': 'application/json'}, data=json.dumps(self.cookbook.spec))
-
         
     def test_serialize(self):
         self.assertEqual(self.cookbook.spec, cookbook_spec)
@@ -138,28 +137,12 @@ class TestAPI(TestCase):
         res = self.werkzeug_client.get('/api/spec.json')
         self.assertEqual(json.loads(res.data), cookbook_spec)
 
-    def test_action_no_args_no_data(self):
-        res = self.werkzeug_client.post('/api/actions/noop', data='', content_type="application/json")
-        self.assertEqual(res.status_code, 200)
-        self.assertEqual(res.data, "null")
 
     def test_schema(self):
         store = {
             "http://json-schema.org/draft-03/schema": jsonschema.Draft3Validator.META_SCHEMA
         }
         jsonschema.validate(self.cookbook.spec, API_SCHEMA, schema_store=store)
-
-    def test_local_no_return_action(self):
-        res = self.werkzeug_client.post('/api/actions/noop', content_type="application/json")
-        self.assertEqual(res.status_code, 200)
-        self.assertEqual(json.loads(res.data), None)
-
-    def test_remote_no_return_action(self):
-        with patch.object(requests, 'post') as mock_post:
-            mock_post.return_value.status_code = 200
-            mock_post.return_value.json = None
-            self.assertEqual(self.remote_cookbook.actions.noop(), None)
-            mock_post.assert_called_with('http://localhost:8881/api/actions/noop', headers={'Content-Type': 'application/json'}, data="")
 
     def test_authentication_error(self):
         headers = { "X-Wacky": "Bananas" }
@@ -182,6 +165,21 @@ class TestAPI(TestCase):
         except APIError as e:
             self.assertEqual(unicode(e), "Blah")
 
+class TestRemoteAPI(TestCase):
+    
+    def setUp(self):
+        self.cookbook = RemoteAPI(cookbook_spec)
+
+    def test_remote_no_return_action(self):
+        with patch.object(requests, 'post') as mock_post:
+            mock_post.return_value.status_code = 200
+            mock_post.return_value.json = None
+            self.assertEqual(self.cookbook.actions.noop(), None)
+            mock_post.assert_called_with('http://localhost:8881/api/actions/noop', headers={'Content-Type': 'application/json'}, data="")
+
+    def test_properties(self):
+        self.assertEqual(self.cookbook.name, "cookbook")
+        self.assertEqual(self.cookbook.url, "http://localhost:8881/api")
 
 if __name__ == '__main__':
     unittest.main()

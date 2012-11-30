@@ -4,7 +4,7 @@ from mock import patch
 from unittest2 import TestCase
 
 from apio import api
-from tests.basic_test import index_spec, cookbook_spec
+from tests.api_test import index_spec, cookbook_spec
 
 class TestAPIImport(TestCase):
 
