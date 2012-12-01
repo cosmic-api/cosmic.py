@@ -32,7 +32,9 @@ class Action(object):
         """Wraps a user-defined action function to return a Flask view function
         that handles errors and returns proper HTTP responses"""
         def action_view():
-            if request.headers.get('Content-Type', None) != "application/json":
+            ct = request.headers.get('Content-Type', None)
+            cto = request.args.get('content_type_override', None)
+            if (cto and cto != "application/json") or (not cto and ct != "application/json"):
                 return json.dumps({
                     "error": 'Content-Type must be "application/json"'
                 }), 400

@@ -88,19 +88,27 @@ class TestBasicAction(TestCase):
         self.werkzeug_client_debug = app_debug.test_client()
 
     def test_successful_call(self):
-        """First make sure provider returns the right HTTP response for the right HTTP request"""
         res = self.werkzeug_client.post('/cabbage', data='{"spicy":true}', content_type="application/json")
         self.assertEqual(res.status_code, 200)
         self.assertEqual(json.loads(res.data), "12.0 pounds of kimchi")
 
+    def test_successful_call_with_content_type_override(self):
+        res = self.werkzeug_client.post('/cabbage?content_type_override=application%2Fjson', data='{"spicy":true}')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(json.loads(res.data), "12.0 pounds of kimchi")
+
     def test_wrong_method(self):
-        """Actions can only be POST requests"""
         res = self.werkzeug_client.get('/cabbage', data='{"spicy":false}')
         self.assertEqual(res.status_code, 405)
 
     def test_wrong_content_type(self):
-        """Content type must be "application/json"""
         res = self.werkzeug_client.post('/cabbage', data='{"spicy":false}', content_type="application/homer")
+        self.assertEqual(res.status_code, 400)
+        # Make sure Content-Type is mentioned in the error
+        self.assertRegexpMatches(res.data, "Content-Type")
+
+    def test_wrong_content_type_override(self):
+        res = self.werkzeug_client.post('/cabbage?content_type_override=application%2Fhomer', data='{"spicy":false}')
         self.assertEqual(res.status_code, 400)
         # Make sure Content-Type is mentioned in the error
         self.assertRegexpMatches(res.data, "Content-Type")
