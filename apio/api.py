@@ -149,12 +149,14 @@ class API(BaseAPI):
             app.register_blueprint(blueprint)
             app.run(*args, **kwargs)
  
-    def action(self, func):
+    def action(self, accepts=None, returns=None):
         """Registers the given function as an API action. To be used as a 
         decorator.
         """
-        self.actions.add(Action(func))
-        return func
+        def wrapper(func):
+            self.actions.add(Action(func, accepts=accepts, returns=returns))
+            return func
+        return wrapper
 
     def authentication(self, func):
         """Registers the given function as an authentication function for

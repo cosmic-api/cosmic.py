@@ -155,3 +155,60 @@ class TestSerializeActionArguments(TestCase):
     def test_mixed_args_and_kwargs(self):
         with self.assertRaises(SpecError):
             serialize_action_arguments("universe", when="now")
+
+class TestSchemaIsCompatible(TestCase):
+
+    def test_base_cases(self):
+        assert schema_is_compatible({"type": "any"}, {"type": "object"})
+        assert schema_is_compatible({"type": "any"}, {"type": "array"})
+
+    def test_object_keys_mismatch(self):
+        g = {
+            "type": "object",
+            "properties": {
+                "a": { "type": "any" },
+                "b": { "type": "any" }
+            }
+        }
+        d = {
+            "type": "object",
+            "properties": {
+                "a": { "type": "any" },
+                "c": { "type": "any" }
+            }
+        }
+        assert not schema_is_compatible(g, d)
+
+    def test_object_match(self):
+        g = {
+            "type": "object",
+            "properties": {
+                "a": { "type": "any" },
+                "b": { "type": "any", "required": True }
+            }
+        }
+        d = {
+            "type": "object",
+            "properties": {
+                "a": { "type": "boolean", "required": False },
+                "b": { "type": "boolean", "required": True }
+            }
+        }
+        assert schema_is_compatible(g, d)
+
+    def test_object_no_match(self):
+        g = {
+            "type": "object",
+            "properties": {
+                "a": { "type": "any" },
+                "b": { "type": "any", "required": True }
+            }
+        }
+        d = {
+            "type": "object",
+            "properties": {
+                "a": { "type": "boolean" },
+                "b": { "type": "boolean" }
+            }
+        }
+        assert not schema_is_compatible(g, d)

@@ -9,18 +9,23 @@ from apio.exceptions import APIError, SpecError, AuthenticationError
 
 class Action(object):
 
-    def __init__(self, func):
+    def __init__(self, func, accepts=None, returns=None):
         self.name = func.__name__
+        if not returns:
+            returns = { "type": "any" }
+
         self.spec = {
             "name": self.name,
-            "returns": {
-                "type": "any"
-            }
+            "returns": returns
         }
         self.raw_func = func
         arg_spec = get_arg_spec(func)
-        if arg_spec:
-            self.spec["accepts"] = arg_spec
+        
+        if arg_spec and not accepts:
+            accepts = arg_spec
+
+        if accepts:
+            self.spec["accepts"] = accepts
 
     def __call__(self, *args, **kwargs):
         # This seems redundant, but is necessary to make sure local

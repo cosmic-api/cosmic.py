@@ -97,3 +97,29 @@ def serialize_action_arguments(*args, **kwargs):
     if len(args) == 0 and len(kwargs) == 0:
         return None
     raise SpecError("Action must be called either with one argument or with one or more keyword arguments")
+
+def schema_is_compatible(general, detailed):
+    """Given two JSON Schemas, checks if the detailed schema is compatible with
+    the general schema. The general schema is a subset of JSON schema as returned by
+    tools.get_arg_spec, the special schema is an arbitrary JSON schema as passed in by
+    the user.
+    """
+    if general["type"] == "any":
+        return True
+    # If not "any", it has to be an "object"
+    if set(general["properties"].keys()) != set(detailed["properties"].keys()):
+        return False
+    for attr in general["properties"].keys():
+        # Check for required attributes, False by default
+        try:
+            req_general = general["properties"][attr]["required"]
+        except KeyError:
+            req_general = False
+        try:
+            req_detailed = detailed["properties"][attr]["required"]
+        except KeyError:
+            req_detailed = False
+        if req_general != req_detailed:
+            return False
+    return True
+        

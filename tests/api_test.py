@@ -75,7 +75,7 @@ class TestAPI(TestCase):
 
         self.cookbook = API('cookbook', "http://localhost:8881/api")
 
-        @self.cookbook.action
+        @self.cookbook.action()
         def cabbage(spicy, capitalize=False):
             user = self.cookbook.authenticate()
             if spicy:
@@ -87,7 +87,7 @@ class TestAPI(TestCase):
             else:
                 return c
 
-        @self.cookbook.action
+        @self.cookbook.action()
         def noop():
             return None
 
