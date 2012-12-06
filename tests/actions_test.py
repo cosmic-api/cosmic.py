@@ -58,7 +58,7 @@ class TestBasicRemoteAction(TestCase):
 class TestBasicAction(TestCase):
 
     def setUp(self):
-        
+
         def cabbage(spicy, servings=1):
             if servings > 24:
                 raise APIError("Too many servings", http_code=501)
@@ -67,7 +67,7 @@ class TestBasicAction(TestCase):
             else:
                 c = "sauerkraut"
             return "%s pounds of %s" % (12.0 / servings, c)
-        
+
         self.action = Action(cabbage)
 
         def noop():
@@ -152,7 +152,7 @@ class TestBasicAction(TestCase):
         self.assertRegexpMatches(res.data, "must be empty")
 
 class TestActionAnnotation(TestCase):
-    
+
     def test_no_args_no_accepts(self):
         def func():
             pass
@@ -182,15 +182,18 @@ class TestActionAnnotation(TestCase):
             pass
         accepts = {
             "type": "object",
-            "properties": {
-                "a": {
-                    "type": "boolean",
-                    "required": True
+            "properties": [
+                {
+                    "name": "a",
+                    "required": True,
+                    "schema": {"type": "boolean"}
                 },
-                "b": {
-                    "type": "array",
+                {
+                    "name": "b",
+                    "required": False,
+                    "schema": {"type": "int"}
                 }
-            }
+            ]
         }
         action = Action(func, accepts=accepts)
         self.assertEqual(action.spec['accepts'], accepts)
@@ -205,7 +208,7 @@ class TestActionAnnotation(TestCase):
             action = Action(func, accepts=accepts)
 
 class TestActionDispatcher(TestCase):
-    
+
     def setUp(self):
         self.dispatcher = ActionDispatcher()
         length = Mock(return_value=3)

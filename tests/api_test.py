@@ -35,10 +35,18 @@ cookbook_spec = {
             'name': 'cabbage',
             'accepts': {
                 'type': 'object',
-                'properties': {
-                    'spicy': { 'type': 'any', 'required': True },
-                    'capitalize': { 'type': 'any' }
-                }
+                'properties': [
+                    {
+                        "name": "spicy",
+                        "required": True,
+                        "schema": {"type": "any"}
+                    },
+                    {
+                        "name": "capitalize",
+                        "required": False,
+                        "schema": {"type": "any"}
+                    }
+                ]
             },
             'returns': {
                 'type': 'any'

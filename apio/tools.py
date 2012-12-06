@@ -31,17 +31,17 @@ def get_arg_spec(func):
     # each argument, each property being of type 'any'
     spec = {
         "type": "object",
-        "properties": {}
+        "properties": []
     }
     # Number of non-keyword arguments (required ones)
     numargs = len(args) - (len(defaults) if defaults else 0)
 
     for i, arg in enumerate(args):
-        if i < numargs:
-            s = { "type": "any", "required": True }
-        else:
-            s = { "type": "any" }
-        spec["properties"][arg] = s
+        spec["properties"].append({
+            "name": arg,
+            "schema": {"type": "any"},
+            "required": i < numargs
+        })
     return spec
 
 def apply_to_action_func(func, data):
@@ -110,21 +110,14 @@ def schema_is_compatible(general, detailed):
         return True
     # If not "any", general has to be an "object". Make sure detailed
     # is an object too
-    if detailed["type"] != "object" or "properties" not in detailed.keys():
+    if detailed["type"] != "object":
         return False
-    if set(general["properties"].keys()) != set(detailed["properties"].keys()):
+    if len(general["properties"]) != len(detailed["properties"]):
         return False
-    for attr in general["properties"].keys():
-        # Check for required attributes, False by default
-        try:
-            req_general = general["properties"][attr]["required"]
-        except KeyError:
-            req_general = False
-        try:
-            req_detailed = detailed["properties"][attr]["required"]
-        except KeyError:
-            req_detailed = False
-        if req_general != req_detailed:
+    for i in range(len(general["properties"])):
+        gp = general["properties"][i]
+        dp = detailed["properties"][i]
+        if gp["name"] != dp["name"] or gp["required"] != dp["required"]:
             return False
     return True
 

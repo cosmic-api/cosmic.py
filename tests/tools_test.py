@@ -23,45 +23,54 @@ class TestGetArgSpec(TestCase):
         def f(x, y): pass
         self.assertEqual(get_arg_spec(f), {
             'type': 'object',
-            'properties': {
-                'x': {
-                    'type': 'any',
-                    'required': True
+            'properties': [
+                {
+                    "name": "x",
+                    "required": True,
+                    "schema": {"type": "any"}
                 },
-                'y': {
-                    'type': 'any',
-                    'required': True
+                {
+                    "name": "y",
+                    "required": True,
+                    "schema": {"type": "any"}
                 }
-            }
+            ]
         })
 
     def test_multiple_args_and_kwargs(self):
         def f(x, y=1): pass
         self.assertEqual(get_arg_spec(f), {
             'type': 'object',
-            'properties': {
-                'x': {
-                    'type': 'any',
-                    'required': True
+            'properties': [
+                {
+                    "name": "x",
+                    "required": True,
+                    "schema": {"type": "any"}
                 },
-                'y': {
-                    'type': 'any'
+                {
+                    "name": "y",
+                    "required": False,
+                    "schema": {"type": "any"}
                 }
-            }
+            ]
         })
 
     def test_multiple_kwargs(self):
         def f(x=0, y=1): pass
         self.assertEqual(get_arg_spec(f), {
             'type': 'object',
-            'properties': {
-                'x': {
-                    'type': 'any'
+            'properties': [
+                {
+                    "name": "x",
+                    "required": False,
+                    "schema": {"type": "any"}
                 },
-                'y': {
-                    'type': 'any'
+                {
+                    "name": "y",
+                    "required": False,
+                    "schema": {"type": "any"}
                 }
-            }
+            ]
         })
 
     def test_splats(self):
@@ -169,51 +178,112 @@ class TestSchemaIsCompatible(TestCase):
     def test_object_keys_mismatch(self):
         g = {
             "type": "object",
-            "properties": {
-                "a": { "type": "any" },
-                "b": { "type": "any" }
-            }
+            "properties": [
+                {
+                    "name": "a",
+                    "required": False,
+                    "schema": {"type": "any"}
+                },
+                {
+                    "name": "b",
+                    "required": False,
+                    "schema": {"type": "any"}
+                }
+            ]
         }
         d = {
             "type": "object",
-            "properties": {
-                "a": { "type": "any" },
-                "c": { "type": "any" }
-            }
+            "properties": [
+                {
+                    "name": "a",
+                    "required": False,
+                    "schema": {"type": "any"}
+                },
+                {
+                    "name": "c",
+                    "required": False,
+                    "schema": {"type": "any"}
+                }
+            ]
+        }
+        assert not schema_is_compatible(g, d)
+
+    def test_object_order_mismatch(self):
+        g = {
+            "type": "object",
+            "properties": [
+                {
+                    "name": "a",
+                    "required": False,
+                    "schema": {"type": "any"}
+                },
+                {
+                    "name": "b",
+                    "required": False,
+                    "schema": {"type": "any"}
+                }
+            ]
+        }
+        d = {
+            "type": "object",
+            "properties": [
+                {
+                    "name": "b",
+                    "required": False,
+                    "schema": {"type": "any"}
+                },
+                {
+                    "name": "a",
+                    "required": False,
+                    "schema": {"type": "any"}
+                }
+            ]
         }
         assert not schema_is_compatible(g, d)
 
     def test_object_match(self):
         g = {
             "type": "object",
-            "properties": {
-                "a": { "type": "any" },
-                "b": { "type": "any", "required": True }
-            }
+            "properties": [
+                {
+                    "name": "a",
+                    "required": True,
+                    "schema": {"type": "any"}
+                }
+            ]
         }
         d = {
             "type": "object",
-            "properties": {
-                "a": { "type": "boolean", "required": False },
-                "b": { "type": "boolean", "required": True }
-            }
+            "properties": [
+                {
+                    "name": "a",
+                    "required": True,
+                    "schema": {"type": "any"}
+                }
+            ]
         }
         assert schema_is_compatible(g, d)
 
     def test_object_no_match(self):
         g = {
             "type": "object",
-            "properties": {
-                "a": { "type": "any" },
-                "b": { "type": "any", "required": True }
-            }
+            "properties": [
+                {
+                    "name": "a",
+                    "required": True,
+                    "schema": {"type": "any"}
+                }
+            ]
         }
         d = {
             "type": "object",
-            "properties": {
-                "a": { "type": "boolean" },
-                "b": { "type": "boolean" }
-            }
+            "properties": [
+                {
+                    "name": "a",
+                    "required": False,
+                    "schema": {"type": "any"}
+                }
+            ]
         }
         assert not schema_is_compatible(g, d)
 
@@ -232,16 +302,12 @@ class TestNormalize(TestCase):
                 {
                     "name": "foo",
                     "required": True,
-                    "schema": {
-                        "type": "bool"
-                    }
+                    "schema": {"type": "bool"}
                 },
                 {
                     "name": "bar",
                     "required": False,
-                    "schema": {
-                        "type": "int"
-                    }
+                    "schema": {"type": "int"}
                 }
             ]
         }
