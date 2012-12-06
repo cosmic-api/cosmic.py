@@ -4,7 +4,7 @@ import requests
 from flask import request
 from flask.exceptions import JSONBadRequest
 
-from apio.tools import get_arg_spec, serialize_action_arguments, apply_to_action_func, JSONPayload
+from apio.tools import get_arg_spec, serialize_action_arguments, apply_to_action_func, JSONPayload, schema_is_compatible
 from apio.exceptions import APIError, SpecError, AuthenticationError
 
 class Action(object):
@@ -20,9 +20,25 @@ class Action(object):
         }
         self.raw_func = func
         arg_spec = get_arg_spec(func)
+
+        # if accepts:
+        #     try:
+        #         validate(Draft3Validator.META_SCHEMA, accepts)
+        #     except SchemaError:
+        #         raise SpecError("'%s' was passed an invalid accepts schema" % self.name)
+
+        if not arg_spec and not accepts:
+            return
         
         if arg_spec and not accepts:
             accepts = arg_spec
+        
+        if not arg_spec and accepts:
+            raise SpecError("'%s' is said to take arguments, but doesn't" % self.name)
+
+        if arg_spec and accepts:
+            if not schema_is_compatible(arg_spec, accepts):
+                raise SpecError("The accepts parameter of '%s' action is incompatible with the function's arguments")
 
         if accepts:
             self.spec["accepts"] = accepts

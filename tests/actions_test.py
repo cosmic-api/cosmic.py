@@ -151,6 +151,59 @@ class TestBasicAction(TestCase):
         self.assertEqual(res.status_code, 400)
         self.assertRegexpMatches(res.data, "must be empty")
 
+class TestActionAnnotation(TestCase):
+    
+    def test_no_args_no_accepts(self):
+        def func():
+            pass
+        action = Action(func)
+        self.assertTrue('accepts' not in action.spec.keys())
+
+    def test_args_no_accepts(self):
+        def func(a=None):
+            pass
+        action = Action(func)
+        self.assertEqual(action.spec['accepts'], {"type": "any"})
+
+    def test_no_args_accepts(self):
+        def func():
+            pass
+        with self.assertRaisesRegexp(SpecError, "is said to take arguments"):
+            action = Action(func, accepts={ "type": "any" })
+
+    def test_args_accepts_incompatible(self):
+        def func(a, b=1):
+            pass
+        with self.assertRaisesRegexp(SpecError, "incompatible"):
+            action = Action(func, accepts={ "type": "boolean" })
+
+    def test_args_accepts_compatible(self):
+        def func(a, b=1):
+            pass
+        accepts = {
+            "type": "object",
+            "properties": {
+                "a": {
+                    "type": "boolean",
+                    "required": True
+                },
+                "b": {
+                    "type": "array",
+                }
+            }
+        }
+        action = Action(func, accepts=accepts)
+        self.assertEqual(action.spec['accepts'], accepts)
+
+    def _test_invalid_schema(self):
+        def func(a, b=1):
+            pass
+        accepts = {
+            "type": "bobject"
+        }
+        with self.assertRaisesRegexp(SpecError, "invalid"):
+            action = Action(func, accepts=accepts)
+
 class TestActionDispatcher(TestCase):
     
     def setUp(self):
