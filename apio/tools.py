@@ -130,26 +130,31 @@ def normalize(schema, datum):
     # Wildcard
     if st == "any":
         return datum
-    # Base cases
-    types = {
-        "int": int,
-        "string": unicode,
-        "bool": bool,
-        "float": float
-    }
-    if st in types.keys() and dt == types[st]:
+    elif st == "integer":
+        if dt == int:
+            return datum
+        # A float in place of an int is okay, as long as its
+        # fractional part is 0
+        if dt == float and datum.is_integer():
+            return int(datum)
+    elif st == "float":
+        if dt == float:
+            return datum
+        # An int in place of a float is always okay, just cast it for
+        # normalization's sake
+        if dt == int:
+            return float(datum)
+    elif st == "string":
+        if dt == unicode:
+            return datum
+        # Cast to unicode
+        if dt == str:
+            return unicode(datum)
+    elif st == "boolean" and dt == bool:
         return datum
-    # A float in place of an int is okay, as long as its fractional
-    # part is 0
-    if st == "int" and dt == float and datum.is_integer():
-        return int(datum)
-    # An int in place of a float is always okay, just cast it for
-    # normalization's sake
-    if st == "float" and dt == int:
-        return float(datum)
-    if st == "array" and dt == list:
+    elif st == "array" and dt == list:
         return [normalize(schema["items"], item) for item in datum]
-    if st == "object" and dt == dict:
+    elif st == "object" and dt == dict:
         ret = {}
         required = {}
         optional = {}
@@ -165,9 +170,69 @@ def normalize(schema, datum):
         if extra:
             raise ValidationError("Unexpected properties: %s" % list(extra))
         for prop, schema in optional.items() + required.items():
-            ret[prop] = normalize(schema, datum[prop])
+            if prop in datum.keys():
+                ret[prop] = normalize(schema, datum[prop])
         return ret
-    # Specify that we want _unicode_ strings, not str
-    if st == "string" and dt == str:
-        raise ValidationError("Expected unicode string, got %s" % dt)
-    raise ValidationError("Expected %s, got %s" % (st, dt,))
+    # Validate schema type using META_SCHEMA
+    elif st == "schema":
+        # First test the basic structure by recursing
+        normalized = normalize(META_SCHEMA, datum)
+        prop_type = normalized["type"]
+        # type is array if and only if items specified
+        if (prop_type == "array") != ("items" in normalized.keys()):
+            raise ValidationError("Invalid %s schema" % prop_type)
+        # type is object if and only if properties specified
+        if (prop_type == "object") != ("properties" in normalized.keys()):
+            raise ValidationError("Invalid %s schema" % prop_type)
+        # Check for duplicate properties definition
+        if prop_type == "object":
+            props = [prop["name"] for prop in normalized["properties"]]
+            if len(props) > len(set(props)):
+                raise ValidationError("Duplicate properties")
+        return normalized
+    elif st not in ["integer", "float", "string", "object", "array", "boolean", "schema"]:
+        raise ValidationError("Unknown type: %s" % st)
+    raise ValidationError("Invalid %s: %s" % (st, datum,))
+
+META_SCHEMA = {
+    "type": "object",
+    "properties": [
+        {
+            "name": "type",
+            "required": True,
+            "schema": {"type": "string"}
+        },
+        {
+            "name": "items",
+            "required": False,
+            "schema": {"type": "schema"}
+        },
+        {
+            "name": "properties",
+            "required": False,
+            "schema": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": [
+                        {
+                            "name": "name",
+                            "required": True,
+                            "schema": {"type": "string"}
+                        },
+                        {
+                            "name": "required",
+                            "required": True,
+                            "schema": {"type": "boolean"}
+                        },
+                        {
+                            "name": "schema",
+                            "required": True,
+                            "schema": {"type": "schema"}
+                        }
+                    ]
+                }
+            }
+        }
+    ]
+}

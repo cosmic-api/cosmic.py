@@ -29,10 +29,10 @@ class Action(object):
 
         if not arg_spec and not accepts:
             return
-        
+
         if arg_spec and not accepts:
             accepts = arg_spec
-        
+
         if not arg_spec and accepts:
             raise SpecError("'%s' is said to take arguments, but doesn't" % self.name)
 

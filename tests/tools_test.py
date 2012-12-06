@@ -207,8 +207,7 @@ class TestSchemaIsCompatible(TestCase):
             ]
         }
         assert not schema_is_compatible(g, d)
-
-    def test_object_order_mismatch(self):
+    def test_object_keys_mismatch(self):
         g = {
             "type": "object",
             "properties": [
@@ -228,12 +227,40 @@ class TestSchemaIsCompatible(TestCase):
             "type": "object",
             "properties": [
                 {
-                    "name": "b",
+                    "name": "a",
                     "required": False,
                     "schema": {"type": "any"}
                 },
                 {
+                    "name": "c",
+                    "required": False,
+                    "schema": {"type": "any"}
+                }
+            ]
+        }
+        assert not schema_is_compatible(g, d)
+
+    def test_object_number_mismatch(self):
+        g = {
+            "type": "object",
+            "properties": [
+                {
                     "name": "a",
+                    "required": False,
+                    "schema": {"type": "any"}
+                }
+            ]
+        }
+        d = {
+            "type": "object",
+            "properties": [
+                {
+                    "name": "a",
+                    "required": False,
+                    "schema": {"type": "any"}
+                },
+                {
+                    "name": "b",
                     "required": False,
                     "schema": {"type": "any"}
                 }
@@ -293,7 +320,7 @@ class TestNormalize(TestCase):
         self.array_schema = {
             "type": "array",
             "items": {
-                "type": "bool"
+                "type": "boolean"
             }
         }
         self.object_schema = {
@@ -302,41 +329,59 @@ class TestNormalize(TestCase):
                 {
                     "name": "foo",
                     "required": True,
-                    "schema": {"type": "bool"}
+                    "schema": {"type": "boolean"}
                 },
                 {
                     "name": "bar",
                     "required": False,
-                    "schema": {"type": "int"}
+                    "schema": {"type": "integer"}
                 }
             ]
         }
 
     def test_base_cases_okay(self):
         self.assertEqual(normalize({"type": "any"}, 1), 1)
-        self.assertEqual(normalize({"type": "int"}, 1), 1)
-        self.assertEqual(normalize({"type": "bool"}, True), True)
+        self.assertEqual(normalize({"type": "integer"}, 1), 1)
+        self.assertEqual(normalize({"type": "boolean"}, True), True)
+        self.assertEqual(normalize({"type": "string"}, "omg"), u"omg")
         self.assertEqual(normalize({"type": "string"}, u"omg"), u"omg")
         self.assertEqual(normalize({"type": "float"}, 1.0), 1.0)
 
+    def test_base_cases_fail(self):
+        with self.assertRaisesRegexp(ValidationError, "Invalid integer"):
+            normalize({"type": "integer"}, 1.1)
+        with self.assertRaisesRegexp(ValidationError, "Invalid boolean"):
+            normalize({"type": "boolean"}, 0)
+        with self.assertRaisesRegexp(ValidationError, "Invalid string"):
+            normalize({"type": "string"}, 0)
+
+        with self.assertRaisesRegexp(ValidationError, "Invalid float"):
+            normalize({"type": "float"}, True)
+        with self.assertRaisesRegexp(ValidationError, "Invalid array"):
+            normalize(self.array_schema, ("no", "tuples",))
+        with self.assertRaisesRegexp(ValidationError, "Invalid object"):
+            normalize(self.object_schema, [])
+        # Schema type is validated as an object first and foremost,
+        # hence the error message
+        with self.assertRaisesRegexp(ValidationError, "Invalid object"):
+            normalize({"type": "schema"}, True)
+
+    def test_unknown_type(self):
+        with self.assertRaisesRegexp(ValidationError, "Unknown type"):
+            normalize({"type": "number"}, 1.1)
+
     def test_float_for_int(self):
-        self.assertEqual(normalize({"type": "int"}, 2.0), 2)
+        self.assertEqual(normalize({"type": "integer"}, 2.0), 2)
 
     def test_cast_int_to_float(self):
         self.assertEqual(normalize({"type": "float"}, 1), 1.0)
-
-    def test_base_case_errors(self):
-        with self.assertRaisesRegexp(ValidationError, "Expected bool"):
-            normalize({"type": "bool"}, 1)
-        with self.assertRaisesRegexp(ValidationError, "unicode string"):
-            normalize({"type": "string"}, "not unicode")
 
     def test_array_recurse_okay(self):
         res = normalize(self.array_schema, [True, False])
         self.assertEqual(res, [True, False])
 
     def test_array_recurse_fail(self):
-        with self.assertRaisesRegexp(ValidationError, "Expected bool"):
+        with self.assertRaisesRegexp(ValidationError, "Invalid boolean"):
             normalize(self.array_schema, [True, False, 1])
 
     def test_object_recurse_okay(self):
@@ -350,3 +395,36 @@ class TestNormalize(TestCase):
     def test_object_recurse_unexpected(self):
         with self.assertRaisesRegexp(ValidationError, "Unexpected properties"):
             normalize(self.object_schema, {"foo": True, "barr": 2.0})
+
+    def test_schema_okay(self):
+        self.assertEqual(normalize({"type": "schema"}, self.object_schema), self.object_schema)
+
+    def test_schema_array_no_items(self):
+        s = self.array_schema.copy()
+        s.pop("items")
+        with self.assertRaisesRegexp(ValidationError, "Invalid array schema"):
+            normalize({"type": "schema"}, s)
+
+    def test_schema_items_not_array(self):
+        s = self.array_schema.copy()
+        s["type"] = "object"
+        with self.assertRaisesRegexp(ValidationError, "Invalid object schema"):
+            normalize({"type": "schema"}, s)
+
+    def test_schema_object_no_properties(self):
+        s = self.object_schema.copy()
+        s.pop("properties")
+        with self.assertRaisesRegexp(ValidationError, "Invalid object schema"):
+            normalize({"type": "schema"}, s)
+
+    def test_schema_properties_not_object(self):
+        s = self.object_schema.copy()
+        s["type"] = "array"
+        with self.assertRaisesRegexp(ValidationError, "Invalid array schema"):
+            normalize({"type": "schema"}, s)
+
+    def test_schema_duplicate_properties(self):
+        s = self.object_schema.copy()
+        s["properties"][1]["name"] = "foo"
+        with self.assertRaisesRegexp(ValidationError, "Duplicate properties"):
+            normalize({"type": "schema"}, s)
