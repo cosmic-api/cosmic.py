@@ -84,8 +84,8 @@ class Action(object):
                     return json.dumps({
                         "error": "Validation failed"
                     }), 400
-            # Run the actual function
             try:
+                # Run the actual function
                 data = apply_to_action_func(self.raw_func, payload)
                 # May raise ValidationError, will be rendered as 500 below
                 data = normalize(self.spec['returns'], data)
@@ -115,11 +115,16 @@ class RemoteAction(object):
 
     def __call__(self, *args, **kwargs):
         json_data = serialize_action_arguments(*args, **kwargs)
+        if not json_data and 'accepts' in self.spec:
+            raise SpecError("%s takes arguments" % self.spec['name'])
         if json_data:
+            try:
+                normalized = normalize(self.spec['accepts'], json_data.json)
+                json_data = JSONPayload(normalized)
+            except ValidationError as err:
+                raise SpecError(err.args[0])
             data = json.dumps(json_data.json)
         else:
-            if 'accepts' in self.spec:
-                raise SpecError("%s takes arguments" % self.spec['name'])
             data = ""
         url = self.api_url + '/actions/' + self.spec['name']
         headers = { 'Content-Type': 'application/json' }

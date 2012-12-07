@@ -17,10 +17,18 @@ class TestBasicRemoteAction(TestCase):
             'name': 'cabbage',
             'accepts': {
                 'type': 'object',
-                'properties': {
-                    'spicy': { 'type': 'any', 'required': True },
-                    'capitalize': { 'type': 'any' }
-                }
+                'properties': [
+                    {
+                        "name": 'spicy',
+                        "required": True,
+                        "schema": { 'type': 'boolean' }
+                    },
+                    {
+                        "name": 'capitalize',
+                        "required": False,
+                        "schema": { 'type': 'any' }
+                    }
+                ]
             },
             'returns': {
                 'type': 'any'
@@ -43,16 +51,20 @@ class TestBasicRemoteAction(TestCase):
     def test_call_failed_good_response(self):
         with patch.object(requests, 'post') as mock_post:
             mock_post.return_value.status_code = 500
-            mock_post.return_value.json = { 'error': 'Too many servings' }
-            with self.assertRaisesRegexp(APIError, "Too many servings"):
-                self.action(spicy=True, servings=25)
+            mock_post.return_value.json = { 'error': 'Cannot capitalize' }
+            with self.assertRaisesRegexp(APIError, "Cannot capitalize"):
+                self.action(spicy=True, capitalize=True)
 
     def test_call_failed_bad_response(self):
         with patch.object(requests, 'post') as mock_post:
             mock_post.return_value.status_code = 500
             mock_post.return_value.json = None
             with self.assertRaisesRegexp(APIError, "improper error response"):
-                self.action(True)
+                self.action(spicy=True)
+
+    def test_call_with_bad_args(self):
+        with self.assertRaisesRegexp(SpecError, "Invalid boolean"):
+            self.action(spicy="yes")
 
 
 class TestBasicAction(TestCase):
