@@ -75,13 +75,20 @@ class Action(object):
                 return json.dumps({
                     "error": "%s takes arguments. Request content cannot be empty" % self.name
                 }), 400
-            try:
-                # Validate first
-                if payload:
+            # Validate incoming data
+            if payload:
+                try:
                     normalized = normalize(self.spec['accepts'], payload.json)
                     payload = JSONPayload(normalized)
+                except ValidationError:
+                    return json.dumps({
+                        "error": "Validation failed"
+                    }), 400
+            # Run the actual function
+            try:
                 data = apply_to_action_func(self.raw_func, payload)
-            # If the user threw an APIError
+                # May raise ValidationError, will be rendered as 500 below
+                data = normalize(self.spec['returns'], data)
             except APIError as err:
                 return json.dumps({
                     "error": err.args[0]
@@ -90,10 +97,6 @@ class Action(object):
                 return json.dumps({
                     "error": "Authentication failed"
                 }), 401
-            except ValidationError:
-                return json.dumps({
-                    "error": "Validation failed"
-                }), 400
             # Any other exception should be handled gracefully
             except Exception as e:
                 if debug: raise e
