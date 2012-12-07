@@ -115,8 +115,9 @@ class API(BaseAPI):
         return spec
 
     def get_blueprint(self, debug=False):
-        """Returns a Flask Blueprint object with all of the API's routes set up.
-        Use this if you want to integrate your API into a Flask application.
+        """Returns a Flask Blueprint object with all of the API's
+        routes set up.  Use this if you want to integrate your API
+        into a Flask application.
         """
         blueprint = Blueprint(self.name, __name__)
         for action in self.actions:
@@ -131,9 +132,10 @@ class API(BaseAPI):
         return blueprint
 
     def run(self, *args, **kwargs):
-        """Runs the API as a Flask app. All arguments channelled into Flask#run
-        except for `register_api`, which is a boolean that defaults to True
-        and determines whether you want your API pushed to APIO index.
+        """Runs the API as a Flask app. All arguments channelled into
+        Flask#run except for `register_api`, which is a boolean that
+        defaults to True and determines whether you want your API
+        pushed to APIO index.
         """
 
         debug = kwargs.get('debug', False)
@@ -142,16 +144,16 @@ class API(BaseAPI):
             apio_index.actions.register_api(self.spec)
         if 'dry_run' not in kwargs.keys(): # pragma: no cover
             app = Flask(__name__, static_folder=None)
-            # Flask will catch exceptions to return a nice HTTP response
-            # in debug mode, we want things to FAIL!
+            # Flask will catch exceptions to return a nice HTTP
+            # response in debug mode, we want things to FAIL!
             app.config['PROPAGATE_EXCEPTIONS'] = debug
             blueprint = self.get_blueprint(debug=debug)
             app.register_blueprint(blueprint)
             app.run(*args, **kwargs)
- 
+
     def action(self, accepts=None, returns=None):
-        """Registers the given function as an API action. To be used as a 
-        decorator.
+        """Registers the given function as an API action. To be used
+        as a decorator.
         """
         def wrapper(func):
             self.actions.add(Action(func, accepts=accepts, returns=returns))
@@ -159,9 +161,10 @@ class API(BaseAPI):
         return wrapper
 
     def authentication(self, func):
-        """Registers the given function as an authentication function for
-        the API. The authentication function takes a dict of headers as its
-        single argument and returns user-related data or raises AuthenticationError
+        """Registers the given function as an authentication function
+        for the API. The authentication function takes a dict of
+        headers as its single argument and returns user-related data
+        or raises AuthenticationError
         """
         def authenticate():
             return func(request.headers)
@@ -170,8 +173,8 @@ class API(BaseAPI):
 
     @staticmethod
     def load(name_or_url):
-        """Given an API name, loads the API and returns an API object. If given
-        a spec URL, loads the API from the spec.
+        """Given an API name, loads the API and returns an API
+        object. If given a spec URL, loads the API from the spec.
         """
         if name_or_url.startswith('http'):
             res = requests.get(name_or_url)
@@ -182,7 +185,7 @@ class API(BaseAPI):
         api = RemoteAPI(spec)
         return api
 
- 
+
 class RemoteAPI(BaseAPI):
 
     def __init__(self, spec):

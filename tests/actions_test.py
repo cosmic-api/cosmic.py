@@ -153,6 +153,27 @@ class TestBasicAction(TestCase):
 
 class TestActionAnnotation(TestCase):
 
+    def setUp(self):
+        self.a_schema = {
+            "type": "object",
+            "properties": [
+                {
+                    "name": "a",
+                    "required": True,
+                    "schema": {"type": "boolean"}
+                },
+                {
+                    "name": "b",
+                    "required": False,
+                    "schema": {"type": "int"}
+                }
+            ]
+        }
+        self.a_bad_schema = {
+            "type": "object",
+            # Oops.. no properties
+        }
+
     def test_no_args_no_accepts(self):
         def func():
             pass
@@ -177,32 +198,31 @@ class TestActionAnnotation(TestCase):
         with self.assertRaisesRegexp(SpecError, "incompatible"):
             action = Action(func, accepts={ "type": "boolean" })
 
-    def test_args_accepts_compatible(self):
+    def test_args_accepts_compatible_returns_compatible(self):
         def func(a, b=1):
             pass
-        accepts = {
-            "type": "object",
-            "properties": [
-                {
-                    "name": "a",
-                    "required": True,
-                    "schema": {"type": "boolean"}
-                },
-                {
-                    "name": "b",
-                    "required": False,
-                    "schema": {"type": "int"}
-                }
-            ]
-        }
-        action = Action(func, accepts=accepts)
-        self.assertEqual(action.spec['accepts'], accepts)
+        action = Action(func, accepts=self.a_schema, returns=self.a_schema)
+        self.assertEqual(action.spec['accepts'], self.a_schema)
+        self.assertEqual(action.spec['returns'], self.a_schema)
 
-    def _test_invalid_schema(self):
+    def test_accepts_invalid_schema(self):
+        def func(a, b=1):
+            pass
+        with self.assertRaisesRegexp(SpecError, "invalid accepts"):
+            action = Action(func, accepts=self.a_bad_schema)
+
+    def test_accepts_invalid_schema(self):
+        def func(a, b=1):
+            pass
+        with self.assertRaisesRegexp(SpecError, "invalid returns"):
+            action = Action(func, returns=self.a_bad_schema)
+
+    def test_invalid_schema(self):
         def func(a, b=1):
             pass
         accepts = {
-            "type": "bobject"
+            "type": "object"
+            # Where are the properties?
         }
         with self.assertRaisesRegexp(SpecError, "invalid"):
             action = Action(func, accepts=accepts)
@@ -220,7 +240,7 @@ class TestActionDispatcher(TestCase):
 
     def test_call(self):
         self.assertEqual(self.dispatcher.length([0, 1, 2]), 3)
-    
+
     def test_iterate(self):
         l = [action for action in self.dispatcher]
         self.assertEqual(l[0].spec['name'], 'length')

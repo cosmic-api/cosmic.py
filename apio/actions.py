@@ -4,41 +4,41 @@ import requests
 from flask import request
 from flask.exceptions import JSONBadRequest
 
-from apio.tools import get_arg_spec, serialize_action_arguments, apply_to_action_func, JSONPayload, schema_is_compatible
-from apio.exceptions import APIError, SpecError, AuthenticationError
+from apio.tools import get_arg_spec, serialize_action_arguments, apply_to_action_func, JSONPayload, schema_is_compatible, normalize
+from apio.exceptions import APIError, SpecError, AuthenticationError, ValidationError
 
 class Action(object):
 
     def __init__(self, func, accepts=None, returns=None):
         self.name = func.__name__
-        if not returns:
-            returns = { "type": "any" }
 
         self.spec = {
-            "name": self.name,
-            "returns": returns
+            "name": self.name
         }
         self.raw_func = func
         arg_spec = get_arg_spec(func)
 
-        # if accepts:
-        #     try:
-        #         validate(Draft3Validator.META_SCHEMA, accepts)
-        #     except SchemaError:
-        #         raise SpecError("'%s' was passed an invalid accepts schema" % self.name)
+        if accepts:
+            if not arg_spec:
+                raise SpecError("'%s' is said to take arguments, but doesn't" % self.name)
 
-        if not arg_spec and not accepts:
-            return
+            try:
+                accepts = normalize({"type": "schema"}, accepts)
+            except ValidationError:
+                raise SpecError("'%s' was passed an invalid accepts schema" % self.name)
 
-        if arg_spec and not accepts:
-            accepts = arg_spec
-
-        if not arg_spec and accepts:
-            raise SpecError("'%s' is said to take arguments, but doesn't" % self.name)
-
-        if arg_spec and accepts:
             if not schema_is_compatible(arg_spec, accepts):
                 raise SpecError("The accepts parameter of '%s' action is incompatible with the function's arguments")
+        elif arg_spec:
+            accepts = arg_spec
+
+        if returns:
+            try:
+                self.spec["returns"] = normalize({"type": "schema"}, returns)
+            except ValidationError:
+                raise SpecError("'%s' was passed an invalid returns schema" % self.name)
+        else:
+            self.spec["returns"] = { "type": "any" }
 
         if accepts:
             self.spec["accepts"] = accepts
