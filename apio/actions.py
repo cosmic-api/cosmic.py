@@ -134,5 +134,7 @@ class RemoteAction(object):
                 raise APIError(res.json['error'])
             else:
                 raise APIError("Call to %s failed with improper error response")
-        return res.json
-
+        try:
+            return normalize(self.spec['returns'], res.json)
+        except ValidationError:
+            raise APIError("Call to %s returned an invalid value" % self.spec['name'])

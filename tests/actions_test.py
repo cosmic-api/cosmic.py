@@ -31,7 +31,7 @@ class TestBasicRemoteAction(TestCase):
                 ]
             },
             'returns': {
-                'type': 'any'
+                'type': 'string'
             }
         }
 
@@ -40,7 +40,7 @@ class TestBasicRemoteAction(TestCase):
     def test_call_success(self):
         with patch.object(requests, 'post') as mock_post:
             mock_post.return_value.status_code = 200
-            mock_post.return_value.json = True
+            mock_post.return_value.json = "kimchi"
             self.action(spicy=True)
             mock_post.assert_called_with('http://example.com/actions/cabbage', headers={'Content-Type': 'application/json'}, data='{"spicy": true}')
 
@@ -65,6 +65,13 @@ class TestBasicRemoteAction(TestCase):
     def test_call_with_bad_args(self):
         with self.assertRaisesRegexp(SpecError, "Invalid boolean"):
             self.action(spicy="yes")
+
+    def test_call_invalid_response(self):
+        with patch.object(requests, 'post') as mock_post:
+            mock_post.return_value.status_code = 200
+            mock_post.return_value.json = 1
+            with self.assertRaisesRegexp(APIError, "invalid value"):
+                self.action(spicy=True, capitalize=True)
 
 
 class TestBasicAction(TestCase):
