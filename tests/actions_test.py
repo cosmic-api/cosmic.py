@@ -118,6 +118,11 @@ class TestBasicAction(TestCase):
         self.assertEqual(res.status_code, 400)
         self.assertRegexpMatches(res.data, "Invalid JSON")
 
+    def test_validation_error(self):
+        res = self.werkzeug_client.post('/cabbage', data='true', content_type="application/json")
+        self.assertEqual(res.status_code, 400)
+        self.assertRegexpMatches(res.data, "Validation failed")
+
     def test_no_data(self):
         res = self.werkzeug_client.post('/cabbage', data='', content_type="application/json")
         self.assertEqual(res.status_code, 400)
