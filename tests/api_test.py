@@ -7,6 +7,7 @@ from mock import patch
 import requests
 
 from apio.exceptions import *
+from apio.tools import normalize
 from apio.api import API, RemoteAPI, API_SCHEMA
 from apio import api
 
@@ -39,12 +40,12 @@ cookbook_spec = {
                     {
                         "name": "spicy",
                         "required": True,
-                        "schema": {"type": "any"}
+                        "schema": { "type": "any" }
                     },
                     {
                         "name": "capitalize",
                         "required": False,
-                        "schema": {"type": "any"}
+                        "schema": { "type": "any" }
                     }
                 ]
             },
@@ -145,11 +146,8 @@ class TestAPI(TestCase):
         self.assertEqual(json.loads(res.data), cookbook_spec)
 
 
-    def _test_schema(self):
-        store = {
-            "http://json-schema.org/draft-03/schema": jsonschema.Draft3Validator.META_SCHEMA
-        }
-        jsonschema.validate(self.cookbook.spec, API_SCHEMA, schema_store=store)
+    def test_schema(self):
+        normalize(API_SCHEMA, self.cookbook.spec)
 
     def test_authentication_error(self):
         headers = { "X-Wacky": "Bananas" }

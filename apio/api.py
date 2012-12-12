@@ -10,34 +10,50 @@ from apio.actions import Action, RemoteAction
 
 API_SCHEMA = {
     "type": "object",
-    "properties": {
-        "name": {
-            "type": "string",
+    "properties": [
+        {
+            "name": "name",
+            "schema": { "type": "string" },
             "required": True
         },
-        "url": {
-            "type": "string",
+        {
+            "name": "url",
+            "schema": { "type": "string" },
             "required": True
         },
-        "homepage": {
-            "type": "string"
+        {
+            "name": "homepage",
+            "schema": { "type": "string" },
+            "required": False
         },
-        "actions": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "name": { "type": "string" },
-                    "accepts": {
-                        "$ref": "http://json-schema.org/draft-03/schema#"
-                    },
-                    "returns": {
-                        "$ref": "http://json-schema.org/draft-03/schema#"
-                    }
+        {
+            "name": "actions",
+            "required": True,
+            "schema": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": [
+                        {
+                            "name": "name",
+                            "schema": { "type": "string" },
+                            "required": True
+                        },
+                        {
+                            "name": "accepts",
+                            "schema": { "type": "schema" },
+                            "required": False
+                        },
+                        {
+                            "name": "returns",
+                            "schema": { "type": "schema" },
+                            "required": True
+                        }
+                    ]
                 }
             }
         }
-    }
+    ]
 }
 
 # The apio-index API is saved here for convenience
@@ -73,11 +89,11 @@ class ActionDispatcher(object):
     def __init__(self):
         self._list = []
         self._dict = {}
-    
+
     def __iter__(self):
         """Allow iterating through actions"""
         return self._list.__iter__()
-    
+
     @property
     def __all__(self):
         return [action.spec['name'] for action in self._list]
