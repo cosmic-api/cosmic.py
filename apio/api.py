@@ -13,17 +13,17 @@ API_SCHEMA = {
     "properties": [
         {
             "name": "name",
-            "schema": { "type": "string" },
+            "schema": {"type": "string"},
             "required": True
         },
         {
             "name": "url",
-            "schema": { "type": "string" },
+            "schema": {"type": "string"},
             "required": True
         },
         {
             "name": "homepage",
-            "schema": { "type": "string" },
+            "schema": {"type": "string"},
             "required": False
         },
         {
@@ -36,17 +36,17 @@ API_SCHEMA = {
                     "properties": [
                         {
                             "name": "name",
-                            "schema": { "type": "string" },
+                            "schema": {"type": "string"},
                             "required": True
                         },
                         {
                             "name": "accepts",
-                            "schema": { "type": "schema" },
+                            "schema": {"type": "schema"},
                             "required": False
                         },
                         {
                             "name": "returns",
-                            "schema": { "type": "schema" },
+                            "schema": {"type": "schema"},
                             "required": True
                         }
                     ]
@@ -67,7 +67,9 @@ def clear_module_cache():
     apio_index = None
 
 def ensure_bootstrapped():
-    """Ensures the APIO index API is loaded. Call this before trying API.load"""
+    """Ensures the APIO index API is loaded. Call this before trying
+    API.load
+    """
     global apio_index
     if not apio_index:
         data = json.dumps("apio-index")
@@ -82,8 +84,9 @@ class BaseAPI(object):
     pass
 
 class ActionDispatcher(object):
-    """Essentially a sorted dictionary. Allows to reference actions as attributes
-    and implements __all__ so that the instance can be treated as a module.
+    """Essentially a sorted dictionary. Allows to reference actions as
+    attributes and implements __all__ so that the instance can be
+    treated as a module.
     """
 
     def __init__(self):
@@ -132,8 +135,8 @@ class API(BaseAPI):
 
     def get_blueprint(self, debug=False):
         """Returns a Flask Blueprint object with all of the API's
-        routes set up.  Use this if you want to integrate your API
-        into a Flask application.
+        routes set up. Use this if you want to integrate your API into
+        a Flask application.
         """
         blueprint = Blueprint(self.name, __name__)
         for action in self.actions:

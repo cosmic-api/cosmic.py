@@ -40,12 +40,12 @@ cookbook_spec = {
                     {
                         "name": "spicy",
                         "required": True,
-                        "schema": { "type": "any" }
+                        "schema": {"type": "any"}
                     },
                     {
                         "name": "capitalize",
                         "required": False,
-                        "schema": { "type": "any" }
+                        "schema": {"type": "any"}
                     }
                 ]
             },
