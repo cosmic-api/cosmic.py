@@ -1,4 +1,5 @@
 from unittest2 import TestCase
+from mock import patch, Mock
 
 from apio.exceptions import *
 from apio.tools import *
@@ -428,3 +429,34 @@ class TestNormalize(TestCase):
         s["properties"][1]["name"] = "foo"
         with self.assertRaisesRegexp(ValidationError, "Duplicate properties"):
             normalize({"type": "schema"}, s)
+
+
+class TestNamespace(TestCase):
+
+    def setUp(self):
+        self.dispatcher = Namespace()
+        length = Mock(return_value=3)
+        length.spec = { 'name': 'length' }
+        self.dispatcher.add(length)
+        height = Mock()
+        height.spec = { 'name': 'height' }
+        self.dispatcher.add(height)
+
+    def test_call(self):
+        self.assertEqual(self.dispatcher.length([0, 1, 2]), 3)
+
+    def test_iterate(self):
+        l = [action for action in self.dispatcher]
+        self.assertEqual(l[0].spec['name'], 'length')
+        self.assertEqual(l[1].spec['name'], 'height')
+
+    def test_specs(self):
+        self.assertEqual(self.dispatcher.specs, [{ 'name': 'length' }, { 'name': 'height' }])
+
+    def test_all(self):
+        self.assertEqual(self.dispatcher.__all__, ['length', 'height'])
+
+    def test_undefined_action(self):
+        with self.assertRaisesRegexp(SpecError, "not defined"):
+            self.dispatcher.width([0, 1, 2])
+

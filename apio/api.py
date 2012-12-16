@@ -7,6 +7,7 @@ from flask.exceptions import JSONBadRequest
 
 from apio.exceptions import APIError, SpecError, InvalidCallError
 from apio.actions import Action, RemoteAction
+from apio.tools import Namespace
 
 API_SCHEMA = {
     "type": "object",
@@ -83,45 +84,13 @@ def ensure_bootstrapped():
 class BaseAPI(object):
     pass
 
-class ActionDispatcher(object):
-    """Essentially a sorted dictionary. Allows to reference actions as
-    attributes and implements __all__ so that the instance can be
-    treated as a module.
-    """
-
-    def __init__(self):
-        self._list = []
-        self._dict = {}
-
-    def __iter__(self):
-        """Allow iterating through actions"""
-        return self._list.__iter__()
-
-    @property
-    def __all__(self):
-        return [action.spec['name'] for action in self._list]
-
-    @property
-    def specs(self):
-        return [action.spec for action in self._list]
-
-    def add(self, action):
-        self._list.append(action)
-        self._dict[action.spec['name']] = action
-
-    def __getattr__(self, action_name):
-        try:
-            return self._dict[action_name]
-        except KeyError:
-            raise SpecError("Action %s is not defined" % action_name)
-
 class API(BaseAPI):
 
     def __init__(self, name=None, url=None, homepage=None, **kwargs):
         self.name = name
         self.url = url
         self.homepage = homepage
-        self.actions = ActionDispatcher()
+        self.actions = Namespace()
 
     @property
     def spec(self):
@@ -209,7 +178,7 @@ class RemoteAPI(BaseAPI):
 
     def __init__(self, spec):
         self.spec = spec
-        self.actions = ActionDispatcher()
+        self.actions = Namespace()
 
         for spec in self.spec['actions']:
             self.actions.add(RemoteAction(spec, self.url))

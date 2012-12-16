@@ -3,6 +3,38 @@ import json
 
 from apio.exceptions import SpecError, InvalidCallError, ValidationError
 
+class Namespace(object):
+    """Essentially a sorted dictionary. Allows to reference actions or
+    models as attributes and implements __all__ so that a Namespace
+    instance can be treated as a module.
+    """
+
+    def __init__(self):
+        self._list = []
+        self._dict = {}
+
+    def __iter__(self):
+        """Allow iterating through items"""
+        return self._list.__iter__()
+
+    @property
+    def __all__(self):
+        return [item.spec['name'] for item in self._list]
+
+    @property
+    def specs(self):
+        return [item.spec for item in self._list]
+
+    def add(self, item):
+        self._list.append(item)
+        self._dict[item.spec['name']] = item
+
+    def __getattr__(self, item_name):
+        try:
+            return self._dict[item_name]
+        except KeyError:
+            raise SpecError("%s is not defined" % item_name)
+
 class JSONPayload(object):
     def __init__(self, json):
         self.json = json

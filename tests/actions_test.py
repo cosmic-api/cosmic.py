@@ -6,7 +6,7 @@ from mock import patch, Mock
 
 from flask import Flask
 
-from apio.api import ActionDispatcher
+from apio.api import Namespace
 from apio.actions import Action, RemoteAction
 from apio.exceptions import SpecError, APIError
 
@@ -250,34 +250,3 @@ class TestActionAnnotation(TestCase):
         }
         with self.assertRaisesRegexp(SpecError, "invalid"):
             action = Action(func, accepts=accepts)
-
-class TestActionDispatcher(TestCase):
-
-    def setUp(self):
-        self.dispatcher = ActionDispatcher()
-        length = Mock(return_value=3)
-        length.spec = { 'name': 'length' }
-        self.dispatcher.add(length)
-        height = Mock()
-        height.spec = { 'name': 'height' }
-        self.dispatcher.add(height)
-
-    def test_call(self):
-        self.assertEqual(self.dispatcher.length([0, 1, 2]), 3)
-
-    def test_iterate(self):
-        l = [action for action in self.dispatcher]
-        self.assertEqual(l[0].spec['name'], 'length')
-        self.assertEqual(l[1].spec['name'], 'height')
-
-    def test_specs(self):
-        self.assertEqual(self.dispatcher.specs, [{ 'name': 'length' }, { 'name': 'height' }])
-
-    def test_all(self):
-        self.assertEqual(self.dispatcher.__all__, ['length', 'height'])
-
-    def test_undefined_action(self):
-        with self.assertRaisesRegexp(SpecError, "not defined"):
-            self.dispatcher.width([0, 1, 2])
-
-
