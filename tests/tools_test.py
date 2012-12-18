@@ -450,9 +450,6 @@ class TestNamespace(TestCase):
         self.assertEqual(l[0].spec['name'], 'length')
         self.assertEqual(l[1].spec['name'], 'height')
 
-    def test_specs(self):
-        self.assertEqual(self.dispatcher.specs, [{ 'name': 'length' }, { 'name': 'height' }])
-
     def test_all(self):
         self.assertEqual(self.dispatcher.__all__, ['length', 'height'])
 

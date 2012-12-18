@@ -25,7 +25,8 @@ index_spec = {
             'returns': {'type': 'any'},
             'accepts': {'type': 'any'}
         }
-    ]
+    ],
+    "models": []
 }
 
 cookbook_spec = {
@@ -59,7 +60,8 @@ cookbook_spec = {
                 'type': 'any'
             }
         }
-    ]
+    ],
+    "models": []
 }
 
 class TestBootstrapping(TestCase):
@@ -124,7 +126,7 @@ class TestAPI(TestCase):
     def tearDown(self):
         api.clear_module_cache()
 
-    def test_model(self):
+    def test_subclassing_hook(self):
         class Recipe(self.cookbook.Model): pass
         self.assertEqual(self.cookbook.models.__all__, ["Recipe"])
 

@@ -53,6 +53,28 @@ API_SCHEMA = {
                     ]
                 }
             }
+        },
+        {
+            "name": "models",
+            "required": True,
+            "schema": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": [
+                        {
+                            "name": "name",
+                            "schema": {"type": "string"},
+                            "required": True,
+                        },
+                        {
+                            "name": "schema",
+                            "schema": {"type": "schema"},
+                            "required": True,
+                        }
+                    ]
+                }
+            }
         }
     ]
 }
@@ -112,8 +134,15 @@ class API(BaseAPI):
 
     @property
     def spec(self):
+        models = []
+        for model in self.models:
+            models.append({
+                'name': model.__class__.__name__,
+                'schema': model.schema
+            })
         spec = {
-            "actions": self.actions.specs,
+            "actions": [action.spec for action in self.actions],
+            "models": models,
             "name": self.name,
             "url": self.url
         }

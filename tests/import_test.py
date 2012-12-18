@@ -19,8 +19,8 @@ class TestAPIImport(TestCase):
             mock_post.return_value.status_code = 200
             mock_post.return_value.json = cookbook_spec
             from apio.index.cookbook import actions
-            self.assertEqual(actions.specs, cookbook_spec['actions'])
-    
+            self.assertEqual(actions.cabbage.spec, cookbook_spec['actions'][0])
+
     def test_import_specific_action(self):
         with patch.object(requests, 'post') as mock_post:
             mock_post.return_value.status_code = 200

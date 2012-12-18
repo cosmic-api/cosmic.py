@@ -21,10 +21,6 @@ class Namespace(object):
     def __all__(self):
         return self._dict.keys()
 
-    @property
-    def specs(self):
-        return [item.spec for item in self._list]
-
     def add(self, name, item):
         self._list.append(item)
         self._dict[name] = item
