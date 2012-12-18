@@ -61,7 +61,16 @@ cookbook_spec = {
             }
         }
     ],
-    "models": []
+    "models": [
+        {
+            "name": "Recipe",
+            "schema": {"type": "string"}
+        },
+        {
+            "name": "Cookie",
+            "schema": {"type": "boolean"}
+        }
+    ]
 }
 
 class TestBootstrapping(TestCase):
@@ -107,6 +116,15 @@ class TestAPI(TestCase):
                 raise AuthenticationError()
             return "boronine"
 
+        class Recipe(self.cookbook.Model):
+            schema = {"type": "string"}
+            def validate(self):
+                if self.data == "bacon":
+                    raise ValidationError("Not kosher")
+
+        class Cookie(self.cookbook.Model):
+            schema = {"type": "boolean"}
+
         api.apio_index = RemoteAPI(index_spec)
 
         with patch.object(requests, 'post') as mock_post:
@@ -127,8 +145,22 @@ class TestAPI(TestCase):
         api.clear_module_cache()
 
     def test_subclassing_hook(self):
-        class Recipe(self.cookbook.Model): pass
-        self.assertEqual(self.cookbook.models.__all__, ["Recipe"])
+        self.assertEqual(set(self.cookbook.models.__all__), set(["Recipe", "Cookie"]))
+
+    def test_model_illegal_schema(self):
+        with self.assertRaises(ValidationError):
+            class Pizza(self.cookbook.Model):
+                schema = {"tipe": "object"}
+
+    def test_model_schema_validation(self):
+        with self.assertRaises(ValidationError):
+            self.cookbook.models.Recipe(1.1)
+
+    def test_model_custom_validation(self):
+        with self.assertRaisesRegexp(ValidationError, "kosher"):
+            self.cookbook.models.Recipe("bacon")
+        # When not overridden, custom validation passes
+        self.cookbook.models.Cookie(True)
 
     def test_register_api(self):
         with patch.object(requests, 'post') as mock_post:

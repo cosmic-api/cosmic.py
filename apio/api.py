@@ -7,7 +7,7 @@ from flask.exceptions import JSONBadRequest
 
 from apio.exceptions import APIError, SpecError, InvalidCallError
 from apio.actions import Action, RemoteAction
-from apio.tools import Namespace
+from apio.tools import Namespace, normalize
 
 API_SCHEMA = {
     "type": "object",
@@ -117,16 +117,18 @@ class API(BaseAPI):
         # Custom metaclass so that when the Model class is inherited
         # from, we can register it as an API model
         class Hook(type):
-            def __new__(meta, name, bases, atts):
-                cls = super(Hook, meta).__new__(meta, name, bases, atts)
+            def __new__(meta, name, bases, attributes):
+                cls = super(Hook, meta).__new__(meta, name, bases, attributes)
                 if name != "Model":
+                    # Raise ValidationError if model schema is invalid
+                    normalize({"type": "schema"}, attributes["schema"])
                     models.add(name, cls)
                 return cls
         class Model(object):
             __metaclass__ = Hook
             schema = {"type": "any"}
             def __init__(self, json_data):
-                self.data = normalize(schema, json_data)
+                self.data = normalize(self.schema, json_data)
                 self.validate()
             def validate(self):
                 pass
@@ -137,7 +139,7 @@ class API(BaseAPI):
         models = []
         for model in self.models:
             models.append({
-                'name': model.__class__.__name__,
+                'name': model.__name__,
                 'schema': model.schema
             })
         spec = {
