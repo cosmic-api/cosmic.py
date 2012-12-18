@@ -91,12 +91,17 @@ class API(BaseAPI):
         self.url = url
         self.homepage = homepage
         self.actions = Namespace()
-        self.models = False #Namespace()
-        def subclassing_hook(name, parents, attributes):
-            self.models = True
-            return type(name, parents, attributes)
+        self.models = models = Namespace()
+        # Custom metaclass so that when the Model class is inherited
+        # from, we can register it as an API model
+        class Hook(type):
+            def __new__(meta, name, bases, atts):
+                cls = super(Hook, meta).__new__(meta, name, bases, atts)
+                if name != "Model":
+                    models.add(name, cls)
+                return cls
         class Model(object):
-            __metaclass__ = subclassing_hook
+            __metaclass__ = Hook
             schema = {"type": "any"}
             def __init__(self, json_data):
                 self.data = normalize(schema, json_data)

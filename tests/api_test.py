@@ -126,7 +126,7 @@ class TestAPI(TestCase):
 
     def test_model(self):
         class Recipe(self.cookbook.Model): pass
-        self.assertEqual(self.cookbook.models, True)
+        self.assertEqual(self.cookbook.models.__all__, ["Recipe"])
 
     def test_register_api(self):
         with patch.object(requests, 'post') as mock_post:
