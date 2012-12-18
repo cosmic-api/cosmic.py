@@ -91,6 +91,19 @@ class API(BaseAPI):
         self.url = url
         self.homepage = homepage
         self.actions = Namespace()
+        self.models = False #Namespace()
+        def subclassing_hook(name, parents, attributes):
+            self.models = True
+            return type(name, parents, attributes)
+        class Model(object):
+            __metaclass__ = subclassing_hook
+            schema = {"type": "any"}
+            def __init__(self, json_data):
+                self.data = normalize(schema, json_data)
+                self.validate()
+            def validate(self):
+                pass
+        self.Model = Model
 
     @property
     def spec(self):
@@ -144,7 +157,8 @@ class API(BaseAPI):
         as a decorator.
         """
         def wrapper(func):
-            self.actions.add(Action(func, accepts=accepts, returns=returns))
+            name = func.__name__
+            self.actions.add(name, Action(func, accepts=accepts, returns=returns))
             return func
         return wrapper
 
@@ -181,7 +195,7 @@ class RemoteAPI(BaseAPI):
         self.actions = Namespace()
 
         for spec in self.spec['actions']:
-            self.actions.add(RemoteAction(spec, self.url))
+            self.actions.add(spec['name'], RemoteAction(spec, self.url))
 
     @property
     def name(self):

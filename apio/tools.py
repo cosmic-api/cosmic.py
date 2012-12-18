@@ -19,21 +19,21 @@ class Namespace(object):
 
     @property
     def __all__(self):
-        return [item.spec['name'] for item in self._list]
+        return self._dict.keys()
 
     @property
     def specs(self):
         return [item.spec for item in self._list]
 
-    def add(self, item):
+    def add(self, name, item):
         self._list.append(item)
-        self._dict[item.spec['name']] = item
+        self._dict[name] = item
 
-    def __getattr__(self, item_name):
+    def __getattr__(self, name):
         try:
-            return self._dict[item_name]
+            return self._dict[name]
         except KeyError:
-            raise SpecError("%s is not defined" % item_name)
+            raise SpecError("%s is not defined" % name)
 
 class JSONPayload(object):
     def __init__(self, json):

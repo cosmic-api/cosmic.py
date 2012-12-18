@@ -124,6 +124,10 @@ class TestAPI(TestCase):
     def tearDown(self):
         api.clear_module_cache()
 
+    def test_model(self):
+        class Recipe(self.cookbook.Model): pass
+        self.assertEqual(self.cookbook.models, True)
+
     def test_register_api(self):
         with patch.object(requests, 'post') as mock_post:
             # Register API

@@ -437,10 +437,10 @@ class TestNamespace(TestCase):
         self.dispatcher = Namespace()
         length = Mock(return_value=3)
         length.spec = { 'name': 'length' }
-        self.dispatcher.add(length)
+        self.dispatcher.add('length', length)
         height = Mock()
         height.spec = { 'name': 'height' }
-        self.dispatcher.add(height)
+        self.dispatcher.add('height', height)
 
     def test_call(self):
         self.assertEqual(self.dispatcher.length([0, 1, 2]), 3)
