@@ -121,7 +121,7 @@ class API(BaseAPI):
                 cls = super(Hook, meta).__new__(meta, name, bases, attributes)
                 if name != "Model":
                     # Raise ValidationError if model schema is invalid
-                    normalize({"type": "schema"}, attributes["schema"])
+                    normalize({"type": "schema"}, cls.schema)
                     models.add(name, cls)
                 return cls
         class Model(object):

@@ -147,6 +147,11 @@ class TestAPI(TestCase):
     def test_subclassing_hook(self):
         self.assertEqual(set(self.cookbook.models.__all__), set(["Recipe", "Cookie"]))
 
+    def test_recursive_subclassing_hook(self):
+        class ChocolateCookie(self.cookbook.models.Cookie):
+            pass
+        self.assertEqual(set(self.cookbook.models.__all__), set(["Recipe", "Cookie", "ChocolateCookie"]))
+
     def test_model_illegal_schema(self):
         with self.assertRaises(ValidationError):
             class Pizza(self.cookbook.Model):
