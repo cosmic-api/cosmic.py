@@ -111,11 +111,6 @@ class TestBasicAction(TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertEqual(json.loads(res.data), "12.0 pounds of kimchi")
 
-    def test_successful_call_with_content_type_override(self):
-        res = self.werkzeug_client.post('/cabbage?content_type_override=application%2Fjson', data='{"spicy":true}')
-        self.assertEqual(res.status_code, 200)
-        self.assertEqual(json.loads(res.data), "12.0 pounds of kimchi")
-
     def test_wrong_method(self):
         res = self.werkzeug_client.get('/cabbage', data='{"spicy":false}')
         self.assertEqual(res.status_code, 405)

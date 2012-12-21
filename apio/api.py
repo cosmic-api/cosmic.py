@@ -102,6 +102,20 @@ def ensure_bootstrapped():
         apio_index = RemoteAPI(res.json)
         sys.modules.setdefault('apio.apio_index', apio_index)
 
+def preflight():
+    """Flask view for handling the CORS preflight request
+    """
+    origin = request.headers.get('Origin')
+    allow_headers = request.headers.get('Access-Control-Request-Headers')
+    headers = {
+        "Access-Control-Allow-Origin": origin,
+        # If the requested method doesn't match the allowed
+        # method, the browser will fail the request by itself,
+        # we don't need to do anything
+        "Access-Control-Allow-Methods": "POST",
+        "Access-Control-Allow-Headers": allow_headers
+    }
+    return Response(headers=headers)
 
 class BaseAPI(object):
     pass
@@ -114,8 +128,8 @@ class API(BaseAPI):
         self.homepage = homepage
         self.actions = Namespace()
         self.models = models = Namespace()
-        # Custom metaclass so that when the Model class is inherited
-        # from, we can register it as an API model
+        # Custom metaclass. When you inherit from Model, the new class
+        # will be registered as part of the API
         class Hook(type):
             def __new__(meta, name, bases, attributes):
                 cls = super(Hook, meta).__new__(meta, name, bases, attributes)
@@ -157,11 +171,13 @@ class API(BaseAPI):
         a Flask application.
         """
         blueprint = Blueprint(self.name, __name__)
+        # View to handle the CORS preflight request
         for action in self.actions:
             name = action.spec['name']
             view = action.get_view(debug=debug)
             url = "/actions/%s" % name
             blueprint.add_url_rule(url, name, view, methods=['POST'])
+            blueprint.add_url_rule(url, name + '_preflight', preflight, methods=['OPTIONS'])
         @blueprint.route('/spec.json')
         def getspec():
             spec = json.dumps(self.spec)

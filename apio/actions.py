@@ -54,8 +54,7 @@ class Action(object):
         that handles errors and returns proper HTTP responses"""
         def action_view():
             ct = request.headers.get('Content-Type', None)
-            cto = request.args.get('content_type_override', None)
-            if (cto and cto != "application/json") or (not cto and ct != "application/json"):
+            if ct != "application/json":
                 return json.dumps({
                     "error": 'Content-Type must be "application/json"'
                 }), 400
