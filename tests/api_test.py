@@ -207,7 +207,7 @@ class TestAPI(TestCase):
         res = self.werkzeug_client.open('/api/actions/cabbage', method="OPTIONS", headers=headers)
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.headers.get("Access-Control-Allow-Methods"), "POST")
-        self.assertEqual(res.headers.get("Access-Control-Allow-Origin"), "http://example.com")
+        self.assertEqual(res.headers.get("Access-Control-Allow-Origin"), "*")
         self.assertEqual(res.headers.get("Access-Control-Allow-Headers"), "X-Wacky")
 
     def test_load_url(self):

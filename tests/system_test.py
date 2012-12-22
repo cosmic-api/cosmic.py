@@ -18,7 +18,6 @@ def quickstart():
 
 
 from multiprocessing import Process
-import urllib2
 import time
 
 import requests

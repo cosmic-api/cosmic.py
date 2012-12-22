@@ -104,20 +104,22 @@ def ensure_bootstrapped():
 
 def corsify_view(view_func):
     """Takes a Flask view function and augments it with CORS
-    functionality. The function must return a flask.Response object
+    functionality. Implementation based on this tutorial:
+    http://www.html5rocks.com/en/tutorials/cors/
     """
     def view():
         """Flask view for handling the CORS preflight request
         """
         if request.method == "OPTIONS":
-            origin = request.headers.get('Origin')
-            allow_headers = request.headers.get('Access-Control-Request-Headers')
             res = make_response("", 200)
-            res.headers["Access-Control-Allow-Origin"] = origin
+            res.headers["Access-Control-Allow-Origin"] = "*"
             res.headers["Access-Control-Allow-Methods"] = "POST"
+            # Allow all requested headers
+            allow_headers = request.headers.get('Access-Control-Request-Headers')
             res.headers["Access-Control-Allow-Headers"] = allow_headers
         else:
-            res = view_func()
+            res = make_response(view_func())
+            res.headers["Access-Control-Allow-Origin"] = "*"
         return res
     return view
 
