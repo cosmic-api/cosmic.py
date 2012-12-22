@@ -102,26 +102,54 @@ def ensure_bootstrapped():
         apio_index = RemoteAPI(res.json)
         sys.modules.setdefault('apio.apio_index', apio_index)
 
-def corsify_view(view_func):
+def corsify_view(view_func, allowed_methods):
     """Takes a Flask view function and augments it with CORS
     functionality. Implementation based on this tutorial:
     http://www.html5rocks.com/en/tutorials/cors/
+
+    Access-Control-Allow-Credentials can be emulated, so there's no
+    real reason to support it. IE doesn't support wildcard
+    Access-Control-Allow-Origin so we just echo the request Origin
+    instead. See here for notes:
+    https://github.com/alexandru/crossdomain-requests-js/wiki/Troubleshooting
+
+    Note that many CORS implementations are broken. For example,
+    see: http://stackoverflow.com/q/12780839/212584
     """
-    def view():
+    def corsified(*args, **kwargs):
         """Flask view for handling the CORS preflight request
         """
+        origin = request.headers.get("Origin", None)
+        # Preflight request
         if request.method == "OPTIONS":
+            # No Origin?
+            if origin == None:
+                error = "Preflight CORS request must include Origin header"
+                return error, 400
+            # Access-Control-Request-Method is not set or set wrongly?
+            requested_method = request.headers.get("Access-Control-Request-Method", None)
+            if requested_method not in allowed_methods:
+                error = "Access-Control-Request-Method header must be set to "
+                error += " or ".join(allowed_methods)
+                return error, 400
+            # Everything is good, make response
             res = make_response("", 200)
-            res.headers["Access-Control-Allow-Origin"] = "*"
-            res.headers["Access-Control-Allow-Methods"] = "POST"
+            res.headers["Access-Control-Allow-Origin"] = origin
+            res.headers["Access-Control-Allow-Methods"] = ",".join(allowed_methods)
             # Allow all requested headers
-            allow_headers = request.headers.get('Access-Control-Request-Headers')
-            res.headers["Access-Control-Allow-Headers"] = allow_headers
+            headers = request.headers.get('Access-Control-Request-Headers', None)
+            if headers != None:
+                res.headers["Access-Control-Allow-Headers"] = headers
+        # Actual request
         else:
-            res = make_response(view_func())
-            res.headers["Access-Control-Allow-Origin"] = "*"
+            # If view_func returns a tuple, make_response will turn it
+            # into flask.Response. If it already returns a Response,
+            # make_response will do nothing
+            res = make_response(view_func(*args, **kwargs))
+            if origin != None:
+                res.headers["Access-Control-Allow-Origin"] = origin
         return res
-    return view
+    return corsified
 
 class BaseAPI(object):
     pass
@@ -181,8 +209,9 @@ class API(BaseAPI):
         for action in self.actions:
             name = action.spec['name']
             view = action.get_view(debug=debug)
+            view = corsify_view(view, ["POST"])
             url = "/actions/%s" % name
-            blueprint.add_url_rule(url, name, corsify_view(view), methods=['POST', 'OPTIONS'])
+            blueprint.add_url_rule(url, name, view, methods=['POST', 'OPTIONS'])
         @blueprint.route('/spec.json')
         def getspec():
             spec = json.dumps(self.spec)

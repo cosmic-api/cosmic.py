@@ -188,7 +188,6 @@ class TestAPI(TestCase):
         res = self.werkzeug_client.get('/api/spec.json')
         self.assertEqual(json.loads(res.data), cookbook_spec)
 
-
     def test_schema(self):
         normalize(API_SCHEMA, self.cookbook.spec)
 
@@ -198,17 +197,51 @@ class TestAPI(TestCase):
         res = self.werkzeug_client.post('/api/actions/cabbage', data=data, headers=headers, content_type="application/json")
         self.assertEqual(res.status_code, 401)
 
-    def test_CORS_preflight_request(self):
+    def test_CORS_preflight_request_okay(self):
+        headers = {
+            "Origin": "http://example.com",
+            "Access-Control-Request-Method": "POST"
+        }
+        res = self.werkzeug_client.open('/api/actions/cabbage', method="OPTIONS", headers=headers)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.headers.get("Access-Control-Allow-Methods"), "POST")
+        self.assertEqual(res.headers.get("Access-Control-Allow-Origin"), "http://example.com")
+
+    def test_CORS_preflight_request_with_headers_okay(self):
         headers = {
             "Origin": "http://example.com",
             "Access-Control-Request-Method": "POST",
             "Access-Control-Request-Headers": "X-Wacky"
         }
         res = self.werkzeug_client.open('/api/actions/cabbage', method="OPTIONS", headers=headers)
-        self.assertEqual(res.status_code, 200)
-        self.assertEqual(res.headers.get("Access-Control-Allow-Methods"), "POST")
-        self.assertEqual(res.headers.get("Access-Control-Allow-Origin"), "*")
         self.assertEqual(res.headers.get("Access-Control-Allow-Headers"), "X-Wacky")
+
+    def test_CORS_preflight_request_no_origin(self):
+        headers = {
+            "Access-Control-Request-Method": "POST"
+        }
+        res = self.werkzeug_client.open('/api/actions/cabbage', method="OPTIONS", headers=headers)
+        self.assertEqual(res.status_code, 400)
+        self.assertRegexpMatches(res.data, "Origin header")
+
+    def test_CORS_preflight_request_disallowed_method(self):
+        headers = {
+            "Origin": "http://example.com",
+            "Access-Control-Request-Method": "PUT"
+        }
+        res = self.werkzeug_client.open('/api/actions/cabbage', method="OPTIONS", headers=headers)
+        self.assertEqual(res.status_code, 400)
+        self.assertRegexpMatches(res.data, "must be set to POST")
+
+    def test_CORS_actual_request_okay(self):
+        headers = {
+            "Origin": "http://example.com",
+            "X-Wacky": "Tobacky"
+        }
+        data = '{"spicy": true}'
+        res = self.werkzeug_client.post('/api/actions/cabbage', data=data, headers=headers, content_type="application/json")
+        self.assertEqual(res.status_code, 200)
+        self.assertRegexpMatches(res.data, "kimchi")
 
     def test_load_url(self):
         """Test the API.load function when given a spec URL"""
