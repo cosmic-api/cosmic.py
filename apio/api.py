@@ -2,7 +2,7 @@ import sys
 import json
 import requests
 
-from flask import Flask, Blueprint, Response, request
+from flask import Flask, Blueprint, Response, request, make_response
 from flask.exceptions import JSONBadRequest
 
 from apio.exceptions import APIError, SpecError, InvalidCallError
@@ -102,20 +102,24 @@ def ensure_bootstrapped():
         apio_index = RemoteAPI(res.json)
         sys.modules.setdefault('apio.apio_index', apio_index)
 
-def preflight():
-    """Flask view for handling the CORS preflight request
+def corsify_view(view_func):
+    """Takes a Flask view function and augments it with CORS
+    functionality. The function must return a flask.Response object
     """
-    origin = request.headers.get('Origin')
-    allow_headers = request.headers.get('Access-Control-Request-Headers')
-    headers = {
-        "Access-Control-Allow-Origin": origin,
-        # If the requested method doesn't match the allowed
-        # method, the browser will fail the request by itself,
-        # we don't need to do anything
-        "Access-Control-Allow-Methods": "POST",
-        "Access-Control-Allow-Headers": allow_headers
-    }
-    return Response(headers=headers)
+    def view():
+        """Flask view for handling the CORS preflight request
+        """
+        if request.method == "OPTIONS":
+            origin = request.headers.get('Origin')
+            allow_headers = request.headers.get('Access-Control-Request-Headers')
+            res = make_response("", 200)
+            res.headers["Access-Control-Allow-Origin"] = origin
+            res.headers["Access-Control-Allow-Methods"] = "POST"
+            res.headers["Access-Control-Allow-Headers"] = allow_headers
+        else:
+            res = view_func()
+        return res
+    return view
 
 class BaseAPI(object):
     pass
@@ -176,8 +180,7 @@ class API(BaseAPI):
             name = action.spec['name']
             view = action.get_view(debug=debug)
             url = "/actions/%s" % name
-            blueprint.add_url_rule(url, name, view, methods=['POST'])
-            blueprint.add_url_rule(url, name + '_preflight', preflight, methods=['OPTIONS'])
+            blueprint.add_url_rule(url, name, corsify_view(view), methods=['POST', 'OPTIONS'])
         @blueprint.route('/spec.json')
         def getspec():
             spec = json.dumps(self.spec)

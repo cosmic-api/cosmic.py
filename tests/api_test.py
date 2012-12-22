@@ -198,6 +198,18 @@ class TestAPI(TestCase):
         res = self.werkzeug_client.post('/api/actions/cabbage', data=data, headers=headers, content_type="application/json")
         self.assertEqual(res.status_code, 401)
 
+    def test_CORS_preflight_request(self):
+        headers = {
+            "Origin": "http://example.com",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "X-Wacky"
+        }
+        res = self.werkzeug_client.open('/api/actions/cabbage', method="OPTIONS", headers=headers)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.headers.get("Access-Control-Allow-Methods"), "POST")
+        self.assertEqual(res.headers.get("Access-Control-Allow-Origin"), "http://example.com")
+        self.assertEqual(res.headers.get("Access-Control-Allow-Headers"), "X-Wacky")
+
     def test_load_url(self):
         """Test the API.load function when given a spec URL"""
         with patch.object(requests, 'get') as mock_get:
