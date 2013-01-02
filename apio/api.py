@@ -263,15 +263,18 @@ class API(BaseAPI):
     @staticmethod
     def load(name_or_url):
         """Given an API name, loads the API and returns an API
-        object. If given a spec URL, loads the API from the spec.
+        object. If given a spec URL, loads the API from the url.
         """
         if name_or_url.startswith('http'):
             res = requests.get(name_or_url)
             spec = res.json
+            name = spec['name']
         else:
+            name = name_or_url
             ensure_bootstrapped()
-            spec = apio_index.actions.get_spec(name_or_url)
+            spec = apio_index.actions.get_spec(name)
         api = RemoteAPI(spec)
+        sys.modules["apio.index." + name] = api
         return api
 
 
@@ -290,7 +293,6 @@ class RemoteAPI(BaseAPI):
                 "schema": spec['schema']
             }
             cls = self.Model.__metaclass__(name, (self.Model,), attrs)
-            self.models.add(name, cls)
 
     @property
     def name(self):

@@ -1,5 +1,6 @@
 import warnings
 import json
+import sys
 
 from unittest2 import TestCase
 from mock import patch
@@ -250,6 +251,7 @@ class TestAPI(TestCase):
             mock_get.return_value.status_code = 200
             cookbook_decentralized = API.load('http://example.com/spec.json')
             self.assertEqual(cookbook_decentralized.spec, cookbook_spec)
+            self.assertEqual(sys.modules['apio.index.cookbook'], cookbook_decentralized)
 
     def test_apierror_repr(self):
         """Make sure when APIError gets printed in stack trace we can see the message"""
@@ -274,7 +276,8 @@ class TestRemoteAPI(TestCase):
         self.assertEqual(self.cookbook.name, "cookbook")
         self.assertEqual(self.cookbook.url, "http://localhost:8881/api")
 
-    def test_model(self):
+    def test_models(self):
+        self.assertEqual(self.cookbook.models.__all__, ["Cookie", "Recipe"])
         self.assertEqual(self.cookbook.models.Recipe.schema, {"type": "string"})
         self.assertEqual(self.cookbook.models.Recipe.__bases__, (self.cookbook.Model,))
 

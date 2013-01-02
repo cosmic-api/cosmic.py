@@ -32,7 +32,7 @@ class DynamicLoader(object):
         names = fullname.split('.')
         api_name = names[2]
         package = self.get_package(api_name)
-        # Do we need to go deeper?]
+        # Do we need to go deeper?
         if len(names) == 3:
             return package
         # Yes we do!

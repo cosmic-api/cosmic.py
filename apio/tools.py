@@ -177,29 +177,32 @@ def normalize(schema, datum):
         # Cast to unicode
         if dt == str:
             return unicode(datum)
-    elif st == "boolean" and dt == bool:
-        return datum
-    elif st == "array" and dt == list:
-        return [normalize(schema["items"], item) for item in datum]
-    elif st == "object" and dt == dict:
-        ret = {}
-        required = {}
-        optional = {}
-        for prop in schema["properties"]:
-            if prop["required"] == True:
-                required[prop["name"]] = prop["schema"]
-            else:
-                optional[prop["name"]] = prop["schema"]
-        missing = set(required.keys()) - set(datum.keys())
-        if missing:
-            raise ValidationError("Missing properties: %s" % list(missing))
-        extra = set(datum.keys()) - set(required.keys() + optional.keys())
-        if extra:
-            raise ValidationError("Unexpected properties: %s" % list(extra))
-        for prop, schema in optional.items() + required.items():
-            if prop in datum.keys():
-                ret[prop] = normalize(schema, datum[prop])
-        return ret
+    elif st == "boolean":
+        if dt == bool:
+            return datum
+    elif st == "array":
+        if dt == list:
+            return [normalize(schema["items"], item) for item in datum]
+    elif st == "object":
+        if dt == dict:
+            ret = {}
+            required = {}
+            optional = {}
+            for prop in schema["properties"]:
+                if prop["required"] == True:
+                    required[prop["name"]] = prop["schema"]
+                else:
+                    optional[prop["name"]] = prop["schema"]
+                    missing = set(required.keys()) - set(datum.keys())
+                    if missing:
+                        raise ValidationError("Missing properties: %s" % list(missing))
+            extra = set(datum.keys()) - set(required.keys() + optional.keys())
+            if extra:
+                raise ValidationError("Unexpected properties: %s" % list(extra))
+            for prop, schema in optional.items() + required.items():
+                if prop in datum.keys():
+                    ret[prop] = normalize(schema, datum[prop])
+            return ret
     # Validate schema type using META_SCHEMA
     elif st == "schema":
         # First test the basic structure by recursing
@@ -217,7 +220,7 @@ def normalize(schema, datum):
             if len(props) > len(set(props)):
                 raise ValidationError("Duplicate properties")
         return normalized
-    elif st not in ["integer", "float", "string", "object", "array", "boolean", "schema"]:
+    else:
         raise ValidationError("Unknown type: %s" % st)
     raise ValidationError("Invalid %s: %s" % (st, datum,))
 
