@@ -128,14 +128,6 @@ class TestAPI(TestCase):
 
         api.apio_index = RemoteAPI(index_spec)
 
-        with patch.object(requests, 'post') as mock_post:
-            # Load API
-            mock_post.return_value.status_code = 200
-            mock_post.return_value.json = cookbook_spec
-            from apio.index import cookbook as remote_cookbook
-            self.remote_cookbook = remote_cookbook
-            mock_post.assert_called_with('http://api.apio.io/actions/get_spec', headers={'Content-Type': 'application/json'}, data=json.dumps("cookbook"))
-
         # Create test client for some HTTP tests
         from flask import Flask
         self.app = Flask(__name__, static_folder=None)
@@ -252,6 +244,9 @@ class TestAPI(TestCase):
             cookbook_decentralized = API.load('http://example.com/spec.json')
             self.assertEqual(cookbook_decentralized.spec, cookbook_spec)
             self.assertEqual(sys.modules['apio.index.cookbook'], cookbook_decentralized)
+
+    def test_api_module_cache(self):
+        self.assertEqual(sys.modules['apio.index.cookbook'], self.cookbook)
 
     def test_apierror_repr(self):
         """Make sure when APIError gets printed in stack trace we can see the message"""

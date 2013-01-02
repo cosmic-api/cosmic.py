@@ -182,6 +182,7 @@ class API(BaseAPI):
         self.name = name
         self.url = url
         self.homepage = homepage
+        sys.modules['apio.index.' + name] = self
 
     @property
     def spec(self):
