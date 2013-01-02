@@ -152,18 +152,11 @@ def corsify_view(view_func, allowed_methods):
     return corsified
 
 class BaseAPI(object):
-    pass
-
-class API(BaseAPI):
-
-    def __init__(self, name=None, url=None, homepage=None, **kwargs):
-        self.name = name
-        self.url = url
-        self.homepage = homepage
-        self.actions = Namespace()
-        self.models = models = Namespace()
+    def __init__(self):
         # Custom metaclass. When you inherit from Model, the new class
         # will be registered as part of the API
+        self.actions = Namespace()
+        self.models = models = Namespace()
         class Hook(type):
             def __new__(meta, name, bases, attributes):
                 cls = super(Hook, meta).__new__(meta, name, bases, attributes)
@@ -181,6 +174,14 @@ class API(BaseAPI):
             def validate(self):
                 pass
         self.Model = Model
+
+class API(BaseAPI):
+
+    def __init__(self, name=None, url=None, homepage=None, **kwargs):
+        super(API, self).__init__()
+        self.name = name
+        self.url = url
+        self.homepage = homepage
 
     @property
     def spec(self):
@@ -277,11 +278,19 @@ class API(BaseAPI):
 class RemoteAPI(BaseAPI):
 
     def __init__(self, spec):
+        super(RemoteAPI, self).__init__()
         self.spec = spec
-        self.actions = Namespace()
 
         for spec in self.spec['actions']:
             self.actions.add(spec['name'], RemoteAction(spec, self.url))
+
+        for spec in self.spec['models']:
+            name = spec['name']
+            attrs = {
+                "schema": spec['schema']
+            }
+            cls = self.Model.__metaclass__(name, (self.Model,), attrs)
+            self.models.add(name, cls)
 
     @property
     def name(self):

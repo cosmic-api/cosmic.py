@@ -274,5 +274,9 @@ class TestRemoteAPI(TestCase):
         self.assertEqual(self.cookbook.name, "cookbook")
         self.assertEqual(self.cookbook.url, "http://localhost:8881/api")
 
+    def test_model(self):
+        self.assertEqual(self.cookbook.models.Recipe.schema, {"type": "string"})
+        self.assertEqual(self.cookbook.models.Recipe.__bases__, (self.cookbook.Model,))
+
 if __name__ == '__main__':
     unittest.main()

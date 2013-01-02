@@ -14,7 +14,6 @@ class Namespace(object):
         self._dict = {}
 
     def __iter__(self):
-        """Allow iterating through items"""
         return self._list.__iter__()
 
     @property
@@ -41,7 +40,7 @@ class JSONPayload(object):
         return cls(json.loads(s))
 
 def get_arg_spec(func):
-    """Calculate JSON schema spec for action.  If function has no
+    """Calculate JSON schema spec for action. If function has no
     arguments, returns None.
     """
     # Based on the passed in function's arguments, there are three
