@@ -1,5 +1,6 @@
 import inspect
 import json
+import sys
 
 from apio.exceptions import SpecError, InvalidCallError, ValidationError
 
@@ -220,6 +221,17 @@ def normalize(schema, datum):
             if len(props) > len(set(props)):
                 raise ValidationError("Duplicate properties")
         return normalized
+    elif '.' in st:
+        api_name, model_name = st.split('.', 1)
+        try:
+            api = sys.modules['apio.index.' + api_name]
+        except KeyError:
+            raise ValidationError("Unknown API: %s" % api_name)
+        try:
+            model_cls = getattr(api.models, model_name)
+        except SpecError:
+            raise ValidationError("Unknown model for %s API: %s" % (api_name, model_name))
+        return model_cls(datum)
     else:
         raise ValidationError("Unknown type: %s" % st)
     raise ValidationError("Invalid %s: %s" % (st, datum,))

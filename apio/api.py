@@ -226,7 +226,6 @@ class API(BaseAPI):
         defaults to True and determines whether you want your API
         pushed to APIO index.
         """
-
         debug = kwargs.get('debug', False)
         if kwargs.pop('register_api', True):
             ensure_bootstrapped()

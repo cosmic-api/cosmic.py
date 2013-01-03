@@ -137,6 +137,17 @@ class TestAPI(TestCase):
     def tearDown(self):
         api.clear_module_cache()
 
+    def test_model_normalize_okay(self):
+        self.assertEqual(normalize({"type": "cookbook.Recipe"}, "turkey").data, "turkey")
+
+    def test_model_normalize_bad_api(self):
+        with self.assertRaisesRegexp(ValidationError, "Unknown API"):
+            normalize({"type": "cookingbook.Recipe"}, "turkey")
+
+    def test_model_normalize_bad_model(self):
+        with self.assertRaisesRegexp(ValidationError, "Unknown model for cookbook"):
+            normalize({"type": "cookbook.Schmecipe"}, "turkey")
+
     def test_subclassing_hook(self):
         self.assertEqual(set(self.cookbook.models.__all__), set(["Recipe", "Cookie"]))
 
