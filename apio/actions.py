@@ -4,7 +4,7 @@ import requests
 from flask import request
 from flask.exceptions import JSONBadRequest
 
-from apio.tools import get_arg_spec, serialize_action_arguments, apply_to_action_func, JSONPayload, schema_is_compatible, normalize
+from apio.tools import get_arg_spec, serialize_action_arguments, apply_to_action_func, JSONPayload, schema_is_compatible, normalize, corsify_view, apio_view
 from apio.exceptions import APIError, SpecError, AuthenticationError, ValidationError
 
 class Action(object):
@@ -49,60 +49,21 @@ class Action(object):
         data = serialize_action_arguments(*args, **kwargs)
         return apply_to_action_func(self.raw_func, data)
 
+    def add_to_blueprint(self, blueprint, debug=False):
+        name = self.spec['name']
+        view = self.get_view(debug=debug)
+        view = corsify_view(view, ["POST"])
+        url = "/actions/%s" % name
+        blueprint.add_url_rule(url, name, view, methods=['POST', 'OPTIONS'])
+
     def get_view(self, debug=False):
         """Wraps a user-defined action function to return a Flask view function
         that handles errors and returns proper HTTP responses"""
-        def action_view():
-            ct = request.headers.get('Content-Type', None)
-            if ct != "application/json":
-                return json.dumps({
-                    "error": 'Content-Type must be "application/json"'
-                }), 400
-            try:
-                payload = JSONPayload.from_string(request.data)
-            except ValueError:
-                return json.dumps({
-                    "error": "Invalid JSON"
-                }), 400
-            # If function takes no arguments, request must be empty
-            if 'accepts' not in self.spec and payload:
-                return json.dumps({
-                    "error": "%s takes no arguments. Request content must be empty" % self.name 
-                }), 400
-            # If function takes arguments, request cannot be empty
-            if 'accepts' in self.spec and not payload:
-                return json.dumps({
-                    "error": "%s takes arguments. Request content cannot be empty" % self.name
-                }), 400
-            # Validate incoming data
-            if payload:
-                try:
-                    normalized = normalize(self.spec['accepts'], payload.json)
-                    payload = JSONPayload(normalized)
-                except ValidationError:
-                    return json.dumps({
-                        "error": "Validation failed"
-                    }), 400
-            try:
-                # Run the actual function
-                data = apply_to_action_func(self.raw_func, payload)
-                # May raise ValidationError, will be rendered as 500 below
-                data = normalize(self.spec['returns'], data)
-            except APIError as err:
-                return json.dumps({
-                    "error": err.args[0]
-                }), err.http_code
-            except AuthenticationError:
-                return json.dumps({
-                    "error": "Authentication failed"
-                }), 401
-            # Any other exception should be handled gracefully
-            except Exception as e:
-                if debug: raise e
-                return json.dumps({
-                    "error": "Internal Server Error"
-                }), 500
-            return json.dumps(data)
+        accepts = self.spec.get('accepts', None)
+        returns = self.spec.get('returns', None)
+        @apio_view(debug=debug, accepts=accepts, returns=returns)
+        def action_view(payload):
+            return apply_to_action_func(self.raw_func, payload)
         return action_view
 
 

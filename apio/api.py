@@ -5,6 +5,7 @@ import requests
 from flask import Flask, Blueprint, Response, request, make_response
 from flask.exceptions import JSONBadRequest
 
+import apio.resources
 from apio.exceptions import APIError, SpecError, InvalidCallError
 from apio.actions import Action, RemoteAction
 from apio.tools import Namespace, normalize
@@ -102,71 +103,23 @@ def ensure_bootstrapped():
         apio_index = RemoteAPI(res.json)
         sys.modules.setdefault('apio.apio_index', apio_index)
 
-def corsify_view(view_func, allowed_methods):
-    """Takes a Flask view function and augments it with CORS
-    functionality. Implementation based on this tutorial:
-    http://www.html5rocks.com/en/tutorials/cors/
-
-    Access-Control-Allow-Credentials can be emulated, so there's no
-    real reason to support it. IE doesn't support wildcard
-    Access-Control-Allow-Origin so we just echo the request Origin
-    instead. See here for notes:
-    https://github.com/alexandru/crossdomain-requests-js/wiki/Troubleshooting
-
-    Note that many CORS implementations are broken. For example,
-    see: http://stackoverflow.com/q/12780839/212584
-    """
-    def corsified(*args, **kwargs):
-        """Flask view for handling the CORS preflight request
-        """
-        origin = request.headers.get("Origin", None)
-        # Preflight request
-        if request.method == "OPTIONS":
-            # No Origin?
-            if origin == None:
-                error = "Preflight CORS request must include Origin header"
-                return error, 400
-            # Access-Control-Request-Method is not set or set wrongly?
-            requested_method = request.headers.get("Access-Control-Request-Method", None)
-            if requested_method not in allowed_methods:
-                error = "Access-Control-Request-Method header must be set to "
-                error += " or ".join(allowed_methods)
-                return error, 400
-            # Everything is good, make response
-            res = make_response("", 200)
-            res.headers["Access-Control-Allow-Origin"] = origin
-            res.headers["Access-Control-Allow-Methods"] = ",".join(allowed_methods)
-            # Allow all requested headers
-            headers = request.headers.get('Access-Control-Request-Headers', None)
-            if headers != None:
-                res.headers["Access-Control-Allow-Headers"] = headers
-        # Actual request
-        else:
-            # If view_func returns a tuple, make_response will turn it
-            # into flask.Response. If it already returns a Response,
-            # make_response will do nothing
-            res = make_response(view_func(*args, **kwargs))
-            if origin != None:
-                res.headers["Access-Control-Allow-Origin"] = origin
-        return res
-    return corsified
-
 class BaseAPI(object):
     def __init__(self):
         # Custom metaclass. When you inherit from Model, the new class
         # will be registered as part of the API
         self.actions = Namespace()
         self.models = models = Namespace()
-        class Hook(type):
-            def __new__(meta, name, bases, attributes):
-                cls = super(Hook, meta).__new__(meta, name, bases, attributes)
+        self.resources = resources = Namespace()
+        class ModelHook(type):
+            def __new__(meta, name, bases, attrs):
+                cls = super(ModelHook, meta).__new__(meta, name, bases, attrs)
                 if name != "Model":
                     # Raise ValidationError if model schema is invalid
                     normalize({"type": "schema"}, cls.schema)
                     models.add(name, cls)
                 return cls
         class Model(object):
-            __metaclass__ = Hook
+            __metaclass__ = ModelHook
             schema = {"type": "any"}
             def __init__(self, json_data):
                 self.data = normalize(self.schema, json_data)
@@ -174,6 +127,21 @@ class BaseAPI(object):
             def validate(self):
                 pass
         self.Model = Model
+        class ResourceHook(type):
+            def __new__(meta, name, bases, attrs):
+                cls = super(ResourceHook, meta).__new__(meta, name, bases, attrs)
+                if name != "Resource":
+                    # Make sure the class name ends with Resource
+                    if not name.endswith("Resource"):
+                        raise ValidationError("Resource class name must end with Resource")
+                    # And then trim the name
+                    name = name[:-len("Resource")]
+                    cls.name = name
+                    resources.add(name, cls)
+                return cls
+        class Resource(apio.resources.Resource):
+            __metaclass__ = ResourceHook
+        self.Resource = Resource
 
 class API(BaseAPI):
 
@@ -207,13 +175,10 @@ class API(BaseAPI):
         a Flask application.
         """
         blueprint = Blueprint(self.name, __name__)
-        # View to handle the CORS preflight request
         for action in self.actions:
-            name = action.spec['name']
-            view = action.get_view(debug=debug)
-            view = corsify_view(view, ["POST"])
-            url = "/actions/%s" % name
-            blueprint.add_url_rule(url, name, view, methods=['POST', 'OPTIONS'])
+            action.add_to_blueprint(blueprint, debug=debug)
+        for resource in self.resources:
+            resource.add_to_blueprint(blueprint, debug=debug)
         @blueprint.route('/spec.json')
         def getspec():
             spec = json.dumps(self.spec)
@@ -249,11 +214,17 @@ class API(BaseAPI):
             return func
         return wrapper
 
+    def authenticate(self):
+        """Authenticates the user based on request headers. Returns
+        user-related data upon successful authentication, raises
+        AuthenticationError upon unsuccessful authentication and
+        returns None if no authentication info was passed in.
+        """
+        return None
+
     def authentication(self, func):
         """Registers the given function as an authentication function
-        for the API. The authentication function takes a dict of
-        headers as its single argument and returns user-related data
-        or raises AuthenticationError
+        for the API.
         """
         def authenticate():
             return func(request.headers)
