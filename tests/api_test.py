@@ -88,6 +88,40 @@ class TestBootstrapping(TestCase):
     def tearDown(self):
         api.clear_module_cache()
 
+class TestAPIAuthentication(TestCase):
+    """Tests API.authenticate method"""
+
+    def setUp(self):
+
+        self.magicbook = API('magicbook', "http://localhost:8882/api")
+
+        self.cookbook = API('cookbook', "http://localhost:8881/api")
+        @self.cookbook.authentication
+        def authenticate(headers):
+            if headers['X-Wacky'] != 'Tobacky':
+                raise AuthenticationError()
+            return "boronine"
+
+        self.cook_app = self.cookbook.get_test_app()
+        self.magic_app = self.cookbook.get_test_app()
+
+    def tearDown(self):
+        api.clear_module_cache()
+
+    def test_authentication_okay(self):
+        headers = {"X-Wacky": "Tobacky"}
+        with self.cook_app.test_request_context(headers=headers):
+            self.assertEqual(self.cookbook.authenticate(), 'boronine')
+
+    def test_authentication_error(self):
+        headers = {"X-Wacky": "Tomeato"}
+        with self.cook_app.test_request_context(headers=headers):
+            with self.assertRaises(AuthenticationError):
+                self.cookbook.authenticate()
+
+    def test_default_authentication(self):
+        with self.magic_app.test_request_context(headers={}):
+            self.assertEqual(self.magicbook.authenticate(), None)
 
 class TestAPI(TestCase):
 
@@ -97,7 +131,6 @@ class TestAPI(TestCase):
 
         @self.cookbook.action()
         def cabbage(spicy, capitalize=False):
-            user = self.cookbook.authenticate()
             if spicy:
                 c = "kimchi"
             else:
@@ -111,12 +144,6 @@ class TestAPI(TestCase):
         def noop():
             return None
 
-        @self.cookbook.authentication
-        def authenticate(headers):
-            if headers['X-Wacky'] != 'Tobacky':
-                raise AuthenticationError()
-            return "boronine"
-
         class Recipe(self.cookbook.Model):
             schema = {"type": "string"}
             def validate(self):
@@ -126,16 +153,20 @@ class TestAPI(TestCase):
         class Cookie(self.cookbook.Model):
             schema = {"type": "boolean"}
 
-        api.apio_index = RemoteAPI(index_spec)
+        class RecipeResource(self.cookbook.Resource):
+            pass
 
-        # Create test client for some HTTP tests
-        from flask import Flask
-        self.app = Flask(__name__, static_folder=None)
-        self.app.register_blueprint(self.cookbook.get_blueprint(), url_prefix="/api")
+        api.apio_index = RemoteAPI(index_spec)
+        self.app = self.cookbook.get_test_app()
         self.werkzeug_client = self.app.test_client()
 
     def tearDown(self):
         api.clear_module_cache()
+
+    def test_resource_bad_class_name(self):
+        with self.assertRaisesRegexp(ValidationError, "must end with Resource"):
+            class BlahResourrrrs(self.cookbook.Resource):
+                pass
 
     def test_model_normalize_okay(self):
         self.assertEqual(normalize({"type": "cookbook.Recipe"}, "turkey").data, "turkey")
@@ -183,9 +214,8 @@ class TestAPI(TestCase):
         self.assertEqual(self.cookbook.spec, cookbook_spec)
 
     def test_call(self):
-        headers = { "X-Wacky": "Tobacky" }
         data = '{"spicy": true}'
-        with self.app.test_request_context('/api/actions/cabbage', data=data, headers=headers, content_type="application/json"):
+        with self.app.test_request_context('/api/actions/cabbage', data=data, content_type="application/json"):
             self.assertEqual(self.cookbook.actions.cabbage(spicy=False), "sauerkraut")
 
     def test_spec_endpoint(self):
@@ -195,11 +225,6 @@ class TestAPI(TestCase):
     def test_schema(self):
         normalize(API_SCHEMA, self.cookbook.spec)
 
-    def test_authentication_error(self):
-        headers = { "X-Wacky": "Bananas" }
-        data = '{"spicy": true}'
-        res = self.werkzeug_client.post('/api/actions/cabbage', data=data, headers=headers, content_type="application/json")
-        self.assertEqual(res.status_code, 401)
 
     def test_CORS_preflight_request_okay(self):
         headers = {

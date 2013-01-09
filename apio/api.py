@@ -6,7 +6,7 @@ from flask import Flask, Blueprint, Response, request, make_response
 from flask.exceptions import JSONBadRequest
 
 import apio.resources
-from apio.exceptions import APIError, SpecError, InvalidCallError
+from apio.exceptions import APIError, SpecError, InvalidCallError, ValidationError
 from apio.actions import Action, RemoteAction
 from apio.tools import Namespace, normalize
 
@@ -178,12 +178,20 @@ class API(BaseAPI):
         for action in self.actions:
             action.add_to_blueprint(blueprint, debug=debug)
         for resource in self.resources:
-            resource.add_to_blueprint(blueprint, debug=debug)
+            resource().add_to_blueprint(blueprint, debug=debug)
         @blueprint.route('/spec.json')
         def getspec():
             spec = json.dumps(self.spec)
             return Response(spec, mimetype="application/json")
         return blueprint
+
+    def get_test_app(self):
+        """Returns a Flask test client
+        """
+        from flask import Flask
+        app = Flask(__name__, static_folder=None)
+        app.register_blueprint(self.get_blueprint(), url_prefix="/api")
+        return app
 
     def run(self, *args, **kwargs):
         """Runs the API as a Flask app. All arguments channelled into

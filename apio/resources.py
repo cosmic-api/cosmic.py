@@ -1,6 +1,6 @@
 import json
 
-from flask import request
+from flask import request, Response
 
 class Resource(object):
 
@@ -36,7 +36,7 @@ class Resource(object):
 
         methods = ["GET", "DELETE", "PUT", "PATCH"]
         @blueprint.route("/resources/%s/<id>" % name, methods=methods)
-        def single():
+        def single(id):
             if request.method == "GET":
                 return self.get(id)
             if request.method == "DELETE":
