@@ -52,7 +52,7 @@ class Action(object):
     def add_to_blueprint(self, blueprint, debug=False):
         name = self.spec['name']
         view = self.get_view(debug=debug)
-        view = corsify_view(view, ["POST"])
+        view = corsify_view(["POST"])(view)
         url = "/actions/%s" % name
         blueprint.add_url_rule(url, name, view, methods=['POST', 'OPTIONS'])
 

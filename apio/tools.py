@@ -281,7 +281,7 @@ META_SCHEMA = {
     ]
 }
 
-def corsify_view(view_func, allowed_methods):
+def corsify_view(allowed_methods):
     """Takes a Flask view function and augments it with CORS
     functionality. Implementation based on this tutorial:
     http://www.html5rocks.com/en/tutorials/cors/
@@ -295,40 +295,43 @@ def corsify_view(view_func, allowed_methods):
     Note that many CORS implementations are broken. For example,
     see: http://stackoverflow.com/q/12780839/212584
     """
-    def corsified(*args, **kwargs):
-        """Flask view for handling the CORS preflight request
-        """
-        origin = request.headers.get("Origin", None)
-        # Preflight request
-        if request.method == "OPTIONS":
-            # No Origin?
-            if origin == None:
-                error = "Preflight CORS request must include Origin header"
-                return error, 400
-            # Access-Control-Request-Method is not set or set wrongly?
-            requested_method = request.headers.get("Access-Control-Request-Method", None)
-            if requested_method not in allowed_methods:
-                error = "Access-Control-Request-Method header must be set to "
-                error += " or ".join(allowed_methods)
-                return error, 400
-            # Everything is good, make response
-            res = make_response("", 200)
-            res.headers["Access-Control-Allow-Origin"] = origin
-            res.headers["Access-Control-Allow-Methods"] = ",".join(allowed_methods)
-            # Allow all requested headers
-            headers = request.headers.get('Access-Control-Request-Headers', None)
-            if headers != None:
-                res.headers["Access-Control-Allow-Headers"] = headers
-        # Actual request
-        else:
-            # If view_func returns a tuple, make_response will turn it
-            # into flask.Response. If it already returns a Response,
-            # make_response will do nothing
-            res = make_response(view_func(*args, **kwargs))
-            if origin != None:
+    def decorator(view_func):
+        def corsified(*args, **kwargs):
+            """Flask view for handling the CORS preflight request
+            """
+            origin = request.headers.get("Origin", None)
+            # Preflight request
+            if request.method == "OPTIONS":
+                # No Origin?
+                if origin == None:
+                    error = "Preflight CORS request must include Origin header"
+                    return error, 400
+                # Access-Control-Request-Method is not set or set
+                # wrongly?
+                requested_method = request.headers.get("Access-Control-Request-Method", None)
+                if requested_method not in allowed_methods:
+                    error = "Access-Control-Request-Method header must be set to "
+                    error += " or ".join(allowed_methods)
+                    return error, 400
+                # Everything is good, make response
+                res = make_response("", 200)
                 res.headers["Access-Control-Allow-Origin"] = origin
-        return res
-    return corsified
+                res.headers["Access-Control-Allow-Methods"] = ",".join(allowed_methods)
+                # Allow all requested headers
+                headers = request.headers.get('Access-Control-Request-Headers', None)
+                if headers != None:
+                    res.headers["Access-Control-Allow-Headers"] = headers
+            # Actual request
+            else:
+                # If view_func returns a tuple, make_response will
+                # turn it into flask.Response. If it already returns a
+                # Response, make_response will do nothing
+                res = make_response(view_func(*args, **kwargs))
+                if origin != None:
+                    res.headers["Access-Control-Allow-Origin"] = origin
+            return res
+        return corsified
+    return decorator
 
 def apio_view(debug=False, accepts=None, returns=None):
     """Wraps the function with some generic error handling

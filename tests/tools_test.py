@@ -461,12 +461,15 @@ class TestNamespace(TestCase):
 
 
 class TestCORS(TestCase):
+    """Test CORS support which is implemented in
+    apio.tools.corsify_view
+    """
 
     def setUp(self):
         app = Flask(__name__, static_folder=None)
+        @corsify_view(["PUT"])
         def view():
             return "yes"
-        view = corsify_view(view, ["PUT"])
         app.add_url_rule('/box', 'box', view, methods=["PUT", "OPTIONS"])
         self.werkzeug_client = app.test_client()
 
@@ -511,8 +514,12 @@ class TestCORS(TestCase):
             "Origin": "http://example.com",
             "X-Wacky": "Tobacky"
         }
-        data = '{"spicy": true}'
-        res = self.werkzeug_client.put('/box', data=data, headers=headers, content_type="application/json")
+        res = self.werkzeug_client.put('/box', headers=headers, content_type="application/json")
+        self.assertEqual(res.status_code, 200)
+        self.assertRegexpMatches(res.data, "yes")
+
+    def test_non_CORS_still_works(self):
+        res = self.werkzeug_client.put('/box', content_type="application/json")
         self.assertEqual(res.status_code, 200)
         self.assertRegexpMatches(res.data, "yes")
 
