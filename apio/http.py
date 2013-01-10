@@ -93,7 +93,7 @@ def apio_view(debug=False, accepts=None, returns=None):
                     payload = JSONPayload(normalized)
                 except ValidationError:
                     return json.dumps({
-                        "error": "Validation failed"
+                        "error": "Validation failed" + json.dumps(accepts)
                     }), 400
             # Try running the actual function
             try:
@@ -101,7 +101,9 @@ def apio_view(debug=False, accepts=None, returns=None):
                 # May raise ValidationError, will be caught below (500 error)
                 if returns:
                     data = normalize(returns, data)
-                return json.dumps(data)
+                    return json.dumps(data)
+                else:
+                    return ""
             except APIError as err:
                 return json.dumps({
                     "error": err.args[0]

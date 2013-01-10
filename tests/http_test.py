@@ -68,3 +68,64 @@ class TestCORS(TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertRegexpMatches(res.data, "yes")
 
+class TestAPIOView(TestCase):
+    """Tests our generic view wrapper implemented in
+    apio.http.apio_view
+    """
+
+    def setUp(self):
+        self.app = app = Flask(__name__, static_folder=None)
+
+        @app.route('/takes/string', endpoint='takes_string', methods=["POST"])
+        @apio_view(accepts={"type": "string"})
+        def takes_string(payload):
+            pass
+
+        @app.route('/noop', endpoint='noop', methods=["POST"])
+        @apio_view()
+        def noop(payload):
+            pass
+
+        @app.route('/unhandled/error', endpoint='unhandled_error', methods=["POST"])
+        @apio_view()
+        def noop(payload):
+            return 1 / 0
+
+        self.werkzeug_client = app.test_client()
+
+    def test_wrong_content_type(self):
+        res = self.werkzeug_client.post('/noop', content_type="application/jason")
+        self.assertEqual(res.status_code, 400)
+        self.assertRegexpMatches(res.data, "Content-Type must be")
+
+    def test_invalid_json(self):
+        res = self.werkzeug_client.post('/noop', data='{"spicy":farse}', content_type="application/json")
+        self.assertEqual(res.status_code, 400)
+        self.assertRegexpMatches(res.data, "Invalid JSON")
+
+    def test_validation_error(self):
+        res = self.werkzeug_client.post('/takes/string', data="true", content_type="application/json")
+        self.assertEqual(res.status_code, 400)
+        self.assertRegexpMatches(res.data, "Validation failed")
+
+    def test_no_data(self):
+        res = self.werkzeug_client.post('/takes/string', data='', content_type="application/json")
+        self.assertEqual(res.status_code, 400)
+        self.assertRegexpMatches(res.data, "cannot be empty")
+
+    def test_action_no_args_with_data(self):
+        res = self.werkzeug_client.post('/noop', data="true", content_type="application/json")
+        self.assertEqual(res.status_code, 400)
+        self.assertRegexpMatches(res.data, "must be empty")
+
+    def test_unhandled_exception(self):
+        res = self.werkzeug_client.post('/unhandled/error', content_type="application/json")
+        self.assertEqual(res.status_code, 500)
+        self.assertEqual(json.loads(res.data), {
+            "error": "Internal Server Error"
+        })
+
+    def test_action_no_args_no_data(self):
+        res = self.werkzeug_client.post('/noop', data='', content_type="application/json")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data, "")
