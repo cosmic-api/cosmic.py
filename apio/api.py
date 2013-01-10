@@ -188,7 +188,6 @@ class API(BaseAPI):
     def get_test_app(self):
         """Returns a Flask test client
         """
-        from flask import Flask
         app = Flask(__name__, static_folder=None)
         app.register_blueprint(self.get_blueprint(), url_prefix="/api")
         return app
