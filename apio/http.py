@@ -5,6 +5,19 @@ from flask import request, make_response
 from apio.exceptions import *
 from apio.tools import JSONPayload, normalize
 
+# We shouldn't have to do this, but Flask doesn't allow us to route
+# _all_ methods implicitly. When we don't pass in methods, flask
+# assumes methods to be ["GET", "HEAD", "OPTIONS"].
+ALL_METHODS = [
+    "OPTIONS",
+    "GET",
+    "HEAD",
+    "POST",
+    "PUT",
+    "DELETE",
+    "TRACE",
+    "CONNECT"
+]
 
 def corsify_view(allowed_methods):
     """Takes a Flask view function and augments it with CORS
@@ -58,11 +71,17 @@ def corsify_view(allowed_methods):
         return corsified
     return decorator
 
-def apio_view(debug=False, accepts=None, returns=None):
+def apio_view(methods, debug=False, accepts=None, returns=None):
     """Wraps the function with some generic error handling
     """
     def wrapper(view_func):
+        @corsify_view(methods)
         def wrapped():
+            # Make sure the method is allowed
+            if request.method not in methods:
+                return json.dumps({
+                    "error": "%s is not allowed on this endpoint" % request.method
+                })
             # Make sure Content-Type is right
             ct = request.headers.get('Content-Type', None)
             if ct != "application/json":
@@ -98,12 +117,11 @@ def apio_view(debug=False, accepts=None, returns=None):
             # Try running the actual function
             try:
                 data = view_func(payload=payload)
-                # May raise ValidationError, will be caught below (500 error)
-                if returns:
+                if returns != None:
+                    # May raise ValidationError, will be caught below
                     data = normalize(returns, data)
-                    return json.dumps(data)
-                else:
-                    return ""
+                    return json.dumps(data), 200
+                return "", 200
             except APIError as err:
                 return json.dumps({
                     "error": err.args[0]

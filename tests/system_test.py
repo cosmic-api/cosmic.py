@@ -4,7 +4,7 @@ def quickstart():
     from apio.api import API
     cookbook = API('cookbook')
 
-    @cookbook.action()
+    @cookbook.action(returns={"type": "string"})
     def cabbage(spicy=False):
         if spicy:
             return "kimchi"

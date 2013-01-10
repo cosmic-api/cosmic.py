@@ -77,17 +77,17 @@ class TestAPIOView(TestCase):
         self.app = app = Flask(__name__, static_folder=None)
 
         @app.route('/takes/string', endpoint='takes_string', methods=["POST"])
-        @apio_view(accepts={"type": "string"})
+        @apio_view(["POST"], accepts={"type": "string"})
         def takes_string(payload):
             pass
 
         @app.route('/noop', endpoint='noop', methods=["POST"])
-        @apio_view()
+        @apio_view(["POST"])
         def noop(payload):
             pass
 
         @app.route('/unhandled/error', endpoint='unhandled_error', methods=["POST"])
-        @apio_view()
+        @apio_view(["POST"])
         def noop(payload):
             return 1 / 0
 

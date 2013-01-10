@@ -5,7 +5,7 @@ from flask import request
 from flask.exceptions import JSONBadRequest
 
 from apio.tools import get_arg_spec, serialize_action_arguments, apply_to_action_func, JSONPayload, schema_is_compatible, normalize
-from apio.http import corsify_view, apio_view
+from apio.http import corsify_view, apio_view, ALL_METHODS
 from apio.exceptions import APIError, SpecError, AuthenticationError, ValidationError
 
 class Action(object):
@@ -53,16 +53,15 @@ class Action(object):
     def add_to_blueprint(self, blueprint, debug=False):
         name = self.spec['name']
         view = self.get_view(debug=debug)
-        view = corsify_view(["POST"])(view)
         url = "/actions/%s" % name
-        blueprint.add_url_rule(url, name, view, methods=['POST', 'OPTIONS'])
+        blueprint.add_url_rule(url, name, view, methods=ALL_METHODS)
 
     def get_view(self, debug=False):
         """Wraps a user-defined action function to return a Flask view function
         that handles errors and returns proper HTTP responses"""
         accepts = self.spec.get('accepts', None)
         returns = self.spec.get('returns', None)
-        @apio_view(debug=debug, accepts=accepts, returns=returns)
+        @apio_view(["POST"], debug=debug, accepts=accepts, returns=returns)
         def action_view(payload):
             return apply_to_action_func(self.raw_func, payload)
         return action_view
