@@ -91,10 +91,15 @@ class TestAPIOView(TestCase):
         def noop(payload):
             return 1 / 0
 
-        @app.route('/handled/error', endpoint='handled_error', methods=ALL_METHODS)
+        @app.route('/api/error', endpoint='api_error', methods=ALL_METHODS)
         @apio_view(["POST"])
         def noop(payload):
             raise APIError("fizzbuzz")
+
+        @app.route('/authentication/error', endpoint='authentication_error', methods=ALL_METHODS)
+        @apio_view(["POST"])
+        def noop(payload):
+            raise AuthenticationError()
 
         self.werkzeug_client = app.test_client()
 
@@ -135,11 +140,18 @@ class TestAPIOView(TestCase):
             "error": "Internal Server Error"
         })
 
-    def test_handled_exception(self):
-        res = self.werkzeug_client.post('/handled/error', content_type="application/json")
+    def test_APIError_handling(self):
+        res = self.werkzeug_client.post('/api/error', content_type="application/json")
         self.assertEqual(res.status_code, 500)
         self.assertEqual(json.loads(res.data), {
             "error": "fizzbuzz"
+        })
+
+    def test_AuthenticationError_handling(self):
+        res = self.werkzeug_client.post('/authentication/error', content_type="application/json")
+        self.assertEqual(res.status_code, 401)
+        self.assertEqual(json.loads(res.data), {
+            "error": "Authentication failed"
         })
 
     def test_action_no_args_no_data(self):
