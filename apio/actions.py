@@ -4,7 +4,8 @@ import requests
 from flask import request
 from flask.exceptions import JSONBadRequest
 
-from apio.tools import get_arg_spec, serialize_action_arguments, apply_to_action_func, JSONPayload, schema_is_compatible, normalize, corsify_view, apio_view
+from apio.tools import get_arg_spec, serialize_action_arguments, apply_to_action_func, JSONPayload, schema_is_compatible, normalize
+from apio.http import corsify_view, apio_view
 from apio.exceptions import APIError, SpecError, AuthenticationError, ValidationError
 
 class Action(object):
