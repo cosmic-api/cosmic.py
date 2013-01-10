@@ -81,15 +81,20 @@ class TestAPIOView(TestCase):
         def takes_string(payload):
             pass
 
-        @app.route('/noop', endpoint='noop', methods=["POST"])
+        @app.route('/noop', endpoint='noop', methods=ALL_METHODS)
         @apio_view(["POST"])
         def noop(payload):
             pass
 
-        @app.route('/unhandled/error', endpoint='unhandled_error', methods=["POST"])
+        @app.route('/unhandled/error', endpoint='unhandled_error', methods=ALL_METHODS)
         @apio_view(["POST"])
         def noop(payload):
             return 1 / 0
+
+        @app.route('/handled/error', endpoint='handled_error', methods=ALL_METHODS)
+        @apio_view(["POST"])
+        def noop(payload):
+            raise APIError("fizzbuzz")
 
         self.werkzeug_client = app.test_client()
 
@@ -97,6 +102,11 @@ class TestAPIOView(TestCase):
         res = self.werkzeug_client.post('/noop', content_type="application/jason")
         self.assertEqual(res.status_code, 400)
         self.assertRegexpMatches(res.data, "Content-Type must be")
+
+    def test_wrong_method(self):
+        res = self.werkzeug_client.put('/noop', content_type="application/json")
+        self.assertEqual(res.status_code, 405)
+        self.assertRegexpMatches(res.data, "PUT is not allowed")
 
     def test_invalid_json(self):
         res = self.werkzeug_client.post('/noop', data='{"spicy":farse}', content_type="application/json")
@@ -125,7 +135,15 @@ class TestAPIOView(TestCase):
             "error": "Internal Server Error"
         })
 
+    def test_handled_exception(self):
+        res = self.werkzeug_client.post('/handled/error', content_type="application/json")
+        self.assertEqual(res.status_code, 500)
+        self.assertEqual(json.loads(res.data), {
+            "error": "fizzbuzz"
+        })
+
     def test_action_no_args_no_data(self):
         res = self.werkzeug_client.post('/noop', data='', content_type="application/json")
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.data, "")
+

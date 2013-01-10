@@ -81,7 +81,7 @@ def apio_view(methods, debug=False, accepts=None, returns=None):
             if request.method not in methods:
                 return json.dumps({
                     "error": "%s is not allowed on this endpoint" % request.method
-                })
+                }), 405
             # Make sure Content-Type is right
             ct = request.headers.get('Content-Type', None)
             if ct != "application/json":

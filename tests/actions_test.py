@@ -75,6 +75,9 @@ class TestBasicRemoteAction(TestCase):
 
 
 class TestBasicAction(TestCase):
+    """Action is mostly glue code, the majority of interesting cases
+    are tested in apio.http.apio_view
+    """
 
     def setUp(self):
 
@@ -104,17 +107,6 @@ class TestBasicAction(TestCase):
         res = self.werkzeug_client.post('/cabbage', data='{"spicy":true}', content_type="application/json")
         self.assertEqual(res.status_code, 200)
         self.assertEqual(json.loads(res.data), "12.0 pounds of kimchi")
-
-    def test_wrong_method(self):
-        res = self.werkzeug_client.get('/cabbage', data='{"spicy":false}')
-        self.assertEqual(res.status_code, 405)
-
-    def test_handled_exception(self):
-        res = self.werkzeug_client_debug.post('/cabbage', data='{"spicy":true,"servings":25}', content_type="application/json")
-        self.assertEqual(res.status_code, 501)
-        self.assertEqual(json.loads(res.data), {
-            "error": "Too many servings"
-        })
 
     def test_unhandled_exception_debug(self):
         with self.assertRaises(ZeroDivisionError):
