@@ -1,7 +1,11 @@
 Model System
 ============
 
-APIO ships with a simple JSON-based schema and model system.
+APIO ships with a simple JSON-based schema and model system. A JSON
+schema is a way of describing JSON data for validation and generating
+documentation. A model is a Python class attached to a schema that may
+contain extra validation functionality. Once a model is created, any
+JSON schema can reference it by its name.
 
 JSON schema
 -----------
@@ -105,3 +109,12 @@ strings:
         "type": "array",
         "items": {"type": "string"}
     }
+
+Models
+------
+
+Models are created for a particular :class:`apio.api.API` by subclassing the
+``MyCoolAPI.Model`` class. The act of subclassing will register the
+model with the API and add it to the API spec. The default Model
+schema is ``{"type": "any"}``. To change it, override the ``schema``
+attribute.
