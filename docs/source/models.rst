@@ -6,12 +6,102 @@ APIO ships with a simple JSON-based schema and model system.
 JSON schema
 -----------
 
-We provide with a simple way to define the format of your data with a schema written in JSON.
+We provide with a simple way to define the format of your data with a
+schema written in JSON.
 
 .. note::
 
     *Why invent our own JSON schema system?*
     
-    Before deciding to go with our own system, we took a good look at some existing options. Our best candidates were `JSON Schema <http://json-schema.org/>`_ and `Apache Avro <http://avro.apache.org/>`_. JSON Schema has a significant flaw: the order of object attributes is not preserved. Apache Avro had a different problem: because an attribute can be defined as allowing multiple types, objects needed to be wrapped in an annotation layer to avoid ambiguity. Instead of ``{"name": "Jenn"}`` we would have to output ``{"Person": {"name": "Jenn"}}``. In the context of REST APIs, this is uncommon and weird.
+    Before deciding to go with our own system, we took a good look at
+    some existing options. Our best candidates were `JSON Schema
+    <http://json-schema.org/>`_ and `Apache Avro
+    <http://avro.apache.org/>`_. JSON Schema has a significant flaw:
+    the order of object attributes is not preserved. Apache Avro had a
+    different problem: because an attribute can be defined as allowing
+    multiple types, objects needed to be wrapped in an annotation
+    layer to avoid ambiguity. Instead of ``{"name": "Jenn"}`` we would
+    have to output ``{"Person": {"name": "Jenn"}}``. In the context of
+    REST APIs, this is uncommon and potentially confusing.
 
-    Because APIO must be extremely portable, it is essential that we keep the feature list to a reasonable minimum. In this instance, the minimum is generating documentation and basic validation of data structure and types. Instead of making you learn a new `DSL <http://en.wikipedia.org/wiki/Domain-specific_language>`_ for obscure validation, we encourage you to use the power of your language. The benefits of describing schemas in minute detail are greatly outweighed by the costs of growing the amount of code that needs to be ported.
+    Because APIO must be extremely portable, it is essential that we
+    keep the feature list to a reasonable minimum. In this instance,
+    the minimum is generating documentation and basic validation of
+    data structure and types. Instead of making you learn a new `DSL
+    <http://en.wikipedia.org/wiki/Domain-specific_language>`_ for
+    obscure validation, we encourage you to use the power of your
+    language. The benefits of describing schemas in minute detail are
+    greatly outweighed by the costs of growing the amount of code that
+    needs to be ported.
+
+A ``schema`` is always a Python dict. It must always contain the
+``type`` attribute. If you would like to validate a value as a string,
+you would validate it against the ``{"type": "string"}`` schema. Here
+is a list of all the types we support:
+
++-----------------+-------------+-------------+-------------------------------------+
+| Schema ``type`` |  JSON type  | Python type | Notes                               |
++=================+=============+=============+=====================================+
+| ``any``         |             |             | Wildcard. Will validate anything.   |
++-----------------+-------------+-------------+-------------------------------------+
+| ``integer``     | ``number``  |   ``int``   | Will be encoded as a number with no |
+|                 |             |             | decimal part. When parsing JSON, a  |
+|                 |             |             | number with a decimal part is       |
+|                 |             |             | acceptable as long as the decimal   |
+|                 |             |             | part is 0. It will be cast to an    |
+|                 |             |             | integer.                            |
++-----------------+-------------+-------------+-------------------------------------+
+| ``float``       | ``number``  |  ``float``  | Will be encoded as a number with a  |
+|                 |             |             | decimal part, even if that part is  |
+|                 |             |             | 0. An integer will always pass      |
+|                 |             |             | validation and will be cast to a    |
+|                 |             |             | float.                              |
++-----------------+-------------+-------------+-------------------------------------+
+| ``string``      | ``string``  | ``unicode`` | All strings are UTF-8.              |
+|                 |             |             |                                     |
++-----------------+-------------+-------------+-------------------------------------+
+| ``boolean``     | ``boolean`` |  ``bool``   |                                     |
++-----------------+-------------+-------------+-------------------------------------+
+| ``object``      | ``object``  | ``dict``    | See below.                          |
++-----------------+-------------+-------------+-------------------------------------+
+| ``array``       | ``array``   | ``list``    | See below.                          |
++-----------------+-------------+-------------+-------------------------------------+
+
+An object schema must always contain a ``properties`` attribute, which
+will be an array of property objects. Each property must have a name,
+a schema that describes its value and a flag, signifying whether this
+property is required or not. There cannot be two properties with the
+same ``name`` in an object. The object validation succeeds unless a
+required property is missing or a property's value doesn't validate
+against its ``schema``. Here is an example of a full object schema in
+JSON:
+
+.. code:: json
+
+    {
+        "type": "object",
+        "properties": [
+            {
+                "name": "id",
+                "schema": {"type": "integer"},
+                "required": true
+            },
+            {
+                "name": "title",
+                "schema": {"type": "string"},
+                "required": false
+            }
+        ]
+    }
+
+An array schema must always contain an ``items`` property, which must
+be a ``schema`` that describes every item in the array. An empty array
+will always pass validation. Here is a schema describing an array or
+strings:
+
+.. code:: json
+
+    {
+        "type": "array",
+        "items": {"type": "string"}
+    }
