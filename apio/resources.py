@@ -6,8 +6,6 @@ class Resource(object):
 
     def list(self, query):
         raise NotImplementedError()
-    def delete_batch(self, query):
-        raise NotImplementedError()
     def get(self, id):
         raise NotImplementedError()
     def delete(self, id):
@@ -17,6 +15,7 @@ class Resource(object):
     def update(self, id, data):
         raise NotImplementedError()
     def create(self, data):
+        """Takes"""
         raise NotImplementedError()
 
     def add_to_blueprint(self, blueprint, debug=False):
@@ -28,9 +27,6 @@ class Resource(object):
             if request.method == "GET":
                 query = json.loads(request.args['query'])
                 return self.list(query)
-            if request.method == "DELETE":
-                query = json.loads(request.args['query'])
-                return self.delete_batch(query)
             if request.method == "POST":
                 return self.create({})
 

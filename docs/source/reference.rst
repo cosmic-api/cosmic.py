@@ -1,5 +1,5 @@
 Reference
 =========
 
-.. autoclass:: apio.api.API
+.. automodule:: apio.api
    :members:
