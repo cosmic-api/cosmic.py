@@ -12,6 +12,7 @@ Contents:
    :maxdepth: 2
 
    tutorial
+   models
    reference
 
 Indices and tables
