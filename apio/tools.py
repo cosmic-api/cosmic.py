@@ -149,38 +149,27 @@ def schema_is_compatible(general, detailed):
             return False
     return True
 
+from apio.models import *
+
 def normalize(schema, datum):
     """Schema is expected to be a valid schema and datum is expected
     to be the return value of json.loads
     """
+    sss = SchemaSchema().normalize(schema)
+    return sss.normalize(datum)
     st = schema["type"]
     dt = type(datum)
     # Wildcard
     if st == "any":
-        return datum
+        return WildcardSchema().normalize(datum)
     elif st == "integer":
-        if dt == int:
-            return datum
-        # A float in place of an int is okay, as long as its
-        # fractional part is 0
-        if dt == float and datum.is_integer():
-            return int(datum)
+        return IntegerSchema().normalize(datum)
     elif st == "float":
-        if dt == float:
-            return datum
-        # An int in place of a float is always okay, just cast it for
-        # normalization's sake
-        if dt == int:
-            return float(datum)
+        return FloatSchema().normalize(datum)
     elif st == "string":
-        if dt == unicode:
-            return datum
-        # Cast to unicode
-        if dt == str:
-            return unicode(datum)
+        return StringSchema().normalize(datum)
     elif st == "boolean":
-        if dt == bool:
-            return datum
+        return BooleanSchema().normalize(datum)
     elif st == "array":
         if dt == list:
             return [normalize(schema["items"], item) for item in datum]

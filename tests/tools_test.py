@@ -405,25 +405,25 @@ class TestNormalize(TestCase):
     def test_schema_array_no_items(self):
         s = self.array_schema.copy()
         s.pop("items")
-        with self.assertRaisesRegexp(ValidationError, "Invalid array schema"):
+        with self.assertRaisesRegexp(ValidationError, "Invalid schema"):
             normalize({"type": "schema"}, s)
 
     def test_schema_items_not_array(self):
         s = self.array_schema.copy()
         s["type"] = "object"
-        with self.assertRaisesRegexp(ValidationError, "Invalid object schema"):
+        with self.assertRaisesRegexp(ValidationError, "Invalid schema"):
             normalize({"type": "schema"}, s)
 
     def test_schema_object_no_properties(self):
         s = self.object_schema.copy()
         s.pop("properties")
-        with self.assertRaisesRegexp(ValidationError, "Invalid object schema"):
+        with self.assertRaisesRegexp(ValidationError, "Invalid schema"):
             normalize({"type": "schema"}, s)
 
     def test_schema_properties_not_object(self):
         s = self.object_schema.copy()
         s["type"] = "array"
-        with self.assertRaisesRegexp(ValidationError, "Invalid array schema"):
+        with self.assertRaisesRegexp(ValidationError, "Invalid schema"):
             normalize({"type": "schema"}, s)
 
     def test_schema_duplicate_properties(self):

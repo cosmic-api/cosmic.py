@@ -9,6 +9,7 @@ import apio.resources
 from apio.exceptions import APIError, SpecError, InvalidCallError, ValidationError
 from apio.actions import Action, RemoteAction
 from apio.tools import Namespace, normalize
+from apio.models import Model as BaseModel
 
 API_SCHEMA = {
     "type": "object",
@@ -118,14 +119,8 @@ class BaseAPI(object):
                     normalize({"type": "schema"}, cls.schema)
                     models.add(name, cls)
                 return cls
-        class Model(object):
+        class Model(BaseModel):
             __metaclass__ = ModelHook
-            schema = {"type": "any"}
-            def __init__(self, json_data):
-                self.data = normalize(self.schema, json_data)
-                self.validate()
-            def validate(self):
-                pass
         self.Model = Model
         class ResourceHook(type):
             def __new__(meta, name, bases, attrs):
