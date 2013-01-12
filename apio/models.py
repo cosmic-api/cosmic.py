@@ -80,8 +80,16 @@ class ObjectSchema(object):
 class Model(object):
     schema = {"type": "any"}
     def __init__(self, json_data):
-        model_schema = SchemaSchema().normalize(self.schema)
+        model_schema = ModelSchema(SchemaModel).normalize(self.schema)
         self.data = model_schema.normalize(json_data)
+        self.validate()
+    def validate(self):
+        pass
+
+class FancyModel(object):
+    schema = WildcardSchema()
+    def __init__(self, json_data):
+        self.data = self.schema.normalize(json_data)
         self.validate()
     def validate(self):
         pass
@@ -94,46 +102,38 @@ class ModelSchema(object):
         return self.model_cls(datum)
 
 
-class SchemaSchema(object):
-    def normalize(self, datum):
-        # First make sure it's an object
-        datum = ObjectSchema([
-            {
-                "name": "type",
-                "required": True,
-                "schema": StringSchema()
-            },
-            {
-                "name": "items",
-                "required": False,
-                "schema": SchemaSchema()
-            },
-            {
-                "name": "properties",
-                "required": False,
-                "schema": ArraySchema(ModelSchema(PropertyModel))
-            }
-        ]).normalize(datum)
-        st = datum["type"]
+class PropertyModel(FancyModel):
+    pass
+
+
+class SchemaModel(FancyModel):
+    def validate(self):
+        st = self.data["type"]
         # Then make sure the attributes are right
-        if ((st == "array" and 'items' not in datum.keys()) or
-            (st == "object" and 'properties' not in datum.keys()) or
-            (st not in ["array", "object"] and len(datum) > 1) or
-            (len(datum) == 3)):
-            raise ValidationError("Invalid schema: %s" % datum)
+        if ((st == "array" and 'items' not in self.data.keys()) or
+            (st == "object" and 'properties' not in self.data.keys()) or
+            (st not in ["array", "object"] and len(self.data) > 1) or
+            (len(self.data) == 3)):
+            raise ValidationError("Invalid schema: %s" % self.data)
+        if st == "object":
+            keys = [prop.data["name"] for prop in self.data["properties"]]
+            if len(set(keys)) < len(keys):
+                raise ValidationError("Duplicate properties in schema: %s" % self.data)
+    def normalize(self, datum):
+        st = self.data["type"]
         # Just the type?
         if st == "any":
-            return WildcardSchema()
+            return WildcardSchema().normalize(datum)
         if st == "integer":
-            return IntegerSchema()
+            return IntegerSchema().normalize(datum)
         if st == "float":
-            return FloatSchema()
+            return FloatSchema().normalize(datum)
         if st == "string":
-            return StringSchema()
+            return StringSchema().normalize(datum)
         if st == "boolean":
-            return BooleanSchema()
+            return BooleanSchema().normalize(datum)
         if st == "schema":
-            return SchemaSchema()
+            return ModelSchema(SchemaModel).normalize(datum)
         if '.' in st:
             api_name, model_name = st.split('.', 1)
             try:
@@ -144,54 +144,49 @@ class SchemaSchema(object):
                 model_cls = getattr(api.models, model_name)
             except SpecError:
                 raise ValidationError("Unknown model for %s API: %s" % (api_name, model_name))
-            return ModelSchema(model_cls)
+            return ModelSchema(model_cls).normalize(datum)
         if st == "array":
-            return ArraySchema(datum['items'])
+            return ArraySchema(self.data['items']).normalize(datum)
         if st == "object":
-            keys = [prop.data["name"] for prop in datum["properties"]]
+            keys = [prop.data["name"] for prop in self.data["properties"]]
             if len(set(keys)) < len(keys):
                 raise ValidationError("Duplicate properties in schema: %s" % datum)
-            props = [prop.data for prop in datum["properties"]]
-            return ObjectSchema(props)
-        # None of the above?
-        raise ValidationError("Unknown type: %s" % st)
+            props = [prop.data for prop in self.data["properties"]]
+            return ObjectSchema(props).normalize(datum)
 
 
-class PropertyModel(object):
-    schema = ObjectSchema[
-        {
-            "name": "name",
-            "required": True,
-            "schema": StringSchema()
-        },
-        {
-            "name": "required",
-            "required": True,
-            "schema": BooleanSchema()
-        },
-        {
-            "name": "schema",
-            "required": True,
-            "schema": ModelSchema(SchemaModel())
-        }
-    ])
+SchemaModel.schema = ObjectSchema([
+    {
+        "name": "type",
+        "required": True,
+        "schema": StringSchema()
+    },
+    {
+        "name": "items",
+        "required": False,
+        "schema": ModelSchema(SchemaModel)
+    },
+    {
+        "name": "properties",
+        "required": False,
+        "schema": ArraySchema(ModelSchema(PropertyModel))
+    }
+])
 
-class SchemaModel(object):
-    schema = ObjectSchema([
-        {
-            "name": "type",
-            "required": True,
-            "schema": StringSchema()
-        },
-        {
-            "name": "items",
-            "required": False,
-            "schema": SchemaSchema()
-        },
-        {
-            "name": "properties",
-            "required": False,
-            "schema": ArraySchema(ModelSchema(PropertyModel))
-        }
-    ])
-
+PropertyModel.schema = ObjectSchema([
+    {
+        "name": "name",
+        "required": True,
+        "schema": StringSchema()
+    },
+    {
+        "name": "required",
+        "required": True,
+        "schema": BooleanSchema()
+    },
+    {
+        "name": "schema",
+        "required": True,
+        "schema": ModelSchema(SchemaModel)
+    }
+])
