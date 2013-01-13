@@ -155,7 +155,7 @@ def normalize(schema, datum):
     """Schema is expected to be a valid schema and datum is expected
     to be the return value of json.loads
     """
-    sss = ModelSchema(SchemaModel).normalize(schema)
+    sss = SchemaModel.normalize(schema)
     return sss.normalize(datum)
     st = schema["type"]
     dt = type(datum)
