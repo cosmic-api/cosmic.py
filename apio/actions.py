@@ -8,6 +8,8 @@ from apio.tools import get_arg_spec, serialize_action_arguments, apply_to_action
 from apio.http import corsify_view, apio_view, ALL_METHODS
 from apio.exceptions import APIError, SpecError, AuthenticationError, ValidationError
 
+from apio.models import normalize_schema
+
 class Action(object):
 
     def __init__(self, func, accepts=None, returns=None):
@@ -24,7 +26,7 @@ class Action(object):
                 raise SpecError("'%s' is said to take arguments, but doesn't" % self.name)
 
             try:
-                accepts = normalize({"type": "schema"}, accepts)
+                normalize_schema(accepts)
             except ValidationError:
                 raise SpecError("'%s' was passed an invalid accepts schema" % self.name)
 
@@ -35,7 +37,8 @@ class Action(object):
 
         if returns:
             try:
-                self.spec["returns"] = normalize({"type": "schema"}, returns)
+                normalize_schema(returns)
+                self.spec["returns"] = returns
             except ValidationError:
                 raise SpecError("'%s' was passed an invalid returns schema" % self.name)
         else:

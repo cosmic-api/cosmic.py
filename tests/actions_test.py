@@ -127,7 +127,7 @@ class TestActionAnnotation(TestCase):
                 {
                     "name": "b",
                     "required": False,
-                    "schema": {"type": "int"}
+                    "schema": {"type": "integer"}
                 }
             ]
         }
