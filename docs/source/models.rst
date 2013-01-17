@@ -38,10 +38,10 @@ schema written in JSON.
     greatly outweighed by the costs of growing the amount of code that
     needs to be ported.
 
-A ``schema`` is always a Python dict. It must always contain the
-``type`` attribute. If you would like to validate a value as a string,
-you would validate it against the ``{"type": "string"}`` schema. Here
-is a list of all the types we support:
+A *schema* is always a Python dict. It must always contain the *type*
+attribute. If you would like to validate a value as a string, you
+would validate it against the ``{"type": "string"}`` schema. Here is a
+list of all the types we support:
 
 +-----------------+-------------+-------------+-------------------------------------+
 | Schema ``type`` |  JSON type  | Python type | Notes                               |
@@ -71,13 +71,13 @@ is a list of all the types we support:
 | ``array``       | ``array``   | ``list``    | See below.                          |
 +-----------------+-------------+-------------+-------------------------------------+
 
-An object schema must always contain a ``properties`` attribute, which
+An object schema must always contain a *properties* attribute, which
 will be an array of property objects. Each property must have a name,
 a schema that describes its value and a flag, signifying whether this
 property is required or not. There cannot be two properties with the
-same ``name`` in an object. The object validation succeeds unless a
+same *name* in an object. The object validation succeeds unless a
 required property is missing or a property's value doesn't validate
-against its ``schema``. Here is an example of a full object schema in
+against its *schema*. Here is an example of a full object schema in
 JSON:
 
 .. code:: json
@@ -98,9 +98,9 @@ JSON:
         ]
     }
 
-An array schema must always contain an ``items`` property, which must
-be a ``schema`` that describes every item in the array. An empty array
-will always pass validation. Here is a schema describing an array or
+An array schema must always contain an *items* property, which must be
+a *schema* that describes every item in the array. An empty array will
+always pass validation. Here is a schema describing an array or
 strings:
 
 .. code:: json
@@ -146,7 +146,9 @@ The basic usage is as follows::
     apio.exceptions.ValidationError: Invalid integer: 3.3
 
 The :mod:`apio.models` module provides, first of all, a set of basic
-functions for normalizing JSON primitives:
+functions for normalizing JSON primitives. These functions raise
+:exc:`ValidationError` if the value is invalid or return a normalized
+version of the value if it is.
 
 .. autofunction:: apio.models.normalize_wildcard
 
