@@ -21,9 +21,9 @@ ALL_METHODS = [
 
 class Request(object):
     def __init__(self, headers, body, method):
-        self.method = method
         self.headers = headers
         self.body = body
+        self.method = method
 
 class Response(object):
     def __init__(self, headers, body, code):
