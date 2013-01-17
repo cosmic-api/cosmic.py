@@ -1,11 +1,9 @@
 import json
 
 import requests
-from flask import request
-from flask.exceptions import JSONBadRequest
 
 from apio.tools import get_arg_spec, serialize_action_arguments, apply_to_action_func, JSONPayload, schema_is_compatible, normalize
-from apio.http import corsify_view, apio_view, ALL_METHODS
+from apio.http import ALL_METHODS, View
 from apio.exceptions import APIError, SpecError, AuthenticationError, ValidationError
 
 from apio.models import normalize_schema
@@ -53,21 +51,15 @@ class Action(object):
         data = serialize_action_arguments(*args, **kwargs)
         return apply_to_action_func(self.raw_func, data)
 
-    def add_to_blueprint(self, blueprint, debug=False):
-        name = self.spec['name']
-        view = self.get_view(debug=debug)
-        url = "/actions/%s" % name
-        blueprint.add_url_rule(url, name, view, methods=ALL_METHODS)
-
     def get_view(self, debug=False):
         """Wraps a user-defined action function to return a Flask view function
         that handles errors and returns proper HTTP responses"""
         accepts = self.spec.get('accepts', None)
         returns = self.spec.get('returns', None)
-        @apio_view(["POST"], debug=debug, accepts=accepts, returns=returns)
         def action_view(payload):
             return apply_to_action_func(self.raw_func, payload)
-        return action_view
+        return View(action_view, accepts=accepts, returns=returns,
+                    methods=["POST"], debug=debug)
 
 
 class RemoteAction(object):

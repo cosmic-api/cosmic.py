@@ -3,6 +3,7 @@ import json
 import sys
 
 from apio.exceptions import SpecError, InvalidCallError, ValidationError, APIError, AuthenticationError
+from apio.models import normalize_schema
 
 class Namespace(object):
     """Essentially a sorted dictionary. Allows to reference actions or
@@ -148,8 +149,6 @@ def schema_is_compatible(general, detailed):
         if gp["name"] != dp["name"] or gp["required"] != dp["required"]:
             return False
     return True
-
-from apio.models import *
 
 def normalize(schema, datum):
     """Schema is expected to be a valid schema and datum is expected

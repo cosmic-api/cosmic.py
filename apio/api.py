@@ -10,6 +10,7 @@ from apio.exceptions import APIError, SpecError, InvalidCallError, ValidationErr
 from apio.actions import Action, RemoteAction
 from apio.tools import Namespace, normalize
 from apio.models import Model as BaseModel
+from apio.http import ALL_METHODS
 
 API_SCHEMA = {
     "type": "object",
@@ -171,7 +172,9 @@ class API(BaseAPI):
         """
         blueprint = Blueprint(self.name, __name__)
         for action in self.actions:
-            action.add_to_blueprint(blueprint, debug=debug)
+            view = action.get_view(debug=debug).flask_view
+            url = "/actions/%s" % action.name
+            blueprint.add_url_rule(url, action.name, view, methods=ALL_METHODS)
         for resource in self.resources:
             resource().add_to_blueprint(blueprint, debug=debug)
         @blueprint.route('/spec.json')
@@ -179,6 +182,11 @@ class API(BaseAPI):
             spec = json.dumps(self.spec)
             return Response(spec, mimetype="application/json")
         return blueprint
+
+    def get_generic_views(self):
+        views = []
+        for action in self.actions:
+            pass
 
     def get_test_app(self):
         """Returns a Flask test client
@@ -216,7 +224,8 @@ class API(BaseAPI):
         """
         def wrapper(func):
             name = func.__name__
-            self.actions.add(name, Action(func, accepts=accepts, returns=returns))
+            action = Action(func, accepts=accepts, returns=returns)
+            self.actions.add(name, action)
             return func
         return wrapper
 

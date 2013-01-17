@@ -4,11 +4,10 @@ import json
 from unittest2 import TestCase
 from mock import patch, Mock
 
-from flask import Flask
-
 from apio.api import Namespace
 from apio.actions import Action, RemoteAction
 from apio.exceptions import SpecError, APIError
+from apio.http import Request
 
 class TestBasicRemoteAction(TestCase):
 
@@ -91,27 +90,17 @@ class TestBasicAction(TestCase):
             return "%s pounds of %s" % (12.0 / servings, c)
 
         self.action = Action(cabbage)
-
-        # Create test client for some HTTP tests
-        app = Flask(__name__, static_folder=None)
-        app.add_url_rule('/cabbage', 'cabbage', self.action.get_view(), methods=["POST"])
-        self.werkzeug_client = app.test_client()
-
-        # Test debug mode
-        app_debug = Flask(__name__, static_folder=None)
-        app_debug.config['PROPAGATE_EXCEPTIONS'] = True
-        app_debug.add_url_rule('/cabbage', 'cabbage', self.action.get_view(debug=True), methods=["POST"])
-        self.werkzeug_client_debug = app_debug.test_client()
+        self.view = self.action.get_view()
+        self.view_debug = self.action.get_view(debug=True)
 
     def test_successful_call(self):
-        res = self.werkzeug_client.post('/cabbage', data='{"spicy":true}', content_type="application/json")
-        self.assertEqual(res.status_code, 200)
-        self.assertEqual(json.loads(res.data), "12.0 pounds of kimchi")
+        res = self.view.call(Request("POST", '{"spicy":true}', {"Content-Type": "application/json"}))
+        self.assertEqual(res.code, 200)
+        self.assertEqual(json.loads(res.body), "12.0 pounds of kimchi")
 
     def test_unhandled_exception_debug(self):
         with self.assertRaises(ZeroDivisionError):
-            self.werkzeug_client_debug.post('/cabbage', data='{"spicy":true,"servings":0}', content_type="application/json")
-
+            self.view_debug.call(Request("POST", '{"spicy":true,"servings":0}', {"Content-Type": "application/json"}))
 
 class TestActionAnnotation(TestCase):
 
