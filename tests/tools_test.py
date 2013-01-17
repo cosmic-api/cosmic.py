@@ -1,8 +1,6 @@
 from unittest2 import TestCase
 from mock import patch, Mock
 
-from flask import Flask
-
 from apio.exceptions import *
 from apio.tools import *
 

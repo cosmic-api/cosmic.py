@@ -20,16 +20,16 @@ ALL_METHODS = [
 ]
 
 class Request(object):
-    def __init__(self, headers, body, method):
-        self.headers = headers
-        self.body = body
+    def __init__(self, method, body, headers):
         self.method = method
+        self.body = body
+        self.headers = headers
 
 class Response(object):
-    def __init__(self, headers, body, code):
-        self.headers = headers
-        self.body = body
+    def __init__(self, code, body, headers):
         self.code = code
+        self.body = body
+        self.headers = headers
 
 class View(object):
 
@@ -44,7 +44,7 @@ class View(object):
         headers = request.headers
         method = request.method
         body = request.data
-        req = Request(headers, body, method)
+        req = Request(method, body, headers)
         r = self.call(req)
         return make_response(r.body, r.code, r.headers)
 
@@ -66,14 +66,14 @@ def standard_middleware(methods, accepts, returns, debug, next_func):
             body = json.dumps({
                 "error": "%s is not allowed on this endpoint" % req.method
             })
-            return Response({}, body, 405)
+            return Response(405, body, {})
         # Make sure Content-Type is right
         ct = req.headers.get('Content-Type', None)
         if ct != "application/json":
             body = json.dumps({
                 "error": 'Content-Type must be "application/json"'
             })
-            return Response({}, body, 400)
+            return Response(400, body, {})
         # Make sure JSON is valid
         try:
             payload = JSONPayload.from_string(req.body)
@@ -81,19 +81,19 @@ def standard_middleware(methods, accepts, returns, debug, next_func):
             body = json.dumps({
                 "error": "Invalid JSON"
             })
-            return Response({}, body, 400)
+            return Response(400, body, {})
         # If function takes no arguments, request must be empty
         if accepts == None and payload:
             body = json.dumps({
                 "error": "Request content must be empty"
             })
-            return Response({}, body, 400)
+            return Response(400, body, {})
         # If function takes arguments, request cannot be empty
         if accepts != None and not payload:
             body = json.dumps({
                 "error": "Request content cannot be empty"
             })
-            return Response({}, body, 400)
+            return Response(400, body, {})
         # Validate incoming data
         if payload:
             try:
@@ -103,7 +103,7 @@ def standard_middleware(methods, accepts, returns, debug, next_func):
                 body = json.dumps({
                     "error": "Validation failed" + json.dumps(accepts)
                 })
-                return Response({}, body, 400)
+                return Response(400, body, {})
         # Try running the actual function
         try:
             data = next_func(payload=payload)
@@ -111,25 +111,25 @@ def standard_middleware(methods, accepts, returns, debug, next_func):
                 # May raise ValidationError, will be caught below
                 data = normalize(returns, data)
                 body = json.dumps(data)
-                return Response({}, body, 200)
-            return Response({}, "", 200)
+                return Response(200, body, {})
+            return Response(200, "", {})
         except APIError as err:
             body = json.dumps({
                 "error": err.args[0]
             })
-            return Response({}, body, err.http_code)
+            return Response(err.http_code, body, {})
         except AuthenticationError:
             body = json.dumps({
                 "error": "Authentication failed"
             })
-            return Response({}, body, 401)
+            return Response(401, body, {})
         # Any other exception should be handled gracefully
         except Exception as e:
             if debug: raise e
             body = json.dumps({
                 "error": "Internal Server Error"
             })
-            return Response({}, body, 500)
+            return Response(500, body, {})
     return view
 
 def cors_middleware(allowed_methods, next_func):
@@ -153,14 +153,14 @@ def cors_middleware(allowed_methods, next_func):
             # No Origin?
             if origin == None:
                 error = "Preflight CORS request must include Origin header"
-                return Response({}, error, 400)
+                return Response(400, error, {})
             # Access-Control-Request-Method is not set or set
             # wrongly?
             requested_method = req.headers.get("Access-Control-Request-Method", None)
             if requested_method not in allowed_methods:
                 error = "Access-Control-Request-Method header must be set to "
                 error += " or ".join(allowed_methods)
-                return Response({}, error, 400)
+                return Response(400, error, {})
             # Everything is good, make response
             res_headers = {}
             res_headers["Access-Control-Allow-Origin"] = origin
@@ -169,7 +169,7 @@ def cors_middleware(allowed_methods, next_func):
             allow_headers = req.headers.get('Access-Control-Request-Headers', None)
             if allow_headers != None:
                 res_headers["Access-Control-Allow-Headers"] = allow_headers
-            return Response(res_headers, "", 200)
+            return Response(200, "", res_headers)
         # Actual request
         res = next_func(req)
         if origin != None:
