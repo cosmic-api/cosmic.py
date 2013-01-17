@@ -40,15 +40,13 @@ class View(object):
         self.returns = returns
         self.debug = debug
 
-    def get_flask_view(self):
-        def view(*args, **kwargs):
-            headers = request.headers
-            method = request.method
-            body = request.data
-            req = Request(headers, body, method)
-            r = self.call(req)
-            return make_response(r.body, r.code, r.headers)
-        return view
+    def flask_view(self, *args, **kwargs):
+        headers = request.headers
+        method = request.method
+        body = request.data
+        req = Request(headers, body, method)
+        r = self.call(req)
+        return make_response(r.body, r.code, r.headers)
 
     def call(self, req):
         view = cors_middleware(self.methods, self.call_generic)

@@ -10,6 +10,7 @@ from apio.exceptions import APIError, SpecError, InvalidCallError, ValidationErr
 from apio.actions import Action, RemoteAction
 from apio.tools import Namespace, normalize
 from apio.models import Model as BaseModel
+from apio.http import ALL_METHODS
 
 API_SCHEMA = {
     "type": "object",
@@ -171,7 +172,9 @@ class API(BaseAPI):
         """
         blueprint = Blueprint(self.name, __name__)
         for action in self.actions:
-            action.add_to_blueprint(blueprint, debug=debug)
+            view = action.get_view(debug=debug).flask_view
+            url = "/actions/%s" % action.name
+            blueprint.add_url_rule(url, action.name, view, methods=ALL_METHODS)
         for resource in self.resources:
             resource().add_to_blueprint(blueprint, debug=debug)
         @blueprint.route('/spec.json')

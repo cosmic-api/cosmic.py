@@ -94,13 +94,13 @@ class TestBasicAction(TestCase):
 
         # Create test client for some HTTP tests
         app = Flask(__name__, static_folder=None)
-        app.add_url_rule('/cabbage', 'cabbage', self.action.get_view(), methods=["POST"])
+        app.add_url_rule('/cabbage', 'cabbage', self.action.get_view().flask_view, methods=["POST"])
         self.werkzeug_client = app.test_client()
 
         # Test debug mode
         app_debug = Flask(__name__, static_folder=None)
         app_debug.config['PROPAGATE_EXCEPTIONS'] = True
-        app_debug.add_url_rule('/cabbage', 'cabbage', self.action.get_view(debug=True), methods=["POST"])
+        app_debug.add_url_rule('/cabbage', 'cabbage', self.action.get_view(debug=True).flask_view, methods=["POST"])
         self.werkzeug_client_debug = app_debug.test_client()
 
     def test_successful_call(self):
