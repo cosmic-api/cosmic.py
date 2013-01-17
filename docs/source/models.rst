@@ -110,6 +110,63 @@ strings:
         "items": {"type": "string"}
     }
 
+Of course, these schemas can be nested as deep as you like. For
+example, to validate ``[{"name": "Rose"}, {"name": "Lily"}]``, you
+could use the following schema:
+
+.. code:: json
+
+    {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": [
+                {
+                    "name": "name",
+                    "schema": {"type": "string"},
+                    "required": true
+                }
+            ]
+        }
+    }
+
+The basic usage is as follows::
+
+    >>> from apio.models import normalize_schema
+    >>> normalizer = normalize_schema({"type": "integer"})
+    >>> normalizer(3)
+    3
+    >>> normalizer(4.0)
+    4
+    >>> normalizer(4.1)
+    Traceback (most recent call last):
+      File "<stdin>", line 1, in <module>
+      File "/lib/python2.7/site-packages/apio/models.py", line 16, in normalize_integer
+        raise ValidationError("Invalid integer: %s" % (datum,))
+    apio.exceptions.ValidationError: Invalid integer: 3.3
+
+The :mod:`apio.models` module provides, first of all, a set of basic
+functions for normalizing JSON primitives:
+
+.. autofunction:: apio.models.normalize_wildcard
+
+.. autofunction:: apio.models.normalize_integer
+
+.. autofunction:: apio.models.normalize_float
+
+.. autofunction:: apio.models.normalize_string
+
+.. autofunction:: apio.models.normalize_boolean
+
+.. autofunction:: apio.models.normalize_array
+
+.. autofunction:: apio.models.normalize_object
+
+These functions deal with simple JSON values, but :mod:`apio.models`
+also provides a normalization function for *schemas*:
+
+.. autofunction:: apio.models.normalize_schema
+
 Models
 ------
 

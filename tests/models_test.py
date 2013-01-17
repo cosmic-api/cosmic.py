@@ -1,5 +1,6 @@
 from unittest2 import TestCase
 
+from apio.exceptions import ValidationError, UnicodeDecodeValidationError
 from apio.models import *
 
 class TestNormalize(TestCase):
@@ -55,6 +56,8 @@ class TestNormalize(TestCase):
         self.assertEqual(normalize_string(u"omg"), u"omg")
         with self.assertRaisesRegexp(ValidationError, "Invalid string"):
             normalize_string(0)
+        with self.assertRaisesRegexp(UnicodeDecodeValidationError, "invalid start byte"):
+            normalize_string("\xff")
 
     def test_array(self):
         self.assertEqual(self.array_normalizer([True, False]), [True, False])

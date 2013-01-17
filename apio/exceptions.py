@@ -13,4 +13,9 @@ class AuthenticationError(Exception):
     pass
 
 class ValidationError(Exception):
+    def __init__(self, message, stack=None):
+        super(ValidationError, self).__init__(message)
+        self.stack = stack if stack != None else []
+
+class UnicodeDecodeValidationError(ValidationError):
     pass

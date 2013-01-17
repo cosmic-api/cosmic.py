@@ -1,48 +1,102 @@
 import sys
 
-from apio.exceptions import ValidationError, SpecError
+from apio.exceptions import ValidationError, UnicodeDecodeValidationError, SpecError
 
 
 def normalize_wildcard(datum):
+    """Return *datum* without any normalization."""
     return datum
 
 def normalize_integer(datum):
+    """If *datum* is an integer, return it; if it is a float with a 0
+    for its fractional part, return the integer part as an
+    integer. Otherwise, raise a :exc:`ValidationError`.
+    """
     if type(datum) == int:
         return datum
-    # A float in place of an int is okay, as long as its
-    # fractional part is 0
     if type(datum) == float and datum.is_integer():
         return int(datum)
     raise ValidationError("Invalid integer: %s" % (datum,))
 
 def normalize_float(datum):
+    """If *datum* is a float, return it; if it is an integer, cast it
+    to a float and return it. Otherwise, raise a
+    :exc:`ValidationError`.
+    """
     if type(datum) == float:
         return datum
-    # An int in place of a float is always okay, just cast it for
-    # normalization's sake
     if type(datum) == int:
         return float(datum)
     raise ValidationError("Invalid float: %s" % (datum,))
 
 def normalize_string(datum):
+    """If *datum* is a unicode string, return it. If it is a string,
+    decode it as UTF-8 and return the result. Otherwise, raise a
+    :exc:`ValidationError`. Unicode errors are dealt with strictly by
+    raising :exc:`UnicodeDecodeValidationError`, a subclass of the
+    above.
+    """
     if type(datum) == unicode:
         return datum
-    # Cast to unicode
     if type(datum) == str:
-        return unicode(datum)
+        try:
+            return datum.decode('utf_8')
+        except UnicodeDecodeError as inst:
+            raise UnicodeDecodeValidationError(unicode(inst))
     raise ValidationError("Invalid string: %s" % (datum,))
 
 def normalize_boolean(datum):
+    """If *datum* is a boolean, return it. Otherwise, raise a
+    :exc:`ValidationError`.
+    """
     if type(datum) == bool:
         return datum
     raise ValidationError("Invalid boolean: %s" % (datum,))
 
 def normalize_array(datum, items):
+    """If *datum* is a list, construct a new list by running the
+    *items* normalization function on each element of *datum*. This
+    normalization function may raise :exc:`ValidationError`. If
+    *datum* is not a list, :exc:`ValidationError` will be raised.
+
+    .. code::
+
+        >>> normalize_array([1.0, 2, 3.0], normalize_integer)
+        [1, 2, 3]
+
+    """
     if type(datum) == list:
         return [items(item) for item in datum]
     raise ValidationError("Invalid array: %s" % (datum,))
 
 def normalize_object(datum, properties):
+    """If *datum* is a dict, normalize it against *properties* and
+    return the resulting dict. Otherwise raise a
+    :exc:`ValidationError`.
+
+    *properties* must be a list of dicts, where each dict has three
+    attributes: *name*, *required* and *schema*. *name* is a string
+    representing the property name, *required* is a boolean specifying
+    whether the *datum* needs to contain this property in order to
+    pass validation and *schema* is a normalization function.
+
+    .. code::
+
+        >>> normalize_object({"spicy": True}, [{
+        ...    "name": "spicy",
+        ...    "required": True,
+        ...    "schema": normalize_boolean
+        ... }])
+        {"spicy": True}
+
+    A :exc:`ValidationError` will be raised if:
+
+    1. *datum* is missing a required property
+    2. *datum* has a property not declared in *properties*.
+    3. One of the properties of *datum* does not pass validation as defined
+       by the corresponding *schema* value.
+
+    """
     if type(datum) == dict:
         ret = {}
         required = {}
@@ -88,6 +142,31 @@ def _normalize_array_of_properties(datum):
     return normalize_array(datum, _normalize_property)
 
 def normalize_schema(datum):
+    """Given a JSON representation of a schema, return a function that
+    will normalize data against that schema.
+
+    For primitive types, it returns one of the simple normalization
+    functions defined in this module::
+
+        >>> normalizer = normalize_schema({"type": "integer"})
+        >>> normalizer(1.0)
+        1
+        >>> normalizer == normalize_integer
+        True
+
+    For array or object types, it will build a custom function by
+    wrapping :func:`normalize_array` or
+    :func:`normalize_object`. These can be nested as deep as you want,
+    :func:`normalize_schema` will recurse::
+
+        >>> normalizer = normalize_schema({
+        ...     "type": "array",
+        ...     "schema": {"type": "float"}
+        ... })
+        >>> normalizer([1, 2.2, 3])
+        [1.0, 2.2, 3.0]
+
+    """
     datum = normalize_object(datum, [
         {
             "name": "type",
