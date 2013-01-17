@@ -15,7 +15,6 @@ class Resource(object):
     def update(self, id, data):
         raise NotImplementedError()
     def create(self, data):
-        """Takes"""
         raise NotImplementedError()
 
     def add_to_blueprint(self, blueprint, debug=False):

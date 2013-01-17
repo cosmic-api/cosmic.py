@@ -180,6 +180,11 @@ class API(BaseAPI):
             return Response(spec, mimetype="application/json")
         return blueprint
 
+    def get_generic_views(self):
+        views = []
+        for action in self.actions:
+            pass
+
     def get_test_app(self):
         """Returns a Flask test client
         """
@@ -212,7 +217,8 @@ class API(BaseAPI):
         """
         def wrapper(func):
             name = func.__name__
-            self.actions.add(name, Action(func, accepts=accepts, returns=returns))
+            action = Action(func, accepts=accepts, returns=returns)
+            self.actions.add(name, action)
             return func
         return wrapper
 

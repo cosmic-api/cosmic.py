@@ -1,8 +1,6 @@
 import json
 
 import requests
-from flask import request
-from flask.exceptions import JSONBadRequest
 
 from apio.tools import get_arg_spec, serialize_action_arguments, apply_to_action_func, JSONPayload, schema_is_compatible, normalize
 from apio.http import corsify_view, apio_view, ALL_METHODS
@@ -64,10 +62,12 @@ class Action(object):
         that handles errors and returns proper HTTP responses"""
         accepts = self.spec.get('accepts', None)
         returns = self.spec.get('returns', None)
-        @apio_view(["POST"], debug=debug, accepts=accepts, returns=returns)
         def action_view(payload):
             return apply_to_action_func(self.raw_func, payload)
-        return action_view
+        from apio.http import View
+        view = View(action_view, accepts=accepts, returns=returns,
+                    methods=["POST"], debug=debug)
+        return view.get_flask_view()
 
 
 class RemoteAction(object):
