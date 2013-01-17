@@ -3,7 +3,7 @@ import json
 import requests
 
 from apio.tools import get_arg_spec, serialize_action_arguments, apply_to_action_func, JSONPayload, schema_is_compatible, normalize
-from apio.http import corsify_view, apio_view, ALL_METHODS
+from apio.http import ALL_METHODS
 from apio.exceptions import APIError, SpecError, AuthenticationError, ValidationError
 
 from apio.models import normalize_schema

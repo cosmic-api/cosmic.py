@@ -1,11 +1,9 @@
 from unittest2 import TestCase
 
-from flask import Flask
-
 from apio.tools import *
 from apio.http import *
 
-class TestCORS(TestCase):
+class TestCORSMiddleware(TestCase):
     """Test CORS support which is implemented in
     apio.http.cors_middleware
     """
@@ -65,94 +63,92 @@ class TestCORS(TestCase):
         self.assertEqual(res.code, 200)
         self.assertRegexpMatches(res.body, "yes")
 
-class TestAPIOView(TestCase):
-    """Tests our generic view wrapper implemented in
-    apio.http.apio_view
+
+class TestStandardMiddleware(TestCase):
+    """Tests our standard view wrappers as implemented in
+    apio.http.standard_middleware
     """
 
     def setUp(self):
-        self.app = app = Flask(__name__, static_folder=None)
 
-        @app.route('/takes/string', endpoint='takes_string', methods=["POST"])
-        @apio_view(["POST"], accepts={"type": "string"})
         def takes_string(payload):
             pass
+        self.takes_string = standard_middleware(["POST"], {"type": "string"},
+                                                None, False, takes_string)
 
-        @app.route('/noop', endpoint='noop', methods=ALL_METHODS)
-        @apio_view(["POST"])
         def noop(payload):
             pass
+        self.noop = standard_middleware(["POST"], None, None, False, noop)
 
-        @app.route('/unhandled/error', endpoint='unhandled_error', methods=ALL_METHODS)
-        @apio_view(["POST"])
-        def noop(payload):
+        def unhandled_error(payload):
             return 1 / 0
+        self.unhandled_error = standard_middleware(["POST"], None, None, False,
+                                                   unhandled_error)
 
-        @app.route('/api/error', endpoint='api_error', methods=ALL_METHODS)
-        @apio_view(["POST"])
-        def noop(payload):
+        def api_error(payload):
             raise APIError("fizzbuzz")
+        self.api_error = standard_middleware(["POST"], None, None, False,
+                                             api_error)
 
-        @app.route('/authentication/error', endpoint='authentication_error', methods=ALL_METHODS)
-        @apio_view(["POST"])
-        def noop(payload):
+        def authentication_error(payload):
             raise AuthenticationError()
-
-        self.werkzeug_client = app.test_client()
+        self.authentication_error = standard_middleware(["POST"], None, None,
+                                                        False,
+                                                        authentication_error)
 
     def test_wrong_content_type(self):
-        res = self.werkzeug_client.post('/noop', content_type="application/jason")
-        self.assertEqual(res.status_code, 400)
-        self.assertRegexpMatches(res.data, "Content-Type must be")
+        res = self.noop(Request({"Content-Type": "application/jason"}, "", "POST"))
+        self.assertEqual(res.code, 400)
+        self.assertRegexpMatches(res.body, "Content-Type must be")
 
     def test_wrong_method(self):
-        res = self.werkzeug_client.put('/noop', content_type="application/json")
-        self.assertEqual(res.status_code, 405)
-        self.assertRegexpMatches(res.data, "PUT is not allowed")
+        res = self.noop(Request({"Content-Type": "application/json"}, "", "PUT"))
+        self.assertEqual(res.code, 405)
+        self.assertRegexpMatches(res.body, "PUT is not allowed")
 
     def test_invalid_json(self):
-        res = self.werkzeug_client.post('/noop', data='{"spicy":farse}', content_type="application/json")
-        self.assertEqual(res.status_code, 400)
-        self.assertRegexpMatches(res.data, "Invalid JSON")
+        res = self.noop(Request({"Content-Type": "application/json"}, '{"spicy":farse}', "POST"))
+        self.assertEqual(res.code, 400)
+        self.assertRegexpMatches(res.body, "Invalid JSON")
 
     def test_validation_error(self):
-        res = self.werkzeug_client.post('/takes/string', data="true", content_type="application/json")
-        self.assertEqual(res.status_code, 400)
-        self.assertRegexpMatches(res.data, "Validation failed")
+        res = self.takes_string(Request({"Content-Type": "application/json"}, "true", "POST"))
+        self.assertEqual(res.code, 400)
+        self.assertRegexpMatches(res.body, "Validation failed")
 
     def test_no_data(self):
-        res = self.werkzeug_client.post('/takes/string', data='', content_type="application/json")
-        self.assertEqual(res.status_code, 400)
-        self.assertRegexpMatches(res.data, "cannot be empty")
+        res = self.takes_string(Request({"Content-Type": "application/json"}, "", "POST"))
+        self.assertEqual(res.code, 400)
+        self.assertRegexpMatches(res.body, "cannot be empty")
 
     def test_action_no_args_with_data(self):
-        res = self.werkzeug_client.post('/noop', data="true", content_type="application/json")
-        self.assertEqual(res.status_code, 400)
-        self.assertRegexpMatches(res.data, "must be empty")
+        res = self.noop(Request({"Content-Type": "application/json"}, "true", "POST"))
+        self.assertEqual(res.code, 400)
+        self.assertRegexpMatches(res.body, "must be empty")
 
-    def test_unhandled_exception(self):
-        res = self.werkzeug_client.post('/unhandled/error', content_type="application/json")
-        self.assertEqual(res.status_code, 500)
-        self.assertEqual(json.loads(res.data), {
+    def test_unhandled_error(self):
+        res = self.unhandled_error(Request({"Content-Type": "application/json"}, "", "POST"))
+        self.assertEqual(res.code, 500)
+        self.assertEqual(json.loads(res.body), {
             "error": "Internal Server Error"
         })
 
     def test_APIError_handling(self):
-        res = self.werkzeug_client.post('/api/error', content_type="application/json")
-        self.assertEqual(res.status_code, 500)
-        self.assertEqual(json.loads(res.data), {
+        res = self.api_error(Request({"Content-Type": "application/json"}, "", "POST"))
+        self.assertEqual(res.code, 500)
+        self.assertEqual(json.loads(res.body), {
             "error": "fizzbuzz"
         })
 
     def test_AuthenticationError_handling(self):
-        res = self.werkzeug_client.post('/authentication/error', content_type="application/json")
-        self.assertEqual(res.status_code, 401)
-        self.assertEqual(json.loads(res.data), {
+        res = self.authentication_error(Request({"Content-Type": "application/json"}, "", "POST"))
+        self.assertEqual(res.code, 401)
+        self.assertEqual(json.loads(res.body), {
             "error": "Authentication failed"
         })
 
     def test_action_no_args_no_data(self):
-        res = self.werkzeug_client.post('/noop', data='', content_type="application/json")
-        self.assertEqual(res.status_code, 200)
-        self.assertEqual(res.data, "")
+        res = self.noop(Request({"Content-Type": "application/json"}, "", "POST"))
+        self.assertEqual(res.code, 200)
+        self.assertEqual(res.body, "")
 

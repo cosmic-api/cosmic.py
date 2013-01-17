@@ -55,12 +55,20 @@ class View(object):
         return view(req)
 
     def call_generic(self, req):
+        view = standard_middleware(self.methods, self.accepts, self.returns,
+                                   self.debug, self.func)
+        return view(req)
+
+def standard_middleware(methods, accepts, returns, debug, next_func):
+    """Wrap the function with some generic error handling.
+    """
+    def view(req):
         # Make sure the method is allowed
-        if req.method not in self.methods:
+        if req.method not in methods:
             body = json.dumps({
-                "error": "%s is not allowed on this endpoint" % request.method
+                "error": "%s is not allowed on this endpoint" % req.method
             })
-            return Response({}, body, 401)
+            return Response({}, body, 405)
         # Make sure Content-Type is right
         ct = req.headers.get('Content-Type', None)
         if ct != "application/json":
@@ -77,13 +85,13 @@ class View(object):
             })
             return Response({}, body, 400)
         # If function takes no arguments, request must be empty
-        if self.accepts == None and payload:
+        if accepts == None and payload:
             body = json.dumps({
                 "error": "Request content must be empty"
             })
             return Response({}, body, 400)
         # If function takes arguments, request cannot be empty
-        if self.accepts != None and not payload:
+        if accepts != None and not payload:
             body = json.dumps({
                 "error": "Request content cannot be empty"
             })
@@ -91,7 +99,7 @@ class View(object):
         # Validate incoming data
         if payload:
             try:
-                normalized = normalize(self.accepts, payload.json)
+                normalized = normalize(accepts, payload.json)
                 payload = JSONPayload(normalized)
             except ValidationError:
                 body = json.dumps({
@@ -100,10 +108,10 @@ class View(object):
                 return Response({}, body, 400)
         # Try running the actual function
         try:
-            data = self.func(payload=payload)
-            if self.returns != None:
+            data = next_func(payload=payload)
+            if returns != None:
                 # May raise ValidationError, will be caught below
-                data = normalize(self.returns, data)
+                data = normalize(returns, data)
                 body = json.dumps(data)
                 return Response({}, body, 200)
             return Response({}, "", 200)
@@ -119,15 +127,26 @@ class View(object):
             return Response({}, body, 401)
         # Any other exception should be handled gracefully
         except Exception as e:
-            if self.debug: raise e
+            if debug: raise e
             body = json.dumps({
                 "error": "Internal Server Error"
             })
             return Response({}, body, 500)
-
+    return view
 
 def cors_middleware(allowed_methods, next_func):
-    """Flask view for handling the CORS preflight request
+    """Takes a Flask view function and augments it with CORS
+    functionality. Implementation based on this tutorial:
+    http://www.html5rocks.com/en/tutorials/cors/
+
+    Access-Control-Allow-Credentials can be emulated, so there's no
+    real reason to support it. IE doesn't support wildcard
+    Access-Control-Allow-Origin so we just echo the request Origin
+    instead. See here for notes:
+    https://github.com/alexandru/crossdomain-requests-js/wiki/Troubleshooting
+
+    Note that many CORS implementations are broken. For example,
+    see: http://stackoverflow.com/q/12780839/212584
     """
     def view(req):
         origin = req.headers.get("Origin", None)
@@ -160,126 +179,3 @@ def cors_middleware(allowed_methods, next_func):
         return res
     return view
 
-
-def corsify_view(allowed_methods):
-    """Takes a Flask view function and augments it with CORS
-    functionality. Implementation based on this tutorial:
-    http://www.html5rocks.com/en/tutorials/cors/
-
-    Access-Control-Allow-Credentials can be emulated, so there's no
-    real reason to support it. IE doesn't support wildcard
-    Access-Control-Allow-Origin so we just echo the request Origin
-    instead. See here for notes:
-    https://github.com/alexandru/crossdomain-requests-js/wiki/Troubleshooting
-
-    Note that many CORS implementations are broken. For example,
-    see: http://stackoverflow.com/q/12780839/212584
-    """
-    def decorator(view_func):
-        def corsified(*args, **kwargs):
-            """Flask view for handling the CORS preflight request
-            """
-            headers = request.headers
-            method = request.method
-
-            origin = headers.get("Origin", None)
-            # Preflight request
-            if method == "OPTIONS":
-                # No Origin?
-                if origin == None:
-                    error = "Preflight CORS request must include Origin header"
-                    return error, 400
-                # Access-Control-Request-Method is not set or set
-                # wrongly?
-                requested_method = headers.get("Access-Control-Request-Method", None)
-                if requested_method not in allowed_methods:
-                    error = "Access-Control-Request-Method header must be set to "
-                    error += " or ".join(allowed_methods)
-                    return error, 400
-                # Everything is good, make response
-                res = make_response("", 200)
-                res.headers["Access-Control-Allow-Origin"] = origin
-                res.headers["Access-Control-Allow-Methods"] = ",".join(allowed_methods)
-                # Allow all requested headers
-                res_headers = headers.get('Access-Control-Request-Headers', None)
-                if res_headers != None:
-                    res.headers["Access-Control-Allow-Headers"] = res_headers
-            # Actual request
-            else:
-                # If view_func returns a tuple, make_response will
-                # turn it into flask.Response. If it already returns a
-                # Response, make_response will do nothing
-                res = make_response(view_func(*args, **kwargs))
-                if origin != None:
-                    res.headers["Access-Control-Allow-Origin"] = origin
-            return res
-        return corsified
-    return decorator
-
-def apio_view(methods, debug=False, accepts=None, returns=None):
-    """Wraps the function with some generic error handling
-    """
-    def wrapper(view_func):
-        @corsify_view(methods)
-        def wrapped():
-            # Make sure the method is allowed
-            if request.method not in methods:
-                return json.dumps({
-                    "error": "%s is not allowed on this endpoint" % request.method
-                }), 405
-            # Make sure Content-Type is right
-            ct = request.headers.get('Content-Type', None)
-            if ct != "application/json":
-                return json.dumps({
-                    "error": 'Content-Type must be "application/json"'
-                }), 400
-            # Make sure JSON is valid
-            try:
-                payload = JSONPayload.from_string(request.data)
-            except ValueError:
-                return json.dumps({
-                    "error": "Invalid JSON"
-                }), 400
-            # If function takes no arguments, request must be empty
-            if accepts == None and payload:
-                return json.dumps({
-                    "error": "Request content must be empty"
-                }), 400
-            # If function takes arguments, request cannot be empty
-            if accepts != None and not payload:
-                return json.dumps({
-                    "error": "Request content cannot be empty"
-                }), 400
-            # Validate incoming data
-            if payload:
-                try:
-                    normalized = normalize(accepts, payload.json)
-                    payload = JSONPayload(normalized)
-                except ValidationError:
-                    return json.dumps({
-                        "error": "Validation failed" + json.dumps(accepts)
-                    }), 400
-            # Try running the actual function
-            try:
-                data = view_func(payload=payload)
-                if returns != None:
-                    # May raise ValidationError, will be caught below
-                    data = normalize(returns, data)
-                    return json.dumps(data), 200
-                return "", 200
-            except APIError as err:
-                return json.dumps({
-                    "error": err.args[0]
-                }), err.http_code
-            except AuthenticationError:
-                return json.dumps({
-                    "error": "Authentication failed"
-                }), 401
-            # Any other exception should be handled gracefully
-            except Exception as e:
-                if debug: raise e
-                return json.dumps({
-                    "error": "Internal Server Error"
-                }), 500
-        return wrapped
-    return wrapper
