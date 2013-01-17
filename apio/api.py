@@ -99,7 +99,7 @@ def ensure_bootstrapped():
     if not apio_index:
         data = json.dumps("apio-index")
         headers = { 'Content-Type': 'application/json' }
-        res = requests.post("http://api.apio.io/actions/get_spec", data=data,
+        res = requests.post("http://api.apio.io/actions/get_spec_by_name", data=data,
             headers=headers)
         apio_index = RemoteAPI(res.json)
         sys.modules.setdefault('apio.apio_index', apio_index)
@@ -189,14 +189,18 @@ class API(BaseAPI):
 
     def run(self, *args, **kwargs):
         """Runs the API as a Flask app. All arguments channelled into
-        Flask#run except for `register_api`, which is a boolean that
-        defaults to True and determines whether you want your API
-        pushed to APIO index.
+        Flask#run except for *api_key*, which is an optional string
+        argument that, if set, triggers a call to APIO index to
+        register the API.
         """
         debug = kwargs.get('debug', False)
-        if kwargs.pop('register_api', True):
+        api_key = kwargs.pop('api_key', None)
+        if api_key:
             ensure_bootstrapped()
-            apio_index.actions.register_api(self.spec)
+            apio_index.actions.register_spec({
+                "api_key": api_key,
+                "spec": self.spec
+            })
         if 'dry_run' not in kwargs.keys(): # pragma: no cover
             app = Flask(__name__, static_folder=None)
             # Flask will catch exceptions to return a nice HTTP
@@ -245,7 +249,7 @@ class API(BaseAPI):
         else:
             name = name_or_url
             ensure_bootstrapped()
-            spec = apio_index.actions.get_spec(name)
+            spec = apio_index.actions.get_spec_by_name(name)
         api = RemoteAPI(spec)
         sys.modules["apio.index." + name] = api
         return api

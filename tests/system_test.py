@@ -11,7 +11,7 @@ def quickstart():
         else:
             return "sauerkraut"
 
-    cookbook.run(port=9873, register_api=False)
+    cookbook.run(port=9873)
 
 
 

@@ -17,12 +17,12 @@ index_spec = {
     'name': 'apio-index',
     'actions': [
         {
-            'name': 'register_api',
+            'name': 'register_spec',
             'returns': {'type': 'any'},
             'accepts': {'type': 'any'}
         },
         {
-            'name': 'get_spec',
+            'name': 'get_spec_by_name',
             'returns': {'type': 'any'},
             'accepts': {'type': 'any'}
         }
@@ -82,7 +82,7 @@ class TestBootstrapping(TestCase):
             mock_post.return_value.status_code = 200
             mock_post.return_value.json = index_spec
             api.ensure_bootstrapped()
-            mock_post.assert_called_with('http://api.apio.io/actions/get_spec', headers={'Content-Type': 'application/json'}, data=json.dumps("apio-index"))
+            mock_post.assert_called_with('http://api.apio.io/actions/get_spec_by_name', headers={'Content-Type': 'application/json'}, data=json.dumps("apio-index"))
         self.assertTrue(isinstance(api.apio_index, RemoteAPI))
 
     def tearDown(self):
@@ -207,8 +207,12 @@ class TestAPI(TestCase):
             # Register API
             mock_post.return_value.status_code = 200
             mock_post.return_value.json = True
-            self.cookbook.run(register_api=True, dry_run=True)
-            mock_post.assert_called_with('http://api.apio.io/actions/register_api', headers={'Content-Type': 'application/json'}, data=json.dumps(self.cookbook.spec))
+            self.cookbook.run(api_key="FAKE", dry_run=True)
+            body = json.dumps({
+                "api_key": "FAKE",
+                "spec": self.cookbook.spec
+            })
+            mock_post.assert_called_with('http://api.apio.io/actions/register_spec', headers={'Content-Type': 'application/json'}, data=body)
 
     def test_serialize(self):
         self.assertEqual(self.cookbook.spec, cookbook_spec)
