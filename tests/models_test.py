@@ -123,3 +123,26 @@ class TestNormalize(TestCase):
         with self.assertRaisesRegexp(ValidationError, "Unknown type"):
             normalize_schema({"type": "number"})
 
+class TestSerialize(TestCase):
+
+    def test_serialize_schema(self):
+        schema_json = {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": [
+                    {
+                        "name": "foo",
+                        "required": True,
+                        "schema": {"type": "boolean"}
+                    },
+                    {
+                        "name": "bar",
+                        "required": False,
+                        "schema": {"type": "integer"}
+                    }
+                ]
+            }
+        }
+        schema_func = normalize_schema(schema_json)
+        self.assertEqual(schema_json, serialize_json(schema_func))

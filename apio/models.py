@@ -6,6 +6,7 @@ from apio.exceptions import ValidationError, UnicodeDecodeValidationError, SpecE
 def normalize_wildcard(datum):
     """Return *datum* without any normalization."""
     return datum
+normalize_wildcard.schema = {"type": "any"}
 
 def normalize_integer(datum):
     """If *datum* is an integer, return it; if it is a float with a 0
@@ -17,6 +18,7 @@ def normalize_integer(datum):
     if type(datum) == float and datum.is_integer():
         return int(datum)
     raise ValidationError("Invalid integer: %s" % (datum,))
+normalize_integer.schema = {"type": "integer"}
 
 def normalize_float(datum):
     """If *datum* is a float, return it; if it is an integer, cast it
@@ -28,6 +30,7 @@ def normalize_float(datum):
     if type(datum) == int:
         return float(datum)
     raise ValidationError("Invalid float: %s" % (datum,))
+normalize_float.schema = {"type": "float"}
 
 def normalize_string(datum):
     """If *datum* is a unicode string, return it. If it is a string,
@@ -44,6 +47,7 @@ def normalize_string(datum):
         except UnicodeDecodeError as inst:
             raise UnicodeDecodeValidationError(unicode(inst))
     raise ValidationError("Invalid string: %s" % (datum,))
+normalize_string.schema = {"type": "string"}
 
 def normalize_boolean(datum):
     """If *datum* is a boolean, return it. Otherwise, raise a
@@ -52,6 +56,7 @@ def normalize_boolean(datum):
     if type(datum) == bool:
         return datum
     raise ValidationError("Invalid boolean: %s" % (datum,))
+normalize_boolean.schema = {"type": "boolean"}
 
 def normalize_array(datum, items):
     """If *datum* is a list, construct a new list by running the
@@ -221,11 +226,42 @@ def normalize_schema(datum):
             raise ValidationError("Unknown model for %s API: %s" % (api_name, model_name))
     if st == "array":
         items = datum["items"]
-        return lambda datum: normalize_array(datum, items)
+        def normalize_custom_array(datum):
+            return normalize_array(datum, items)
+        normalize_custom_array.schema = {
+            "type": "array",
+            "items": items.schema
+        }
+        return normalize_custom_array
     if st == "object":
         properties = datum["properties"]
-        return lambda datum: normalize_object(datum, properties)
+        def normalize_custom_object(datum):
+            return normalize_object(datum, properties)
+        normalize_custom_object.schema = {
+            "type": "object",
+            "properties": [{
+                "name": prop["name"],
+                "required": prop["required"],
+                "schema": prop["schema"].schema
+            } for prop in properties]
+        }
+        return normalize_custom_object
     raise ValidationError("Unknown type: %s" % st)
+normalize_schema.schema = {"type": "schema"}
+
+def serialize_json(datum):
+    dt = type(datum)
+    if dt in [int, bool, float, unicode]:
+        return datum
+    if dt == list:
+        return [serialize_json(item) for item in datum]
+    if dt == dict:
+        ret = {}
+        for key, value in datum.items():
+            ret[key] = serialize_json(value)
+        return ret
+    if hasattr(datum, "schema"):
+        return datum.schema
 
 class Model(object):
     schema = {"type": "any"}

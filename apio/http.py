@@ -4,6 +4,7 @@ from flask import request, make_response
 
 from apio.exceptions import *
 from apio.tools import JSONPayload, normalize
+from apio.models import serialize_json
 
 # We shouldn't have to do this, but Flask doesn't allow us to route
 # all methods implicitly. When we don't pass in methods Flask assumes
@@ -98,7 +99,8 @@ def standard_middleware(methods, accepts, returns, debug, next_func):
         if payload:
             try:
                 normalized = normalize(accepts, payload.json)
-                payload = JSONPayload(normalized)
+                serialized = serialize_json(normalized)
+                payload = JSONPayload(serialized)
             except ValidationError:
                 body = json.dumps({
                     "error": "Validation failed" + json.dumps(accepts)
