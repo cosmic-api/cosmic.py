@@ -125,8 +125,9 @@ def standard_middleware(methods, accepts, returns, debug, next_func):
             })
             return Response(401, body, {})
         # Any other exception should be handled gracefully
-        except Exception as e:
-            if debug: raise e
+        except:
+            if debug:
+                raise
             body = json.dumps({
                 "error": "Internal Server Error"
             })
