@@ -5,6 +5,10 @@ from apio.exceptions import ValidationError, UnicodeDecodeValidationError, SpecE
 
 def normalize_wildcard(datum):
     """Return *datum* without any normalization."""
+    # Hack to make sure we don't end up with non-unicode strings in
+    # normalized data
+    if type(datum) == str:
+        return normalize_string(datum)
     return datum
 normalize_wildcard.schema = {"type": "any"}
 

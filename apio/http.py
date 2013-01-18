@@ -99,8 +99,7 @@ def standard_middleware(methods, accepts, returns, debug, next_func):
         if payload:
             try:
                 normalized = normalize(accepts, payload.json)
-                serialized = serialize_json(normalized)
-                payload = JSONPayload(serialized)
+                payload = JSONPayload(normalized)
             except ValidationError:
                 body = json.dumps({
                     "error": "Validation failed" + json.dumps(accepts)
@@ -112,7 +111,7 @@ def standard_middleware(methods, accepts, returns, debug, next_func):
             if returns != None:
                 # May raise ValidationError, will be caught below
                 data = normalize(returns, data)
-                body = json.dumps(data)
+                body = json.dumps(serialize_json(data))
                 return Response(200, body, {})
             return Response(200, "", {})
         except APIError as err:
