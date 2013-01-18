@@ -114,7 +114,7 @@ class BaseAPI(object):
         self.resources = resources = Namespace()
         class ModelHook(type):
             def __new__(meta, name, bases, attrs):
-                cls = super(ModelHook, meta).__new__(meta, name, bases, attrs)
+                cls = super(ModelHook, meta).__new__(meta, str(name), bases, attrs)
                 if name != "Model":
                     # Raise ValidationError if model schema is invalid
                     normalize({"type": "schema"}, cls.schema)
@@ -125,7 +125,7 @@ class BaseAPI(object):
         self.Model = Model
         class ResourceHook(type):
             def __new__(meta, name, bases, attrs):
-                cls = super(ResourceHook, meta).__new__(meta, name, bases, attrs)
+                cls = super(ResourceHook, meta).__new__(meta, str(name), bases, attrs)
                 if name != "Resource":
                     # Make sure the class name ends with Resource
                     if not name.endswith("Resource"):

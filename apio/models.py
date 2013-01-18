@@ -19,6 +19,13 @@ def normalize_wildcard(datum):
     # normalized data
     if type(datum) == str:
         return normalize_string(datum)
+    if type(datum) == list:
+        return [normalize_wildcard(item) for item in datum]
+    if type(datum) == dict:
+        ret = {}
+        for key, value in datum.items():
+            ret[key] = normalize_wildcard(value)
+        return ret
     return datum
 normalize_wildcard.schema = {"type": "any"}
 
@@ -274,6 +281,8 @@ def serialize_json(datum):
     dt = type(datum)
     if dt in [int, bool, float, unicode]:
         return datum
+    if dt is str:
+        return datum.decode('utf_8')
     if dt == list:
         return [serialize_json(item) for item in datum]
     if dt == dict:
