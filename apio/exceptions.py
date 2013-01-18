@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 class APIError(Exception):
     def __init__(self, message, http_code=500):
         self.args = [message]

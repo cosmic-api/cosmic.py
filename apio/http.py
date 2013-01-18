@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import json
 
 from flask import request, make_response
