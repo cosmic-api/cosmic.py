@@ -3,6 +3,16 @@ import sys
 from apio.exceptions import ValidationError, UnicodeDecodeValidationError, SpecError
 
 
+class Model(object):
+    schema = {"type": "any"}
+    def __init__(self, data):
+        schema = normalize_schema(self.schema)
+        self.data = schema(data)
+        self.validate()
+    def validate(self):
+        pass
+
+
 def normalize_wildcard(datum):
     """Return *datum* without any normalization."""
     # Hack to make sure we don't end up with non-unicode strings in
@@ -176,6 +186,8 @@ def normalize_schema(datum):
         [1.0, 2.2, 3.0]
 
     """
+    if hasattr(datum, "schema"):
+        return datum
     datum = normalize_object(datum, [
         {
             "name": "type",
@@ -225,7 +237,12 @@ def normalize_schema(datum):
             raise ValidationError("Unknown API: %s" % api_name)
         try:
             model = getattr(api.models, model_name)
-            return lambda datum: model(datum)
+            def normalize_model(datum):
+                if isinstance(datum, model):
+                    return datum
+                else:
+                    return model(datum)
+            return normalize_model
         except SpecError:
             raise ValidationError("Unknown model for %s API: %s" % (api_name, model_name))
     if st == "array":
@@ -264,14 +281,8 @@ def serialize_json(datum):
         for key, value in datum.items():
             ret[key] = serialize_json(value)
         return ret
+    if isinstance(datum, Model):
+        return serialize_json(datum.data)
     if hasattr(datum, "schema"):
         return datum.schema
 
-class Model(object):
-    schema = {"type": "any"}
-    def __init__(self, data):
-        schema = normalize_schema(self.schema)
-        self.data = schema(data)
-        self.validate()
-    def validate(self):
-        pass

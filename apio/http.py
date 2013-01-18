@@ -155,8 +155,7 @@ def cors_middleware(allowed_methods, next_func):
             if origin == None:
                 error = "Preflight CORS request must include Origin header"
                 return Response(400, error, {})
-            # Access-Control-Request-Method is not set or set
-            # wrongly?
+            # Access-Control-Request-Method is not set or set wrongly?
             requested_method = req.headers.get("Access-Control-Request-Method", None)
             if requested_method not in allowed_methods:
                 error = "Access-Control-Request-Method header must be set to "
