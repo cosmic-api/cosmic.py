@@ -14,7 +14,6 @@ class Model(object):
     def validate(self):
         pass
 
-
 def normalize_wildcard(datum):
     """Return *datum* without any normalization."""
     # Hack to make sure we don't end up with non-unicode strings in

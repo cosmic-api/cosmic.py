@@ -148,3 +148,10 @@ class TestView(TestCase):
             returns_none_debug(Request("POST", "", {"Content-Type": "application/json"}))
 
 
+    def test_CORS_allow_origin(self):
+        headers = {
+            "Content-Type": "application/json",
+            "Origin": "http://blabliblu.com"
+        }
+        res = self.noop(Request("POST", "", headers))
+        self.assertEqual(res.headers["Access-Control-Allow-Origin"], headers["Origin"])

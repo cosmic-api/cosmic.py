@@ -88,15 +88,15 @@ class View(object):
             if self.returns == None:
                 if data != None:
                     raise SpecError("None expected, but the function returned %s instead" % (data))
-                return Response(200, "", {})
+                res = Response(200, "", {})
             else:
                 # May raise ValidationError, will be caught below
                 data = normalize(self.returns, data)
                 body = json.dumps(serialize_json(data))
                 res = Response(200, body, {})
-                if origin != None:
-                    res.headers["Access-Control-Allow-Origin"] = origin
-                return res
+            if origin != None:
+                res.headers["Access-Control-Allow-Origin"] = origin
+            return res
         except APIError as err:
             body = json.dumps({
                 "error": err.args[0]
@@ -115,7 +115,6 @@ class View(object):
                 "error": "Internal Server Error"
             })
             return Response(500, body, {})
-        return view(req)
 
 def make_view(method, accepts=None, returns=None, debug=False):
     def decorator(func):
