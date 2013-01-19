@@ -32,21 +32,7 @@ class Response(object):
         self.body = body
         self.headers = headers
 
-class SuperView(object):
-    def __init__(self, func, accepts=None, returns=None, debug=False, methods=None):
-        self.func = func
-        if methods == None:
-            self.methods = ALL_METHODS
-        else:
-            self.methods = methods
-        self.accepts = accepts
-        self.returns = returns
-        self.debug = debug
-
-class BaseView(object):
-    pass
-
-class View(BaseView):
+class View(object):
 
     def __init__(self, func, method, accepts=None, returns=None, debug=False):
         self.func = func
@@ -133,7 +119,7 @@ def make_view(method, accepts=None, returns=None, debug=False):
         return View(func, method, accepts, returns, debug)
     return decorator
 
-class CorsPreflightView(BaseView):
+class CorsPreflightView(object):
 
     def __init__(self, allowed_methods):
         self.allowed_methods = allowed_methods

@@ -54,7 +54,7 @@ API_SCHEMA = {
                         {
                             "name": "returns",
                             "schema": {"type": "schema"},
-                            "required": True
+                            "required": False
                         }
                     ]
                 }
