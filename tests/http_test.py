@@ -50,35 +50,35 @@ class TestView(TestCase):
 
     def setUp(self):
 
+        @make_view("POST", {"type": "string"}, None, False)
         def takes_string(payload):
             pass
-        self.takes_string = View(takes_string, "POST", {"type": "string"}, None, False)
+        self.takes_string = takes_string
 
+        @make_view("POST", None, None, False)
         def noop(payload):
             pass
-        self.noop = View(noop, "POST", None, None, False)
+        self.noop = noop
 
+        @make_view("POST", None, None, False)
         def unhandled_error(payload):
             return 1 / 0
-        self.unhandled_error = View(unhandled_error, "POST", None, None, False)
+        self.unhandled_error = unhandled_error
 
+        @make_view("POST", None, None, False)
         def api_error(payload):
             raise APIError("fizzbuzz")
-        self.api_error = View(api_error, "POST", None, None, False)
+        self.api_error = api_error
 
+        @make_view("POST", None, None, False)
         def authentication_error(payload):
             raise AuthenticationError()
-        self.authentication_error = View(authentication_error, "POST", None, None, False)
+        self.authentication_error = authentication_error
 
     def test_wrong_content_type(self):
         res = self.noop(Request("POST", "", {"Content-Type": "application/jason"}))
         self.assertEqual(res.code, 400)
         self.assertRegexpMatches(res.body, "Content-Type must be")
-
-    def test_wrong_method(self):
-        res = self.noop(Request("PUT", "", {"Content-Type": "application/json"}))
-        self.assertEqual(res.code, 405)
-        self.assertRegexpMatches(res.body, "PUT is not allowed")
 
     def test_invalid_json(self):
         res = self.noop(Request("POST", '{"spicy":farse}', {"Content-Type": "application/json"}))

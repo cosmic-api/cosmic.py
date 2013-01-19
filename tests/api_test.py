@@ -102,8 +102,8 @@ class TestAPIAuthentication(TestCase):
                 raise AuthenticationError()
             return "boronine"
 
-        self.cook_app = self.cookbook.get_test_app()
-        self.magic_app = self.cookbook.get_test_app()
+        self.cook_app = self.cookbook.get_flask_app(url_prefix='/api')
+        self.magic_app = self.cookbook.get_flask_app(url_prefix='/api')
 
     def tearDown(self):
         api.clear_module_cache()
@@ -157,7 +157,7 @@ class TestAPI(TestCase):
             pass
 
         api.apio_index = RemoteAPI(index_spec)
-        self.app = self.cookbook.get_test_app(debug=True)
+        self.app = self.cookbook.get_flask_app(debug=True)
         self.werkzeug_client = self.app.test_client()
 
     def tearDown(self):
@@ -223,7 +223,7 @@ class TestAPI(TestCase):
             self.assertEqual(self.cookbook.actions.cabbage(spicy=False), "sauerkraut")
 
     def test_spec_endpoint(self):
-        res = self.werkzeug_client.get('/api/spec.json')
+        res = self.werkzeug_client.get('/spec.json')
         self.assertEqual(json.loads(res.data), cookbook_spec)
 
     def test_schema(self):

@@ -2,8 +2,6 @@ from __future__ import unicode_literals
 
 import json
 
-from flask import request, make_response
-
 from apio.exceptions import *
 from apio.tools import JSONPayload, normalize
 from apio.models import serialize_json
@@ -45,7 +43,10 @@ class SuperView(object):
         self.returns = returns
         self.debug = debug
 
-class View(object):
+class BaseView(object):
+    pass
+
+class View(BaseView):
 
     def __init__(self, func, method, accepts=None, returns=None, debug=False):
         self.func = func
@@ -54,23 +55,9 @@ class View(object):
         self.returns = returns
         self.debug = debug
 
-    def flask_view(self, *args, **kwargs):
-        headers = request.headers
-        method = request.method
-        body = request.data
-        req = Request(method, body, headers)
-        r = self.__call__(req)
-        return make_response(r.body, r.code, r.headers)
-
     def __call__(self, req):
         # Necessary for CORS
         origin = req.headers.get("Origin", None)
-        # Make sure the method is allowed
-        if req.method != self.method:
-            body = json.dumps({
-                "error": "%s is not allowed on this endpoint" % req.method
-            })
-            return Response(405, body, {})
         # Make sure Content-Type is application/json, unless the
         # request is GET, in which case just continue
         ct = req.headers.get('Content-Type', None)
@@ -141,7 +128,12 @@ class View(object):
             return Response(500, body, {})
         return view(req)
 
-class CorsPreflightView(object):
+def make_view(method, accepts=None, returns=None, debug=False):
+    def decorator(func):
+        return View(func, method, accepts, returns, debug)
+    return decorator
+
+class CorsPreflightView(BaseView):
 
     def __init__(self, allowed_methods):
         self.allowed_methods = allowed_methods
@@ -175,8 +167,5 @@ class UrlRule(object):
         self.name = name
         self.url = url
         self.view = view
-
-    def add_to_blueprint(self, blueprint):
-        blueprint.add_url_rule(self.url, self.name, self.view.flask_view, methods=[self.view.method])
 
 

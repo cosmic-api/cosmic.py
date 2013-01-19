@@ -4,15 +4,16 @@ import sys
 import json
 import requests
 
-from flask import Flask, Blueprint, request, make_response
-from flask.exceptions import JSONBadRequest
+# Still necessary for authentication
+from flask import request
 
 import apio.resources
 from apio.exceptions import APIError, SpecError, InvalidCallError, ValidationError
 from apio.actions import Action, RemoteAction
 from apio.tools import Namespace, normalize
 from apio.models import Model as BaseModel
-from apio.http import ALL_METHODS, View, UrlRule, Response
+from apio.http import ALL_METHODS, View, UrlRule, Response, CorsPreflightView, make_view
+from apio.plugins import FlaskPlugin
 
 API_SCHEMA = {
     "type": "object",
@@ -167,38 +168,43 @@ class API(BaseAPI):
         if self.homepage: spec['homepage'] = self.homepage
         return spec
 
-    def get_blueprint(self, debug=False):
-        """Returns a Flask Blueprint object with all of the API's
-        routes set up. Use this if you want to integrate your API into
-        a Flask application.
-        """
-        blueprint = Blueprint(self.name, __name__)
-        for action in self.actions:
-            view = action.get_view(debug=debug).flask_view
-            url = "/actions/%s" % action.name
-            blueprint.add_url_rule(url, action.name, view, methods=ALL_METHODS)
-        def get_spec(payload):
-            return self.spec
-        spec_view = View(get_spec, "GET", None, {"type": "any"}, debug)
-        spec_rule = UrlRule("/spec.json", "spec", spec_view)
-        spec_rule.add_to_blueprint(blueprint)
-        return blueprint
+    def get_rules(self, debug=False):
+        """Get a list of URL rules necessary for implementing this API
 
-    def get_test_app(self, debug=False):
+        :param debug:
+            Will be passed into the :class:`apio.http.View`
+            constructor of all the views in the app
+        :returns:
+            A list of :class:`apio.http.UrlRule` objects
+        """
+        rules = []
+        for action in self.actions:
+            view = action.get_view(debug=debug)
+            cors = CorsPreflightView(["POST"])
+            url = "/actions/%s" % action.name
+            rules.append(UrlRule(url, action.name, view))
+            rules.append(UrlRule(url, action.name + '_cors', cors))
+        @make_view("GET", None, {"type": "any"}, debug)
+        def spec_view(payload):
+            return self.spec
+        rules.append(UrlRule("/spec.json", "spec", spec_view))
+        return rules
+
+    def get_flask_app(self, debug=False, url_prefix=None):
         """Returns a Flask test client
         """
-        app = Flask(__name__, static_folder=None)
-        app.register_blueprint(self.get_blueprint(debug), url_prefix="/api")
-        return app
+        plugin = FlaskPlugin(self.get_rules(debug=debug), url_prefix=url_prefix)
+        return plugin.app
 
     def run(self, *args, **kwargs):
         """Runs the API as a Flask app. All arguments channelled into
-        Flask#run except for *api_key*, which is an optional string
-        argument that, if set, triggers a call to APIO index to
+        :meth:`Flask.run` except for *api_key*, which is an optional
+        string argument that, if set, triggers a call to APIO index to
         register the API.
         """
         debug = kwargs.get('debug', False)
         api_key = kwargs.pop('api_key', None)
+        url_prefix = kwargs.pop('url_prefix', None)
         if api_key:
             ensure_bootstrapped()
             apio_index.actions.register_spec({
@@ -206,12 +212,10 @@ class API(BaseAPI):
                 "spec": self.spec
             })
         if 'dry_run' not in kwargs.keys(): # pragma: no cover
-            app = Flask(__name__, static_folder=None)
+            app = self.get_flask_app(debug=debug, url_prefix=url_prefix)
             # Flask will catch exceptions to return a nice HTTP
             # response in debug mode, we want things to FAIL!
             app.config['PROPAGATE_EXCEPTIONS'] = debug
-            blueprint = self.get_blueprint(debug=debug)
-            app.register_blueprint(blueprint)
             app.run(*args, **kwargs)
 
     def action(self, accepts=None, returns=None):
