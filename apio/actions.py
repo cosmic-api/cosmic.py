@@ -8,7 +8,7 @@ from apio.tools import get_arg_spec, serialize_action_arguments, apply_to_action
 from apio.http import ALL_METHODS, View
 from apio.exceptions import APIError, SpecError, AuthenticationError, ValidationError
 
-from apio.models import normalize_schema
+from apio.models import normalize_schema, serialize_json
 
 class Action(object):
 
@@ -80,7 +80,8 @@ class RemoteAction(object):
                 json_data = JSONPayload(normalized)
             except ValidationError as err:
                 raise SpecError(err.args[0])
-            data = json.dumps(json_data.json)
+            serialized = serialize_json(json_data.json)
+            data = json.dumps(serialized)
         else:
             data = ""
         url = self.api_url + '/actions/' + self.spec['name']
