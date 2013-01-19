@@ -60,8 +60,7 @@ class Action(object):
         returns = self.spec.get('returns', None)
         def action_view(payload):
             return apply_to_action_func(self.raw_func, payload)
-        return View(action_view, accepts=accepts, returns=returns,
-                    methods=["POST"], debug=debug)
+        return View(action_view, "POST", accepts=accepts, returns=returns, debug=debug)
 
 
 class RemoteAction(object):

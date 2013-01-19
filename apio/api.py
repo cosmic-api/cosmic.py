@@ -4,7 +4,7 @@ import sys
 import json
 import requests
 
-from flask import Flask, Blueprint, Response, request, make_response
+from flask import Flask, Blueprint, request, make_response
 from flask.exceptions import JSONBadRequest
 
 import apio.resources
@@ -12,7 +12,7 @@ from apio.exceptions import APIError, SpecError, InvalidCallError, ValidationErr
 from apio.actions import Action, RemoteAction
 from apio.tools import Namespace, normalize
 from apio.models import Model as BaseModel
-from apio.http import ALL_METHODS
+from apio.http import ALL_METHODS, View, UrlRule, Response
 
 API_SCHEMA = {
     "type": "object",
@@ -177,24 +177,18 @@ class API(BaseAPI):
             view = action.get_view(debug=debug).flask_view
             url = "/actions/%s" % action.name
             blueprint.add_url_rule(url, action.name, view, methods=ALL_METHODS)
-        for resource in self.resources:
-            resource().add_to_blueprint(blueprint, debug=debug)
-        @blueprint.route('/spec.json')
-        def getspec():
-            spec = json.dumps(self.spec)
-            return Response(spec, mimetype="application/json")
+        def get_spec(payload):
+            return self.spec
+        spec_view = View(get_spec, "GET", None, {"type": "any"}, debug)
+        spec_rule = UrlRule("/spec.json", "spec", spec_view)
+        spec_rule.add_to_blueprint(blueprint)
         return blueprint
 
-    def get_generic_views(self):
-        views = []
-        for action in self.actions:
-            pass
-
-    def get_test_app(self):
+    def get_test_app(self, debug=False):
         """Returns a Flask test client
         """
         app = Flask(__name__, static_folder=None)
-        app.register_blueprint(self.get_blueprint(), url_prefix="/api")
+        app.register_blueprint(self.get_blueprint(debug), url_prefix="/api")
         return app
 
     def run(self, *args, **kwargs):

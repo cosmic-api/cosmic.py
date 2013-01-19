@@ -34,8 +34,7 @@ class Response(object):
         self.body = body
         self.headers = headers
 
-class View(object):
-
+class SuperView(object):
     def __init__(self, func, accepts=None, returns=None, debug=False, methods=None):
         self.func = func
         if methods == None:
@@ -46,25 +45,36 @@ class View(object):
         self.returns = returns
         self.debug = debug
 
+class View(object):
+
+    def __init__(self, func, method, accepts=None, returns=None, debug=False):
+        self.func = func
+        self.method = method
+        self.accepts = accepts
+        self.returns = returns
+        self.debug = debug
+
     def flask_view(self, *args, **kwargs):
         headers = request.headers
         method = request.method
         body = request.data
         req = Request(method, body, headers)
-        view = cors_middleware(self.methods, self)
-        r = view(req)
+        r = self.__call__(req)
         return make_response(r.body, r.code, r.headers)
 
     def __call__(self, req):
+        # Necessary for CORS
+        origin = req.headers.get("Origin", None)
         # Make sure the method is allowed
-        if req.method not in self.methods:
+        if req.method != self.method:
             body = json.dumps({
                 "error": "%s is not allowed on this endpoint" % req.method
             })
             return Response(405, body, {})
-        # Make sure Content-Type is right
+        # Make sure Content-Type is application/json, unless the
+        # request is GET, in which case just continue
         ct = req.headers.get('Content-Type', None)
-        if ct != "application/json":
+        if req.method != "GET" and ct != "application/json":
             body = json.dumps({
                 "error": 'Content-Type must be "application/json"'
             })
@@ -106,7 +116,10 @@ class View(object):
                 # May raise ValidationError, will be caught below
                 data = normalize(self.returns, data)
                 body = json.dumps(serialize_json(data))
-                return Response(200, body, {})
+                res = Response(200, body, {})
+                if origin != None:
+                    res.headers["Access-Control-Allow-Origin"] = origin
+                return res
             return Response(200, "", {})
         except APIError as err:
             body = json.dumps({
@@ -128,47 +141,42 @@ class View(object):
             return Response(500, body, {})
         return view(req)
 
-def cors_middleware(allowed_methods, next_func):
-    """Takes a Flask view function and augments it with CORS
-    functionality. Implementation based on this tutorial:
-    http://www.html5rocks.com/en/tutorials/cors/
+class CorsPreflightView(object):
 
-    Access-Control-Allow-Credentials can be emulated, so there's no
-    real reason to support it. IE doesn't support wildcard
-    Access-Control-Allow-Origin so we just echo the request Origin
-    instead. See here for notes:
-    https://github.com/alexandru/crossdomain-requests-js/wiki/Troubleshooting
+    def __init__(self, allowed_methods):
+        self.allowed_methods = allowed_methods
+        self.method = "OPTIONS"
 
-    Note that many CORS implementations are broken. For example,
-    see: http://stackoverflow.com/q/12780839/212584
-    """
-    def view(req):
+    def __call__(self, req):
         origin = req.headers.get("Origin", None)
-        # Preflight request
-        if req.method == "OPTIONS":
-            # No Origin?
-            if origin == None:
-                error = "Preflight CORS request must include Origin header"
-                return Response(400, error, {})
-            # Access-Control-Request-Method is not set or set wrongly?
-            requested_method = req.headers.get("Access-Control-Request-Method", None)
-            if requested_method not in allowed_methods:
-                error = "Access-Control-Request-Method header must be set to "
-                error += " or ".join(allowed_methods)
-                return Response(400, error, {})
-            # Everything is good, make response
-            res_headers = {}
-            res_headers["Access-Control-Allow-Origin"] = origin
-            res_headers["Access-Control-Allow-Methods"] = ",".join(allowed_methods)
-            # Allow all requested headers
-            allow_headers = req.headers.get('Access-Control-Request-Headers', None)
-            if allow_headers != None:
-                res_headers["Access-Control-Allow-Headers"] = allow_headers
-            return Response(200, "", res_headers)
-        # Actual request
-        res = next_func(req)
-        if origin != None:
-            res.headers["Access-Control-Allow-Origin"] = origin
-        return res
-    return view
+        # No Origin?
+        if origin == None:
+            error = "Preflight CORS request must include Origin header"
+            return Response(400, error, {})
+        # Access-Control-Request-Method is not set or set wrongly?
+        requested_method = req.headers.get("Access-Control-Request-Method", None)
+        if requested_method not in self.allowed_methods:
+            error = "Access-Control-Request-Method header must be set to "
+            error += " or ".join(self.allowed_methods)
+            return Response(400, error, {})
+        # Everything is good, make response
+        res_headers = {}
+        res_headers["Access-Control-Allow-Origin"] = origin
+        res_headers["Access-Control-Allow-Methods"] = ",".join(self.allowed_methods)
+        # Allow all requested headers
+        allow_headers = req.headers.get('Access-Control-Request-Headers', None)
+        if allow_headers != None:
+            res_headers["Access-Control-Allow-Headers"] = allow_headers
+        return Response(200, "", res_headers)
+
+class UrlRule(object):
+
+    def __init__(self, url, name, view):
+        self.name = name
+        self.url = url
+        self.view = view
+
+    def add_to_blueprint(self, blueprint):
+        blueprint.add_url_rule(self.url, self.name, self.view.flask_view, methods=[self.view.method])
+
 

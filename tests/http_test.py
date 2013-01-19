@@ -3,15 +3,11 @@ from unittest2 import TestCase
 from apio.tools import *
 from apio.http import *
 
-class TestCORSMiddleware(TestCase):
-    """Test CORS support which is implemented in
-    apio.http.cors_middleware
-    """
+
+class TestCorsPreflightView(TestCase):
 
     def setUp(self):
-        def raw_view(req):
-            return Response(200, "yes", {})
-        self.view = cors_middleware(["PUT"], raw_view)
+        self.view = CorsPreflightView(["PUT"])
 
     def test_CORS_preflight_request_okay(self):
         headers = {
@@ -49,20 +45,6 @@ class TestCORSMiddleware(TestCase):
         self.assertEqual(res.code, 400)
         self.assertRegexpMatches(res.body, "must be set to PUT")
 
-    def test_CORS_actual_request_okay(self):
-        headers = {
-            "Origin": "http://example.com",
-            "X-Wacky": "Tobacky"
-        }
-        res = self.view(Request("PUT", "", headers))
-        self.assertEqual(res.code, 200)
-        self.assertRegexpMatches(res.body, "yes")
-
-    def test_non_CORS_still_works(self):
-        res = self.view(Request("PUT", "", {}))
-        self.assertEqual(res.code, 200)
-        self.assertRegexpMatches(res.body, "yes")
-
 
 class TestView(TestCase):
 
@@ -70,26 +52,23 @@ class TestView(TestCase):
 
         def takes_string(payload):
             pass
-        self.takes_string = View(takes_string, {"type": "string"},
-                                 None, False, ["POST"])
+        self.takes_string = View(takes_string, "POST", {"type": "string"}, None, False)
 
         def noop(payload):
             pass
-        self.noop = View(noop, None, None, False, ["POST"])
+        self.noop = View(noop, "POST", None, None, False)
 
         def unhandled_error(payload):
             return 1 / 0
-        self.unhandled_error = View(unhandled_error, None, None,
-                                    False, ["POST"])
+        self.unhandled_error = View(unhandled_error, "POST", None, None, False)
 
         def api_error(payload):
             raise APIError("fizzbuzz")
-        self.api_error = View(api_error, None, None, False, ["POST"])
+        self.api_error = View(api_error, "POST", None, None, False)
 
         def authentication_error(payload):
             raise AuthenticationError()
-        self.authentication_error = View(authentication_error, None, None,
-                                         False, ["POST"])
+        self.authentication_error = View(authentication_error, "POST", None, None, False)
 
     def test_wrong_content_type(self):
         res = self.noop(Request("POST", "", {"Content-Type": "application/jason"}))

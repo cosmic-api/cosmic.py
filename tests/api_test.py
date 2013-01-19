@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import warnings
 import json
 import sys
@@ -159,7 +157,7 @@ class TestAPI(TestCase):
             pass
 
         api.apio_index = RemoteAPI(index_spec)
-        self.app = self.cookbook.get_test_app()
+        self.app = self.cookbook.get_test_app(debug=True)
         self.werkzeug_client = self.app.test_client()
 
     def tearDown(self):
