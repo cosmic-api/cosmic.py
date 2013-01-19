@@ -79,13 +79,17 @@ class View(object):
                 payload = JSONPayload(normalized)
             except ValidationError:
                 body = json.dumps({
-                    "error": "Validation failed" + json.dumps(self.accepts)
+                    "error": "Validation failed " + json.dumps(self.accepts)
                 })
                 return Response(400, body, {})
         # Try running the actual function
         try:
             data = self.func(payload)
-            if self.returns != None:
+            if self.returns == None:
+                if data != None:
+                    raise SpecError("None expected, but the function returned %s instead" % (data))
+                return Response(200, "", {})
+            else:
                 # May raise ValidationError, will be caught below
                 data = normalize(self.returns, data)
                 body = json.dumps(serialize_json(data))
@@ -93,7 +97,6 @@ class View(object):
                 if origin != None:
                     res.headers["Access-Control-Allow-Origin"] = origin
                 return res
-            return Response(200, "", {})
         except APIError as err:
             body = json.dumps({
                 "error": err.args[0]

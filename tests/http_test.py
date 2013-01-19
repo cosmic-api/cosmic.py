@@ -107,6 +107,13 @@ class TestView(TestCase):
             "error": "Internal Server Error"
         })
 
+    def test_unhandled_error_debug(self):
+        @make_view("POST", None, None, True)
+        def unhandled_error(payload):
+            return 1 / 0
+        with self.assertRaises(ZeroDivisionError):
+            unhandled_error(Request("POST", "", {"Content-Type": "application/json"}))
+
     def test_APIError_handling(self):
         res = self.api_error(Request("POST", "", {"Content-Type": "application/json"}))
         self.assertEqual(res.code, 500)
@@ -125,4 +132,19 @@ class TestView(TestCase):
         res = self.noop(Request("POST", "", {"Content-Type": "application/json"}))
         self.assertEqual(res.code, 200)
         self.assertEqual(res.body, "")
+
+    def test_action_returns_value_instead_of_none(self):
+        @make_view("POST", None, None, False)
+        def returns_none(payload):
+            return 0
+        res = returns_none(Request("POST", "", {"Content-Type": "application/json"}))
+        self.assertEqual(res.code, 500)
+
+    def test_action_returns_value_instead_of_none_debug(self):
+        @make_view("POST", None, None, True)
+        def returns_none_debug(payload):
+            return 0
+        with self.assertRaisesRegexp(SpecError, "returned 0 instead"):
+            returns_none_debug(Request("POST", "", {"Content-Type": "application/json"}))
+
 
