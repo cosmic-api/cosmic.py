@@ -28,54 +28,6 @@ class Request(object):
         self.body = body
         self.headers = headers
 
-class JSONRequest(object):
-
-    def __init__(self, method, payload, headers):
-        self.method = method
-        self.payload = payload
-        self.headers = headers
-
-    @classmethod
-    def from_plain_request(cls, req, allowed_methods, schema):
-        """Turn a plain Request into a JSONRequest.
-
-        :param req: :class:`apio.http.Request`
-        :param allowed_methods: A list of methods
-        """
-        # Make sure the method is allowed
-        if req.method not in allowed_methods:
-            body = json.dumps({
-                "error": "%s is not allowed on this endpoint" % req.method
-            })
-            return Response(405, body, {})
-        # Make sure Content-Type is right
-        ct = req.headers.get('Content-Type', None)
-        if ct != "application/json":
-            body = json.dumps({
-                "error": 'Content-Type must be "application/json"'
-            })
-            return Response(400, body, {})
-        # Make sure JSON is valid
-        try:
-            payload = JSONPayload.from_string(req.body)
-        except ValueError:
-            body = json.dumps({
-                "error": "Invalid JSON"
-            })
-            return Response(400, body, {})
-        # If function takes no arguments, request must be empty
-        if accepts == None and payload:
-            body = json.dumps({
-                "error": "Request content must be empty"
-            })
-            return Response(400, body, {})
-        # If function takes arguments, request cannot be empty
-        if accepts != None and not payload:
-            body = json.dumps({
-                "error": "Request content cannot be empty"
-            })
-            return Response(400, body, {})
-
 class Response(object):
     def __init__(self, code, body, headers):
         self.code = code
@@ -99,14 +51,11 @@ class View(object):
         method = request.method
         body = request.data
         req = Request(method, body, headers)
-        r = self.call(req)
+        view = cors_middleware(self.methods, self)
+        r = view(req)
         return make_response(r.body, r.code, r.headers)
 
-    def call(self, req):
-        view = cors_middleware(self.methods, self.call_generic)
-        return view(req)
-
-    def call_generic(self, req):
+    def __call__(self, req):
         # Make sure the method is allowed
         if req.method not in self.methods:
             body = json.dumps({

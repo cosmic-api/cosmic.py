@@ -94,13 +94,13 @@ class TestBasicAction(TestCase):
         self.view_debug = self.action.get_view(debug=True)
 
     def test_successful_call(self):
-        res = self.view.call(Request("POST", '{"spicy":true}', {"Content-Type": "application/json"}))
+        res = self.view(Request("POST", '{"spicy":true}', {"Content-Type": "application/json"}))
         self.assertEqual(res.code, 200)
         self.assertEqual(json.loads(res.body), "12.0 pounds of kimchi")
 
     def test_unhandled_exception_debug(self):
         with self.assertRaises(ZeroDivisionError):
-            self.view_debug.call(Request("POST", '{"spicy":true,"servings":0}', {"Content-Type": "application/json"}))
+            self.view_debug(Request("POST", '{"spicy":true,"servings":0}', {"Content-Type": "application/json"}))
 
 class TestActionAnnotation(TestCase):
 
