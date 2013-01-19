@@ -64,91 +64,86 @@ class TestCORSMiddleware(TestCase):
         self.assertRegexpMatches(res.body, "yes")
 
 
-class TestStandardMiddleware(TestCase):
-    """Tests our standard view wrappers as implemented in
-    apio.http.standard_middleware
-    """
+class TestView(TestCase):
 
     def setUp(self):
 
         def takes_string(payload):
             pass
-        self.takes_string = standard_middleware(["POST"], {"type": "string"},
-                                                None, False, takes_string)
+        self.takes_string = View(takes_string, {"type": "string"},
+                                 None, False, ["POST"])
 
         def noop(payload):
             pass
-        self.noop = standard_middleware(["POST"], None, None, False, noop)
+        self.noop = View(noop, None, None, False, ["POST"])
 
         def unhandled_error(payload):
             return 1 / 0
-        self.unhandled_error = standard_middleware(["POST"], None, None, False,
-                                                   unhandled_error)
+        self.unhandled_error = View(unhandled_error, None, None,
+                                    False, ["POST"])
 
         def api_error(payload):
             raise APIError("fizzbuzz")
-        self.api_error = standard_middleware(["POST"], None, None, False,
-                                             api_error)
+        self.api_error = View(api_error, None, None, False, ["POST"])
 
         def authentication_error(payload):
             raise AuthenticationError()
-        self.authentication_error = standard_middleware(["POST"], None, None,
-                                                        False,
-                                                        authentication_error)
+        self.authentication_error = View(authentication_error, None, None,
+                                         False, ["POST"])
 
     def test_wrong_content_type(self):
-        res = self.noop(Request("POST", "", {"Content-Type": "application/jason"}))
+        res = self.noop.call_generic(Request("POST", "", {"Content-Type": "application/jason"}))
         self.assertEqual(res.code, 400)
         self.assertRegexpMatches(res.body, "Content-Type must be")
 
     def test_wrong_method(self):
-        res = self.noop(Request("PUT", "", {"Content-Type": "application/json"}))
+        res = self.noop.call_generic(Request("PUT", "", {"Content-Type": "application/json"}))
         self.assertEqual(res.code, 405)
         self.assertRegexpMatches(res.body, "PUT is not allowed")
 
     def test_invalid_json(self):
-        res = self.noop(Request("POST", '{"spicy":farse}', {"Content-Type": "application/json"}))
+        res = self.noop.call_generic(Request("POST", '{"spicy":farse}', {"Content-Type": "application/json"}))
         self.assertEqual(res.code, 400)
         self.assertRegexpMatches(res.body, "Invalid JSON")
 
     def test_validation_error(self):
-        res = self.takes_string(Request("POST", "true", {"Content-Type": "application/json"}))
+        res = self.takes_string.call_generic(Request("POST", "true", {"Content-Type": "application/json"}))
         self.assertEqual(res.code, 400)
         self.assertRegexpMatches(res.body, "Validation failed")
 
     def test_no_data(self):
-        res = self.takes_string(Request("POST", "", {"Content-Type": "application/json"}))
+        res = self.takes_string.call_generic(Request("POST", "", {"Content-Type": "application/json"}))
         self.assertEqual(res.code, 400)
         self.assertRegexpMatches(res.body, "cannot be empty")
 
     def test_action_no_args_with_data(self):
-        res = self.noop(Request("POST", "true", {"Content-Type": "application/json"}))
+        res = self.noop.call_generic(Request("POST", "true", {"Content-Type": "application/json"}))
         self.assertEqual(res.code, 400)
         self.assertRegexpMatches(res.body, "must be empty")
 
     def test_unhandled_error(self):
-        res = self.unhandled_error(Request("POST", "", {"Content-Type": "application/json"}))
+        res = self.unhandled_error.call_generic(Request("POST", "", {"Content-Type": "application/json"}))
         self.assertEqual(res.code, 500)
         self.assertEqual(json.loads(res.body), {
             "error": "Internal Server Error"
         })
 
     def test_APIError_handling(self):
-        res = self.api_error(Request("POST", "", {"Content-Type": "application/json"}))
+        res = self.api_error.call_generic(Request("POST", "", {"Content-Type": "application/json"}))
         self.assertEqual(res.code, 500)
         self.assertEqual(json.loads(res.body), {
             "error": "fizzbuzz"
         })
 
     def test_AuthenticationError_handling(self):
-        res = self.authentication_error(Request("POST", "", {"Content-Type": "application/json"}))
+        res = self.authentication_error.call_generic(Request("POST", "", {"Content-Type": "application/json"}))
         self.assertEqual(res.code, 401)
         self.assertEqual(json.loads(res.body), {
             "error": "Authentication failed"
         })
 
     def test_action_no_args_no_data(self):
-        res = self.noop(Request("POST", "", {"Content-Type": "application/json"}))
+        res = self.noop.call_generic(Request("POST", "", {"Content-Type": "application/json"}))
         self.assertEqual(res.code, 200)
         self.assertEqual(res.body, "")
 

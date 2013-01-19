@@ -28,44 +28,22 @@ class Request(object):
         self.body = body
         self.headers = headers
 
-class Response(object):
-    def __init__(self, code, body, headers):
-        self.code = code
-        self.body = body
+class JSONRequest(object):
+
+    def __init__(self, method, payload, headers):
+        self.method = method
+        self.payload = payload
         self.headers = headers
 
-class View(object):
+    @classmethod
+    def from_plain_request(cls, req, allowed_methods, schema):
+        """Turn a plain Request into a JSONRequest.
 
-    def __init__(self, func, accepts=None, returns=None, debug=False, **kwargs):
-        self.func = func
-        self.methods = kwargs.get("methods", ALL_METHODS)
-        self.accepts = accepts
-        self.returns = returns
-        self.debug = debug
-
-    def flask_view(self, *args, **kwargs):
-        headers = request.headers
-        method = request.method
-        body = request.data
-        req = Request(method, body, headers)
-        r = self.call(req)
-        return make_response(r.body, r.code, r.headers)
-
-    def call(self, req):
-        view = cors_middleware(self.methods, self.call_generic)
-        return view(req)
-
-    def call_generic(self, req):
-        view = standard_middleware(self.methods, self.accepts, self.returns,
-                                   self.debug, self.func)
-        return view(req)
-
-def standard_middleware(methods, accepts, returns, debug, next_func):
-    """Wrap the function with some generic error handling.
-    """
-    def view(req):
+        :param req: :class:`apio.http.Request`
+        :param allowed_methods: A list of methods
+        """
         # Make sure the method is allowed
-        if req.method not in methods:
+        if req.method not in allowed_methods:
             body = json.dumps({
                 "error": "%s is not allowed on this endpoint" % req.method
             })
@@ -97,22 +75,87 @@ def standard_middleware(methods, accepts, returns, debug, next_func):
                 "error": "Request content cannot be empty"
             })
             return Response(400, body, {})
+
+class Response(object):
+    def __init__(self, code, body, headers):
+        self.code = code
+        self.body = body
+        self.headers = headers
+
+class View(object):
+
+    def __init__(self, func, accepts=None, returns=None, debug=False, methods=None):
+        self.func = func
+        if methods == None:
+            self.methods = ALL_METHODS
+        else:
+            self.methods = methods
+        self.accepts = accepts
+        self.returns = returns
+        self.debug = debug
+
+    def flask_view(self, *args, **kwargs):
+        headers = request.headers
+        method = request.method
+        body = request.data
+        req = Request(method, body, headers)
+        r = self.call(req)
+        return make_response(r.body, r.code, r.headers)
+
+    def call(self, req):
+        view = cors_middleware(self.methods, self.call_generic)
+        return view(req)
+
+    def call_generic(self, req):
+        # Make sure the method is allowed
+        if req.method not in self.methods:
+            body = json.dumps({
+                "error": "%s is not allowed on this endpoint" % req.method
+            })
+            return Response(405, body, {})
+        # Make sure Content-Type is right
+        ct = req.headers.get('Content-Type', None)
+        if ct != "application/json":
+            body = json.dumps({
+                "error": 'Content-Type must be "application/json"'
+            })
+            return Response(400, body, {})
+        # Make sure JSON is valid
+        try:
+            payload = JSONPayload.from_string(req.body)
+        except ValueError:
+            body = json.dumps({
+                "error": "Invalid JSON"
+            })
+            return Response(400, body, {})
+        # If function takes no arguments, request must be empty
+        if self.accepts == None and payload:
+            body = json.dumps({
+                "error": "Request content must be empty"
+            })
+            return Response(400, body, {})
+        # If function takes arguments, request cannot be empty
+        if self.accepts != None and not payload:
+            body = json.dumps({
+                "error": "Request content cannot be empty"
+            })
+            return Response(400, body, {})
         # Validate incoming data
         if payload:
             try:
-                normalized = normalize(accepts, payload.json)
+                normalized = normalize(self.accepts, payload.json)
                 payload = JSONPayload(normalized)
             except ValidationError:
                 body = json.dumps({
-                    "error": "Validation failed" + json.dumps(accepts)
+                    "error": "Validation failed" + json.dumps(self.accepts)
                 })
                 return Response(400, body, {})
         # Try running the actual function
         try:
-            data = next_func(payload=payload)
-            if returns != None:
+            data = self.func(payload)
+            if self.returns != None:
                 # May raise ValidationError, will be caught below
-                data = normalize(returns, data)
+                data = normalize(self.returns, data)
                 body = json.dumps(serialize_json(data))
                 return Response(200, body, {})
             return Response(200, "", {})
@@ -128,13 +171,13 @@ def standard_middleware(methods, accepts, returns, debug, next_func):
             return Response(401, body, {})
         # Any other exception should be handled gracefully
         except:
-            if debug:
+            if self.debug:
                 raise
             body = json.dumps({
                 "error": "Internal Server Error"
             })
             return Response(500, body, {})
-    return view
+        return view(req)
 
 def cors_middleware(allowed_methods, next_func):
     """Takes a Flask view function and augments it with CORS

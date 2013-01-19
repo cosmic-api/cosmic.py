@@ -13,6 +13,7 @@ Contents:
 
    tutorial
    models
+   http
    reference
 
 Indices and tables
