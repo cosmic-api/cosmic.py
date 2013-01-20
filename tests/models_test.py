@@ -29,6 +29,25 @@ class TestNormalize(TestCase):
             ]
         }
         self.object_normalizer = normalize_schema(self.object_schema)
+        self.deep_schema = {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": [
+                    {
+                        "name": "foo",
+                        "required": True,
+                        "schema": {"type": "boolean"}
+                    },
+                    {
+                        "name": "bar",
+                        "required": False,
+                        "schema": {"type": "integer"}
+                    }
+                ]
+            }
+        }
+        self.deep_normalizer = normalize_schema(self.deep_schema)
 
     def test_any(self):
         for i in [1, True, 2.3, "blah", [], {}]:
@@ -122,6 +141,10 @@ class TestNormalize(TestCase):
     def test_schema_unknown_type(self):
         with self.assertRaisesRegexp(ValidationError, "Unknown type"):
             normalize_schema({"type": "number"})
+
+    def test_deep_schema_validation_stack(self):
+        with self.assertRaisesRegexp(ValidationError, "[0]"):
+            self.deep_normalizer([{"foo": True, "bar": False}])
 
 class TestSerialize(TestCase):
 

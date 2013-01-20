@@ -77,9 +77,9 @@ class View(object):
             try:
                 normalized = normalize(self.accepts, payload.json)
                 payload = JSONPayload(normalized)
-            except ValidationError:
+            except ValidationError as e:
                 body = json.dumps({
-                    "error": "Validation failed " + json.dumps(self.accepts)
+                    "error": e.print_json()
                 })
                 return Response(400, body, {})
         # Try running the actual function

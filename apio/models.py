@@ -39,7 +39,7 @@ def normalize_integer(datum):
         return datum
     if type(datum) == float and datum.is_integer():
         return int(datum)
-    raise ValidationError("Invalid integer: %s" % (datum,))
+    raise ValidationError("Invalid integer", datum)
 normalize_integer.schema = {"type": "integer"}
 
 def normalize_float(datum):
@@ -51,7 +51,7 @@ def normalize_float(datum):
         return datum
     if type(datum) == int:
         return float(datum)
-    raise ValidationError("Invalid float: %s" % (datum,))
+    raise ValidationError("Invalid float", datum)
 normalize_float.schema = {"type": "float"}
 
 def normalize_string(datum):
@@ -68,7 +68,7 @@ def normalize_string(datum):
             return datum.decode('utf_8')
         except UnicodeDecodeError as inst:
             raise UnicodeDecodeValidationError(unicode(inst))
-    raise ValidationError("Invalid string: %s" % (datum,))
+    raise ValidationError("Invalid string", datum)
 normalize_string.schema = {"type": "string"}
 
 def normalize_boolean(datum):
@@ -77,7 +77,7 @@ def normalize_boolean(datum):
     """
     if type(datum) == bool:
         return datum
-    raise ValidationError("Invalid boolean: %s" % (datum,))
+    raise ValidationError("Invalid boolean", datum)
 normalize_boolean.schema = {"type": "boolean"}
 
 def normalize_array(datum, items):
@@ -93,8 +93,15 @@ def normalize_array(datum, items):
 
     """
     if type(datum) == list:
-        return [items(item) for item in datum]
-    raise ValidationError("Invalid array: %s" % (datum,))
+        ret = []
+        for i, item in enumerate(datum):
+            try:
+                ret.append(items(item))
+            except ValidationError as e:
+                e.stack.append(i)
+                raise
+        return ret
+    raise ValidationError("Invalid array", datum)
 
 def normalize_object(datum, properties):
     """If *datum* is a dict, normalize it against *properties* and
@@ -135,15 +142,19 @@ def normalize_object(datum, properties):
                 optional[prop["name"]] = prop["schema"]
         missing = set(required.keys()) - set(datum.keys())
         if missing:
-            raise ValidationError("Missing properties: %s" % list(missing))
+            raise ValidationError("Missing properties", list(missing))
         extra = set(datum.keys()) - set(required.keys() + optional.keys())
         if extra:
-            raise ValidationError("Unexpected properties: %s" % list(extra))
+            raise ValidationError("Unexpected properties", list(extra))
         for prop, schema in optional.items() + required.items():
             if prop in datum.keys():
-                ret[prop] = schema(datum[prop])
+                try:
+                    ret[prop] = schema(datum[prop])
+                except ValidationError as e:
+                    e.stack.append(prop)
+                    raise
         return ret
-    raise ValidationError("Invalid object: %s" % (datum,))
+    raise ValidationError("Invalid object", datum)
 
 
 def _normalize_property(datum):
@@ -219,11 +230,11 @@ def normalize_schema(datum):
         (st == "object" and 'properties' not in datum.keys()) or
         (st not in ["array", "object"] and len(datum) > 1) or
         (len(datum) == 3)):
-        raise ValidationError("Invalid schema: %s" % datum)
+        raise ValidationError("Invalid schema", datum)
     if st == "object":
         keys = [prop["name"] for prop in datum["properties"]]
         if len(set(keys)) < len(keys):
-            raise ValidationError("Duplicate properties in schema: %s" % datum)
+            raise ValidationError("Duplicate properties in schema", datum)
     # Just the type?
     if st == "any":
         return normalize_wildcard
@@ -242,7 +253,7 @@ def normalize_schema(datum):
         try:
             api = sys.modules['apio.index.' + api_name]
         except KeyError:
-            raise ValidationError("Unknown API: %s" % api_name)
+            raise ValidationError("Unknown API", api_name)
         try:
             model = getattr(api.models, model_name)
             def normalize_model(datum):
@@ -252,7 +263,7 @@ def normalize_schema(datum):
                     return model(datum)
             return normalize_model
         except SpecError:
-            raise ValidationError("Unknown model for %s API: %s" % (api_name, model_name))
+            raise ValidationError("Unknown model for %s API" % api_name, model_name)
     if st == "array":
         items = datum["items"]
         def normalize_custom_array(datum):
@@ -275,7 +286,7 @@ def normalize_schema(datum):
             } for prop in properties]
         }
         return normalize_custom_object
-    raise ValidationError("Unknown type: %s" % st)
+    raise ValidationError("Unknown type", st)
 normalize_schema.schema = {"type": "schema"}
 
 def serialize_json(datum):

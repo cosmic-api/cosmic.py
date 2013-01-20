@@ -88,7 +88,7 @@ class TestView(TestCase):
     def test_validation_error(self):
         res = self.takes_string(Request("POST", "true", {"Content-Type": "application/json"}))
         self.assertEqual(res.code, 400)
-        self.assertRegexpMatches(res.body, "Validation failed")
+        self.assertRegexpMatches(res.body, "Invalid string")
 
     def test_no_data(self):
         res = self.takes_string(Request("POST", "", {"Content-Type": "application/json"}))
