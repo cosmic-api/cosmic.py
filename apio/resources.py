@@ -1,8 +1,6 @@
 from __future__ import unicode_literals
 
-import json
-
-from flask import request, Response
+from apio.http import View, UrlRule, make_view
 
 class Resource(object):
 
@@ -18,6 +16,16 @@ class Resource(object):
         raise NotImplementedError()
     def create(self, data):
         raise NotImplementedError()
+
+    def get_rules(self, debug=False):
+        """Get a list of URL rules necessary for implementing this API
+
+        :param debug:
+            Will be passed into the :class:`apio.http.View`
+            constructor of all the views in the app
+        :returns:
+            A list of :class:`apio.http.UrlRule` objects
+        """
 
     def add_to_blueprint(self, blueprint, debug=False):
         name = self.__class__.name

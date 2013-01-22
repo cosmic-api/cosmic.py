@@ -98,10 +98,7 @@ class View(object):
                 res.headers["Access-Control-Allow-Origin"] = origin
             return res
         except APIError as err:
-            body = json.dumps({
-                "error": err.args[0]
-            })
-            return Response(err.http_code, body, {})
+            return err.get_response()
         except AuthenticationError:
             body = json.dumps({
                 "error": "Authentication failed"

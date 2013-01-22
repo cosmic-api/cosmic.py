@@ -8,7 +8,7 @@ import requests
 from flask import request
 
 import apio.resources
-from apio.exceptions import APIError, SpecError, InvalidCallError, ValidationError
+from apio.exceptions import APIError, SpecError, ValidationError
 from apio.actions import Action, RemoteAction
 from apio.tools import Namespace, normalize
 from apio.models import Model as BaseModel

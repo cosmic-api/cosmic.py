@@ -5,7 +5,7 @@ import json
 import requests
 
 from apio.tools import get_arg_spec, serialize_action_arguments, apply_to_action_func, JSONPayload, schema_is_compatible, normalize
-from apio.http import ALL_METHODS, View
+from apio.http import ALL_METHODS, View, make_view
 from apio.exceptions import APIError, SpecError, AuthenticationError, ValidationError
 
 from apio.models import normalize_schema, serialize_json
@@ -58,9 +58,10 @@ class Action(object):
         that handles errors and returns proper HTTP responses"""
         accepts = self.spec.get('accepts', None)
         returns = self.spec.get('returns', None)
+        @make_view("POST", accepts=accepts, returns=returns, debug=debug)
         def action_view(payload):
             return apply_to_action_func(self.raw_func, payload)
-        return View(action_view, "POST", accepts=accepts, returns=returns, debug=debug)
+        return action_view
 
 
 class RemoteAction(object):

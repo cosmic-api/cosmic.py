@@ -4,7 +4,7 @@ import inspect
 import json
 import sys
 
-from apio.exceptions import SpecError, InvalidCallError, ValidationError, APIError, AuthenticationError
+from apio.exceptions import SpecError, ValidationError, APIError, AuthenticationError
 from apio.models import normalize_schema
 
 class Namespace(object):

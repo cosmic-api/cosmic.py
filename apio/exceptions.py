@@ -2,15 +2,24 @@ from __future__ import unicode_literals
 
 import json
 
-class APIError(Exception):
-    def __init__(self, message, http_code=500):
+class HttpError(Exception):
+    def __init__(self, message, http_code=None):
+        self.message = message
         self.args = [message]
-        self.http_code = http_code
+        if http_code:
+            self.http_code = http_code
+    def get_response(self):
+        from apio.http import Response
+        body = json.dumps({"error": self.message})
+        return Response(self.http_code, body, {})
+
+class APIError(HttpError):
+    http_code = 500
+
+class ClientError(HttpError):
+    http_code = 400
 
 class SpecError(Exception):
-    pass
-
-class InvalidCallError(Exception):
     pass
 
 class AuthenticationError(Exception):
