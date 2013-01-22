@@ -58,7 +58,7 @@ class Action(object):
         that handles errors and returns proper HTTP responses"""
         accepts = self.spec.get('accepts', None)
         returns = self.spec.get('returns', None)
-        @make_view("POST", accepts=accepts, returns=returns, debug=debug)
+        @make_view("POST", accepts=accepts, returns=returns)
         def action_view(payload):
             return apply_to_action_func(self.raw_func, payload)
         return action_view

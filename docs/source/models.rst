@@ -147,8 +147,8 @@ The basic usage is as follows::
 
 The :mod:`apio.models` module provides, first of all, a set of basic
 functions for normalizing JSON primitives. These functions raise
-:exc:`ValidationError` if the value is invalid or return a normalized
-version of the value if it is.
+:exc:`~apio.exceptions.ValidationError` if the value is invalid or
+return a normalized version of the value if it is.
 
 .. autofunction:: apio.models.normalize_wildcard
 
@@ -172,7 +172,7 @@ also provides a normalization function for *schemas*:
 Models
 ------
 
-Models are created for a particular :class:`apio.api.API` by subclassing the
+Models are created for a particular :class:`~apio.api.API` by subclassing the
 ``MyCoolAPI.Model`` class. The act of subclassing will register the
 model with the API and add it to the API spec. The default Model
 schema is ``{"type": "any"}``. To change it, override the ``schema``

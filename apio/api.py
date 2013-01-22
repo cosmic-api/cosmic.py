@@ -184,7 +184,7 @@ class API(BaseAPI):
             url = "/actions/%s" % action.name
             rules.append(UrlRule(url, action.name, view))
             rules.append(UrlRule(url, action.name + '_cors', cors))
-        @make_view("GET", None, {"type": "any"}, debug)
+        @make_view("GET", None, {"type": "any"})
         def spec_view(payload):
             return self.spec
         rules.append(UrlRule("/spec.json", "spec", spec_view))
@@ -193,7 +193,7 @@ class API(BaseAPI):
     def get_flask_app(self, debug=False, url_prefix=None):
         """Returns a Flask test client
         """
-        plugin = FlaskPlugin(self.get_rules(debug=debug), url_prefix=url_prefix)
+        plugin = FlaskPlugin(self.get_rules(debug=debug), url_prefix=url_prefix, debug=debug)
         return plugin.app
 
     def run(self, *args, **kwargs):

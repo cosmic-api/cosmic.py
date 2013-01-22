@@ -23,99 +23,99 @@ ALL_METHODS = [
 class Request(object):
     def __init__(self, method, body, headers):
         self.method = method
-        self.body = body
         self.headers = headers
+        self.body = body
+
+class JSONRequest(Request):
+    """Turn a :class:`~apio.http.Request` into a
+    :class:`~apio.http.JSONRequest`
+
+    :raises: :exc:`SpecError`, :exc:`~apio.exceptions.JSONParseError`
+    """
+    def __init__(self, req):
+        self.method = req.method
+        self.headers = req.headers
+        # Make sure Content-Type is application/json, unless the
+        # request is GET, in which case just continue
+        ct = req.headers.get('Content-Type', None)
+        if req.method != "GET" and ct != "application/json":
+            raise SpecError('Content-Type must be "application/json"')
+        try:
+            self.payload = JSONPayload.from_string(req.body)
+        except ValueError:
+            # Let's be more specific
+            raise JSONParseError()
 
 class Response(object):
-    def __init__(self, code, body, headers):
+    def __init__(self, code, body="", headers={}):
         self.code = code
         self.body = body
         self.headers = headers
 
 class View(object):
 
-    def __init__(self, func, method, accepts=None, returns=None, debug=False):
+    def __init__(self, func, method, accepts=None, returns=None):
         self.func = func
         self.method = method
         self.accepts = accepts
         self.returns = returns
-        self.debug = debug
 
-    def __call__(self, req):
+    def __call__(self, req, debug=False):
+        res = Response(200)
         # Necessary for CORS
-        origin = req.headers.get("Origin", None)
-        # Make sure Content-Type is application/json, unless the
-        # request is GET, in which case just continue
-        ct = req.headers.get('Content-Type', None)
-        if req.method != "GET" and ct != "application/json":
-            body = json.dumps({
-                "error": 'Content-Type must be "application/json"'
-            })
-            return Response(400, body, {})
-        # Make sure JSON is valid
+        if "Origin" in req.headers:
+            res.headers["Access-Control-Allow-Origin"] = req.headers["Origin"]
+        # Catch ClientErrors and APIErrors and turn them into Responses
         try:
-            payload = JSONPayload.from_string(req.body)
-        except ValueError:
-            body = json.dumps({
-                "error": "Invalid JSON"
-            })
-            return Response(400, body, {})
-        # If function takes no arguments, request must be empty
-        if self.accepts == None and payload:
-            body = json.dumps({
-                "error": "Request content must be empty"
-            })
-            return Response(400, body, {})
-        # If function takes arguments, request cannot be empty
-        if self.accepts != None and not payload:
-            body = json.dumps({
-                "error": "Request content cannot be empty"
-            })
-            return Response(400, body, {})
-        # Validate incoming data
-        if payload:
+            # Validate request
             try:
-                normalized = normalize(self.accepts, payload.json)
-                payload = JSONPayload(normalized)
+                req = self.validate_request(req)
+            except SpecError as err:
+                raise ClientError(err.args[0])
+            except JSONParseError:
+                raise ClientError("Invalid JSON")
             except ValidationError as e:
-                body = json.dumps({
-                    "error": e.print_json()
-                })
-                return Response(400, body, {})
-        # Try running the actual function
-        try:
-            data = self.func(payload)
-            if self.returns == None:
-                if data != None:
+                raise ClientError(e.print_json())
+            # Run the actual function
+            try:
+                data = self.func(req.payload)
+                # May raise ValidationError, will be caught below and
+                # rethrown if we are in debug mode
+                if self.returns:
+                    data = normalize(self.returns, data)
+                    res.body = json.dumps(serialize_json(data))
+                # Likewise, will be rethrown in debug mode
+                elif data != None:
                     raise SpecError("None expected, but the function returned %s instead" % (data))
-                res = Response(200, "", {})
-            else:
-                # May raise ValidationError, will be caught below
-                data = normalize(self.returns, data)
-                body = json.dumps(serialize_json(data))
-                res = Response(200, body, {})
-            if origin != None:
-                res.headers["Access-Control-Allow-Origin"] = origin
-            return res
-        except APIError as err:
-            return err.get_response()
-        except AuthenticationError:
-            body = json.dumps({
-                "error": "Authentication failed"
-            })
-            return Response(401, body, {})
-        # Any other exception should be handled gracefully
-        except:
-            if self.debug:
+                return res
+            except HttpError:
                 raise
-            body = json.dumps({
-                "error": "Internal Server Error"
-            })
-            return Response(500, body, {})
+            except AuthenticationError:
+                raise ClientError("Authentication failed", http_code=401)
+            # Any other exception should be handled gracefully
+            except:
+                if debug:
+                    raise
+                raise APIError("Internal Server Error")
+        except HttpError as err:
+            return err.get_response()
 
-def make_view(method, accepts=None, returns=None, debug=False):
+    def validate_request(self, req):
+        req = JSONRequest(req)
+        # If function takes no arguments, request must be empty
+        if self.accepts == None and req.payload:
+            raise SpecError("Request content must be empty")
+        # If function takes arguments, request cannot be empty
+        if self.accepts != None and not req.payload:
+            raise SpecError("Request content cannot be empty")
+        # Validate incoming data
+        if req.payload:
+            normalize(self.accepts, req.payload.json)
+        return req
+
+def make_view(method, accepts=None, returns=None):
     def decorator(func):
-        return View(func, method, accepts, returns, debug)
+        return View(func, method, accepts, returns)
     return decorator
 
 class CorsPreflightView(object):

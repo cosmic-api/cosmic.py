@@ -2,6 +2,9 @@ from __future__ import unicode_literals
 
 import json
 
+class JSONParseError(Exception):
+    pass
+
 class HttpError(Exception):
     def __init__(self, message, http_code=None):
         self.message = message

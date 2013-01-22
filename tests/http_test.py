@@ -50,27 +50,27 @@ class TestView(TestCase):
 
     def setUp(self):
 
-        @make_view("POST", {"type": "string"}, None, False)
+        @make_view("POST", {"type": "string"}, None)
         def takes_string(payload):
             pass
         self.takes_string = takes_string
 
-        @make_view("POST", None, None, False)
+        @make_view("POST", None, None)
         def noop(payload):
             pass
         self.noop = noop
 
-        @make_view("POST", None, None, False)
+        @make_view("POST", None, None)
         def unhandled_error(payload):
             return 1 / 0
         self.unhandled_error = unhandled_error
 
-        @make_view("POST", None, None, False)
+        @make_view("POST", None, None)
         def api_error(payload):
             raise APIError("fizzbuzz")
         self.api_error = api_error
 
-        @make_view("POST", None, None, False)
+        @make_view("POST", None, None)
         def authentication_error(payload):
             raise AuthenticationError()
         self.authentication_error = authentication_error
@@ -108,11 +108,11 @@ class TestView(TestCase):
         })
 
     def test_unhandled_error_debug(self):
-        @make_view("POST", None, None, True)
+        @make_view("POST", None, None)
         def unhandled_error(payload):
             return 1 / 0
         with self.assertRaises(ZeroDivisionError):
-            unhandled_error(Request("POST", "", {"Content-Type": "application/json"}))
+            unhandled_error(Request("POST", "", {"Content-Type": "application/json"}), debug=True)
 
     def test_APIError_handling(self):
         res = self.api_error(Request("POST", "", {"Content-Type": "application/json"}))
@@ -134,18 +134,18 @@ class TestView(TestCase):
         self.assertEqual(res.body, "")
 
     def test_action_returns_value_instead_of_none(self):
-        @make_view("POST", None, None, False)
+        @make_view("POST", None, None)
         def returns_none(payload):
             return 0
         res = returns_none(Request("POST", "", {"Content-Type": "application/json"}))
         self.assertEqual(res.code, 500)
 
     def test_action_returns_value_instead_of_none_debug(self):
-        @make_view("POST", None, None, True)
+        @make_view("POST", None, None)
         def returns_none_debug(payload):
             return 0
         with self.assertRaisesRegexp(SpecError, "returned 0 instead"):
-            returns_none_debug(Request("POST", "", {"Content-Type": "application/json"}))
+            returns_none_debug(Request("POST", "", {"Content-Type": "application/json"}), debug=True)
 
 
     def test_CORS_allow_origin(self):

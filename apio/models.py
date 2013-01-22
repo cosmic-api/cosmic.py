@@ -33,7 +33,8 @@ normalize_wildcard.schema = {"type": "any"}
 def normalize_integer(datum):
     """If *datum* is an integer, return it; if it is a float with a 0
     for its fractional part, return the integer part as an
-    integer. Otherwise, raise a :exc:`ValidationError`.
+    integer. Otherwise, raise a
+    :exc:`~apio.exceptions.ValidationError`.
     """
     if type(datum) == int:
         return datum
@@ -45,7 +46,7 @@ normalize_integer.schema = {"type": "integer"}
 def normalize_float(datum):
     """If *datum* is a float, return it; if it is an integer, cast it
     to a float and return it. Otherwise, raise a
-    :exc:`ValidationError`.
+    :exc:`~apio.exceptions.ValidationError`.
     """
     if type(datum) == float:
         return datum
@@ -57,9 +58,10 @@ normalize_float.schema = {"type": "float"}
 def normalize_string(datum):
     """If *datum* is a unicode string, return it. If it is a string,
     decode it as UTF-8 and return the result. Otherwise, raise a
-    :exc:`ValidationError`. Unicode errors are dealt with strictly by
-    raising :exc:`UnicodeDecodeValidationError`, a subclass of the
-    above.
+    :exc:`~apio.exceptions.ValidationError`. Unicode errors are dealt
+    with strictly by raising
+    :exc:`~apio.exceptions.UnicodeDecodeValidationError`, a subclass
+    of the above.
     """
     if type(datum) == unicode:
         return datum
@@ -73,7 +75,7 @@ normalize_string.schema = {"type": "string"}
 
 def normalize_boolean(datum):
     """If *datum* is a boolean, return it. Otherwise, raise a
-    :exc:`ValidationError`.
+    :exc:`~apio.exceptions.ValidationError`.
     """
     if type(datum) == bool:
         return datum
@@ -83,8 +85,9 @@ normalize_boolean.schema = {"type": "boolean"}
 def normalize_array(datum, items):
     """If *datum* is a list, construct a new list by running the
     *items* normalization function on each element of *datum*. This
-    normalization function may raise :exc:`ValidationError`. If
-    *datum* is not a list, :exc:`ValidationError` will be raised.
+    normalization function may raise
+    :exc:`~apio.exceptions.ValidationError`. If *datum* is not a list,
+    :exc:`~apio.exceptions.ValidationError` will be raised.
 
     .. code::
 
@@ -106,7 +109,7 @@ def normalize_array(datum, items):
 def normalize_object(datum, properties):
     """If *datum* is a dict, normalize it against *properties* and
     return the resulting dict. Otherwise raise a
-    :exc:`ValidationError`.
+    :exc:`~apio.exceptions.ValidationError`.
 
     *properties* must be a list of dicts, where each dict has three
     attributes: *name*, *required* and *schema*. *name* is a string
@@ -123,7 +126,7 @@ def normalize_object(datum, properties):
         ... }])
         {"spicy": True}
 
-    A :exc:`ValidationError` will be raised if:
+    A :exc:`~apio.exceptions.ValidationError` will be raised if:
 
     1. *datum* is missing a required property
     2. *datum* has a property not declared in *properties*.
@@ -193,9 +196,9 @@ def normalize_schema(datum):
         True
 
     For array or object types, it will build a custom function by
-    wrapping :func:`normalize_array` or
-    :func:`normalize_object`. These can be nested as deep as you want,
-    :func:`normalize_schema` will recurse::
+    wrapping :func:`~apio.models.normalize_array` or
+    :func:`~apio.models.normalize_object`. These can be nested as deep
+    as you want, :func:`~apio.models.normalize_schema` will recurse::
 
         >>> normalizer = normalize_schema({
         ...     "type": "array",
