@@ -4,11 +4,11 @@ import json
 
 import requests
 
-from apio.tools import get_arg_spec, serialize_action_arguments, apply_to_action_func, JSONPayload, schema_is_compatible, normalize
+from apio.tools import get_arg_spec, serialize_action_arguments, apply_to_action_func, schema_is_compatible, normalize
 from apio.http import ALL_METHODS, View, make_view
 from apio.exceptions import APIError, SpecError, AuthenticationError, ValidationError
 
-from apio.models import SchemaSchema, serialize_json
+from apio.models import SchemaSchema, serialize_json, JSONModel
 
 class Action(object):
 
@@ -26,7 +26,7 @@ class Action(object):
                 raise SpecError("'%s' is said to take arguments, but doesn't" % self.name)
 
             try:
-                SchemaSchema().normalize(accepts)
+                accepts = SchemaSchema().normalize(accepts).serialize()
             except ValidationError:
                 raise SpecError("'%s' was passed an invalid accepts schema" % self.name)
 
@@ -37,7 +37,7 @@ class Action(object):
 
         if returns:
             try:
-                SchemaSchema().normalize(returns)
+                returns = SchemaSchema().normalize(returns).serialize()
                 self.spec["returns"] = returns
             except ValidationError:
                 raise SpecError("'%s' was passed an invalid returns schema" % self.name)
@@ -76,11 +76,10 @@ class RemoteAction(object):
             raise SpecError("%s takes arguments" % self.spec['name'])
         if json_data:
             try:
-                normalized = normalize(self.spec['accepts'], json_data.json)
-                json_data = JSONPayload(normalized)
+                normalized = normalize(self.spec['accepts'], json_data.data)
             except ValidationError as err:
                 raise SpecError(err.args[0])
-            serialized = serialize_json(json_data.json)
+            serialized = serialize_json(normalized)
             data = json.dumps(serialized)
         else:
             data = ""

@@ -3,6 +3,7 @@ from mock import patch, Mock
 
 from apio.exceptions import *
 from apio.tools import *
+from apio.models import JSONModel
 
 class TestGetArgSpec(TestCase):
 
@@ -94,11 +95,11 @@ class TestApplyToActionFunc(TestCase):
     def test_no_arg_fail(self):
         def f(): return "okay"
         with self.assertRaises(SpecError):
-            apply_to_action_func(f, JSONPayload("oops"))
+            apply_to_action_func(f, JSONModel("oops"))
 
     def test_one_arg_okay(self):
         def f(a): return a
-        self.assertEqual(apply_to_action_func(f, JSONPayload(1)), 1)
+        self.assertEqual(apply_to_action_func(f, JSONModel(1)), 1)
 
     def test_one_arg_fail(self):
         with self.assertRaises(SpecError):
@@ -107,57 +108,57 @@ class TestApplyToActionFunc(TestCase):
 
     def test_one_kwarg_okay(self):
         def f(a=2): return a
-        self.assertEqual(apply_to_action_func(f, JSONPayload(1)), 1)
+        self.assertEqual(apply_to_action_func(f, JSONModel(1)), 1)
         def f(a=2): return a
-        self.assertEqual(apply_to_action_func(f, JSONPayload({})), {})
+        self.assertEqual(apply_to_action_func(f, JSONModel({})), {})
         def f(a=2): return a
         self.assertEqual(apply_to_action_func(f, None), 2)
 
     def test_one_kwarg_passed_none(self):
         # None is an explicit value
         def f(a=2): return a
-        self.assertEqual(apply_to_action_func(f, JSONPayload(None)), None)
+        self.assertEqual(apply_to_action_func(f, JSONModel(None)), None)
 
     def test_multiple_args_and_kwargs_okay(self):
         def f(a, b=1): return a, b
-        res = apply_to_action_func(f, JSONPayload({'a': 2}))
+        res = apply_to_action_func(f, JSONModel({'a': 2}))
         self.assertEqual(res, (2, 1,))
         def f(a, b=1): return a, b
-        res = apply_to_action_func(f, JSONPayload({'a': 2, 'b': 2}))
+        res = apply_to_action_func(f, JSONModel({'a': 2, 'b': 2}))
         self.assertEqual(res, (2, 2,))
 
     def test_multiple_kwargs_okay(self):
         def f(a=5, b=1): return a, b
-        self.assertEqual(apply_to_action_func(f, JSONPayload({})), (5, 1,))
+        self.assertEqual(apply_to_action_func(f, JSONModel({})), (5, 1,))
 
     def test_unknown_kwarg(self):
         with self.assertRaises(SpecError):
             def f(a=5, b=1): return a, b
-            apply_to_action_func(f, JSONPayload({'c': 4}))
+            apply_to_action_func(f, JSONModel({'c': 4}))
 
     def test_not_an_object(self):
         with self.assertRaises(SpecError):
             def f(a=5, b=1): return a, b
-            apply_to_action_func(f, JSONPayload("hello"))
+            apply_to_action_func(f, JSONModel("hello"))
 
     def test_missing_required_arg(self):
         with self.assertRaises(SpecError):
             def f(a, b=1): return a, b
-            apply_to_action_func(f, JSONPayload({}))
+            apply_to_action_func(f, JSONModel({}))
 
 class TestSerializeActionArguments(TestCase):
 
     def test_one_arg(self):
-        res = serialize_action_arguments("universe").json
+        res = serialize_action_arguments("universe").data
         self.assertEqual(res, "universe")
 
     def test_one_kwarg(self):
-        res = serialize_action_arguments(what="universe").json
+        res = serialize_action_arguments(what="universe").data
         self.assertEqual(res, {"what": "universe"})
 
     def test_many_kwargs(self):
         ser = serialize_action_arguments(what="universe", when="now")
-        self.assertEqual(ser.json, {"what": "universe", "when": "now"})
+        self.assertEqual(ser.data, {"what": "universe", "when": "now"})
 
     def test_multiple_args(self):
         with self.assertRaises(SpecError):

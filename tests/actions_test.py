@@ -50,7 +50,7 @@ class TestBasicRemoteAction(TestCase):
     def test_call_failed_good_response(self):
         with patch.object(requests, 'post') as mock_post:
             mock_post.return_value.status_code = 500
-            mock_post.return_value.json = { 'error': 'Cannot capitalize' }
+            mock_post.return_value.json = {'error': 'Cannot capitalize'}
             with self.assertRaisesRegexp(APIError, "Cannot capitalize"):
                 self.action(spicy=True, capitalize=True)
 

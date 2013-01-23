@@ -3,8 +3,8 @@ from __future__ import unicode_literals
 import json
 
 from apio.exceptions import *
-from apio.tools import JSONPayload, normalize
-from apio.models import serialize_json
+from apio.tools import normalize
+from apio.models import serialize_json, JSONModel
 
 # We shouldn't have to do this, but Flask doesn't allow us to route
 # all methods implicitly. When we don't pass in methods Flask assumes
@@ -50,7 +50,7 @@ class JSONRequest(Request):
         if req.method != "GET" and ct != "application/json":
             raise SpecError('Content-Type must be "application/json"')
         try:
-            self.payload = JSONPayload.from_string(req.body)
+            self.payload = JSONModel.from_string(req.body)
         except ValueError:
             # Let's be more specific
             raise JSONParseError()
@@ -111,7 +111,7 @@ class View(object):
                     raise SpecError("Request content cannot be empty")
                 # Validate incoming data
                 if req.payload:
-                    normalize(self.accepts, req.payload.json)
+                    normalize(self.accepts, req.payload.data)
             except SpecError as err:
                 raise ClientError(err.args[0])
             except JSONParseError:

@@ -1,21 +1,9 @@
-
-
 import sys
+import json
 
 from apio.exceptions import ValidationError, UnicodeDecodeValidationError, SpecError
 
 
-class Model(object):
-    schema = {"type": "any"}
-    def __init__(self, data):
-        schema = SchemaSchema().normalize(self.schema)
-        self.data = schema.normalize(data)
-        self.validate()
-    def validate(self):
-        pass
-    @classmethod
-    def normalize(cls, datum):
-        return cls(datum)
 
 class BaseModel(object):
     def __init__(self, data=None):
@@ -23,15 +11,33 @@ class BaseModel(object):
     def serialize(self):
         return self.data
 
-class JSONModel(BaseModel):
-    pass
-
 class Schema(BaseModel):
     def serialize(self):
         return self.validates
 
+class Model(BaseModel):
+    schema = {u"type": u"any"}
+    def validate(self):
+        pass
+    @classmethod
+    def normalize(cls, datum):
+        schema = SchemaSchema().normalize(cls.schema)
+        inst = cls(schema.normalize(datum))
+        inst.validate()
+        return inst
+
+class JSONModel(BaseModel):
+    @staticmethod
+    def normalize(datum):
+        return JSONSchema().normalize(datum)
+    @classmethod
+    def from_string(cls, s):
+        if s == "":
+            return None
+        return cls.normalize(json.loads(s))
+
 class JSONSchema(Schema):
-    validates = {"type": "any"}
+    validates = {u"type": u"any"}
     def normalize(self, datum):
         # Hack to make sure we don't end up with non-unicode strings in
         # normalized data
@@ -47,7 +53,7 @@ class JSONSchema(Schema):
         return JSONModel(datum)
 
 class IntegerSchema(Schema):
-    validates = {"type": "integer"}
+    validates = {u"type": u"integer"}
     def normalize(self, datum):
         """If *datum* is an integer, return it; if it is a float with a 0
         for its fractional part, return the integer part as an
@@ -61,7 +67,7 @@ class IntegerSchema(Schema):
         raise ValidationError("Invalid integer", datum)
 
 class FloatSchema(Schema):
-    validates = {"type": "float"}
+    validates = {u"type": u"float"}
     def normalize(self, datum):
         """If *datum* is a float, return it; if it is an integer, cast it
         to a float and return it. Otherwise, raise a
@@ -74,7 +80,7 @@ class FloatSchema(Schema):
         raise ValidationError("Invalid float", datum)
 
 class StringSchema(Schema):
-    validates = {"type": "string"}
+    validates = {u"type": u"string"}
     def normalize(self, datum):
         """If *datum* is a unicode string, return it. If it is a string,
         decode it as UTF-8 and return the result. Otherwise, raise a
@@ -93,7 +99,7 @@ class StringSchema(Schema):
         raise ValidationError("Invalid string", datum)
 
 class BooleanSchema(Schema):
-    validates = {"type": "boolean"}
+    validates = {u"type": u"boolean"}
     def normalize(self, datum):
         """If *datum* is a boolean, return it. Otherwise, raise a
         :exc:`~apio.exceptions.ValidationError`.
@@ -107,8 +113,8 @@ class ArraySchema(Schema):
         self.items = items_schema
     def serialize(self):
         return {
-            "type": "array",
-            "items": self.items.serialize()
+            u"type": u"array",
+            u"items": self.items.serialize()
         }
     def normalize(self, datum):
         """If *datum* is a list, construct a new list by running the
@@ -141,13 +147,13 @@ class ObjectSchema(Schema):
         props = []
         for prop in self.properties:
             props.append({
-                "name": prop["name"],
-                "required": prop["required"],
-                "schema": prop["schema"].serialize()
+                u"name": prop["name"],
+                u"required": prop["required"],
+                u"schema": prop["schema"].serialize()
             })
         return {
-            "type": "object",
-            "properties": props
+            u"type": u"object",
+            u"properties": props
         }
     def normalize(self, datum):
         """If *datum* is a dict, normalize it against *properties* and
@@ -204,7 +210,7 @@ class ObjectSchema(Schema):
         raise ValidationError("Invalid object", datum)
 
 class SchemaSchema(Schema):
-    validates = {"type": "schema"}
+    validates = {u"type": u"schema"}
     def normalize(self, datum):
         """Given a JSON representation of a schema, return a function that
         will normalize data against that schema.
@@ -231,8 +237,6 @@ class SchemaSchema(Schema):
             [1.0, 2.2, 3.0]
 
         """
-        if isinstance(datum, BaseModel):
-            return datum
         datum = ObjectSchema([
             {
                 "name": "type",

@@ -31,42 +31,42 @@ index_spec = {
 }
 
 cookbook_spec = {
-    'name': 'cookbook',
-    'url': 'http://localhost:8881/api',
-    'actions': [
+    u'name': u'cookbook',
+    u'url': u'http://localhost:8881/api',
+    u'actions': [
         {
-            'name': 'cabbage',
-            'accepts': {
-                'type': 'object',
-                'properties': [
+            u'name': u'cabbage',
+            u'accepts': {
+                u'type': u'object',
+                u'properties': [
                     {
-                        "name": "spicy",
-                        "required": True,
-                        "schema": {"type": "any"}
+                        u"name": u"spicy",
+                        u"required": True,
+                        u"schema": {u"type": u"any"}
                     },
                     {
-                        "name": "capitalize",
-                        "required": False,
-                        "schema": {"type": "any"}
+                        u"name": u"capitalize",
+                        u"required": False,
+                        u"schema": {u"type": u"any"}
                     }
                 ]
             },
-            'returns': {
-                'type': 'any'
+            u'returns': {
+                u'type': u'any'
             }
         },
         {
-            'name': 'noop',
+            u'name': u'noop',
         }
     ],
-    "models": [
+    u"models": [
         {
-            "name": "Recipe",
-            "schema": {"type": "string"}
+            u"name": u"Recipe",
+            u"schema": {u"type": u"string"}
         },
         {
-            "name": "Cookie",
-            "schema": {"type": "boolean"}
+            u"name": u"Cookie",
+            u"schema": {u"type": u"boolean"}
         }
     ]
 }
@@ -191,11 +191,11 @@ class TestAPI(TestCase):
 
     def test_model_schema_validation(self):
         with self.assertRaises(ValidationError):
-            self.cookbook.models.Recipe(1.1)
+            self.cookbook.models.Recipe.normalize(1.1)
 
     def test_model_custom_validation(self):
         with self.assertRaisesRegexp(ValidationError, "kosher"):
-            self.cookbook.models.Recipe("bacon")
+            self.cookbook.models.Recipe.normalize("bacon")
         # When not overridden, custom validation passes
         self.cookbook.models.Cookie(True)
 
