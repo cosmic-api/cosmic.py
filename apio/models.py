@@ -14,20 +14,32 @@ class Model(object):
     def validate(self):
         pass
 
+class JSONModel(object):
+    json_schema = {"type": "any"}
+    def __init__(self, data):
+        self.data = data
+    @classmethod
+    def from_string(cls, s):
+        if s == "":
+            return None
+        return cls(json.loads(s))
+    @classmethod
+    def normalize(cls, datum):
+        # Hack to make sure we don't end up with non-unicode strings in
+        # normalized data
+        if type(datum) == str:
+            return cls(normalize_string(datum))
+        if type(datum) == list:
+            return cls([JSONModel.normalize(item).data for item in datum])
+        if type(datum) == dict:
+            ret = {}
+            for key, value in datum.items():
+                ret[key] = JSONModel.normalize(value).data
+            return cls(ret)
+        return cls(datum)
+
 def normalize_wildcard(datum):
-    """Return *datum* without any normalization."""
-    # Hack to make sure we don't end up with non-unicode strings in
-    # normalized data
-    if type(datum) == str:
-        return normalize_string(datum)
-    if type(datum) == list:
-        return [normalize_wildcard(item) for item in datum]
-    if type(datum) == dict:
-        ret = {}
-        for key, value in datum.items():
-            ret[key] = normalize_wildcard(value)
-        return ret
-    return datum
+    return JSONModel.normalize(datum).data
 normalize_wildcard.schema = {"type": "any"}
 
 def normalize_integer(datum):
