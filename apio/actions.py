@@ -8,7 +8,7 @@ from apio.tools import get_arg_spec, serialize_action_arguments, apply_to_action
 from apio.http import ALL_METHODS, View, make_view
 from apio.exceptions import APIError, SpecError, AuthenticationError, ValidationError
 
-from apio.models import SchemaModel, serialize_json
+from apio.models import SchemaSchema, serialize_json
 
 class Action(object):
 
@@ -26,7 +26,7 @@ class Action(object):
                 raise SpecError("'%s' is said to take arguments, but doesn't" % self.name)
 
             try:
-                SchemaModel.normalize(accepts)
+                SchemaSchema.normalize(accepts)
             except ValidationError:
                 raise SpecError("'%s' was passed an invalid accepts schema" % self.name)
 
@@ -37,7 +37,7 @@ class Action(object):
 
         if returns:
             try:
-                SchemaModel.normalize(returns)
+                SchemaSchema.normalize(returns)
                 self.spec["returns"] = returns
             except ValidationError:
                 raise SpecError("'%s' was passed an invalid returns schema" % self.name)

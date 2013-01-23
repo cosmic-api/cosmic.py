@@ -1,4 +1,4 @@
-from __future__ import unicode_literals
+
 
 import sys
 
@@ -8,7 +8,7 @@ from apio.exceptions import ValidationError, UnicodeDecodeValidationError, SpecE
 class Model(object):
     schema = {"type": "any"}
     def __init__(self, data):
-        schema = SchemaModel.normalize(self.schema)
+        schema = SchemaSchema.normalize(self.schema)
         self.data = schema.normalize(data)
         self.validate()
     def validate(self):
@@ -20,39 +20,42 @@ class Model(object):
 class BaseModel(object):
     def __init__(self, data):
         self.data = data
+    def serialize(self):
+        return self.data
     @classmethod
     def normalize(cls, datum):
         return cls(datum)
 
 class JSONModel(BaseModel):
-    def serialize(self):
-        return self.data
-    @classmethod
-    def serialize(cls):
+    pass
+
+class JSONSchema(BaseModel):
+    @staticmethod
+    def serialize():
         return {"type": "any"}
     @classmethod
     def from_string(cls, s):
         if s == "":
             return None
-        return cls(json.loads(s))
-    @classmethod
-    def normalize(cls, datum):
+        return cls.normalize(json.loads(s))
+    @staticmethod
+    def normalize(datum):
         # Hack to make sure we don't end up with non-unicode strings in
         # normalized data
         if type(datum) == str:
-            return cls(StringModel.normalize(datum))
+            return JSONModel(StringSchema.normalize(datum))
         if type(datum) == list:
-            return cls([JSONModel.normalize(item).data for item in datum])
+            return JSONModel([JSONSchema.normalize(item).data for item in datum])
         if type(datum) == dict:
             ret = {}
             for key, value in datum.items():
-                ret[key] = JSONModel.normalize(value).data
-            return cls(ret)
-        return cls(datum)
+                ret[key] = JSONSchema.normalize(value).data
+            return JSONModel(ret)
+        return JSONModel(datum)
 
-class IntegerModel(BaseModel):
-    @classmethod
-    def serialize(cls):
+class IntegerSchema(BaseModel):
+    @staticmethod
+    def serialize():
         return {"type": "integer"}
     @classmethod
     def normalize(cls, datum):
@@ -67,9 +70,9 @@ class IntegerModel(BaseModel):
             return int(datum)
         raise ValidationError("Invalid integer", datum)
 
-class FloatModel(BaseModel):
-    @classmethod
-    def serialize(cls):
+class FloatSchema(BaseModel):
+    @staticmethod
+    def serialize():
         return {"type": "float"}
     @classmethod
     def normalize(cls, datum):
@@ -83,9 +86,9 @@ class FloatModel(BaseModel):
             return float(datum)
         raise ValidationError("Invalid float", datum)
 
-class StringModel(BaseModel):
-    @classmethod
-    def serialize(cls):
+class StringSchema(BaseModel):
+    @staticmethod
+    def serialize():
         return {"type": "string"}
     @classmethod
     def normalize(cls, datum):
@@ -105,9 +108,9 @@ class StringModel(BaseModel):
                 raise UnicodeDecodeValidationError(unicode(inst))
         raise ValidationError("Invalid string", datum)
 
-class BooleanModel(BaseModel):
-    @classmethod
-    def serialize(cls):
+class BooleanSchema(BaseModel):
+    @staticmethod
+    def serialize():
         return {"type": "boolean"}
     @classmethod
     def normalize(cls, datum):
@@ -215,10 +218,8 @@ class ObjectSchemaModel(BaseModel):
             return ret
         raise ValidationError("Invalid object", datum)
 
-class SchemaModel(BaseModel):
-    @classmethod
-    def serialize(cls):
-        return {"type": "schema"}
+class SchemaSchema(BaseModel):
+    data = {"type": "schema"}
     @classmethod
     def normalize(cls, datum):
         """Given a JSON representation of a schema, return a function that
@@ -252,12 +253,12 @@ class SchemaModel(BaseModel):
             {
                 "name": "type",
                 "required": True,
-                "schema": StringModel
+                "schema": StringSchema
             },
             {
                 "name": "items",
                 "required": False,
-                "schema": SchemaModel
+                "schema": SchemaSchema
             },
             {
                 "name": "properties",
@@ -267,17 +268,17 @@ class SchemaModel(BaseModel):
                         {
                             "name": "name",
                             "required": True,
-                            "schema": StringModel
+                            "schema": StringSchema
                         },
                         {
                             "name": "required",
                             "required": True,
-                            "schema": BooleanModel
+                            "schema": BooleanSchema
                         },
                         {
                             "name": "schema",
                             "required": True,
-                            "schema": SchemaModel
+                            "schema": SchemaSchema
                         }
                     ])
                 )
@@ -296,17 +297,17 @@ class SchemaModel(BaseModel):
                 raise ValidationError("Duplicate properties in schema", datum)
         # Just the type?
         if st == "any":
-            return JSONModel
+            return JSONSchema
         if st == "integer":
-            return IntegerModel
+            return IntegerSchema
         if st == "float":
-            return FloatModel
+            return FloatSchema
         if st == "string":
-            return StringModel
+            return StringSchema
         if st == "boolean":
-            return BooleanModel
+            return BooleanSchema
         if st == "schema":
-            return SchemaModel
+            return SchemaSchema
         if '.' in st:
             api_name, model_name = st.split('.', 1)
             try:
