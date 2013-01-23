@@ -8,7 +8,7 @@ from apio.exceptions import ValidationError, UnicodeDecodeValidationError, SpecE
 class Model(object):
     schema = {"type": "any"}
     def __init__(self, data):
-        schema = SchemaSchema.normalize(self.schema)
+        schema = SchemaSchema().normalize(self.schema)
         self.data = schema.normalize(data)
         self.validate()
     def validate(self):
@@ -18,47 +18,37 @@ class Model(object):
         return cls(datum)
 
 class BaseModel(object):
-    def __init__(self, data):
+    def __init__(self, data=None):
         self.data = data
     def serialize(self):
         return self.data
-    @classmethod
-    def normalize(cls, datum):
-        return cls(datum)
 
 class JSONModel(BaseModel):
     pass
 
-class JSONSchema(BaseModel):
-    @staticmethod
-    def serialize():
-        return {"type": "any"}
-    @classmethod
-    def from_string(cls, s):
-        if s == "":
-            return None
-        return cls.normalize(json.loads(s))
-    @staticmethod
-    def normalize(datum):
+class Schema(BaseModel):
+    def serialize(self):
+        return self.validates
+
+class JSONSchema(Schema):
+    validates = {"type": "any"}
+    def normalize(self, datum):
         # Hack to make sure we don't end up with non-unicode strings in
         # normalized data
         if type(datum) == str:
-            return JSONModel(StringSchema.normalize(datum))
+            return JSONModel(StringSchema().normalize(datum))
         if type(datum) == list:
-            return JSONModel([JSONSchema.normalize(item).data for item in datum])
+            return JSONModel([self.normalize(item).data for item in datum])
         if type(datum) == dict:
             ret = {}
             for key, value in datum.items():
-                ret[key] = JSONSchema.normalize(value).data
+                ret[key] = self.normalize(value).data
             return JSONModel(ret)
         return JSONModel(datum)
 
-class IntegerSchema(BaseModel):
-    @staticmethod
-    def serialize():
-        return {"type": "integer"}
-    @classmethod
-    def normalize(cls, datum):
+class IntegerSchema(Schema):
+    validates = {"type": "integer"}
+    def normalize(self, datum):
         """If *datum* is an integer, return it; if it is a float with a 0
         for its fractional part, return the integer part as an
         integer. Otherwise, raise a
@@ -70,12 +60,9 @@ class IntegerSchema(BaseModel):
             return int(datum)
         raise ValidationError("Invalid integer", datum)
 
-class FloatSchema(BaseModel):
-    @staticmethod
-    def serialize():
-        return {"type": "float"}
-    @classmethod
-    def normalize(cls, datum):
+class FloatSchema(Schema):
+    validates = {"type": "float"}
+    def normalize(self, datum):
         """If *datum* is a float, return it; if it is an integer, cast it
         to a float and return it. Otherwise, raise a
         :exc:`~apio.exceptions.ValidationError`.
@@ -86,12 +73,9 @@ class FloatSchema(BaseModel):
             return float(datum)
         raise ValidationError("Invalid float", datum)
 
-class StringSchema(BaseModel):
-    @staticmethod
-    def serialize():
-        return {"type": "string"}
-    @classmethod
-    def normalize(cls, datum):
+class StringSchema(Schema):
+    validates = {"type": "string"}
+    def normalize(self, datum):
         """If *datum* is a unicode string, return it. If it is a string,
         decode it as UTF-8 and return the result. Otherwise, raise a
         :exc:`~apio.exceptions.ValidationError`. Unicode errors are dealt
@@ -108,12 +92,9 @@ class StringSchema(BaseModel):
                 raise UnicodeDecodeValidationError(unicode(inst))
         raise ValidationError("Invalid string", datum)
 
-class BooleanSchema(BaseModel):
-    @staticmethod
-    def serialize():
-        return {"type": "boolean"}
-    @classmethod
-    def normalize(cls, datum):
+class BooleanSchema(Schema):
+    validates = {"type": "boolean"}
+    def normalize(self, datum):
         """If *datum* is a boolean, return it. Otherwise, raise a
         :exc:`~apio.exceptions.ValidationError`.
         """
@@ -121,11 +102,13 @@ class BooleanSchema(BaseModel):
             return datum
         raise ValidationError("Invalid boolean", datum)
 
-class ArraySchemaModel(BaseModel):
+class ArraySchema(Schema):
+    def __init__(self, items_schema):
+        self.items = items_schema
     def serialize(self):
         return {
             "type": "array",
-            "items": self.data.serialize()
+            "items": self.items.serialize()
         }
     def normalize(self, datum):
         """If *datum* is a list, construct a new list by running the
@@ -144,17 +127,19 @@ class ArraySchemaModel(BaseModel):
             ret = []
             for i, item in enumerate(datum):
                 try:
-                    ret.append(self.data.normalize(item))
+                    ret.append(self.items.normalize(item))
                 except ValidationError as e:
                     e.stack.append(i)
                     raise
             return ret
         raise ValidationError("Invalid array", datum)
 
-class ObjectSchemaModel(BaseModel):
+class ObjectSchema(Schema):
+    def __init__(self, properties):
+        self.properties = properties
     def serialize(self):
         props = []
-        for prop in self.data:
+        for prop in self.properties:
             props.append({
                 "name": prop["name"],
                 "required": prop["required"],
@@ -192,7 +177,7 @@ class ObjectSchemaModel(BaseModel):
            by the corresponding *schema* value.
 
         """
-        properties = self.data
+        properties = self.properties
         if type(datum) == dict:
             ret = {}
             required = {}
@@ -218,10 +203,9 @@ class ObjectSchemaModel(BaseModel):
             return ret
         raise ValidationError("Invalid object", datum)
 
-class SchemaSchema(BaseModel):
-    data = {"type": "schema"}
-    @classmethod
-    def normalize(cls, datum):
+class SchemaSchema(Schema):
+    validates = {"type": "schema"}
+    def normalize(self, datum):
         """Given a JSON representation of a schema, return a function that
         will normalize data against that schema.
 
@@ -247,38 +231,38 @@ class SchemaSchema(BaseModel):
             [1.0, 2.2, 3.0]
 
         """
-        if hasattr(datum, "serialize"):
+        if isinstance(datum, BaseModel):
             return datum
-        datum = ObjectSchemaModel([
+        datum = ObjectSchema([
             {
                 "name": "type",
                 "required": True,
-                "schema": StringSchema
+                "schema": StringSchema()
             },
             {
                 "name": "items",
                 "required": False,
-                "schema": SchemaSchema
+                "schema": SchemaSchema()
             },
             {
                 "name": "properties",
                 "required": False,
-                "schema": ArraySchemaModel(
-                    ObjectSchemaModel([
+                "schema": ArraySchema(
+                    ObjectSchema([
                         {
                             "name": "name",
                             "required": True,
-                            "schema": StringSchema
+                            "schema": StringSchema()
                         },
                         {
                             "name": "required",
                             "required": True,
-                            "schema": BooleanSchema
+                            "schema": BooleanSchema()
                         },
                         {
                             "name": "schema",
                             "required": True,
-                            "schema": SchemaSchema
+                            "schema": SchemaSchema()
                         }
                     ])
                 )
@@ -297,17 +281,17 @@ class SchemaSchema(BaseModel):
                 raise ValidationError("Duplicate properties in schema", datum)
         # Just the type?
         if st == "any":
-            return JSONSchema
+            return JSONSchema()
         if st == "integer":
-            return IntegerSchema
+            return IntegerSchema()
         if st == "float":
-            return FloatSchema
+            return FloatSchema()
         if st == "string":
-            return StringSchema
+            return StringSchema()
         if st == "boolean":
-            return BooleanSchema
+            return BooleanSchema()
         if st == "schema":
-            return SchemaSchema
+            return SchemaSchema()
         if '.' in st:
             api_name, model_name = st.split('.', 1)
             try:
@@ -319,13 +303,13 @@ class SchemaSchema(BaseModel):
             except SpecError:
                 raise ValidationError("Unknown model for %s API" % api_name, model_name)
         if st == "array":
-            return ArraySchemaModel(datum["items"])
+            return ArraySchema(datum["items"])
         if st == "object":
-            return ObjectSchemaModel(datum["properties"])
+            return ObjectSchema(datum["properties"])
         raise ValidationError("Unknown type", st)
 
 def serialize_json(datum):
-    if hasattr(datum, "serialize"):
+    if isinstance(datum, BaseModel):
         return datum.serialize()
     dt = type(datum)
     if dt in [int, bool, float, unicode]:

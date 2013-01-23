@@ -156,5 +156,5 @@ def normalize(schema, datum):
     """Schema is expected to be a valid schema and datum is expected
     to be the return value of json.loads
     """
-    normalizer = SchemaSchema.normalize(schema)
+    normalizer = SchemaSchema().normalize(schema)
     return normalizer.normalize(datum)

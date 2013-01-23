@@ -26,7 +26,7 @@ class Action(object):
                 raise SpecError("'%s' is said to take arguments, but doesn't" % self.name)
 
             try:
-                SchemaSchema.normalize(accepts)
+                SchemaSchema().normalize(accepts)
             except ValidationError:
                 raise SpecError("'%s' was passed an invalid accepts schema" % self.name)
 
@@ -37,7 +37,7 @@ class Action(object):
 
         if returns:
             try:
-                SchemaSchema.normalize(returns)
+                SchemaSchema().normalize(returns)
                 self.spec["returns"] = returns
             except ValidationError:
                 raise SpecError("'%s' was passed an invalid returns schema" % self.name)
