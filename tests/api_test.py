@@ -57,9 +57,6 @@ cookbook_spec = {
         },
         {
             'name': 'noop',
-            'returns': {
-                'type': 'any'
-            }
         }
     ],
     "models": [

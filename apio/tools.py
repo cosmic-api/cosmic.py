@@ -5,7 +5,7 @@ import json
 import sys
 
 from apio.exceptions import SpecError, ValidationError, APIError, AuthenticationError
-from apio.models import normalize_schema
+from apio.models import SchemaModel
 
 class Namespace(object):
     """Essentially a sorted dictionary. Allows to reference actions or
@@ -156,5 +156,5 @@ def normalize(schema, datum):
     """Schema is expected to be a valid schema and datum is expected
     to be the return value of json.loads
     """
-    normalizer = normalize_schema(schema)
-    return normalizer(datum)
+    normalizer = SchemaModel.normalize(schema)
+    return normalizer.normalize(datum)

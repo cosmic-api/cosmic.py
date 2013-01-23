@@ -8,7 +8,7 @@ from apio.tools import get_arg_spec, serialize_action_arguments, apply_to_action
 from apio.http import ALL_METHODS, View, make_view
 from apio.exceptions import APIError, SpecError, AuthenticationError, ValidationError
 
-from apio.models import normalize_schema, serialize_json
+from apio.models import SchemaModel, serialize_json
 
 class Action(object):
 
@@ -26,7 +26,7 @@ class Action(object):
                 raise SpecError("'%s' is said to take arguments, but doesn't" % self.name)
 
             try:
-                normalize_schema(accepts)
+                SchemaModel.normalize(accepts)
             except ValidationError:
                 raise SpecError("'%s' was passed an invalid accepts schema" % self.name)
 
@@ -37,12 +37,12 @@ class Action(object):
 
         if returns:
             try:
-                normalize_schema(returns)
+                SchemaModel.normalize(returns)
                 self.spec["returns"] = returns
             except ValidationError:
                 raise SpecError("'%s' was passed an invalid returns schema" % self.name)
         else:
-            self.spec["returns"] = { "type": "any" }
+            self.spec["returns"] = {"type": "any"}
 
         if accepts:
             self.spec["accepts"] = accepts
@@ -93,6 +93,9 @@ class RemoteAction(object):
             else:
                 raise APIError("Call to %s failed with improper error response")
         try:
-            return normalize(self.spec['returns'], res.json)
+            if 'returns' in self.spec:
+                return normalize(self.spec['returns'], res.json)
+            else:
+                return None
         except ValidationError:
             raise APIError("Call to %s returned an invalid value" % self.spec['name'])

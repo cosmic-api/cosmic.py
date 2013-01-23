@@ -258,7 +258,7 @@ class API(BaseAPI):
         else:
             name = name_or_url
             ensure_bootstrapped()
-            spec = apio_index.actions.get_spec_by_name(name)
+            spec = apio_index.actions.get_spec_by_name(name).data
         api = RemoteAPI(spec)
         sys.modules["apio.index." + name] = api
         return api

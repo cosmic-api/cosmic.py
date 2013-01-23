@@ -92,6 +92,9 @@ class TestBasicAction(TestCase):
         self.action = Action(cabbage)
         self.view = self.action.get_view()
 
+    def test_action_spec(self):
+        self.assertEqual(self.action.spec["returns"], {"type": "any"})
+
     def test_successful_call(self):
         res = self.view(Request("POST", '{"spicy":true}', {"Content-Type": "application/json"}))
         self.assertEqual(res.code, 200)
