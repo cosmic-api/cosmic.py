@@ -12,7 +12,7 @@ from apio.exceptions import APIError, SpecError, ValidationError
 from apio.actions import Action, RemoteAction, BaseAction
 from apio.tools import Namespace, normalize
 from apio.models import Model as BaseModel
-from apio.models import serialize_json
+from apio.models import serialize_json, SchemaSchema
 from apio.http import ALL_METHODS, View, UrlRule, Response, CorsPreflightView, make_view
 from apio.plugins import FlaskPlugin
 
@@ -204,6 +204,17 @@ class API(BaseAPI):
         """Registers the given function as an API action. To be used
         as a decorator.
         """
+        if accepts:
+            try:
+                accepts = SchemaSchema().normalize(accepts)
+            except ValidationError:
+                raise SpecError("'%s' was passed an invalid accepts schema" % self.name)
+        if returns:
+            try:
+                returns = SchemaSchema().normalize(returns)
+            except ValidationError:
+                raise SpecError("'%s' was passed an invalid returns schema" % self.name)
+
         def wrapper(func):
             name = func.__name__
             action = Action(func, accepts=accepts, returns=returns)

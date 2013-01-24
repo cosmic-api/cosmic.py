@@ -162,6 +162,12 @@ class TestAPI(TestCase):
     def tearDown(self):
         api.clear_module_cache()
 
+    def test_accepts_invalid_schema(self):
+        with self.assertRaisesRegexp(SpecError, "invalid returns"):
+            @self.cookbook.action(returns={"type": "object"})
+            def func(a, b=1):
+                pass
+
     def test_resource_bad_class_name(self):
         with self.assertRaisesRegexp(ValidationError, "must end with Resource"):
             class BlahResourrrrs(self.cookbook.Resource):

@@ -31,14 +31,13 @@ class BaseAction(ObjectModel):
     ]
 
 
-class Action(object):
+class Action(BaseAction):
 
     def __init__(self, func, accepts=None, returns=None):
-        self.name = func.__name__
-
-        self.spec = {
-            "name": self.name
+        self.data = {
+            u"name": func.__name__
         }
+
         self.raw_func = func
         arg_spec = get_arg_spec(func)
 
@@ -46,25 +45,19 @@ class Action(object):
             if not arg_spec:
                 raise SpecError("'%s' is said to take arguments, but doesn't" % self.name)
 
-            try:
-                accepts = SchemaSchema().normalize(accepts).serialize()
-            except ValidationError:
-                raise SpecError("'%s' was passed an invalid accepts schema" % self.name)
-
-            if not schema_is_compatible(arg_spec, accepts):
+            if not schema_is_compatible(arg_spec, accepts.serialize()):
                 raise SpecError("The accepts parameter of '%s' action is incompatible with the function's arguments")
         elif arg_spec:
-            accepts = arg_spec
+            accepts = SchemaSchema().normalize(arg_spec)
 
         if returns:
-            try:
-                returns = SchemaSchema().normalize(returns).serialize()
-                self.spec["returns"] = returns
-            except ValidationError:
-                raise SpecError("'%s' was passed an invalid returns schema" % self.name)
-
+            self.returns = returns
         if accepts:
-            self.spec["accepts"] = accepts
+            self.accepts = accepts
+
+    @property
+    def spec(self):
+        return self.serialize()
 
     def __call__(self, *args, **kwargs):
         # This seems redundant, but is necessary to make sure local
@@ -75,8 +68,12 @@ class Action(object):
     def get_view(self, debug=False):
         """Wraps a user-defined action function to return a Flask view function
         that handles errors and returns proper HTTP responses"""
-        accepts = self.spec.get('accepts', None)
-        returns = self.spec.get('returns', None)
+        accepts = self.accepts
+        if accepts:
+            accepts = accepts.serialize()
+        returns = self.returns
+        if returns:
+            returns = returns.serialize()
         @make_view("POST", accepts=accepts, returns=returns)
         def action_view(payload):
             return apply_to_action_func(self.raw_func, payload)

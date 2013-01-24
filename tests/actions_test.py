@@ -8,6 +8,7 @@ from apio.api import Namespace
 from apio.actions import Action, RemoteAction
 from apio.exceptions import SpecError, APIError
 from apio.http import Request
+from apio.models import *
 
 class TestBasicRemoteAction(TestCase):
 
@@ -90,7 +91,7 @@ class TestBasicAction(TestCase):
                 c = "sauerkraut"
             return "%s pounds of %s" % (12.0 / servings, c)
 
-        self.action = Action(cabbage, returns={u"type": u"any"})
+        self.action = Action(cabbage, returns=JSONSchema())
         self.view = self.action.get_view()
 
     def test_successful_call(self):
@@ -105,25 +106,18 @@ class TestBasicAction(TestCase):
 class TestActionAnnotation(TestCase):
 
     def setUp(self):
-        self.a_schema = {
-            "type": "object",
-            "properties": [
-                {
-                    "name": "a",
-                    "required": True,
-                    "schema": {"type": "boolean"}
-                },
-                {
-                    "name": "b",
-                    "required": False,
-                    "schema": {"type": "integer"}
-                }
-            ]
-        }
-        self.a_bad_schema = {
-            "type": "object",
-            # Oops.. no properties
-        }
+        self.a_schema = ObjectSchema([
+            {
+                "name": "a",
+                "required": True,
+                "schema": BooleanSchema()
+            },
+            {
+                "name": "b",
+                "required": False,
+                "schema": IntegerSchema()
+            }
+        ])
 
     def test_no_args_no_accepts(self):
         def func():
@@ -147,33 +141,13 @@ class TestActionAnnotation(TestCase):
         def func(a, b=1):
             pass
         with self.assertRaisesRegexp(SpecError, "incompatible"):
-            action = Action(func, accepts={ "type": "boolean" })
+            action = Action(func, accepts=BooleanSchema())
 
     def test_args_accepts_compatible_returns_compatible(self):
         def func(a, b=1):
             pass
         action = Action(func, accepts=self.a_schema, returns=self.a_schema)
-        self.assertEqual(action.spec['accepts'], self.a_schema)
-        self.assertEqual(action.spec['returns'], self.a_schema)
+        self.assertEqual(action.accepts, self.a_schema)
+        self.assertEqual(action.returns, self.a_schema)
 
-    def test_accepts_invalid_schema(self):
-        def func(a, b=1):
-            pass
-        with self.assertRaisesRegexp(SpecError, "invalid accepts"):
-            action = Action(func, accepts=self.a_bad_schema)
 
-    def test_accepts_invalid_schema(self):
-        def func(a, b=1):
-            pass
-        with self.assertRaisesRegexp(SpecError, "invalid returns"):
-            action = Action(func, returns=self.a_bad_schema)
-
-    def test_invalid_schema(self):
-        def func(a, b=1):
-            pass
-        accepts = {
-            "type": "object"
-            # Where are the properties?
-        }
-        with self.assertRaisesRegexp(SpecError, "invalid"):
-            action = Action(func, accepts=accepts)
