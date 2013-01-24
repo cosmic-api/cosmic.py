@@ -71,6 +71,7 @@ cookbook_spec = {
     ]
 }
 
+
 class TestBootstrapping(TestCase):
 
     def test_successful(self):

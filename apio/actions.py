@@ -8,7 +8,28 @@ from apio.tools import get_arg_spec, serialize_action_arguments, apply_to_action
 from apio.http import ALL_METHODS, View, make_view
 from apio.exceptions import APIError, SpecError, AuthenticationError, ValidationError
 
-from apio.models import SchemaSchema, serialize_json, JSONModel
+from apio.models import SchemaSchema, serialize_json, JSONModel, ObjectModel
+
+class BaseAction(ObjectModel):
+
+    properties = [
+        {
+            "name": "name",
+            "schema": {"type": "string"},
+            "required": True
+        },
+        {
+            "name": "accepts",
+            "schema": {"type": "schema"},
+            "required": False
+        },
+        {
+            "name": "returns",
+            "schema": {"type": "schema"},
+            "required": False
+        }
+    ]
+
 
 class Action(object):
 
@@ -64,27 +85,23 @@ class Action(object):
         return action_view
 
 
-class RemoteAction(object):
-
-    def __init__(self, spec, api_url):
-        self.spec = spec
-        self.api_url = api_url
+class RemoteAction(BaseAction):
 
     def __call__(self, *args, **kwargs):
         json_data = serialize_action_arguments(*args, **kwargs)
-        if not json_data and 'accepts' in self.spec:
-            raise SpecError("%s takes arguments" % self.spec['name'])
+        if not json_data and self.accepts:
+            raise SpecError("%s takes arguments" % self.name)
         if json_data:
             try:
-                normalized = normalize(self.spec['accepts'], json_data.data)
+                normalized = self.accepts.normalize(json_data.data)
             except ValidationError as err:
                 raise SpecError(err.args[0])
             serialized = serialize_json(normalized)
             data = json.dumps(serialized)
         else:
             data = ""
-        url = self.api_url + '/actions/' + self.spec['name']
-        headers = { 'Content-Type': 'application/json' }
+        url = self.api_url + '/actions/' + self.name
+        headers = {'Content-Type': 'application/json'}
         res = requests.post(url, data=data, headers=headers)
         if res.status_code != requests.codes.ok:
             if res.json and 'error' in res.json:
@@ -92,9 +109,10 @@ class RemoteAction(object):
             else:
                 raise APIError("Call to %s failed with improper error response")
         try:
-            if 'returns' in self.spec:
-                return normalize(self.spec['returns'], res.json)
+            if self.returns:
+                return self.returns.normalize(res.json)
             else:
                 return None
         except ValidationError:
-            raise APIError("Call to %s returned an invalid value" % self.spec['name'])
+            raise APIError("Call to %s returned an invalid value" % self.name)
+

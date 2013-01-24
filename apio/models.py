@@ -20,11 +20,40 @@ class Model(BaseModel):
     def validate(self):
         pass
     @classmethod
+    def get_schema(cls):
+        return cls.schema
+    @classmethod
     def normalize(cls, datum):
-        schema = SchemaSchema().normalize(cls.schema)
+        schema = SchemaSchema().normalize(cls.get_schema())
         inst = cls(schema.normalize(datum))
         inst.validate()
         return inst
+
+class ObjectModel(Model):
+    properties = []
+
+    def __getattr__(self, key):
+        for prop in self.properties:
+            if prop["name"] == key:
+                return self.data.get(key, None)
+        raise AttributeError()
+
+    def __setattr__(self, key, value):
+        for prop in self.properties:
+            if prop["name"] == key:
+                if value != None:
+                    self.data[key] = value
+                elif key in self.data:
+                    del self.data[key]
+                return
+        super(ObjectModel, self).__setattr__(key, value)
+
+    @classmethod
+    def get_schema(cls):
+        return {
+            "type": "object",
+            "properties": cls.properties
+        }
 
 class JSONModel(BaseModel):
     @staticmethod

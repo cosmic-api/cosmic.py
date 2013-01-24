@@ -9,7 +9,7 @@ from flask import request
 
 import apio.resources
 from apio.exceptions import APIError, SpecError, ValidationError
-from apio.actions import Action, RemoteAction
+from apio.actions import Action, RemoteAction, BaseAction
 from apio.tools import Namespace, normalize
 from apio.models import Model as BaseModel
 from apio.http import ALL_METHODS, View, UrlRule, Response, CorsPreflightView, make_view
@@ -38,26 +38,7 @@ API_SCHEMA = {
             "required": True,
             "schema": {
                 "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": [
-                        {
-                            "name": "name",
-                            "schema": {"type": "string"},
-                            "required": True
-                        },
-                        {
-                            "name": "accepts",
-                            "schema": {"type": "schema"},
-                            "required": False
-                        },
-                        {
-                            "name": "returns",
-                            "schema": {"type": "schema"},
-                            "required": False
-                        }
-                    ]
-                }
+                "items": BaseAction.get_schema()
             }
         },
         {
@@ -271,7 +252,9 @@ class RemoteAPI(BaseAPI):
         self.spec = spec
 
         for spec in self.spec['actions']:
-            self.actions.add(spec['name'], RemoteAction(spec, self.url))
+            action = RemoteAction.normalize(spec)
+            action.api_url = self.url
+            self.actions.add(spec['name'], action)
 
         for spec in self.spec['models']:
             name = spec['name']

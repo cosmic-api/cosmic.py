@@ -34,7 +34,8 @@ class TestBasicRemoteAction(TestCase):
             }
         }
 
-        self.action = RemoteAction(spec, "http://example.com")
+        self.action = RemoteAction.normalize(spec)
+        self.action.api_url = "http://example.com"
 
     def test_call_success(self):
         with patch.object(requests, 'post') as mock_post:
