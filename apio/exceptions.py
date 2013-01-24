@@ -22,10 +22,13 @@ class APIError(HttpError):
 class ClientError(HttpError):
     http_code = 400
 
-class SpecError(Exception):
-    pass
+class AuthenticationError(ClientError):
+    http_code = 401
+    message = "Authentication failed"
+    def __init__(self):
+        pass
 
-class AuthenticationError(Exception):
+class SpecError(Exception):
     pass
 
 class ValidationError(Exception):

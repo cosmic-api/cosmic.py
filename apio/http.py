@@ -132,8 +132,6 @@ class View(object):
                 return res
             except HttpError:
                 raise
-            except AuthenticationError:
-                raise ClientError("Authentication failed", http_code=401)
             # Any other exception should be handled gracefully
             except:
                 if debug:
