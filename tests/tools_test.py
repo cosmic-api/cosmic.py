@@ -3,7 +3,7 @@ from mock import patch, Mock
 
 from apio.exceptions import *
 from apio.tools import *
-from apio.models import JSONModel
+from apio.models import *
 
 class TestGetArgSpec(TestCase):
 
@@ -13,17 +13,17 @@ class TestGetArgSpec(TestCase):
 
     def test_one_arg(self):
         def f(x): pass
-        self.assertEqual(get_arg_spec(f), {
+        self.assertEqual(get_arg_spec(f).serialize(), {
             'type': 'any'
         })
         def f(x=1): pass
-        self.assertEqual(get_arg_spec(f), {
+        self.assertEqual(get_arg_spec(f).serialize(), {
             'type': 'any'
         })
 
     def test_multiple_args(self):
         def f(x, y): pass
-        self.assertEqual(get_arg_spec(f), {
+        self.assertEqual(get_arg_spec(f).serialize(), {
             'type': 'object',
             'properties': [
                 {
@@ -41,7 +41,7 @@ class TestGetArgSpec(TestCase):
 
     def test_multiple_args_and_kwargs(self):
         def f(x, y=1): pass
-        self.assertEqual(get_arg_spec(f), {
+        self.assertEqual(get_arg_spec(f).serialize(), {
             'type': 'object',
             'properties': [
                 {
@@ -59,7 +59,7 @@ class TestGetArgSpec(TestCase):
 
     def test_multiple_kwargs(self):
         def f(x=0, y=1): pass
-        self.assertEqual(get_arg_spec(f), {
+        self.assertEqual(get_arg_spec(f).serialize(), {
             'type': 'object',
             'properties': [
                 {
@@ -174,146 +174,116 @@ class TestSerializeActionArguments(TestCase):
 class TestSchemaIsCompatible(TestCase):
 
     def test_base_cases(self):
-        assert schema_is_compatible({"type": "any"}, {"type": "object"})
-        assert schema_is_compatible({"type": "any"}, {"type": "array"})
+        assert schema_is_compatible(JSONSchema(), IntegerSchema())
+        assert schema_is_compatible(JSONSchema(), FloatSchema())
 
     def test_object_keys_mismatch(self):
-        g = {
-            "type": "object",
-            "properties": [
-                {
-                    "name": "a",
-                    "required": False,
-                    "schema": {"type": "any"}
-                },
-                {
-                    "name": "b",
-                    "required": False,
-                    "schema": {"type": "any"}
-                }
-            ]
-        }
-        d = {
-            "type": "object",
-            "properties": [
-                {
-                    "name": "a",
-                    "required": False,
-                    "schema": {"type": "any"}
-                },
-                {
-                    "name": "c",
-                    "required": False,
-                    "schema": {"type": "any"}
-                }
-            ]
-        }
+        g = ObjectSchema([
+            {
+                u"name": u"a",
+                u"required": False,
+                u"schema": JSONSchema()
+            },
+            {
+                u"name": u"b",
+                u"required": False,
+                u"schema": JSONSchema()
+            }
+        ])
+        d = ObjectSchema([
+            {
+                u"name": u"a",
+                u"required": False,
+                u"schema": JSONSchema()
+            },
+            {
+                u"name": u"c",
+                u"required": False,
+                u"schema": JSONSchema()
+            }
+        ])
         assert not schema_is_compatible(g, d)
     def test_object_keys_mismatch(self):
-        g = {
-            "type": "object",
-            "properties": [
-                {
-                    "name": "a",
-                    "required": False,
-                    "schema": {"type": "any"}
-                },
-                {
-                    "name": "b",
-                    "required": False,
-                    "schema": {"type": "any"}
-                }
-            ]
-        }
-        d = {
-            "type": "object",
-            "properties": [
-                {
-                    "name": "a",
-                    "required": False,
-                    "schema": {"type": "any"}
-                },
-                {
-                    "name": "c",
-                    "required": False,
-                    "schema": {"type": "any"}
-                }
-            ]
-        }
+        g = ObjectSchema([
+            {
+                u"name": u"a",
+                u"required": False,
+                u"schema": JSONSchema()
+            },
+            {
+                u"name": u"b",
+                u"required": False,
+                u"schema": JSONSchema()
+            }
+        ])
+        d = ObjectSchema([
+            {
+                u"name": u"a",
+                u"required": False,
+                u"schema": JSONSchema()
+            },
+            {
+                u"name": u"c",
+                u"required": False,
+                u"schema": JSONSchema()
+            }
+        ])
         assert not schema_is_compatible(g, d)
 
     def test_object_number_mismatch(self):
-        g = {
-            "type": "object",
-            "properties": [
-                {
-                    "name": "a",
-                    "required": False,
-                    "schema": {"type": "any"}
-                }
-            ]
-        }
-        d = {
-            "type": "object",
-            "properties": [
-                {
-                    "name": "a",
-                    "required": False,
-                    "schema": {"type": "any"}
-                },
-                {
-                    "name": "b",
-                    "required": False,
-                    "schema": {"type": "any"}
-                }
-            ]
-        }
+        g = ObjectSchema([
+            {
+                u"name": u"a",
+                u"required": False,
+                u"schema": JSONSchema()
+            }
+        ])
+        d = ObjectSchema([
+            {
+                u"name": u"a",
+                u"required": False,
+                u"schema": JSONSchema()
+            },
+            {
+                u"name": u"b",
+                u"required": False,
+                u"schema": JSONSchema()
+            }
+        ])
         assert not schema_is_compatible(g, d)
 
     def test_object_match(self):
-        g = {
-            "type": "object",
-            "properties": [
-                {
-                    "name": "a",
-                    "required": True,
-                    "schema": {"type": "any"}
-                }
-            ]
-        }
-        d = {
-            "type": "object",
-            "properties": [
-                {
-                    "name": "a",
-                    "required": True,
-                    "schema": {"type": "any"}
-                }
-            ]
-        }
+        g = ObjectSchema([
+            {
+                u"name": u"a",
+                u"required": True,
+                u"schema": JSONSchema()
+            }
+        ])
+        d = ObjectSchema([
+            {
+                u"name": u"a",
+                u"required": True,
+                u"schema": JSONSchema()
+            }
+        ])
         assert schema_is_compatible(g, d)
 
     def test_object_no_match(self):
-        g = {
-            "type": "object",
-            "properties": [
-                {
-                    "name": "a",
-                    "required": True,
-                    "schema": {"type": "any"}
-                }
-            ]
-        }
-        d = {
-            "type": "object",
-            "properties": [
-                {
-                    "name": "a",
-                    "required": False,
-                    "schema": {"type": "any"}
-                }
-            ]
-        }
+        g = ObjectSchema([
+            {
+                u"name": u"a",
+                u"required": True,
+                u"schema": JSONSchema()
+            }
+        ])
+        d = ObjectSchema([
+            {
+                u"name": u"a",
+                u"required": False,
+                u"schema": JSONSchema()
+            }
+        ])
         assert not schema_is_compatible(g, d)
 
 

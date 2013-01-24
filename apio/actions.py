@@ -11,7 +11,6 @@ from apio.exceptions import APIError, SpecError, AuthenticationError, Validation
 from apio.models import SchemaSchema, serialize_json, JSONModel, ObjectModel
 
 class BaseAction(ObjectModel):
-
     properties = [
         {
             "name": "name",
@@ -45,11 +44,11 @@ class Action(BaseAction):
         if accepts:
             if not arg_spec:
                 raise SpecError("'%s' is said to take arguments, but doesn't" % self.name)
-            if not schema_is_compatible(arg_spec, accepts.serialize()):
+            if not schema_is_compatible(arg_spec, accepts):
                 raise SpecError("The accepts parameter of '%s' action is incompatible with the function's arguments")
             self.accepts = accepts
         elif arg_spec:
-            self.accepts = SchemaSchema().normalize(arg_spec)
+            self.accepts = arg_spec
 
     def __call__(self, *args, **kwargs):
         # This seems redundant, but is necessary to make sure local

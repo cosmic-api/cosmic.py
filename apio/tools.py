@@ -5,7 +5,7 @@ import json
 import sys
 
 from apio.exceptions import SpecError, ValidationError, APIError, AuthenticationError
-from apio.models import SchemaSchema, JSONModel
+from apio.models import *
 
 class Namespace(object):
     """Essentially a sorted dictionary. Allows to reference actions or
@@ -48,23 +48,19 @@ def get_arg_spec(func):
         return None
     # One argument: accepts a single JSON object
     if len(args) == 1:
-        return { "type": "any" }
+        return JSONSchema()
     # Multiple arguments: accepts a JSON object with a property for
     # each argument, each property being of type 'any'
-    spec = {
-        "type": "object",
-        "properties": []
-    }
+    props = []
     # Number of non-keyword arguments (required ones)
     numargs = len(args) - (len(defaults) if defaults else 0)
-
     for i, arg in enumerate(args):
-        spec["properties"].append({
+        props.append({
             "name": arg,
-            "schema": {"type": "any"},
+            "schema": JSONSchema(),
             "required": i < numargs
         })
-    return spec
+    return ObjectSchema(props)
 
 def apply_to_action_func(func, data):
     """Applies a JSONPayload object to the user-defined action
@@ -128,17 +124,17 @@ def schema_is_compatible(general, detailed):
     of JSON schema as returned by tools.get_arg_spec, the special
     schema is an arbitrary JSON schema as passed in by the user.
     """
-    if general["type"] == "any":
+    if isinstance(general, JSONSchema):
         return True
     # If not "any", general has to be an "object". Make sure detailed
     # is an object too
-    if detailed["type"] != "object":
+    if not isinstance(detailed, ObjectSchema):
         return False
-    if len(general["properties"]) != len(detailed["properties"]):
+    if len(general.properties) != len(detailed.properties):
         return False
-    for i in range(len(general["properties"])):
-        gp = general["properties"][i]
-        dp = detailed["properties"][i]
+    for i in range(len(general.properties)):
+        gp = general.properties[i]
+        dp = detailed.properties[i]
         if gp["name"] != dp["name"] or gp["required"] != dp["required"]:
             return False
     return True
