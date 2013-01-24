@@ -170,3 +170,74 @@ class TestSerialize(TestCase):
         }
         schema = SchemaSchema().normalize(schema_json)
         self.assertEqual(schema_json, serialize_json(schema))
+
+class TestObjectModel(TestCase):
+
+    def setUp(self):
+        class RecipeModel(ObjectModel):
+            properties = [
+                {
+                    "name": "author",
+                    "required": True,
+                    "schema": {"type": "string"}
+                },
+                {
+                    "name": "spicy",
+                    "required": False,
+                    "schema": {"type": "boolean"}
+                },
+                {
+                    "name": "meta",
+                    "required": False,
+                    "schema": {"type": "any"}
+                }
+            ]
+        self.RecipeModel = RecipeModel
+        self.recipe = RecipeModel.normalize({
+            "author": "Alex",
+            "spicy": True
+        })
+        self.special_recipe = RecipeModel.normalize({
+            "author": "Kyu",
+            "meta": {"secret": True}
+        })
+
+    def test_normalize_okay(self):
+        self.assertEqual(self.recipe.data, {
+            u"author": u"Alex",
+            u"spicy": True
+        })
+        self.assertTrue(isinstance(self.special_recipe.data["meta"], JSONModel))
+
+    def test_normalize_fail(self):
+        with self.assertRaisesRegexp(ValidationError, "Missing properties"):
+            recipe = self.RecipeModel.normalize({
+                "maker": "Alex",
+                "spicy": True
+            })
+
+    def test_getattr(self):
+        self.assertEqual(self.recipe.author, "Alex")
+        self.assertEqual(self.recipe.spicy, True)
+        self.assertEqual(self.recipe.meta, None)
+        with self.assertRaises(AttributeError):
+            self.recipe.vegetarian
+
+    def test_setattr(self):
+        self.recipe.spicy = False
+        self.assertEqual(self.recipe.data, {
+            u"author": u"Alex",
+            u"spicy": False
+        })
+
+    def test_setattr_None(self):
+        self.recipe.spicy = None
+        self.assertEqual(self.recipe.data, {
+            u"author": u"Alex"
+        })
+
+    def test_serialize(self):
+        self.assertEqual(self.special_recipe.serialize(), {
+            u"author": u"Kyu",
+            u"meta": {u"secret": True}
+        })
