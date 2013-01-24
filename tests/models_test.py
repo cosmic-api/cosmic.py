@@ -241,3 +241,25 @@ class TestObjectModel(TestCase):
             u"author": u"Kyu",
             u"meta": {u"secret": True}
         })
+
+    def test_get_schema(self):
+        self.assertEqual(self.RecipeModel.get_schema(), {
+            "type": "object",
+            "properties": [
+                {
+                    "name": "author",
+                    "required": True,
+                    "schema": {"type": "string"}
+                },
+                {
+                    "name": "spicy",
+                    "required": False,
+                    "schema": {"type": "boolean"}
+                },
+                {
+                    "name": "meta",
+                    "required": False,
+                    "schema": {"type": "any"}
+                }
+            ]
+        })
