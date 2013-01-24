@@ -50,7 +50,7 @@ def get_arg_spec(func):
     if len(args) == 1:
         return JSONSchema()
     # Multiple arguments: accepts a JSON object with a property for
-    # each argument, each property being of type 'any'
+    # each argument, each property being of type 'json'
     props = []
     # Number of non-keyword arguments (required ones)
     numargs = len(args) - (len(defaults) if defaults else 0)
@@ -126,7 +126,7 @@ def schema_is_compatible(general, detailed):
     """
     if isinstance(general, JSONSchema):
         return True
-    # If not "any", general has to be an "object". Make sure detailed
+    # If not "json", general has to be an "object". Make sure detailed
     # is an object too
     if not isinstance(detailed, ObjectSchema):
         return False

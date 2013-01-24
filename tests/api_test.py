@@ -18,13 +18,13 @@ index_spec = {
     'actions': [
         {
             'name': 'register_spec',
-            'returns': {'type': 'any'},
-            'accepts': {'type': 'any'}
+            'returns': {'type': 'json'},
+            'accepts': {'type': 'json'}
         },
         {
             'name': 'get_spec_by_name',
-            'returns': {'type': 'any'},
-            'accepts': {'type': 'any'}
+            'returns': {'type': 'json'},
+            'accepts': {'type': 'json'}
         }
     ],
     "models": []
@@ -42,17 +42,17 @@ cookbook_spec = {
                     {
                         u"name": u"spicy",
                         u"required": True,
-                        u"schema": {u"type": u"any"}
+                        u"schema": {u"type": u"json"}
                     },
                     {
                         u"name": u"capitalize",
                         u"required": False,
-                        u"schema": {u"type": u"any"}
+                        u"schema": {u"type": u"json"}
                     }
                 ]
             },
             u'returns': {
-                u'type': u'any'
+                u'type': u'json'
             }
         },
         {

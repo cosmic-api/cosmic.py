@@ -14,11 +14,11 @@ class TestGetArgSpec(TestCase):
     def test_one_arg(self):
         def f(x): pass
         self.assertEqual(get_arg_spec(f).serialize(), {
-            'type': 'any'
+            'type': 'json'
         })
         def f(x=1): pass
         self.assertEqual(get_arg_spec(f).serialize(), {
-            'type': 'any'
+            'type': 'json'
         })
 
     def test_multiple_args(self):
@@ -29,12 +29,12 @@ class TestGetArgSpec(TestCase):
                 {
                     "name": "x",
                     "required": True,
-                    "schema": {"type": "any"}
+                    "schema": {"type": "json"}
                 },
                 {
                     "name": "y",
                     "required": True,
-                    "schema": {"type": "any"}
+                    "schema": {"type": "json"}
                 }
             ]
         })
@@ -47,12 +47,12 @@ class TestGetArgSpec(TestCase):
                 {
                     "name": "x",
                     "required": True,
-                    "schema": {"type": "any"}
+                    "schema": {"type": "json"}
                 },
                 {
                     "name": "y",
                     "required": False,
-                    "schema": {"type": "any"}
+                    "schema": {"type": "json"}
                 }
             ]
         })
@@ -65,12 +65,12 @@ class TestGetArgSpec(TestCase):
                 {
                     "name": "x",
                     "required": False,
-                    "schema": {"type": "any"}
+                    "schema": {"type": "json"}
                 },
                 {
                     "name": "y",
                     "required": False,
-                    "schema": {"type": "any"}
+                    "schema": {"type": "json"}
                 }
             ]
         })

@@ -16,7 +16,7 @@ class Schema(BaseModel):
         return self.validates
 
 class Model(BaseModel):
-    schema = {u"type": u"any"}
+    schema = {u"type": u"json"}
     def validate(self):
         pass
     @classmethod
@@ -66,7 +66,7 @@ class JSONModel(BaseModel):
         return cls.normalize(json.loads(s))
 
 class JSONSchema(Schema):
-    validates = {u"type": u"any"}
+    validates = {u"type": u"json"}
     def normalize(self, datum):
         # Hack to make sure we don't end up with non-unicode strings in
         # normalized data
@@ -313,7 +313,7 @@ class SchemaSchema(Schema):
             if len(set(keys)) < len(keys):
                 raise ValidationError("Duplicate properties in schema", datum)
         # Just the type?
-        if st == "any":
+        if st == "json":
             return JSONSchema()
         if st == "integer":
             return IntegerSchema()
