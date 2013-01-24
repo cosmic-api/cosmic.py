@@ -142,7 +142,7 @@ class API(BaseAPI):
                 'schema': model.schema
             })
         spec = {
-            "actions": [action.spec for action in self.actions],
+            "actions": [action.serialize() for action in self.actions],
             "models": models,
             "name": self.name,
             "url": self.url

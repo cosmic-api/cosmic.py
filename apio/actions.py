@@ -34,9 +34,10 @@ class BaseAction(ObjectModel):
 class Action(BaseAction):
 
     def __init__(self, func, accepts=None, returns=None):
-        self.data = {
-            u"name": func.__name__
-        }
+        self.data = {}
+
+        self.name = func.__name__
+        self.returns = returns
 
         self.raw_func = func
         arg_spec = get_arg_spec(func)
@@ -44,20 +45,11 @@ class Action(BaseAction):
         if accepts:
             if not arg_spec:
                 raise SpecError("'%s' is said to take arguments, but doesn't" % self.name)
-
             if not schema_is_compatible(arg_spec, accepts.serialize()):
                 raise SpecError("The accepts parameter of '%s' action is incompatible with the function's arguments")
-        elif arg_spec:
-            accepts = SchemaSchema().normalize(arg_spec)
-
-        if returns:
-            self.returns = returns
-        if accepts:
             self.accepts = accepts
-
-    @property
-    def spec(self):
-        return self.serialize()
+        elif arg_spec:
+            self.accepts = SchemaSchema().normalize(arg_spec)
 
     def __call__(self, *args, **kwargs):
         # This seems redundant, but is necessary to make sure local

@@ -123,13 +123,13 @@ class TestActionAnnotation(TestCase):
         def func():
             pass
         action = Action(func)
-        self.assertTrue('accepts' not in action.spec.keys())
+        self.assertEqual(action.accepts, None)
 
     def test_args_no_accepts(self):
         def func(a=None):
             pass
         action = Action(func)
-        self.assertEqual(action.spec['accepts'], {"type": "any"})
+        self.assertEqual(action.accepts.serialize(), {"type": "any"})
 
     def test_no_args_accepts(self):
         def func():
