@@ -12,6 +12,7 @@ from apio.exceptions import APIError, SpecError, ValidationError
 from apio.actions import Action, RemoteAction, BaseAction
 from apio.tools import Namespace, normalize
 from apio.models import Model as BaseModel
+from apio.models import serialize_json
 from apio.http import ALL_METHODS, View, UrlRule, Response, CorsPreflightView, make_view
 from apio.plugins import FlaskPlugin
 
@@ -147,7 +148,7 @@ class API(BaseAPI):
             "url": self.url
         }
         if self.homepage: spec['homepage'] = self.homepage
-        return spec
+        return serialize_json(spec)
 
     def get_rules(self, debug=False):
         """Get a list of URL rules necessary for implementing this API
@@ -199,7 +200,7 @@ class API(BaseAPI):
             app.config['PROPAGATE_EXCEPTIONS'] = debug
             app.run(*args, **kwargs)
 
-    def action(self, accepts=None, returns=None):
+    def action(self, accepts=None, returns={u"type": u"any"}):
         """Registers the given function as an API action. To be used
         as a decorator.
         """

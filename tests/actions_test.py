@@ -90,11 +90,8 @@ class TestBasicAction(TestCase):
                 c = "sauerkraut"
             return "%s pounds of %s" % (12.0 / servings, c)
 
-        self.action = Action(cabbage)
+        self.action = Action(cabbage, returns={u"type": u"any"})
         self.view = self.action.get_view()
-
-    def test_action_spec(self):
-        self.assertEqual(self.action.spec["returns"], {"type": "any"})
 
     def test_successful_call(self):
         res = self.view(Request("POST", '{"spicy":true}', {"Content-Type": "application/json"}))

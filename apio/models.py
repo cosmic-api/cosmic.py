@@ -9,7 +9,7 @@ class BaseModel(object):
     def __init__(self, data=None):
         self.data = data
     def serialize(self):
-        return self.data
+        return serialize_json(self.data)
 
 class Schema(BaseModel):
     def serialize(self):

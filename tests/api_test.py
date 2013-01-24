@@ -56,7 +56,7 @@ cookbook_spec = {
             }
         },
         {
-            u'name': u'noop',
+            u'name': u'noop'
         }
     ],
     u"models": [
@@ -124,6 +124,7 @@ class TestAPIAuthentication(TestCase):
 class TestAPI(TestCase):
 
     def setUp(self):
+        self.maxDiff = None
 
         self.cookbook = API('cookbook', "http://localhost:8881/api")
 
@@ -138,18 +139,18 @@ class TestAPI(TestCase):
             else:
                 return c
 
-        @self.cookbook.action()
+        @self.cookbook.action(returns=None)
         def noop():
-            return None
+            pass
 
         class Recipe(self.cookbook.Model):
-            schema = {"type": "string"}
+            schema = {u"type": u"string"}
             def validate(self):
                 if self.data == "bacon":
                     raise ValidationError("Not kosher")
 
         class Cookie(self.cookbook.Model):
-            schema = {"type": "boolean"}
+            schema = {u"type": u"boolean"}
 
         class RecipeResource(self.cookbook.Resource):
             pass

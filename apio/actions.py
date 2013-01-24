@@ -62,8 +62,6 @@ class Action(object):
                 self.spec["returns"] = returns
             except ValidationError:
                 raise SpecError("'%s' was passed an invalid returns schema" % self.name)
-        else:
-            self.spec["returns"] = {"type": "any"}
 
         if accepts:
             self.spec["accepts"] = accepts
