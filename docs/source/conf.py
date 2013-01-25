@@ -42,7 +42,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'apio'
+project = u'Cosmic'
 copyright = u'2012, 8313547 Canada Inc.'
 
 # The version info for the project you're documenting, acts as replacement for
