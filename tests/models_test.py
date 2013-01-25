@@ -263,3 +263,15 @@ class TestObjectModel(TestCase):
                 }
             ]
         })
+
+class TestJSONModel(TestCase):
+
+    def test_repr_simple(self):
+        j = JSONModel(True)
+        self.assertEqual(repr(j), "<JSONModel true>")
+        j = JSONModel({"a":1, "b": [1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5]})
+        self.assertEqual(repr(j), '<JSONModel {"a": 1, "b": [1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5]}>')
+
+    def test_repr_truncated(self):
+        j = JSONModel({"a":1, "b": [1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5], "c": True, "d": False})
+        self.assertEqual(repr(j), '<JSONModel {"a": 1, "c": true, "b": [1, 2, 3, 4, 5, 6, 7, 8, 9, 8,  ...>')

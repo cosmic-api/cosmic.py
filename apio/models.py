@@ -12,6 +12,8 @@ class BaseModel(object):
         return serialize_json(self.data)
 
 class Schema(BaseModel):
+    def __init__(self):
+        pass
     def serialize(self):
         return self.validates
 
@@ -64,6 +66,11 @@ class JSONModel(BaseModel):
         if s == "":
             return None
         return cls.normalize(json.loads(s))
+    def __repr__(self):
+        contents = json.dumps(self.data)
+        if len(contents) > 60:
+            contents = contents[:56] + " ..."
+        return "<JSONModel %s>" % contents
 
 class JSONSchema(Schema):
     validates = {u"type": u"json"}

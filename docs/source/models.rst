@@ -1,17 +1,20 @@
 Model System
 ============
 
-APIO ships with a simple JSON-based schema and model system. A JSON
+Cosmic ships with a simple JSON-based schema and model system. A JSON
 schema is a way of describing JSON data for validation and generating
 documentation. A model is a Python class attached to a schema that may
 contain extra validation functionality. Once a model is created, any
 JSON schema can reference it by its name.
 
-JSON schema
------------
+Constructing JSON schemas
+-------------------------
 
-We provide with a simple way to define the format of your data with a
-schema written in JSON.
+A *schema* is a recursive JSON structure that mirrors the structure of
+the data is is meant to validate. Internally, schemas are represented
+as a nested structure of :class:`~apio.models.Schema` objects. This
+section should be enough to get you started. For a more formal definition
+of the schema validation process, as well as the 
 
 .. note::
 
@@ -28,7 +31,7 @@ schema written in JSON.
     have to output ``{"Person": {"name": "Jenn"}}``. In the context of
     REST APIs, this is uncommon and potentially confusing.
 
-    Because APIO must be extremely portable, it is essential that we
+    Because Cosmic must be extremely portable, it is essential that we
     keep the feature list to a reasonable minimum. In this instance,
     the minimum is generating documentation and basic validation of
     data structure and types. Instead of making you learn a new `DSL
@@ -38,38 +41,42 @@ schema written in JSON.
     greatly outweighed by the costs of growing the amount of code that
     needs to be ported.
 
+
 A *schema* is always a Python dict. It must always contain the *type*
 attribute. If you would like to validate a value as a string, you
 would validate it against the ``{"type": "string"}`` schema. Here is a
 list of all the types we support:
 
-+-----------------+-------------+-------------+-------------------------------------+
-| Schema ``type`` |  JSON type  | Python type | Notes                               |
-+=================+=============+=============+=====================================+
-| ``any``         |             |             | Wildcard. Will validate anything.   |
-+-----------------+-------------+-------------+-------------------------------------+
-| ``integer``     | ``number``  |   ``int``   | Will be encoded as a number with no |
-|                 |             |             | decimal part. When parsing JSON, a  |
-|                 |             |             | number with a decimal part is       |
-|                 |             |             | acceptable as long as the decimal   |
-|                 |             |             | part is 0. It will be cast to an    |
-|                 |             |             | integer.                            |
-+-----------------+-------------+-------------+-------------------------------------+
-| ``float``       | ``number``  |  ``float``  | Will be encoded as a number with a  |
-|                 |             |             | decimal part, even if that part is  |
-|                 |             |             | 0. An integer will always pass      |
-|                 |             |             | validation and will be cast to a    |
-|                 |             |             | float.                              |
-+-----------------+-------------+-------------+-------------------------------------+
-| ``string``      | ``string``  | ``unicode`` | All strings are UTF-8.              |
-|                 |             |             |                                     |
-+-----------------+-------------+-------------+-------------------------------------+
-| ``boolean``     | ``boolean`` |  ``bool``   |                                     |
-+-----------------+-------------+-------------+-------------------------------------+
-| ``object``      | ``object``  | ``dict``    | See below.                          |
-+-----------------+-------------+-------------+-------------------------------------+
-| ``array``       | ``array``   | ``list``    | See below.                          |
-+-----------------+-------------+-------------+-------------------------------------+
++-----------------------------+-------------+---------------------------------+-------------------------------------+
+|           Schema            |  JSON type  |           Python type           | Notes                               |
+|                             |             |                                 |                                     |
++=============================+=============+=================================+=====================================+
+| ``{"type": "json"}``        |             | :class:`~apio.models.JSONModel` | Wildcard. Will validate any json    |
+|                             |             |                                 | value and box it to avoid ambiguity.|
+|                             |             |                                 |                                     |
++-----------------------------+-------------+---------------------------------+-------------------------------------+
+| ``{"type": "integer"}``     | ``number``  |             ``int``             | Will be encoded as a number with no |
+|                             |             |                                 | decimal part. When parsing JSON, a  |
+|                             |             |                                 | number with a decimal part is       |
+|                             |             |                                 | acceptable as long as the decimal   |
+|                             |             |                                 | part is 0. It will be cast to an    |
+|                             |             |                                 | integer.                            |
++-----------------------------+-------------+---------------------------------+-------------------------------------+
+| ``{"type": "float"}``       | ``number``  |            ``float``            | Will be encoded as a number with a  |
+|                             |             |                                 | decimal part, even if that part is  |
+|                             |             |                                 | 0. An integer will always pass      |
+|                             |             |                                 | validation and will be cast to a    |
+|                             |             |                                 | float.                              |
++-----------------------------+-------------+---------------------------------+-------------------------------------+
+| ``{"type": "string"}``      | ``string``  |           ``unicode``           | All strings are UTF-8.              |
+|                             |             |                                 |                                     |
++-----------------------------+-------------+---------------------------------+-------------------------------------+
+| ``{"type": "boolean"}``     | ``boolean`` |            ``bool``             |                                     |
++-----------------------------+-------------+---------------------------------+-------------------------------------+
+| ``{"type": "object"}``      | ``object``  | ``dict``                        | See below.                          |
++-----------------------------+-------------+---------------------------------+-------------------------------------+
+| ``{"type": "array"}``       | ``array``   | ``list``                        | See below.                          |
++-----------------------------+-------------+---------------------------------+-------------------------------------+
 
 An object schema must always contain a *properties* attribute, which
 will be an array of property objects. Each property must have a name,
@@ -150,24 +157,9 @@ functions for normalizing JSON primitives. These functions raise
 :exc:`~apio.exceptions.ValidationError` if the value is invalid or
 return a normalized version of the value if it is.
 
-.. autofunction:: apio.models.normalize_wildcard
-
-.. autofunction:: apio.models.normalize_integer
-
-.. autofunction:: apio.models.normalize_float
-
-.. autofunction:: apio.models.normalize_string
-
-.. autofunction:: apio.models.normalize_boolean
-
-.. autofunction:: apio.models.normalize_array
-
-.. autofunction:: apio.models.normalize_object
 
 These functions deal with simple JSON values, but :mod:`apio.models`
 also provides a normalization function for *schemas*:
-
-.. autofunction:: apio.models.normalize_schema
 
 Models
 ------

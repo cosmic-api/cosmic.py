@@ -13,21 +13,21 @@ from apio.api import API, RemoteAPI, API_SCHEMA
 from apio import api
 
 index_spec = {
-    'url': 'http://api.apio.io',
-    'name': 'apio-index',
-    'actions': [
+    u'url': u'http://api.apio.io',
+    u'name': u'apio-index',
+    u'actions': [
         {
-            'name': 'register_spec',
-            'returns': {'type': 'json'},
-            'accepts': {'type': 'json'}
+            u'name': u'register_spec',
+            u'returns': {u'type': u'json'},
+            u'accepts': {u'type': u'json'}
         },
         {
-            'name': 'get_spec_by_name',
-            'returns': {'type': 'json'},
-            'accepts': {'type': 'json'}
+            u'name': u'get_spec_by_name',
+            u'returns': {u'type': u'json'},
+            u'accepts': {u'type': u'json'}
         }
     ],
-    "models": []
+    u"models": []
 }
 
 cookbook_spec = {
