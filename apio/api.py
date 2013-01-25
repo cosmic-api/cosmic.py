@@ -57,7 +57,7 @@ API_SCHEMA = {
                         },
                         {
                             "name": "schema",
-                            "schema": {"type": "schema"},
+                            "schema": {"type": "core.Schema"},
                             "required": True,
                         }
                     ]
@@ -102,7 +102,7 @@ class BaseAPI(object):
                 cls = super(ModelHook, meta).__new__(meta, str(name), bases, attrs)
                 if name != "Model":
                     # Raise ValidationError if model schema is invalid
-                    normalize({"type": "schema"}, cls.schema)
+                    normalize({"type": "core.Schema"}, cls.schema)
                     models.add(name, cls)
                 return cls
         class Model(BaseModel):
@@ -166,7 +166,7 @@ class API(BaseAPI):
             url = "/actions/%s" % action.name
             rules.append(UrlRule(url, action.name, view))
             rules.append(UrlRule(url, action.name + '_cors', cors))
-        @make_view("GET", None, {"type": "json"})
+        @make_view("GET", None, {"type": "core.JSON"})
         def spec_view(payload):
             return self.spec
         rules.append(UrlRule("/spec.json", "spec", spec_view))
@@ -200,7 +200,7 @@ class API(BaseAPI):
             app.config['PROPAGATE_EXCEPTIONS'] = debug
             app.run(*args, **kwargs)
 
-    def action(self, accepts=None, returns={u"type": u"json"}):
+    def action(self, accepts=None, returns={u"type": u"core.JSON"}):
         """Registers the given function as an API action. To be used
         as a decorator.
         """

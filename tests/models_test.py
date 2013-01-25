@@ -101,8 +101,8 @@ class TestNormalize(TestCase):
         self.assertEqual(SchemaSchema().normalize({"type": "float"}).__class__, FloatSchema)
         self.assertEqual(SchemaSchema().normalize({"type": "boolean"}).__class__, BooleanSchema)
         self.assertEqual(SchemaSchema().normalize({"type": "string"}).__class__, StringSchema)
-        self.assertEqual(SchemaSchema().normalize({"type": "json"}).__class__, JSONSchema)
-        self.assertEqual(SchemaSchema().normalize({"type": "schema"}).__class__, SchemaSchema)
+        self.assertEqual(SchemaSchema().normalize({"type": "core.JSON"}).__class__, JSONSchema)
+        self.assertEqual(SchemaSchema().normalize({"type": "core.Schema"}).__class__, SchemaSchema)
 
     def test_schema_missing_parts(self):
         # Forgot items
@@ -189,7 +189,7 @@ class TestObjectModel(TestCase):
                 {
                     "name": "meta",
                     "required": False,
-                    "schema": {"type": "json"}
+                    "schema": {"type": "core.JSON"}
                 }
             ]
         self.RecipeModel = RecipeModel
@@ -259,7 +259,7 @@ class TestObjectModel(TestCase):
                 {
                     "name": "meta",
                     "required": False,
-                    "schema": {"type": "json"}
+                    "schema": {"type": "core.JSON"}
                 }
             ]
         })

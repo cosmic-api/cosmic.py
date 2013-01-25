@@ -18,7 +18,7 @@ class Schema(BaseModel):
         return self.validates
 
 class Model(BaseModel):
-    schema = {u"type": u"json"}
+    schema = {u"type": u"core.JSON"}
     def validate(self):
         pass
     @classmethod
@@ -73,7 +73,7 @@ class JSONModel(BaseModel):
         return "<JSONModel %s>" % contents
 
 class JSONSchema(Schema):
-    validates = {u"type": u"json"}
+    validates = {u"type": u"core.JSON"}
     def normalize(self, datum):
         # Hack to make sure we don't end up with non-unicode strings in
         # normalized data
@@ -246,7 +246,7 @@ class ObjectSchema(Schema):
         raise ValidationError("Invalid object", datum)
 
 class SchemaSchema(Schema):
-    validates = {u"type": u"schema"}
+    validates = {u"type": u"core.Schema"}
     def normalize(self, datum):
         """Given a JSON representation of a schema, return a function that
         will normalize data against that schema.
@@ -319,9 +319,7 @@ class SchemaSchema(Schema):
             keys = [prop["name"] for prop in datum["properties"]]
             if len(set(keys)) < len(keys):
                 raise ValidationError("Duplicate properties in schema", datum)
-        # Just the type?
-        if st == "json":
-            return JSONSchema()
+        # Simple type?
         if st == "integer":
             return IntegerSchema()
         if st == "float":
@@ -330,7 +328,10 @@ class SchemaSchema(Schema):
             return StringSchema()
         if st == "boolean":
             return BooleanSchema()
-        if st == "schema":
+        # One of the core models?
+        if st == "core.JSON":
+            return JSONSchema()
+        if st == "core.Schema":
             return SchemaSchema()
         if '.' in st:
             api_name, model_name = st.split('.', 1)

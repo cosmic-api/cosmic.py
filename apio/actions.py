@@ -19,12 +19,12 @@ class BaseAction(ObjectModel):
         },
         {
             "name": "accepts",
-            "schema": {"type": "schema"},
+            "schema": {"type": "core.Schema"},
             "required": False
         },
         {
             "name": "returns",
-            "schema": {"type": "schema"},
+            "schema": {"type": "core.Schema"},
             "required": False
         }
     ]
