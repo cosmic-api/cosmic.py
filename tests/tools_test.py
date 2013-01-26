@@ -174,116 +174,117 @@ class TestSerializeActionArguments(TestCase):
 class TestSchemaIsCompatible(TestCase):
 
     def test_base_cases(self):
-        assert schema_is_compatible(ModelSchema(JSONModel), IntegerSchema())
-        assert schema_is_compatible(ModelSchema(JSONModel), FloatSchema())
+        json_schema = SchemaModel(ModelNormalizer(JSONModel))
+        assert schema_is_compatible(json_schema, SchemaModel(IntegerNormalizer()))
+        assert schema_is_compatible(json_schema, SchemaModel(FloatNormalizer()))
 
     def test_object_keys_mismatch(self):
-        g = ObjectSchema([
+        g = SchemaModel(ObjectNormalizer([
             {
                 u"name": u"a",
                 u"required": False,
-                u"schema": IntegerSchema()
+                u"schema": SchemaModel(IntegerNormalizer())
             },
             {
                 u"name": u"b",
                 u"required": False,
-                u"schema": IntegerSchema()
+                u"schema": SchemaModel(IntegerNormalizer())
             }
-        ])
-        d = ObjectSchema([
+        ]))
+        d = SchemaModel(ObjectNormalizer([
             {
                 u"name": u"a",
                 u"required": False,
-                u"schema": IntegerSchema()
+                u"schema": SchemaModel(IntegerNormalizer())
             },
             {
                 u"name": u"c",
                 u"required": False,
-                u"schema": IntegerSchema()
+                u"schema": SchemaModel(IntegerNormalizer())
             }
-        ])
+        ]))
         assert not schema_is_compatible(g, d)
     def test_object_keys_mismatch(self):
-        g = ObjectSchema([
+        g = SchemaModel(ObjectNormalizer([
             {
                 u"name": u"a",
                 u"required": False,
-                u"schema": IntegerSchema()
+                u"schema": SchemaModel(IntegerNormalizer())
             },
             {
                 u"name": u"b",
                 u"required": False,
-                u"schema": IntegerSchema()
+                u"schema": SchemaModel(IntegerNormalizer())
             }
-        ])
-        d = ObjectSchema([
+        ]))
+        d = SchemaModel(ObjectNormalizer([
             {
                 u"name": u"a",
                 u"required": False,
-                u"schema": IntegerSchema()
+                u"schema": SchemaModel(IntegerNormalizer())
             },
             {
                 u"name": u"c",
                 u"required": False,
-                u"schema": IntegerSchema()
+                u"schema": SchemaModel(IntegerNormalizer())
             }
-        ])
+        ]))
         assert not schema_is_compatible(g, d)
 
     def test_object_number_mismatch(self):
-        g = ObjectSchema([
+        g = SchemaModel(ObjectNormalizer([
             {
                 u"name": u"a",
                 u"required": False,
-                u"schema": IntegerSchema()
+                u"schema": SchemaModel(IntegerNormalizer())
             }
-        ])
-        d = ObjectSchema([
+        ]))
+        d = SchemaModel(ObjectNormalizer([
             {
                 u"name": u"a",
                 u"required": False,
-                u"schema": IntegerSchema()
+                u"schema": SchemaModel(IntegerNormalizer())
             },
             {
                 u"name": u"b",
                 u"required": False,
-                u"schema": IntegerSchema()
+                u"schema": SchemaModel(IntegerNormalizer())
             }
-        ])
+        ]))
         assert not schema_is_compatible(g, d)
 
     def test_object_match(self):
-        g = ObjectSchema([
+        g = SchemaModel(ObjectNormalizer([
             {
                 u"name": u"a",
                 u"required": True,
-                u"schema": IntegerSchema()
+                u"schema": SchemaModel(IntegerNormalizer())
             }
-        ])
-        d = ObjectSchema([
+        ]))
+        d = SchemaModel(ObjectNormalizer([
             {
                 u"name": u"a",
                 u"required": True,
-                u"schema": IntegerSchema()
+                u"schema": SchemaModel(IntegerNormalizer())
             }
-        ])
+        ]))
         assert schema_is_compatible(g, d)
 
     def test_object_no_match(self):
-        g = ObjectSchema([
+        g = SchemaModel(ObjectNormalizer([
             {
                 u"name": u"a",
                 u"required": True,
-                u"schema": IntegerSchema()
+                u"schema": SchemaModel(IntegerNormalizer())
             }
-        ])
-        d = ObjectSchema([
+        ]))
+        d = SchemaModel(ObjectNormalizer([
             {
                 u"name": u"a",
                 u"required": False,
-                u"schema": IntegerSchema()
+                u"schema": SchemaModel(IntegerNormalizer())
             }
-        ])
+        ]))
         assert not schema_is_compatible(g, d)
 
 

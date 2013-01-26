@@ -48,7 +48,7 @@ def get_arg_spec(func):
         return None
     # One argument: accepts a single JSON object
     if len(args) == 1:
-        return ModelSchema(JSONModel)
+        return SchemaModel(ModelNormalizer(JSONModel))
     # Multiple arguments: accepts a JSON object with a property for
     # each argument, each property being of type 'json'
     props = []
@@ -57,10 +57,10 @@ def get_arg_spec(func):
     for i, arg in enumerate(args):
         props.append({
             "name": arg,
-            "schema": ModelSchema(JSONModel),
+            "schema": SchemaModel(ModelNormalizer(JSONModel)),
             "required": i < numargs
         })
-    return ObjectSchema(props)
+    return SchemaModel(ObjectNormalizer(props))
 
 def apply_to_action_func(func, data):
     """Applies a JSONPayload object to the user-defined action
@@ -111,9 +111,9 @@ def serialize_action_arguments(*args, **kwargs):
     `apply_to_action_func`. If no arguments passed, returns None.
     """
     if len(args) == 1 and len(kwargs) == 0:
-        return ModelSchema(JSONModel).normalize(args[0])
+        return ModelNormalizer(JSONModel).normalize(args[0])
     if len(args) == 0 and len(kwargs) > 0:
-        return ModelSchema(JSONModel).normalize(kwargs)
+        return ModelNormalizer(JSONModel).normalize(kwargs)
     if len(args) == 0 and len(kwargs) == 0:
         return None
     raise SpecError("Action must be called either with one argument or with one or more keyword arguments")
@@ -124,17 +124,17 @@ def schema_is_compatible(general, detailed):
     of JSON schema as returned by tools.get_arg_spec, the special
     schema is an arbitrary JSON schema as passed in by the user.
     """
-    if isinstance(general, ModelSchema) and general.model_cls == JSONModel:
+    if isinstance(general.data, ModelNormalizer) and general.data.model_cls == JSONModel:
         return True
     # If not "json", general has to be an "object". Make sure detailed
     # is an object too
-    if not isinstance(detailed, ObjectSchema):
+    if not isinstance(detailed.data, ObjectNormalizer):
         return False
-    if len(general.properties) != len(detailed.properties):
+    if len(general.data.properties) != len(detailed.data.properties):
         return False
-    for i in range(len(general.properties)):
-        gp = general.properties[i]
-        dp = detailed.properties[i]
+    for i in range(len(general.data.properties)):
+        gp = general.data.properties[i]
+        dp = detailed.data.properties[i]
         if gp["name"] != dp["name"] or gp["required"] != dp["required"]:
             return False
     return True
@@ -143,5 +143,5 @@ def normalize(schema, datum):
     """Schema is expected to be a valid schema and datum is expected
     to be the return value of json.loads
     """
-    normalizer = ModelSchema(SchemaModel).normalize(schema)
+    normalizer = ModelNormalizer(SchemaModel).normalize(schema)
     return normalizer.normalize(datum)

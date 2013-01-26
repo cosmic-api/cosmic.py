@@ -8,7 +8,7 @@ from apio.tools import get_arg_spec, serialize_action_arguments, apply_to_action
 from apio.http import ALL_METHODS, View, make_view
 from apio.exceptions import APIError, SpecError, AuthenticationError, ValidationError
 
-from apio.models import SchemaModel, serialize_json, JSONModel, ObjectModel, ModelSchema
+from apio.models import serialize_json, JSONModel, ObjectModel
 
 class BaseAction(ObjectModel):
     properties = [

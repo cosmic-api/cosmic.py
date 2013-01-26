@@ -5,25 +5,17 @@ from apio.exceptions import ValidationError, UnicodeDecodeValidationError, SpecE
 
 
 
-class BaseModel(object):
+class Model(object):
     def __init__(self, data=None):
         self.data = data
     def serialize(self):
         return serialize_json(self.data)
-
-class Schema(BaseModel):
-    def __init__(self):
-        pass
-    def serialize(self):
-        return self.validates
-
-class Model(BaseModel):
     @classmethod
     def validate(cls, datum):
         return datum
     @classmethod
     def normalize(cls, datum):
-        return ModelSchema(cls).normalize(datum)
+        return ModelNormalizer(cls).normalize(datum)
     @classmethod
     def get_schema(cls):
         if hasattr(cls, "schema"):
@@ -67,13 +59,13 @@ class JSONModel(Model):
     def from_string(cls, s):
         if s == "":
             return None
-        return ModelSchema(cls).normalize(json.loads(s))
+        return ModelNormalizer(cls).normalize(json.loads(s))
     @classmethod
     def validate(cls, datum):
         # Hack to make sure we don't end up with non-unicode strings in
         # normalized data
         if type(datum) == str:
-            return StringSchema().normalize(datum)
+            return StringNormalizer().normalize(datum)
         if type(datum) == list:
             return [cls.validate(item) for item in datum]
         if type(datum) == dict:
@@ -83,23 +75,27 @@ class JSONModel(Model):
             return ret
         return datum
 
-class ModelSchema(Schema):
+class Normalizer(object):
+    pass
+
+class ModelNormalizer(Normalizer):
     def __init__(self, model_cls):
         self.model_cls = model_cls
-    def serialize(self):
+    @property
+    def validates(self):
         return {u"type": self.model_cls.name}
     def normalize(self, datum):
         # Normalize against model schema
         schema = self.model_cls.get_schema()
         if schema:
-            schema = ModelSchema(SchemaModel).normalize(schema)
+            schema = ModelNormalizer(SchemaModel).normalize(schema)
             datum = schema.normalize(datum)
         # Validate against model's custom validation function
         datum = self.model_cls.validate(datum)
         # Instantiate
         return self.model_cls(datum)
 
-class IntegerSchema(Schema):
+class IntegerNormalizer(Normalizer):
     validates = {u"type": u"integer"}
     def normalize(self, datum):
         """If *datum* is an integer, return it; if it is a float with a 0
@@ -113,7 +109,7 @@ class IntegerSchema(Schema):
             return int(datum)
         raise ValidationError("Invalid integer", datum)
 
-class FloatSchema(Schema):
+class FloatNormalizer(Normalizer):
     validates = {u"type": u"float"}
     def normalize(self, datum):
         """If *datum* is a float, return it; if it is an integer, cast it
@@ -126,7 +122,7 @@ class FloatSchema(Schema):
             return float(datum)
         raise ValidationError("Invalid float", datum)
 
-class StringSchema(Schema):
+class StringNormalizer(Normalizer):
     validates = {u"type": u"string"}
     def normalize(self, datum):
         """If *datum* is a unicode string, return it. If it is a string,
@@ -145,7 +141,7 @@ class StringSchema(Schema):
                 raise UnicodeDecodeValidationError(unicode(inst))
         raise ValidationError("Invalid string", datum)
 
-class BooleanSchema(Schema):
+class BooleanNormalizer(Normalizer):
     validates = {u"type": u"boolean"}
     def normalize(self, datum):
         """If *datum* is a boolean, return it. Otherwise, raise a
@@ -155,10 +151,11 @@ class BooleanSchema(Schema):
             return datum
         raise ValidationError("Invalid boolean", datum)
 
-class ArraySchema(Schema):
+class ArrayNormalizer(Normalizer):
     def __init__(self, items_schema):
         self.items = items_schema
-    def serialize(self):
+    @property
+    def validates(self):
         return {
             u"type": u"array",
             u"items": self.items.serialize()
@@ -187,10 +184,11 @@ class ArraySchema(Schema):
             return ret
         raise ValidationError("Invalid array", datum)
 
-class ObjectSchema(Schema):
+class ObjectNormalizer(Normalizer):
     def __init__(self, properties):
         self.properties = properties
-    def serialize(self):
+    @property
+    def validates(self):
         props = []
         for prop in self.properties:
             props.append({
@@ -261,7 +259,7 @@ class SchemaModel(Model):
     def normalize(self, datum):
         return self.data.normalize(datum)
     def serialize(self):
-        return self.data.serialize()
+        return self.data.validates
     @classmethod
     def validate(self, datum):
         """Given a JSON representation of a schema, return a function that
@@ -289,39 +287,39 @@ class SchemaModel(Model):
             [1.0, 2.2, 3.0]
 
         """
-        datum = ObjectSchema([
+        datum = ObjectNormalizer([
             {
                 "name": "type",
                 "required": True,
-                "schema": StringSchema()
+                "schema": SchemaModel(StringNormalizer())
             },
             {
                 "name": "items",
                 "required": False,
-                "schema": ModelSchema(SchemaModel)
+                "schema": SchemaModel(ModelNormalizer(SchemaModel))
             },
             {
                 "name": "properties",
                 "required": False,
-                "schema": ArraySchema(
-                    ObjectSchema([
+                "schema": SchemaModel(ArrayNormalizer(
+                    SchemaModel(ObjectNormalizer([
                         {
                             "name": "name",
                             "required": True,
-                            "schema": StringSchema()
+                            "schema": SchemaModel(StringNormalizer())
                         },
                         {
                             "name": "required",
                             "required": True,
-                            "schema": BooleanSchema()
+                            "schema": SchemaModel(BooleanNormalizer())
                         },
                         {
                             "name": "schema",
                             "required": True,
-                            "schema": ModelSchema(SchemaModel)
+                            "schema": SchemaModel(ModelNormalizer(SchemaModel))
                         }
-                    ])
-                )
+                    ]))
+                ))
             }
         ]).normalize(datum)
         st = datum["type"]
@@ -337,18 +335,18 @@ class SchemaModel(Model):
                 raise ValidationError("Duplicate properties in schema", datum)
         # Simple type?
         if st == "integer":
-            return IntegerSchema()
+            return IntegerNormalizer()
         if st == "float":
-            return FloatSchema()
+            return FloatNormalizer()
         if st == "string":
-            return StringSchema()
+            return StringNormalizer()
         if st == "boolean":
-            return BooleanSchema()
+            return BooleanNormalizer()
         # One of the core models?
         if st == "core.JSON":
-            return ModelSchema(JSONModel)
+            return ModelNormalizer(JSONModel)
         if st == "core.Schema":
-            return ModelSchema(SchemaModel)
+            return ModelNormalizer(SchemaModel)
         if '.' in st:
             api_name, model_name = st.split('.', 1)
             try:
@@ -356,17 +354,17 @@ class SchemaModel(Model):
             except KeyError:
                 raise ValidationError("Unknown API", api_name)
             try:
-                return ModelSchema(getattr(api.models, model_name))
+                return ModelNormalizer(getattr(api.models, model_name))
             except SpecError:
                 raise ValidationError("Unknown model for %s API" % api_name, model_name)
         if st == "array":
-            return ArraySchema(datum["items"])
+            return ArrayNormalizer(datum["items"])
         if st == "object":
-            return ObjectSchema(datum["properties"])
+            return ObjectNormalizer(datum["properties"])
         raise ValidationError("Unknown type", st)
 
 def serialize_json(datum):
-    if isinstance(datum, BaseModel):
+    if isinstance(datum, Model):
         return datum.serialize()
     dt = type(datum)
     if dt in [int, bool, float, unicode]:
