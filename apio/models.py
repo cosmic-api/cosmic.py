@@ -48,13 +48,13 @@ class ObjectModel(Model):
             "properties": cls.properties
         }
 
-class JSONModel(Model):
+class JSONData(Model):
     name = "core.JSON"
     def __repr__(self):
         contents = json.dumps(self.data)
         if len(contents) > 60:
             contents = contents[:56] + " ..."
-        return "<JSONModel %s>" % contents
+        return "<JSONData %s>" % contents
     @classmethod
     def from_string(cls, s):
         if s == "":
@@ -88,7 +88,7 @@ class ModelNormalizer(Normalizer):
         # Normalize against model schema
         schema = self.model_cls.get_schema()
         if schema:
-            schema = ModelNormalizer(SchemaModel).normalize(schema)
+            schema = ModelNormalizer(Schema).normalize(schema)
             datum = schema.normalize(datum)
         # Validate against model's custom validation function
         datum = self.model_cls.validate(datum)
@@ -254,7 +254,7 @@ class ObjectNormalizer(Normalizer):
             return ret
         raise ValidationError("Invalid object", datum)
 
-class SchemaModel(Model):
+class Schema(Model):
     name = u"core.Schema"
     def normalize(self, datum):
         return self.data.normalize(datum)
@@ -287,41 +287,41 @@ class SchemaModel(Model):
             [1.0, 2.2, 3.0]
 
         """
-        datum = ObjectNormalizer([
+        datum = Schema(ObjectNormalizer([
             {
                 "name": "type",
                 "required": True,
-                "schema": SchemaModel(StringNormalizer())
+                "schema": Schema(StringNormalizer())
             },
             {
                 "name": "items",
                 "required": False,
-                "schema": SchemaModel(ModelNormalizer(SchemaModel))
+                "schema": Schema(ModelNormalizer(Schema))
             },
             {
                 "name": "properties",
                 "required": False,
-                "schema": SchemaModel(ArrayNormalizer(
-                    SchemaModel(ObjectNormalizer([
+                "schema": Schema(ArrayNormalizer(
+                    Schema(ObjectNormalizer([
                         {
                             "name": "name",
                             "required": True,
-                            "schema": SchemaModel(StringNormalizer())
+                            "schema": Schema(StringNormalizer())
                         },
                         {
                             "name": "required",
                             "required": True,
-                            "schema": SchemaModel(BooleanNormalizer())
+                            "schema": Schema(BooleanNormalizer())
                         },
                         {
                             "name": "schema",
                             "required": True,
-                            "schema": SchemaModel(ModelNormalizer(SchemaModel))
+                            "schema": Schema(ModelNormalizer(Schema))
                         }
                     ]))
                 ))
             }
-        ]).normalize(datum)
+        ])).normalize(datum)
         st = datum["type"]
         # Then make sure the attributes are right
         if ((st == "array" and 'items' not in datum.keys()) or
@@ -344,9 +344,9 @@ class SchemaModel(Model):
             return BooleanNormalizer()
         # One of the core models?
         if st == "core.JSON":
-            return ModelNormalizer(JSONModel)
+            return ModelNormalizer(JSONData)
         if st == "core.Schema":
-            return ModelNormalizer(SchemaModel)
+            return ModelNormalizer(Schema)
         if '.' in st:
             api_name, model_name = st.split('.', 1)
             try:

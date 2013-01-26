@@ -95,11 +95,11 @@ class TestApplyToActionFunc(TestCase):
     def test_no_arg_fail(self):
         def f(): return "okay"
         with self.assertRaises(SpecError):
-            apply_to_action_func(f, JSONModel("oops"))
+            apply_to_action_func(f, JSONData("oops"))
 
     def test_one_arg_okay(self):
         def f(a): return a
-        self.assertEqual(apply_to_action_func(f, JSONModel(1)), 1)
+        self.assertEqual(apply_to_action_func(f, JSONData(1)), 1)
 
     def test_one_arg_fail(self):
         with self.assertRaises(SpecError):
@@ -108,43 +108,43 @@ class TestApplyToActionFunc(TestCase):
 
     def test_one_kwarg_okay(self):
         def f(a=2): return a
-        self.assertEqual(apply_to_action_func(f, JSONModel(1)), 1)
+        self.assertEqual(apply_to_action_func(f, JSONData(1)), 1)
         def f(a=2): return a
-        self.assertEqual(apply_to_action_func(f, JSONModel({})), {})
+        self.assertEqual(apply_to_action_func(f, JSONData({})), {})
         def f(a=2): return a
         self.assertEqual(apply_to_action_func(f, None), 2)
 
     def test_one_kwarg_passed_none(self):
         # None is an explicit value
         def f(a=2): return a
-        self.assertEqual(apply_to_action_func(f, JSONModel(None)), None)
+        self.assertEqual(apply_to_action_func(f, JSONData(None)), None)
 
     def test_multiple_args_and_kwargs_okay(self):
         def f(a, b=1): return a, b
-        res = apply_to_action_func(f, JSONModel({'a': 2}))
+        res = apply_to_action_func(f, JSONData({'a': 2}))
         self.assertEqual(res, (2, 1,))
         def f(a, b=1): return a, b
-        res = apply_to_action_func(f, JSONModel({'a': 2, 'b': 2}))
+        res = apply_to_action_func(f, JSONData({'a': 2, 'b': 2}))
         self.assertEqual(res, (2, 2,))
 
     def test_multiple_kwargs_okay(self):
         def f(a=5, b=1): return a, b
-        self.assertEqual(apply_to_action_func(f, JSONModel({})), (5, 1,))
+        self.assertEqual(apply_to_action_func(f, JSONData({})), (5, 1,))
 
     def test_unknown_kwarg(self):
         with self.assertRaises(SpecError):
             def f(a=5, b=1): return a, b
-            apply_to_action_func(f, JSONModel({'c': 4}))
+            apply_to_action_func(f, JSONData({'c': 4}))
 
     def test_not_an_object(self):
         with self.assertRaises(SpecError):
             def f(a=5, b=1): return a, b
-            apply_to_action_func(f, JSONModel("hello"))
+            apply_to_action_func(f, JSONData("hello"))
 
     def test_missing_required_arg(self):
         with self.assertRaises(SpecError):
             def f(a, b=1): return a, b
-            apply_to_action_func(f, JSONModel({}))
+            apply_to_action_func(f, JSONData({}))
 
 class TestSerializeActionArguments(TestCase):
 
@@ -174,115 +174,115 @@ class TestSerializeActionArguments(TestCase):
 class TestSchemaIsCompatible(TestCase):
 
     def test_base_cases(self):
-        json_schema = SchemaModel(ModelNormalizer(JSONModel))
-        assert schema_is_compatible(json_schema, SchemaModel(IntegerNormalizer()))
-        assert schema_is_compatible(json_schema, SchemaModel(FloatNormalizer()))
+        json_schema = Schema(ModelNormalizer(JSONData))
+        assert schema_is_compatible(json_schema, Schema(IntegerNormalizer()))
+        assert schema_is_compatible(json_schema, Schema(FloatNormalizer()))
 
     def test_object_keys_mismatch(self):
-        g = SchemaModel(ObjectNormalizer([
+        g = Schema(ObjectNormalizer([
             {
                 u"name": u"a",
                 u"required": False,
-                u"schema": SchemaModel(IntegerNormalizer())
+                u"schema": Schema(IntegerNormalizer())
             },
             {
                 u"name": u"b",
                 u"required": False,
-                u"schema": SchemaModel(IntegerNormalizer())
+                u"schema": Schema(IntegerNormalizer())
             }
         ]))
-        d = SchemaModel(ObjectNormalizer([
+        d = Schema(ObjectNormalizer([
             {
                 u"name": u"a",
                 u"required": False,
-                u"schema": SchemaModel(IntegerNormalizer())
+                u"schema": Schema(IntegerNormalizer())
             },
             {
                 u"name": u"c",
                 u"required": False,
-                u"schema": SchemaModel(IntegerNormalizer())
+                u"schema": Schema(IntegerNormalizer())
             }
         ]))
         assert not schema_is_compatible(g, d)
     def test_object_keys_mismatch(self):
-        g = SchemaModel(ObjectNormalizer([
+        g = Schema(ObjectNormalizer([
             {
                 u"name": u"a",
                 u"required": False,
-                u"schema": SchemaModel(IntegerNormalizer())
+                u"schema": Schema(IntegerNormalizer())
             },
             {
                 u"name": u"b",
                 u"required": False,
-                u"schema": SchemaModel(IntegerNormalizer())
+                u"schema": Schema(IntegerNormalizer())
             }
         ]))
-        d = SchemaModel(ObjectNormalizer([
+        d = Schema(ObjectNormalizer([
             {
                 u"name": u"a",
                 u"required": False,
-                u"schema": SchemaModel(IntegerNormalizer())
+                u"schema": Schema(IntegerNormalizer())
             },
             {
                 u"name": u"c",
                 u"required": False,
-                u"schema": SchemaModel(IntegerNormalizer())
+                u"schema": Schema(IntegerNormalizer())
             }
         ]))
         assert not schema_is_compatible(g, d)
 
     def test_object_number_mismatch(self):
-        g = SchemaModel(ObjectNormalizer([
+        g = Schema(ObjectNormalizer([
             {
                 u"name": u"a",
                 u"required": False,
-                u"schema": SchemaModel(IntegerNormalizer())
+                u"schema": Schema(IntegerNormalizer())
             }
         ]))
-        d = SchemaModel(ObjectNormalizer([
+        d = Schema(ObjectNormalizer([
             {
                 u"name": u"a",
                 u"required": False,
-                u"schema": SchemaModel(IntegerNormalizer())
+                u"schema": Schema(IntegerNormalizer())
             },
             {
                 u"name": u"b",
                 u"required": False,
-                u"schema": SchemaModel(IntegerNormalizer())
+                u"schema": Schema(IntegerNormalizer())
             }
         ]))
         assert not schema_is_compatible(g, d)
 
     def test_object_match(self):
-        g = SchemaModel(ObjectNormalizer([
+        g = Schema(ObjectNormalizer([
             {
                 u"name": u"a",
                 u"required": True,
-                u"schema": SchemaModel(IntegerNormalizer())
+                u"schema": Schema(IntegerNormalizer())
             }
         ]))
-        d = SchemaModel(ObjectNormalizer([
+        d = Schema(ObjectNormalizer([
             {
                 u"name": u"a",
                 u"required": True,
-                u"schema": SchemaModel(IntegerNormalizer())
+                u"schema": Schema(IntegerNormalizer())
             }
         ]))
         assert schema_is_compatible(g, d)
 
     def test_object_no_match(self):
-        g = SchemaModel(ObjectNormalizer([
+        g = Schema(ObjectNormalizer([
             {
                 u"name": u"a",
                 u"required": True,
-                u"schema": SchemaModel(IntegerNormalizer())
+                u"schema": Schema(IntegerNormalizer())
             }
         ]))
-        d = SchemaModel(ObjectNormalizer([
+        d = Schema(ObjectNormalizer([
             {
                 u"name": u"a",
                 u"required": False,
-                u"schema": SchemaModel(IntegerNormalizer())
+                u"schema": Schema(IntegerNormalizer())
             }
         ]))
         assert not schema_is_compatible(g, d)

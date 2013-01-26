@@ -12,7 +12,7 @@ from apio.exceptions import APIError, SpecError, ValidationError
 from apio.actions import Action, RemoteAction, BaseAction
 from apio.tools import Namespace, normalize
 from apio.models import Model as BaseModel
-from apio.models import serialize_json, ModelNormalizer, SchemaModel
+from apio.models import serialize_json, ModelNormalizer, Schema
 from apio.http import ALL_METHODS, View, UrlRule, Response, CorsPreflightView, make_view
 from apio.plugins import FlaskPlugin
 
@@ -206,12 +206,12 @@ class API(BaseAPI):
         """
         if accepts:
             try:
-                accepts = SchemaModel(ModelNormalizer(SchemaModel)).normalize(accepts)
+                accepts = Schema(ModelNormalizer(Schema)).normalize(accepts)
             except ValidationError:
                 raise SpecError("'%s' was passed an invalid accepts schema" % self.name)
         if returns:
             try:
-                returns = SchemaModel(ModelNormalizer(SchemaModel)).normalize(returns)
+                returns = Schema(ModelNormalizer(Schema)).normalize(returns)
             except ValidationError:
                 raise SpecError("'%s' was passed an invalid returns schema" % self.name)
 

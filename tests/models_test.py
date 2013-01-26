@@ -12,7 +12,7 @@ class TestNormalize(TestCase):
                 "type": "boolean"
             }
         }
-        self.array_normalizer = ModelNormalizer(SchemaModel).normalize(self.array_schema)
+        self.array_normalizer = ModelNormalizer(Schema).normalize(self.array_schema)
         self.object_schema = {
             "type": "object",
             "properties": [
@@ -28,7 +28,7 @@ class TestNormalize(TestCase):
                 }
             ]
         }
-        self.object_normalizer = ModelNormalizer(SchemaModel).normalize(self.object_schema)
+        self.object_normalizer = ModelNormalizer(Schema).normalize(self.object_schema)
         self.deep_schema = {
             "type": "array",
             "items": {
@@ -47,11 +47,11 @@ class TestNormalize(TestCase):
                 ]
             }
         }
-        self.deep_normalizer = ModelNormalizer(SchemaModel).normalize(self.deep_schema)
+        self.deep_normalizer = ModelNormalizer(Schema).normalize(self.deep_schema)
 
     def test_json(self):
         for i in [1, True, 2.3, "blah", [], {}]:
-            self.assertEqual(JSONModel.normalize(i).data, i)
+            self.assertEqual(JSONData.normalize(i).data, i)
 
     def test_integer(self):
         self.assertEqual(IntegerNormalizer().normalize(1), 1)
@@ -97,50 +97,50 @@ class TestNormalize(TestCase):
             self.object_normalizer.normalize({"foo": True, "barr": 2.0})
 
     def test_schema(self):
-        self.assertEqual(ModelNormalizer(SchemaModel).normalize({"type": "integer"}).data.__class__, IntegerNormalizer)
-        self.assertEqual(ModelNormalizer(SchemaModel).normalize({"type": "float"}).data.__class__, FloatNormalizer)
-        self.assertEqual(ModelNormalizer(SchemaModel).normalize({"type": "boolean"}).data.__class__, BooleanNormalizer)
-        self.assertEqual(ModelNormalizer(SchemaModel).normalize({"type": "string"}).data.__class__, StringNormalizer)
-        self.assertEqual(ModelNormalizer(SchemaModel).normalize({"type": "core.JSON"}).data.model_cls, JSONModel)
-        self.assertEqual(ModelNormalizer(SchemaModel).normalize({"type": "core.Schema"}).data.model_cls, SchemaModel)
+        self.assertEqual(ModelNormalizer(Schema).normalize({"type": "integer"}).data.__class__, IntegerNormalizer)
+        self.assertEqual(ModelNormalizer(Schema).normalize({"type": "float"}).data.__class__, FloatNormalizer)
+        self.assertEqual(ModelNormalizer(Schema).normalize({"type": "boolean"}).data.__class__, BooleanNormalizer)
+        self.assertEqual(ModelNormalizer(Schema).normalize({"type": "string"}).data.__class__, StringNormalizer)
+        self.assertEqual(ModelNormalizer(Schema).normalize({"type": "core.JSON"}).data.model_cls, JSONData)
+        self.assertEqual(ModelNormalizer(Schema).normalize({"type": "core.Schema"}).data.model_cls, Schema)
 
     def test_schema_missing_parts(self):
         # Forgot items
         s = self.array_schema.copy()
         s.pop("items")
         with self.assertRaisesRegexp(ValidationError, "Invalid schema"):
-            ModelNormalizer(SchemaModel).normalize(s)
+            ModelNormalizer(Schema).normalize(s)
         # Forgot properties
         s = self.object_schema.copy()
         s.pop("properties")
         with self.assertRaisesRegexp(ValidationError, "Invalid schema"):
-            ModelNormalizer(SchemaModel).normalize(s)
+            ModelNormalizer(Schema).normalize(s)
 
     def test_schema_mismatched_parts(self):
         # object with items
         s = self.array_schema.copy()
         s["type"] = "object"
         with self.assertRaisesRegexp(ValidationError, "Invalid schema"):
-            ModelNormalizer(SchemaModel).normalize(s)
+            ModelNormalizer(Schema).normalize(s)
         # array with properties
         s = self.object_schema.copy()
         s["type"] = "array"
         with self.assertRaisesRegexp(ValidationError, "Invalid schema"):
-            ModelNormalizer(SchemaModel).normalize(s)
+            ModelNormalizer(Schema).normalize(s)
 
     def test_schema_duplicate_properties(self):
         s = self.object_schema.copy()
         s["properties"][1]["name"] = "foo"
         with self.assertRaisesRegexp(ValidationError, "Duplicate properties"):
-            ModelNormalizer(SchemaModel).normalize(s)
+            ModelNormalizer(Schema).normalize(s)
 
     def test_schema_not_object(self):
         with self.assertRaisesRegexp(ValidationError, "Invalid object"):
-            ModelNormalizer(SchemaModel).normalize(True)
+            ModelNormalizer(Schema).normalize(True)
 
     def test_schema_unknown_type(self):
         with self.assertRaisesRegexp(ValidationError, "Unknown type"):
-            ModelNormalizer(SchemaModel).normalize({"type": "number"})
+            ModelNormalizer(Schema).normalize({"type": "number"})
 
     def test_deep_schema_validation_stack(self):
         with self.assertRaisesRegexp(ValidationError, "[0]"):
@@ -168,7 +168,7 @@ class TestSerialize(TestCase):
                 ]
             }
         }
-        schema = ModelNormalizer(SchemaModel).normalize(schema_json)
+        schema = ModelNormalizer(Schema).normalize(schema_json)
         self.assertEqual(schema_json, serialize_json(schema))
 
 class TestObjectModel(TestCase):
@@ -207,7 +207,7 @@ class TestObjectModel(TestCase):
             u"author": u"Alex",
             u"spicy": True
         })
-        self.assertTrue(isinstance(self.special_recipe.data["meta"], JSONModel))
+        self.assertTrue(isinstance(self.special_recipe.data["meta"], JSONData))
 
     def test_normalize_fail(self):
         with self.assertRaisesRegexp(ValidationError, "Missing properties"):
@@ -264,14 +264,14 @@ class TestObjectModel(TestCase):
             ]
         })
 
-class TestJSONModel(TestCase):
+class TestJSONData(TestCase):
 
     def test_repr_simple(self):
-        j = JSONModel(True)
-        self.assertEqual(repr(j), "<JSONModel true>")
-        j = JSONModel({"a":1, "b": [1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5]})
-        self.assertEqual(repr(j), '<JSONModel {"a": 1, "b": [1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5]}>')
+        j = JSONData(True)
+        self.assertEqual(repr(j), "<JSONData true>")
+        j = JSONData({"a":1, "b": [1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5]})
+        self.assertEqual(repr(j), '<JSONData {"a": 1, "b": [1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5]}>')
 
     def test_repr_truncated(self):
-        j = JSONModel({"a":1, "b": [1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5], "c": True, "d": False})
-        self.assertEqual(repr(j), '<JSONModel {"a": 1, "c": true, "b": [1, 2, 3, 4, 5, 6, 7, 8, 9, 8,  ...>')
+        j = JSONData({"a":1, "b": [1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5], "c": True, "d": False})
+        self.assertEqual(repr(j), '<JSONData {"a": 1, "c": true, "b": [1, 2, 3, 4, 5, 6, 7, 8, 9, 8,  ...>')

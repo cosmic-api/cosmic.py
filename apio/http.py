@@ -4,7 +4,7 @@ import json
 
 from apio.exceptions import *
 from apio.tools import normalize
-from apio.models import serialize_json, JSONModel
+from apio.models import serialize_json, JSONData
 
 # We shouldn't have to do this, but Flask doesn't allow us to route
 # all methods implicitly. When we don't pass in methods Flask assumes
@@ -50,7 +50,7 @@ class JSONRequest(Request):
         if req.method != "GET" and ct != "application/json":
             raise SpecError('Content-Type must be "application/json"')
         try:
-            self.payload = JSONModel.from_string(req.body)
+            self.payload = JSONData.from_string(req.body)
         except ValueError:
             # Let's be more specific
             raise JSONParseError()
