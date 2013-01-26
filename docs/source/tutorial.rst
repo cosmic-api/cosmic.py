@@ -6,7 +6,7 @@ Building an API
 
 Start by creating a new API object. Specify a unique name, and a root URL for the new API::
 
-    from apio.api import API, APIError
+    from cosmic.api import API, APIError
     lamagotchi = API("lamagotchi", "http://lamagotchi.herokuapp.com")
 
 Now we can define actions::
@@ -72,8 +72,8 @@ What if we try a lama that doesn't exist yet?
     $ curl -X POST -H "Content-Type: application/json" -d '"joe"' http://localhost:5000/actions/state
     {"error": "Internal Server Error"}
 
-This caused a ``KeyError`` which was caught by apio and presented as a generic 500 response.
-If you'd like to see a custom error message, you can raise an ``apio.exceptions.APIError`` in your action function.
+This caused a ``KeyError`` which was caught by cosmic and presented as a generic 500 response.
+If you'd like to see a custom error message, you can raise an ``cosmic.exceptions.APIError`` in your action function.
 
 .. code:: python
 
@@ -98,7 +98,7 @@ Now that we've launched our API on Heroku (see `this page <https://devcenter.her
 
 .. code:: python
 
-    >>> from apio.api import API
+    >>> from cosmic.api import API
     >>> lamagotchi = API.load("http://lamagotchi.herokuapp.com/spec.json")
     >>> lamagotchi.actions.create("steve")
     >>> lamagotchi.actions.state("steve")
@@ -106,7 +106,7 @@ Now that we've launched our API on Heroku (see `this page <https://devcenter.her
     >>> lamagotchi.actions.state("joe")
     Traceback (most recent call last):
       File "<stdin>", line 1, in <module>
-      File "apio/api.py", line 193, in call
+      File "cosmic/api.py", line 193, in call
         raise APIError(res.json['error'])
-    apio.exceptions.APIError: Lama Not Found
+    cosmic.exceptions.APIError: Lama Not Found
 

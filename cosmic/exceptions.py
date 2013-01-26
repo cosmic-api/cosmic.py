@@ -12,7 +12,7 @@ class HttpError(Exception):
         if http_code:
             self.http_code = http_code
     def get_response(self):
-        from apio.http import Response
+        from cosmic.http import Response
         body = json.dumps({"error": self.message})
         return Response(self.http_code, body, {})
 

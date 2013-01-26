@@ -2,9 +2,9 @@ from __future__ import unicode_literals
 
 import json
 
-from apio.exceptions import *
-from apio.tools import normalize
-from apio.models import serialize_json, JSONData
+from cosmic.exceptions import *
+from cosmic.tools import normalize
+from cosmic.models import serialize_json, JSONData
 
 # We shouldn't have to do this, but Flask doesn't allow us to route
 # all methods implicitly. When we don't pass in methods Flask assumes
@@ -33,13 +33,13 @@ class Request(object):
         self.body = body
 
 class JSONRequest(Request):
-    """If the passed in :class:`~apio.http.Request` validates, the
+    """If the passed in :class:`~cosmic.http.Request` validates, the
     resulting :class:`JSONRequest` will have a *payload* attribute,
-    storing a :class:`~apio.tools.JSONPayload` object or ``None`` if
+    storing a :class:`~cosmic.tools.JSONPayload` object or ``None`` if
     the request body was empty.
 
-    :param req: :class:`~apio.http.Request`
-    :raises: :exc:`SpecError`, :exc:`~apio.exceptions.JSONParseError`
+    :param req: :class:`~cosmic.http.Request`
+    :raises: :exc:`SpecError`, :exc:`~cosmic.exceptions.JSONParseError`
     """
     def __init__(self, req):
         self.method = req.method
@@ -71,11 +71,11 @@ class View(object):
     """An HTTP request handler.
 
     :param function func: A function that takes a
-        :class:`~apio.tools.JSONPayload` and returns a
-        :class:`~apio.http.Response`. This function may raise an
-        :class:`~apio.exceptions.APIError`,
-        :class:`~apio.exceptions.ValidationError` or an
-        :class:`~apio.exceptions.AuthenticationError`. Any other exception will
+        :class:`~cosmic.tools.JSONPayload` and returns a
+        :class:`~cosmic.http.Response`. This function may raise an
+        :class:`~cosmic.exceptions.APIError`,
+        :class:`~cosmic.exceptions.ValidationError` or an
+        :class:`~cosmic.exceptions.AuthenticationError`. Any other exception will
         result in 500 Internal Server Error response.
     :param string method: HTTP method that the view will respond to
     :param dict accepts: A JSON schema for validating *func* input
@@ -88,8 +88,8 @@ class View(object):
         self.returns = returns
 
     def __call__(self, req, debug=False):
-        """Turns a :class:`~apio.http.Request` into a
-        :class:`~apio.http.Response`.
+        """Turns a :class:`~cosmic.http.Request` into a
+        :class:`~cosmic.http.Response`.
 
         :param bool debug: If ``True``, an unhandled error in *func* will
             result in a crash and a stack trace.
@@ -145,13 +145,13 @@ def make_view(method, accepts=None, returns=None):
 
     .. code::
 
-        >>> from apio.http import make_view
+        >>> from cosmic.http import make_view
         >>> @make_view("POST", None, {"type": "int"})
         ... def number(payload):
         ...     return 42
         ...
         >>> number
-        <apio.http.View object at 0x110ed50>
+        <cosmic.http.View object at 0x110ed50>
 
     """
 
@@ -160,7 +160,7 @@ def make_view(method, accepts=None, returns=None):
     return decorator
 
 class CorsPreflightView(object):
-    """An object that acts like a :class:`~apio.http.View` but performs a very
+    """An object that acts like a :class:`~cosmic.http.View` but performs a very
     specific function: handles `CORS
     <http://en.wikipedia.org/wiki/Cross-origin_resource_sharing>`_ preflight
     requests.
@@ -196,7 +196,7 @@ class CorsPreflightView(object):
 
 class UrlRule(object):
     """Represents the relationship between a URL and a
-    :class:`~apio.http.View`. Your :class:`~apio.api.API` will be represented
+    :class:`~cosmic.http.View`. Your :class:`~cosmic.api.API` will be represented
     as a list of URL rules in order to get served.
 
     :param string URL: The URL which is mapped to the *view*

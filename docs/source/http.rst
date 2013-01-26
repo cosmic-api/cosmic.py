@@ -1,7 +1,7 @@
 HTTP Layer
 ==========
 
-.. module:: apio.http
+.. module:: cosmic.http
 
 .. autoclass:: Request
    :members:

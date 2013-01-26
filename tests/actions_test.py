@@ -4,11 +4,11 @@ import json
 from unittest2 import TestCase
 from mock import patch, Mock
 
-from apio.api import Namespace
-from apio.actions import Action, RemoteAction
-from apio.exceptions import SpecError, APIError
-from apio.http import Request
-from apio.models import *
+from cosmic.api import Namespace
+from cosmic.actions import Action, RemoteAction
+from cosmic.exceptions import SpecError, APIError
+from cosmic.http import Request
+from cosmic.models import *
 
 class TestBasicRemoteAction(TestCase):
 
@@ -77,7 +77,7 @@ class TestBasicRemoteAction(TestCase):
 
 class TestBasicAction(TestCase):
     """Action is mostly glue code, the majority of interesting cases
-    are tested in apio.http.apio_view
+    are tested in cosmic.http.cosmic_view
     """
 
     def setUp(self):

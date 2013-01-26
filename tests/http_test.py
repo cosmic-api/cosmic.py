@@ -1,7 +1,7 @@
 from unittest2 import TestCase
 
-from apio.tools import *
-from apio.http import *
+from cosmic.tools import *
+from cosmic.http import *
 
 
 class TestCorsPreflightView(TestCase):

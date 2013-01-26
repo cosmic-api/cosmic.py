@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from apio.http import View, UrlRule, make_view
+from cosmic.http import View, UrlRule, make_view
 
 class Resource(object):
 

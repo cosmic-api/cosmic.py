@@ -1,9 +1,9 @@
 from unittest2 import TestCase
 from mock import patch, Mock
 
-from apio.exceptions import *
-from apio.tools import *
-from apio.models import *
+from cosmic.exceptions import *
+from cosmic.tools import *
+from cosmic.models import *
 
 class TestGetArgSpec(TestCase):
 

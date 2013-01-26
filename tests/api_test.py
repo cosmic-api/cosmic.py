@@ -7,14 +7,14 @@ from mock import patch
 
 import requests
 
-from apio.exceptions import *
-from apio.tools import normalize
-from apio.api import API, RemoteAPI, API_SCHEMA
-from apio import api
+from cosmic.exceptions import *
+from cosmic.tools import normalize
+from cosmic.api import API, RemoteAPI, API_SCHEMA
+from cosmic import api
 
 index_spec = {
-    u'url': u'http://api.apio.io',
-    u'name': u'apio-index',
+    u'url': u'http://api.cosmic.io',
+    u'name': u'cosmic-index',
     u'actions': [
         {
             u'name': u'register_spec',
@@ -76,12 +76,12 @@ class TestBootstrapping(TestCase):
 
     def test_successful(self):
         with patch.object(requests, 'post') as mock_post:
-            # Test initializing apio module
+            # Test initializing cosmic module
             mock_post.return_value.status_code = 200
             mock_post.return_value.json = index_spec
             api.ensure_bootstrapped()
-            mock_post.assert_called_with('http://api.apio.io/actions/get_spec_by_name', headers={'Content-Type': 'application/json'}, data=json.dumps("apio-index"))
-        self.assertTrue(isinstance(api.apio_index, RemoteAPI))
+            mock_post.assert_called_with('http://api.cosmic.io/actions/get_spec_by_name', headers={'Content-Type': 'application/json'}, data=json.dumps("cosmic-index"))
+        self.assertTrue(isinstance(api.cosmic_index, RemoteAPI))
 
     def tearDown(self):
         api.clear_module_cache()
@@ -157,7 +157,7 @@ class TestAPI(TestCase):
         class RecipeResource(self.cookbook.Resource):
             pass
 
-        api.apio_index = RemoteAPI(index_spec)
+        api.cosmic_index = RemoteAPI(index_spec)
         self.app = self.cookbook.get_flask_app(debug=True)
         self.werkzeug_client = self.app.test_client()
 
@@ -219,7 +219,7 @@ class TestAPI(TestCase):
                 "api_key": "FAKE",
                 "spec": self.cookbook.spec
             })
-            mock_post.assert_called_with('http://api.apio.io/actions/register_spec', headers={'Content-Type': 'application/json'}, data=body)
+            mock_post.assert_called_with('http://api.cosmic.io/actions/register_spec', headers={'Content-Type': 'application/json'}, data=body)
 
     def test_serialize(self):
         self.assertEqual(self.cookbook.spec, cookbook_spec)
@@ -243,10 +243,10 @@ class TestAPI(TestCase):
             mock_get.return_value.status_code = 200
             cookbook_decentralized = API.load('http://example.com/spec.json')
             self.assertEqual(cookbook_decentralized.spec, cookbook_spec)
-            self.assertEqual(sys.modules['apio.index.cookbook'], cookbook_decentralized)
+            self.assertEqual(sys.modules['cosmic.index.cookbook'], cookbook_decentralized)
 
     def test_api_module_cache(self):
-        self.assertEqual(sys.modules['apio.index.cookbook'], self.cookbook)
+        self.assertEqual(sys.modules['cosmic.index.cookbook'], self.cookbook)
 
     def test_apierror_repr(self):
         """Make sure when APIError gets printed in stack trace we can see the message"""

@@ -4,11 +4,11 @@ import json
 
 import requests
 
-from apio.tools import get_arg_spec, serialize_action_arguments, apply_to_action_func, schema_is_compatible, normalize
-from apio.http import ALL_METHODS, View, make_view
-from apio.exceptions import APIError, SpecError, AuthenticationError, ValidationError
+from cosmic.tools import get_arg_spec, serialize_action_arguments, apply_to_action_func, schema_is_compatible, normalize
+from cosmic.http import ALL_METHODS, View, make_view
+from cosmic.exceptions import APIError, SpecError, AuthenticationError, ValidationError
 
-from apio.models import serialize_json, JSONData, ObjectModel
+from cosmic.models import serialize_json, JSONData, ObjectModel
 
 class BaseAction(ObjectModel):
     properties = [

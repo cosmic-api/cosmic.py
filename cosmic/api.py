@@ -7,14 +7,14 @@ import requests
 # Still necessary for authentication
 from flask import request
 
-import apio.resources
-from apio.exceptions import APIError, SpecError, ValidationError
-from apio.actions import Action, RemoteAction, BaseAction
-from apio.tools import Namespace, normalize
-from apio.models import Model as BaseModel
-from apio.models import serialize_json, ModelNormalizer, Schema
-from apio.http import ALL_METHODS, View, UrlRule, Response, CorsPreflightView, make_view
-from apio.plugins import FlaskPlugin
+import cosmic.resources
+from cosmic.exceptions import APIError, SpecError, ValidationError
+from cosmic.actions import Action, RemoteAction, BaseAction
+from cosmic.tools import Namespace, normalize
+from cosmic.models import Model as BaseModel
+from cosmic.models import serialize_json, ModelNormalizer, Schema
+from cosmic.http import ALL_METHODS, View, UrlRule, Response, CorsPreflightView, make_view
+from cosmic.plugins import FlaskPlugin
 
 API_SCHEMA = {
     "type": "object",
@@ -67,28 +67,28 @@ API_SCHEMA = {
     ]
 }
 
-# The apio-index API is saved here for convenience
-apio_index = None
+# The cosmic-index API is saved here for convenience
+cosmic_index = None
 
 def clear_module_cache():
-    global apio_index
+    global cosmic_index
     for name in sys.modules.keys():
-        if name.startswith('apio.index'):
+        if name.startswith('cosmic.index'):
             del sys.modules[name]
-    apio_index = None
+    cosmic_index = None
 
 def ensure_bootstrapped():
-    """Ensures the APIO index API is loaded. Call this before trying
+    """Ensures the COSMIC index API is loaded. Call this before trying
     API.load
     """
-    global apio_index
-    if not apio_index:
-        data = json.dumps("apio-index")
+    global cosmic_index
+    if not cosmic_index:
+        data = json.dumps("cosmic-index")
         headers = { 'Content-Type': 'application/json' }
-        res = requests.post("http://api.apio.io/actions/get_spec_by_name", data=data,
+        res = requests.post("http://api.cosmic.io/actions/get_spec_by_name", data=data,
             headers=headers)
-        apio_index = RemoteAPI(res.json)
-        sys.modules.setdefault('apio.apio_index', apio_index)
+        cosmic_index = RemoteAPI(res.json)
+        sys.modules.setdefault('cosmic.cosmic_index', cosmic_index)
 
 class BaseAPI(object):
     def __init__(self):
@@ -120,7 +120,7 @@ class BaseAPI(object):
                     cls.name = name
                     resources.add(name, cls)
                 return cls
-        class Resource(apio.resources.Resource):
+        class Resource(cosmic.resources.Resource):
             __metaclass__ = ResourceHook
         self.Resource = Resource
 
@@ -131,7 +131,7 @@ class API(BaseAPI):
         self.name = name
         self.url = url
         self.homepage = homepage
-        sys.modules['apio.index.' + name] = self
+        sys.modules['cosmic.index.' + name] = self
 
     @property
     def spec(self):
@@ -154,10 +154,10 @@ class API(BaseAPI):
         """Get a list of URL rules necessary for implementing this API
 
         :param debug:
-            Will be passed into the :class:`apio.http.View`
+            Will be passed into the :class:`cosmic.http.View`
             constructor of all the views in the app
         :returns:
-            A list of :class:`apio.http.UrlRule` objects
+            A list of :class:`cosmic.http.UrlRule` objects
         """
         rules = []
         for action in self.actions:
@@ -181,7 +181,7 @@ class API(BaseAPI):
     def run(self, *args, **kwargs):
         """Runs the API as a Flask app. All arguments channelled into
         :meth:`Flask.run` except for *api_key*, which is an optional
-        string argument that, if set, triggers a call to APIO index to
+        string argument that, if set, triggers a call to COSMIC index to
         register the API.
         """
         debug = kwargs.get('debug', False)
@@ -189,7 +189,7 @@ class API(BaseAPI):
         url_prefix = kwargs.pop('url_prefix', None)
         if api_key:
             ensure_bootstrapped()
-            apio_index.actions.register_spec({
+            cosmic_index.actions.register_spec({
                 "api_key": api_key,
                 "spec": self.spec
             })
@@ -251,9 +251,9 @@ class API(BaseAPI):
         else:
             name = name_or_url
             ensure_bootstrapped()
-            spec = apio_index.actions.get_spec_by_name(name).data
+            spec = cosmic_index.actions.get_spec_by_name(name).data
         api = RemoteAPI(spec)
-        sys.modules["apio.index." + name] = api
+        sys.modules["cosmic.index." + name] = api
         return api
 
 

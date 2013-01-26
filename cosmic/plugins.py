@@ -2,8 +2,8 @@ from __future__ import unicode_literals
 
 from flask import Flask, Blueprint, request, make_response
 
-from apio.http import Request
-from apio.exceptions import ClientError
+from cosmic.http import Request
+from cosmic.exceptions import ClientError
 
 
 class FlaskPlugin(object):

@@ -1,7 +1,7 @@
 from unittest2 import TestCase
 
-from apio.exceptions import ValidationError, UnicodeDecodeValidationError
-from apio.models import *
+from cosmic.exceptions import ValidationError, UnicodeDecodeValidationError
+from cosmic.models import *
 
 class TestNormalize(TestCase):
 

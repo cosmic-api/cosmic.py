@@ -4,8 +4,8 @@ import inspect
 import json
 import sys
 
-from apio.exceptions import SpecError, ValidationError, APIError, AuthenticationError
-from apio.models import *
+from cosmic.exceptions import SpecError, ValidationError, APIError, AuthenticationError
+from cosmic.models import *
 
 class Namespace(object):
     """Essentially a sorted dictionary. Allows to reference actions or

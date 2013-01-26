@@ -1,9 +1,9 @@
 Reference
 =========
 
-.. autoclass:: apio.api.API
+.. autoclass:: cosmic.api.API
    :members:
 
-.. automodule:: apio.exceptions
+.. automodule:: cosmic.exceptions
    :members:
    :undoc-members:

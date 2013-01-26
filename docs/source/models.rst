@@ -39,23 +39,23 @@ the data is is meant to validate.
     needs to be ported.
 
 When a JSON representation of a schema gets compiled, the resulting
-object (an instance of :class:`~apio.models.Schema`) will provide a
+object (an instance of :class:`~cosmic.models.Schema`) will provide a
 :meth:`normalize` method. This method will take JSON data as provided
 by :func:`json.loads` and either return the normalized data or
-raise a :class:`~apio.exceptions.ValidationError`. Here is the basic
-usage with a shortcut function, :func:`~apio.tools.normalize`::
+raise a :class:`~cosmic.exceptions.ValidationError`. Here is the basic
+usage with a shortcut function, :func:`~cosmic.tools.normalize`::
 
-    >>> from apio.tools import normalize
+    >>> from cosmic.tools import normalize
     >>> normalize({"type": "integer"}, 1)
     1
     >>> normalize({"type": "integer"}, 1.1)
     Traceback (most recent call last):
       File "<stdin>", line 1, in <module>
-      File "apio/tools.py", line 147, in normalize
+      File "cosmic/tools.py", line 147, in normalize
         return normalizer.normalize(datum)
-      File "apio/models.py", line 103, in normalize
+      File "cosmic/models.py", line 103, in normalize
         raise ValidationError("Invalid integer", datum)
-    apio.exceptions.ValidationError: Invalid integer: 1.1
+    cosmic.exceptions.ValidationError: Invalid integer: 1.1
 
 A schema is always a Python dict. It must always contain the *type*
 attribute. Here is a list of simple types you can use just like in the
@@ -99,13 +99,13 @@ will be an array of property objects::
     >>> normalize(schema, {"id": "Chameleon"})
     Traceback (most recent call last):
       File "<stdin>", line 1, in <module>
-      File "apio/tools.py", line 147, in normalize
+      File "cosmic/tools.py", line 147, in normalize
         return normalizer.normalize(datum)
-      File "apio/models.py", line 241, in normalize
+      File "cosmic/models.py", line 241, in normalize
         ret[prop] = schema.normalize(datum[prop])
-      File "apio/models.py", line 103, in normalize
+      File "cosmic/models.py", line 103, in normalize
         raise ValidationError("Invalid integer", datum)
-    apio.exceptions.ValidationError: Item at [u'id'] Invalid integer: 'Chameleon'
+    cosmic.exceptions.ValidationError: Item at [u'id'] Invalid integer: 'Chameleon'
 
 An array schema must always contain an *items* property, which must be
 a *schema* that describes every item in the array. Here is a schema

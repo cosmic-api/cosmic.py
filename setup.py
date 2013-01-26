@@ -6,9 +6,9 @@ with open("README.rst") as readme:
     long_description = readme.read()
 
 setup(
-    name = 'apio',
-    version = "0.0.9",
-    packages = ['apio'],
+    name = 'cosmic',
+    version = "0.0.1",
+    packages = ['cosmic'],
     description = 'Human-friendly APIs',
     license = "MIT",
     author_email = "alexei.boronine@gmail.com",

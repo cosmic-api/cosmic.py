@@ -3,13 +3,13 @@ import requests
 from mock import patch
 from unittest2 import TestCase
 
-from apio import api
+from cosmic import api
 from tests.api_test import index_spec, cookbook_spec
 
 class TestAPIImport(TestCase):
 
     def setUp(self):
-        api.apio_index = api.RemoteAPI(index_spec)
+        api.cosmic_index = api.RemoteAPI(index_spec)
 
     def tearDown(self):
         api.clear_module_cache()
@@ -18,14 +18,14 @@ class TestAPIImport(TestCase):
         with patch.object(requests, 'post') as mock_post:
             mock_post.return_value.status_code = 200
             mock_post.return_value.json = cookbook_spec
-            from apio.index.cookbook import actions
+            from cosmic.index.cookbook import actions
             self.assertEqual(actions.cabbage.serialize(), cookbook_spec['actions'][0])
 
     def test_import_specific_action(self):
         with patch.object(requests, 'post') as mock_post:
             mock_post.return_value.status_code = 200
             mock_post.return_value.json = cookbook_spec
-            from apio.index.cookbook.actions import cabbage
+            from cosmic.index.cookbook.actions import cabbage
             self.assertEqual(cabbage.serialize(), cookbook_spec['actions'][0])
 
     def test_import_too_specific(self):
@@ -33,13 +33,13 @@ class TestAPIImport(TestCase):
             mock_post.return_value.status_code = 200
             mock_post.return_value.json = cookbook_spec
             with self.assertRaises(ImportError):
-                from apio.index.cookbook.actions.cabbage import spec
+                from cosmic.index.cookbook.actions.cabbage import spec
 
     def test_import_all_actions(self):
         with patch.object(requests, 'post') as mock_post:
             mock_post.return_value.status_code = 200
             mock_post.return_value.json = cookbook_spec
-            from apio.index.cookbook.actions import *
+            from cosmic.index.cookbook.actions import *
             self.assertEqual(cabbage.serialize(), cookbook_spec['actions'][0])
             self.assertEqual(noop.serialize(), cookbook_spec['actions'][1])
 
@@ -48,4 +48,4 @@ class TestAPIImport(TestCase):
             mock_post.return_value.status_code = 200
             mock_post.return_value.json = cookbook_spec
             with self.assertRaises(ImportError):
-                from apio.index.cookbook import aktions
+                from cosmic.index.cookbook import aktions

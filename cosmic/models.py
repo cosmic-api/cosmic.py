@@ -1,7 +1,7 @@
 import sys
 import json
 
-from apio.exceptions import ValidationError, UnicodeDecodeValidationError, SpecError
+from cosmic.exceptions import ValidationError, UnicodeDecodeValidationError, SpecError
 
 
 
@@ -101,7 +101,7 @@ class IntegerNormalizer(Normalizer):
         """If *datum* is an integer, return it; if it is a float with a 0
         for its fractional part, return the integer part as an
         integer. Otherwise, raise a
-        :exc:`~apio.exceptions.ValidationError`.
+        :exc:`~cosmic.exceptions.ValidationError`.
         """
         if type(datum) == int:
             return datum
@@ -114,7 +114,7 @@ class FloatNormalizer(Normalizer):
     def normalize(self, datum):
         """If *datum* is a float, return it; if it is an integer, cast it
         to a float and return it. Otherwise, raise a
-        :exc:`~apio.exceptions.ValidationError`.
+        :exc:`~cosmic.exceptions.ValidationError`.
         """
         if type(datum) == float:
             return datum
@@ -127,9 +127,9 @@ class StringNormalizer(Normalizer):
     def normalize(self, datum):
         """If *datum* is a unicode string, return it. If it is a string,
         decode it as UTF-8 and return the result. Otherwise, raise a
-        :exc:`~apio.exceptions.ValidationError`. Unicode errors are dealt
+        :exc:`~cosmic.exceptions.ValidationError`. Unicode errors are dealt
         with strictly by raising
-        :exc:`~apio.exceptions.UnicodeDecodeValidationError`, a subclass
+        :exc:`~cosmic.exceptions.UnicodeDecodeValidationError`, a subclass
         of the above.
         """
         if type(datum) == unicode:
@@ -145,7 +145,7 @@ class BooleanNormalizer(Normalizer):
     validates = {u"type": u"boolean"}
     def normalize(self, datum):
         """If *datum* is a boolean, return it. Otherwise, raise a
-        :exc:`~apio.exceptions.ValidationError`.
+        :exc:`~cosmic.exceptions.ValidationError`.
         """
         if type(datum) == bool:
             return datum
@@ -164,8 +164,8 @@ class ArrayNormalizer(Normalizer):
         """If *datum* is a list, construct a new list by running the
         *items* normalization function on each element of *datum*. This
         normalization function may raise
-        :exc:`~apio.exceptions.ValidationError`. If *datum* is not a list,
-        :exc:`~apio.exceptions.ValidationError` will be raised.
+        :exc:`~cosmic.exceptions.ValidationError`. If *datum* is not a list,
+        :exc:`~cosmic.exceptions.ValidationError` will be raised.
 
         .. code::
 
@@ -203,7 +203,7 @@ class ObjectNormalizer(Normalizer):
     def normalize(self, datum):
         """If *datum* is a dict, normalize it against *properties* and
         return the resulting dict. Otherwise raise a
-        :exc:`~apio.exceptions.ValidationError`.
+        :exc:`~cosmic.exceptions.ValidationError`.
 
         *properties* must be a list of dicts, where each dict has three
         attributes: *name*, *required* and *schema*. *name* is a string
@@ -220,7 +220,7 @@ class ObjectNormalizer(Normalizer):
             ... }])
             {"spicy": True}
 
-        A :exc:`~apio.exceptions.ValidationError` will be raised if:
+        A :exc:`~cosmic.exceptions.ValidationError` will be raised if:
 
         1. *datum* is missing a required property
         2. *datum* has a property not declared in *properties*.
@@ -275,9 +275,9 @@ class Schema(Model):
             True
 
         For array or object types, it will build a custom function by
-        wrapping :func:`~apio.models.normalize_array` or
-        :func:`~apio.models.normalize_object`. These can be nested as deep
-        as you want, :func:`~apio.models.normalize_schema` will recurse::
+        wrapping :func:`~cosmic.models.normalize_array` or
+        :func:`~cosmic.models.normalize_object`. These can be nested as deep
+        as you want, :func:`~cosmic.models.normalize_schema` will recurse::
 
             >>> normalizer = normalize_schema({
             ...     "type": "array",
@@ -350,7 +350,7 @@ class Schema(Model):
         if '.' in st:
             api_name, model_name = st.split('.', 1)
             try:
-                api = sys.modules['apio.index.' + api_name]
+                api = sys.modules['cosmic.index.' + api_name]
             except KeyError:
                 raise ValidationError("Unknown API", api_name)
             try:

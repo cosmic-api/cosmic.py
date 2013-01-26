@@ -1,6 +1,6 @@
 def quickstart():
 
-    from apio.api import API
+    from cosmic.api import API
     cookbook = API('cookbook')
 
     @cookbook.action(returns={"type": "string"})
