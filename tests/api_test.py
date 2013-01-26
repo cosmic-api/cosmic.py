@@ -145,9 +145,11 @@ class TestAPI(TestCase):
 
         class Recipe(self.cookbook.Model):
             schema = {u"type": u"string"}
-            def validate(self):
-                if self.data == "bacon":
+            @classmethod
+            def validate(cls, datum):
+                if datum == "bacon":
                     raise ValidationError("Not kosher")
+                return datum
 
         class Cookie(self.cookbook.Model):
             schema = {u"type": u"boolean"}

@@ -174,32 +174,32 @@ class TestSerializeActionArguments(TestCase):
 class TestSchemaIsCompatible(TestCase):
 
     def test_base_cases(self):
-        assert schema_is_compatible(JSONSchema(), IntegerSchema())
-        assert schema_is_compatible(JSONSchema(), FloatSchema())
+        assert schema_is_compatible(ModelSchema(JSONModel), IntegerSchema())
+        assert schema_is_compatible(ModelSchema(JSONModel), FloatSchema())
 
     def test_object_keys_mismatch(self):
         g = ObjectSchema([
             {
                 u"name": u"a",
                 u"required": False,
-                u"schema": JSONSchema()
+                u"schema": IntegerSchema()
             },
             {
                 u"name": u"b",
                 u"required": False,
-                u"schema": JSONSchema()
+                u"schema": IntegerSchema()
             }
         ])
         d = ObjectSchema([
             {
                 u"name": u"a",
                 u"required": False,
-                u"schema": JSONSchema()
+                u"schema": IntegerSchema()
             },
             {
                 u"name": u"c",
                 u"required": False,
-                u"schema": JSONSchema()
+                u"schema": IntegerSchema()
             }
         ])
         assert not schema_is_compatible(g, d)
@@ -208,24 +208,24 @@ class TestSchemaIsCompatible(TestCase):
             {
                 u"name": u"a",
                 u"required": False,
-                u"schema": JSONSchema()
+                u"schema": IntegerSchema()
             },
             {
                 u"name": u"b",
                 u"required": False,
-                u"schema": JSONSchema()
+                u"schema": IntegerSchema()
             }
         ])
         d = ObjectSchema([
             {
                 u"name": u"a",
                 u"required": False,
-                u"schema": JSONSchema()
+                u"schema": IntegerSchema()
             },
             {
                 u"name": u"c",
                 u"required": False,
-                u"schema": JSONSchema()
+                u"schema": IntegerSchema()
             }
         ])
         assert not schema_is_compatible(g, d)
@@ -235,19 +235,19 @@ class TestSchemaIsCompatible(TestCase):
             {
                 u"name": u"a",
                 u"required": False,
-                u"schema": JSONSchema()
+                u"schema": IntegerSchema()
             }
         ])
         d = ObjectSchema([
             {
                 u"name": u"a",
                 u"required": False,
-                u"schema": JSONSchema()
+                u"schema": IntegerSchema()
             },
             {
                 u"name": u"b",
                 u"required": False,
-                u"schema": JSONSchema()
+                u"schema": IntegerSchema()
             }
         ])
         assert not schema_is_compatible(g, d)
@@ -257,14 +257,14 @@ class TestSchemaIsCompatible(TestCase):
             {
                 u"name": u"a",
                 u"required": True,
-                u"schema": JSONSchema()
+                u"schema": IntegerSchema()
             }
         ])
         d = ObjectSchema([
             {
                 u"name": u"a",
                 u"required": True,
-                u"schema": JSONSchema()
+                u"schema": IntegerSchema()
             }
         ])
         assert schema_is_compatible(g, d)
@@ -274,14 +274,14 @@ class TestSchemaIsCompatible(TestCase):
             {
                 u"name": u"a",
                 u"required": True,
-                u"schema": JSONSchema()
+                u"schema": IntegerSchema()
             }
         ])
         d = ObjectSchema([
             {
                 u"name": u"a",
                 u"required": False,
-                u"schema": JSONSchema()
+                u"schema": IntegerSchema()
             }
         ])
         assert not schema_is_compatible(g, d)

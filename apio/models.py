@@ -18,18 +18,17 @@ class Schema(BaseModel):
         return self.validates
 
 class Model(BaseModel):
-    schema = {u"type": u"core.JSON"}
-    def validate(self):
-        pass
     @classmethod
-    def get_schema(cls):
-        return cls.schema
+    def validate(cls, datum):
+        return datum
     @classmethod
     def normalize(cls, datum):
-        schema = SchemaSchema().normalize(cls.get_schema())
-        inst = cls(schema.normalize(datum))
-        inst.validate()
-        return inst
+        return ModelSchema(cls).normalize(datum)
+    @classmethod
+    def get_schema(cls):
+        if hasattr(cls, "schema"):
+            return cls.schema
+        return None
 
 class ObjectModel(Model):
     properties = []
@@ -57,36 +56,48 @@ class ObjectModel(Model):
             "properties": cls.properties
         }
 
-class JSONModel(BaseModel):
-    @staticmethod
-    def normalize(datum):
-        return JSONSchema().normalize(datum)
-    @classmethod
-    def from_string(cls, s):
-        if s == "":
-            return None
-        return cls.normalize(json.loads(s))
+class JSONModel(Model):
+    name = "core.JSON"
     def __repr__(self):
         contents = json.dumps(self.data)
         if len(contents) > 60:
             contents = contents[:56] + " ..."
         return "<JSONModel %s>" % contents
-
-class JSONSchema(Schema):
-    validates = {u"type": u"core.JSON"}
-    def normalize(self, datum):
+    @classmethod
+    def from_string(cls, s):
+        if s == "":
+            return None
+        return ModelSchema(cls).normalize(json.loads(s))
+    @classmethod
+    def validate(cls, datum):
         # Hack to make sure we don't end up with non-unicode strings in
         # normalized data
         if type(datum) == str:
-            return JSONModel(StringSchema().normalize(datum))
+            return StringSchema().normalize(datum)
         if type(datum) == list:
-            return JSONModel([self.normalize(item).data for item in datum])
+            return [cls.validate(item) for item in datum]
         if type(datum) == dict:
             ret = {}
             for key, value in datum.items():
-                ret[key] = self.normalize(value).data
-            return JSONModel(ret)
-        return JSONModel(datum)
+                ret[key] = cls.validate(value)
+            return ret
+        return datum
+
+class ModelSchema(Schema):
+    def __init__(self, model_cls):
+        self.model_cls = model_cls
+    def serialize(self):
+        return {u"type": self.model_cls.name}
+    def normalize(self, datum):
+        # Normalize against model schema
+        schema = self.model_cls.get_schema()
+        if schema:
+            schema = SchemaSchema().normalize(schema)
+            datum = schema.normalize(datum)
+        # Validate against model's custom validation function
+        datum = self.model_cls.validate(datum)
+        # Instantiate
+        return self.model_cls(datum)
 
 class IntegerSchema(Schema):
     validates = {u"type": u"integer"}
@@ -330,7 +341,7 @@ class SchemaSchema(Schema):
             return BooleanSchema()
         # One of the core models?
         if st == "core.JSON":
-            return JSONSchema()
+            return ModelSchema(JSONModel)
         if st == "core.Schema":
             return SchemaSchema()
         if '.' in st:

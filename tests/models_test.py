@@ -51,7 +51,7 @@ class TestNormalize(TestCase):
 
     def test_json(self):
         for i in [1, True, 2.3, "blah", [], {}]:
-            self.assertEqual(JSONSchema().normalize(i).data, i)
+            self.assertEqual(JSONModel.normalize(i).data, i)
 
     def test_integer(self):
         self.assertEqual(IntegerSchema().normalize(1), 1)
@@ -101,7 +101,7 @@ class TestNormalize(TestCase):
         self.assertEqual(SchemaSchema().normalize({"type": "float"}).__class__, FloatSchema)
         self.assertEqual(SchemaSchema().normalize({"type": "boolean"}).__class__, BooleanSchema)
         self.assertEqual(SchemaSchema().normalize({"type": "string"}).__class__, StringSchema)
-        self.assertEqual(SchemaSchema().normalize({"type": "core.JSON"}).__class__, JSONSchema)
+        self.assertEqual(SchemaSchema().normalize({"type": "core.JSON"}).model_cls, JSONModel)
         self.assertEqual(SchemaSchema().normalize({"type": "core.Schema"}).__class__, SchemaSchema)
 
     def test_schema_missing_parts(self):
