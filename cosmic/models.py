@@ -256,12 +256,19 @@ class ObjectNormalizer(Normalizer):
 
 class Schema(Model):
     name = u"core.Schema"
+
     def normalize(self, datum):
         return self.data.normalize(datum)
+
     def serialize(self):
         return self.data.validates
+
     @classmethod
-    def validate(self, datum):
+    def fetch_model(cls, full_name):
+        raise ValidationError("The schema you are validating refers to a model (%s), but fetch_model has not been implemented" % full_name)
+
+    @classmethod
+    def validate(cls, datum):
         """Given a JSON representation of a schema, return a function that
         will normalize data against that schema.
 
@@ -287,36 +294,36 @@ class Schema(Model):
             [1.0, 2.2, 3.0]
 
         """
-        datum = Schema(ObjectNormalizer([
+        datum = cls(ObjectNormalizer([
             {
                 "name": "type",
                 "required": True,
-                "schema": Schema(StringNormalizer())
+                "schema": cls(StringNormalizer())
             },
             {
                 "name": "items",
                 "required": False,
-                "schema": Schema(ModelNormalizer(Schema))
+                "schema": cls(ModelNormalizer(cls))
             },
             {
                 "name": "properties",
                 "required": False,
-                "schema": Schema(ArrayNormalizer(
-                    Schema(ObjectNormalizer([
+                "schema": cls(ArrayNormalizer(
+                    cls(ObjectNormalizer([
                         {
                             "name": "name",
                             "required": True,
-                            "schema": Schema(StringNormalizer())
+                            "schema": cls(StringNormalizer())
                         },
                         {
                             "name": "required",
                             "required": True,
-                            "schema": Schema(BooleanNormalizer())
+                            "schema": cls(BooleanNormalizer())
                         },
                         {
                             "name": "schema",
                             "required": True,
-                            "schema": Schema(ModelNormalizer(Schema))
+                            "schema": cls(ModelNormalizer(cls))
                         }
                     ]))
                 ))
@@ -342,26 +349,20 @@ class Schema(Model):
             return StringNormalizer()
         if st == "boolean":
             return BooleanNormalizer()
-        # One of the core models?
-        if st == "core.JSON":
-            return ModelNormalizer(JSONData)
-        if st == "core.Schema":
-            return ModelNormalizer(Schema)
-        if '.' in st:
-            api_name, model_name = st.split('.', 1)
-            try:
-                api = sys.modules['cosmic.index.' + api_name]
-            except KeyError:
-                raise ValidationError("Unknown API", api_name)
-            try:
-                return ModelNormalizer(getattr(api.models, model_name))
-            except SpecError:
-                raise ValidationError("Unknown model for %s API" % api_name, model_name)
         if st == "array":
             return ArrayNormalizer(datum["items"])
         if st == "object":
             return ObjectNormalizer(datum["properties"])
+        # One of the core models?
+        if st == "core.JSON":
+            return ModelNormalizer(JSONData)
+        if st == "core.Schema":
+            return ModelNormalizer(cls)
+        if '.' in st:
+            model = cls.fetch_model(st)
+            return ModelNormalizer(model)
         raise ValidationError("Unknown type", st)
+
 
 def serialize_json(datum):
     if isinstance(datum, Model):

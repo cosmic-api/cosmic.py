@@ -139,9 +139,22 @@ def schema_is_compatible(general, detailed):
             return False
     return True
 
+class CosmicSchema(Schema):
+    @classmethod
+    def fetch_model(cls, full_name):
+        api_name, model_name = full_name.split('.', 1)
+        try:
+            api = sys.modules['cosmic.index.' + api_name]
+        except KeyError:
+            raise ValidationError("Unknown API", api_name)
+        try:
+            return getattr(api.models, model_name)
+        except SpecError:
+            raise ValidationError("Unknown model for %s API" % api_name, model_name)
+
 def normalize(schema, datum):
     """Schema is expected to be a valid schema and datum is expected
     to be the return value of json.loads
     """
-    normalizer = ModelNormalizer(Schema).normalize(schema)
+    normalizer = CosmicSchema(ModelNormalizer(CosmicSchema)).normalize(schema)
     return normalizer.normalize(datum)
