@@ -92,7 +92,7 @@ class ModelSchema(Schema):
         # Normalize against model schema
         schema = self.model_cls.get_schema()
         if schema:
-            schema = SchemaSchema().normalize(schema)
+            schema = ModelSchema(SchemaModel).normalize(schema)
             datum = schema.normalize(datum)
         # Validate against model's custom validation function
         datum = self.model_cls.validate(datum)
@@ -256,9 +256,14 @@ class ObjectSchema(Schema):
             return ret
         raise ValidationError("Invalid object", datum)
 
-class SchemaSchema(Schema):
-    validates = {u"type": u"core.Schema"}
+class SchemaModel(Model):
+    name = u"core.Schema"
     def normalize(self, datum):
+        return self.data.normalize(datum)
+    def serialize(self):
+        return self.data.serialize()
+    @classmethod
+    def validate(self, datum):
         """Given a JSON representation of a schema, return a function that
         will normalize data against that schema.
 
@@ -293,7 +298,7 @@ class SchemaSchema(Schema):
             {
                 "name": "items",
                 "required": False,
-                "schema": SchemaSchema()
+                "schema": ModelSchema(SchemaModel)
             },
             {
                 "name": "properties",
@@ -313,7 +318,7 @@ class SchemaSchema(Schema):
                         {
                             "name": "schema",
                             "required": True,
-                            "schema": SchemaSchema()
+                            "schema": ModelSchema(SchemaModel)
                         }
                     ])
                 )
@@ -343,7 +348,7 @@ class SchemaSchema(Schema):
         if st == "core.JSON":
             return ModelSchema(JSONModel)
         if st == "core.Schema":
-            return SchemaSchema()
+            return ModelSchema(SchemaModel)
         if '.' in st:
             api_name, model_name = st.split('.', 1)
             try:
@@ -351,7 +356,7 @@ class SchemaSchema(Schema):
             except KeyError:
                 raise ValidationError("Unknown API", api_name)
             try:
-                return getattr(api.models, model_name)
+                return ModelSchema(getattr(api.models, model_name))
             except SpecError:
                 raise ValidationError("Unknown model for %s API" % api_name, model_name)
         if st == "array":
