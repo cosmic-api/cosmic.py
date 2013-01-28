@@ -34,12 +34,16 @@ class ObjectModel(Model):
     def __setattr__(self, key, value):
         for prop in self.properties:
             if prop["name"] == key:
-                if value != None:
-                    self.data[key] = value
-                elif key in self.data:
-                    del self.data[key]
+                self.data[key] = value
                 return
         super(ObjectModel, self).__setattr__(key, value)
+
+    def serialize(self):
+        ret = {}
+        for key, val in self.data.items():
+            if val != None:
+                ret[key] = val
+        return serialize_json(ret)
 
     @classmethod
     def get_schema(cls):

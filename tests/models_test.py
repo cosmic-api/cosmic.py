@@ -230,13 +230,13 @@ class TestObjectModel(TestCase):
             u"spicy": False
         })
 
-    def test_setattr_None(self):
+    def test_setattr_None_then_serialize(self):
         self.recipe.spicy = None
-        self.assertEqual(self.recipe.data, {
+        self.assertEqual(self.recipe.serialize(), {
             u"author": u"Alex"
         })
 
-    def test_serialize(self):
+    def test_serialize_okay(self):
         self.assertEqual(self.special_recipe.serialize(), {
             u"author": u"Kyu",
             u"meta": {u"secret": True}
