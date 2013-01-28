@@ -10,6 +10,7 @@ import requests
 from cosmic.exceptions import *
 from cosmic.tools import normalize
 from cosmic.api import API, RemoteAPI, API_SCHEMA
+from cosmic.models import Model
 from cosmic import api
 
 index_spec = {
@@ -143,7 +144,8 @@ class TestAPI(TestCase):
         def noop():
             pass
 
-        class Recipe(self.cookbook.Model):
+        @self.cookbook.model
+        class Recipe(Model):
             schema = {u"type": u"string"}
             @classmethod
             def validate(cls, datum):
@@ -151,11 +153,9 @@ class TestAPI(TestCase):
                     raise ValidationError("Not kosher")
                 return datum
 
-        class Cookie(self.cookbook.Model):
+        @self.cookbook.model
+        class Cookie(Model):
             schema = {u"type": u"boolean"}
-
-        class RecipeResource(self.cookbook.Resource):
-            pass
 
         api.cosmic_index = RemoteAPI(index_spec)
         self.app = self.cookbook.get_flask_app(debug=True)
@@ -168,11 +168,6 @@ class TestAPI(TestCase):
         with self.assertRaisesRegexp(SpecError, "invalid returns"):
             @self.cookbook.action(returns={"type": "object"})
             def func(a, b=1):
-                pass
-
-    def test_resource_bad_class_name(self):
-        with self.assertRaisesRegexp(ValidationError, "must end with Resource"):
-            class BlahResourrrrs(self.cookbook.Resource):
                 pass
 
     def test_model_normalize_okay(self):
@@ -190,13 +185,15 @@ class TestAPI(TestCase):
         self.assertEqual(set(self.cookbook.models.__all__), set(["Recipe", "Cookie"]))
 
     def test_recursive_subclassing_hook(self):
+        @self.cookbook.model
         class ChocolateCookie(self.cookbook.models.Cookie):
             pass
         self.assertEqual(set(self.cookbook.models.__all__), set(["Recipe", "Cookie", "ChocolateCookie"]))
 
     def test_model_illegal_schema(self):
         with self.assertRaises(ValidationError):
-            class Pizza(self.cookbook.Model):
+            @self.cookbook.model
+            class Pizza(Model):
                 schema = {"tipe": "object"}
 
     def test_model_schema_validation(self):
@@ -274,7 +271,7 @@ class TestRemoteAPI(TestCase):
     def test_models(self):
         self.assertEqual(self.cookbook.models.__all__, ["Cookie", "Recipe"])
         self.assertEqual(self.cookbook.models.Recipe.schema, {"type": "string"})
-        self.assertEqual(self.cookbook.models.Recipe.__bases__, (self.cookbook.Model,))
+        self.assertEqual(self.cookbook.models.Recipe.__bases__, (Model,))
 
 if __name__ == '__main__':
     unittest.main()

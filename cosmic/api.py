@@ -12,7 +12,7 @@ from cosmic.exceptions import APIError, SpecError, ValidationError
 from cosmic.actions import Action, RemoteAction, BaseAction
 from cosmic.tools import Namespace, normalize
 from cosmic.models import Model as BaseModel
-from cosmic.models import serialize_json, ModelNormalizer, Schema
+from cosmic.models import serialize_json, ModelNormalizer, Schema, ObjectModel
 from cosmic.http import ALL_METHODS, View, UrlRule, Response, CorsPreflightView, make_view
 from cosmic.plugins import FlaskPlugin
 
@@ -90,39 +90,26 @@ def ensure_bootstrapped():
         cosmic_index = RemoteAPI(res.json)
         sys.modules.setdefault('cosmic.cosmic_index', cosmic_index)
 
+class APIModel(ObjectModel):
+    properties = [
+        {
+            "name": "name",
+            "required": True,
+            "schema": {"type": "string"}
+        },
+        {
+            "name": "schema",
+            "required": True,
+            "schema": {"type": "core.Schema"}
+        }
+    ]
+
 class BaseAPI(object):
     def __init__(self):
         # Custom metaclass. When you inherit from Model, the new class
         # will be registered as part of the API
         self.actions = Namespace()
         self.models = models = Namespace()
-        self.resources = resources = Namespace()
-        class ModelHook(type):
-            def __new__(meta, name, bases, attrs):
-                cls = super(ModelHook, meta).__new__(meta, str(name), bases, attrs)
-                if name != "Model":
-                    # Raise ValidationError if model schema is invalid
-                    normalize({"type": "core.Schema"}, cls.schema)
-                    models.add(name, cls)
-                return cls
-        class Model(BaseModel):
-            __metaclass__ = ModelHook
-        self.Model = Model
-        class ResourceHook(type):
-            def __new__(meta, name, bases, attrs):
-                cls = super(ResourceHook, meta).__new__(meta, str(name), bases, attrs)
-                if name != "Resource":
-                    # Make sure the class name ends with Resource
-                    if not name.endswith("Resource"):
-                        raise ValidationError("Resource class name must end with Resource")
-                    # And then trim the name
-                    name = name[:-len("Resource")]
-                    cls.name = name
-                    resources.add(name, cls)
-                return cls
-        class Resource(cosmic.resources.Resource):
-            __metaclass__ = ResourceHook
-        self.Resource = Resource
 
 class API(BaseAPI):
 
@@ -222,6 +209,11 @@ class API(BaseAPI):
             return func
         return wrapper
 
+    def model(self, model_cls):
+        # Raise ValidationError if model schema is invalid
+        normalize({"type": "core.Schema"}, model_cls.schema)
+        self.models.add(model_cls.__name__, model_cls)
+
     def authenticate(self):
         """Authenticates the user based on request headers. Returns
         user-related data upon successful authentication, raises
@@ -273,7 +265,8 @@ class RemoteAPI(BaseAPI):
             attrs = {
                 "schema": spec['schema']
             }
-            cls = self.Model.__metaclass__(name, (self.Model,), attrs)
+            cls = type(str(name), (BaseModel,), attrs)
+            self.models.add(name, cls)
 
     @property
     def name(self):
