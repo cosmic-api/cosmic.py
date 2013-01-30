@@ -243,7 +243,7 @@ class TestObjectModel(TestCase):
         })
 
     def test_get_schema(self):
-        self.assertEqual(self.RecipeModel.get_schema(), {
+        self.assertEqual(self.RecipeModel.get_schema().serialize(), {
             "type": "object",
             "properties": [
                 {

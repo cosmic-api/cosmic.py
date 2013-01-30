@@ -19,7 +19,7 @@ class Model(object):
     @classmethod
     def get_schema(cls):
         if hasattr(cls, "schema"):
-            return cls.schema
+            return ModelNormalizer(Schema).normalize(cls.schema)
         return None
 
 class ObjectModel(Model):
@@ -47,10 +47,10 @@ class ObjectModel(Model):
 
     @classmethod
     def get_schema(cls):
-        return {
+        return ModelNormalizer(Schema).normalize({
             "type": "object",
             "properties": cls.properties
-        }
+        })
 
 class JSONData(Model):
     name = "core.JSON"
@@ -92,7 +92,6 @@ class ModelNormalizer(Normalizer):
         # Normalize against model schema
         schema = self.model_cls.get_schema()
         if schema:
-            schema = ModelNormalizer(Schema).normalize(schema)
             datum = schema.normalize(datum)
         # Validate against model's custom validation function
         datum = self.model_cls.validate(datum)
