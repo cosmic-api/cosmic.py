@@ -198,11 +198,11 @@ class TestAPI(TestCase):
 
     def test_model_schema_validation(self):
         with self.assertRaises(ValidationError):
-            self.cookbook.models.Recipe.normalize(1.1)
+            self.cookbook.models.Recipe.from_json(1.1)
 
     def test_model_custom_validation(self):
         with self.assertRaisesRegexp(ValidationError, "kosher"):
-            self.cookbook.models.Recipe.normalize("bacon")
+            self.cookbook.models.Recipe.from_json("bacon")
         # When not overridden, custom validation passes
         self.cookbook.models.Cookie(True)
 

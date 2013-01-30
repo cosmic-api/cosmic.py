@@ -256,7 +256,7 @@ class RemoteAPI(BaseAPI):
         self.spec = spec
 
         for spec in self.spec['actions']:
-            action = RemoteAction.normalize(spec)
+            action = RemoteAction.from_json(spec)
             action.api_url = self.url
             self.actions.add(spec['name'], action)
 

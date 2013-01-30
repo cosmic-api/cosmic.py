@@ -51,7 +51,7 @@ class TestNormalize(TestCase):
 
     def test_json(self):
         for i in [1, True, 2.3, "blah", [], {}]:
-            self.assertEqual(JSONData.normalize(i).data, i)
+            self.assertEqual(JSONData.from_json(i).data, i)
 
     def test_integer(self):
         self.assertEqual(IntegerNormalizer().normalize(1), 1)
@@ -193,11 +193,11 @@ class TestObjectModel(TestCase):
                 }
             ]
         self.RecipeModel = RecipeModel
-        self.recipe = RecipeModel.normalize({
+        self.recipe = RecipeModel.from_json({
             "author": "Alex",
             "spicy": True
         })
-        self.special_recipe = RecipeModel.normalize({
+        self.special_recipe = RecipeModel.from_json({
             "author": "Kyu",
             "meta": {"secret": True}
         })
@@ -211,7 +211,7 @@ class TestObjectModel(TestCase):
 
     def test_normalize_fail(self):
         with self.assertRaisesRegexp(ValidationError, "Missing properties"):
-            recipe = self.RecipeModel.normalize({
+            recipe = self.RecipeModel.from_json({
                 "maker": "Alex",
                 "spicy": True
             })

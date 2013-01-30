@@ -40,7 +40,7 @@ class Model(object):
     def validate(cls, datum):
         return datum
     @classmethod
-    def normalize(cls, datum):
+    def from_json(cls, datum):
         return cls.make_normalizer().normalize(datum)
     @classmethod
     def get_schema(cls):

@@ -35,7 +35,7 @@ class TestBasicRemoteAction(TestCase):
             }
         }
 
-        self.action = RemoteAction.normalize(spec)
+        self.action = RemoteAction.from_json(spec)
         self.action.api_url = "http://example.com"
 
     def test_call_success(self):
