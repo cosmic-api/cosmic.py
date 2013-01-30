@@ -12,7 +12,7 @@ class TestNormalize(TestCase):
                 "type": "boolean"
             }
         }
-        self.array_normalizer = ModelNormalizer(Schema).normalize(self.array_schema)
+        self.array_normalizer = Schema.Normalizer().normalize(self.array_schema)
         self.object_schema = {
             "type": "object",
             "properties": [
@@ -28,7 +28,7 @@ class TestNormalize(TestCase):
                 }
             ]
         }
-        self.object_normalizer = ModelNormalizer(Schema).normalize(self.object_schema)
+        self.object_normalizer = Schema.Normalizer().normalize(self.object_schema)
         self.deep_schema = {
             "type": "array",
             "items": {
@@ -47,7 +47,7 @@ class TestNormalize(TestCase):
                 ]
             }
         }
-        self.deep_normalizer = ModelNormalizer(Schema).normalize(self.deep_schema)
+        self.deep_normalizer = Schema.Normalizer().normalize(self.deep_schema)
 
     def test_json(self):
         for i in [1, True, 2.3, "blah", [], {}]:
@@ -97,50 +97,50 @@ class TestNormalize(TestCase):
             self.object_normalizer.normalize({"foo": True, "barr": 2.0})
 
     def test_schema(self):
-        self.assertEqual(ModelNormalizer(Schema).normalize({"type": "integer"}).data.__class__, IntegerNormalizer)
-        self.assertEqual(ModelNormalizer(Schema).normalize({"type": "float"}).data.__class__, FloatNormalizer)
-        self.assertEqual(ModelNormalizer(Schema).normalize({"type": "boolean"}).data.__class__, BooleanNormalizer)
-        self.assertEqual(ModelNormalizer(Schema).normalize({"type": "string"}).data.__class__, StringNormalizer)
-        self.assertEqual(ModelNormalizer(Schema).normalize({"type": "core.JSON"}).data.model_cls, JSONData)
-        self.assertEqual(ModelNormalizer(Schema).normalize({"type": "core.Schema"}).data.model_cls, Schema)
+        self.assertEqual(Schema.Normalizer().normalize({"type": "integer"}).data.__class__, IntegerNormalizer)
+        self.assertEqual(Schema.Normalizer().normalize({"type": "float"}).data.__class__, FloatNormalizer)
+        self.assertEqual(Schema.Normalizer().normalize({"type": "boolean"}).data.__class__, BooleanNormalizer)
+        self.assertEqual(Schema.Normalizer().normalize({"type": "string"}).data.__class__, StringNormalizer)
+        self.assertEqual(Schema.Normalizer().normalize({"type": "core.JSON"}).data.model_cls, JSONData)
+        self.assertEqual(Schema.Normalizer().normalize({"type": "core.Schema"}).data.model_cls, Schema)
 
     def test_schema_missing_parts(self):
         # Forgot items
         s = self.array_schema.copy()
         s.pop("items")
         with self.assertRaisesRegexp(ValidationError, "Invalid schema"):
-            ModelNormalizer(Schema).normalize(s)
+            Schema.Normalizer().normalize(s)
         # Forgot properties
         s = self.object_schema.copy()
         s.pop("properties")
         with self.assertRaisesRegexp(ValidationError, "Invalid schema"):
-            ModelNormalizer(Schema).normalize(s)
+            Schema.Normalizer().normalize(s)
 
     def test_schema_mismatched_parts(self):
         # object with items
         s = self.array_schema.copy()
         s["type"] = "object"
         with self.assertRaisesRegexp(ValidationError, "Invalid schema"):
-            ModelNormalizer(Schema).normalize(s)
+            Schema.Normalizer().normalize(s)
         # array with properties
         s = self.object_schema.copy()
         s["type"] = "array"
         with self.assertRaisesRegexp(ValidationError, "Invalid schema"):
-            ModelNormalizer(Schema).normalize(s)
+            Schema.Normalizer().normalize(s)
 
     def test_schema_duplicate_properties(self):
         s = self.object_schema.copy()
         s["properties"][1]["name"] = "foo"
         with self.assertRaisesRegexp(ValidationError, "Duplicate properties"):
-            ModelNormalizer(Schema).normalize(s)
+            Schema.Normalizer().normalize(s)
 
     def test_schema_not_object(self):
         with self.assertRaisesRegexp(ValidationError, "Invalid object"):
-            ModelNormalizer(Schema).normalize(True)
+            Schema.Normalizer().normalize(True)
 
     def test_schema_unknown_type(self):
         with self.assertRaisesRegexp(ValidationError, "Unknown type"):
-            ModelNormalizer(Schema).normalize({"type": "number"})
+            Schema.Normalizer().normalize({"type": "number"})
 
     def test_deep_schema_validation_stack(self):
         with self.assertRaisesRegexp(ValidationError, "[0]"):
@@ -168,7 +168,7 @@ class TestSerialize(TestCase):
                 ]
             }
         }
-        schema = ModelNormalizer(Schema).normalize(schema_json)
+        schema = Schema.Normalizer().normalize(schema_json)
         self.assertEqual(schema_json, serialize_json(schema))
 
 class TestObjectModel(TestCase):

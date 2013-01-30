@@ -4,8 +4,29 @@ import json
 from cosmic.exceptions import ValidationError, UnicodeDecodeValidationError, SpecError
 
 
+class ModelHook(type):
+    def __new__(meta, name, bases, attrs):
+        cls = super(ModelHook, meta).__new__(meta, name, bases, attrs)
+        class N(ModelNormalizer):
+            model_cls = cls
+            @property
+            def validates(self):
+                return {u"type": cls.name}
+            def normalize(self, datum):
+                # Normalize against model schema
+                schema = cls.get_schema()
+                if schema:
+                    schema = Schema.Normalizer().normalize(schema)
+                    datum = schema.normalize(datum)
+                # Validate against model's custom validation function
+                datum = cls.validate(datum)
+                # Instantiate
+                return cls(datum)
+        cls.Normalizer = N
+        return cls
 
 class Model(object):
+    __metaclass__ = ModelHook
     def __init__(self, data=None):
         self.data = data
     def serialize(self):
@@ -15,12 +36,18 @@ class Model(object):
         return datum
     @classmethod
     def normalize(cls, datum):
-        return ModelNormalizer(cls).normalize(datum)
+        return cls.Normalizer().normalize(datum)
     @classmethod
     def get_schema(cls):
         if hasattr(cls, "schema"):
             return cls.schema
         return None
+
+class Normalizer(object):
+    pass
+
+class ModelNormalizer(Normalizer):
+    pass
 
 class ObjectModel(Model):
     properties = []
@@ -63,7 +90,7 @@ class JSONData(Model):
     def from_string(cls, s):
         if s == "":
             return None
-        return ModelNormalizer(cls).normalize(json.loads(s))
+        return cls.Normalizer().normalize(json.loads(s))
     @classmethod
     def validate(cls, datum):
         # Hack to make sure we don't end up with non-unicode strings in
@@ -78,26 +105,6 @@ class JSONData(Model):
                 ret[key] = cls.validate(value)
             return ret
         return datum
-
-class Normalizer(object):
-    pass
-
-class ModelNormalizer(Normalizer):
-    def __init__(self, model_cls):
-        self.model_cls = model_cls
-    @property
-    def validates(self):
-        return {u"type": self.model_cls.name}
-    def normalize(self, datum):
-        # Normalize against model schema
-        schema = self.model_cls.get_schema()
-        if schema:
-            schema = ModelNormalizer(Schema).normalize(schema)
-            datum = schema.normalize(datum)
-        # Validate against model's custom validation function
-        datum = self.model_cls.validate(datum)
-        # Instantiate
-        return self.model_cls(datum)
 
 class IntegerNormalizer(Normalizer):
     validates = {u"type": u"integer"}
@@ -156,8 +163,8 @@ class BooleanNormalizer(Normalizer):
         raise ValidationError("Invalid boolean", datum)
 
 class ArrayNormalizer(Normalizer):
-    def __init__(self, items_schema):
-        self.items = items_schema
+    def __init__(self, items):
+        self.items = items
     @property
     def validates(self):
         return {
@@ -307,7 +314,7 @@ class Schema(Model):
             {
                 "name": "items",
                 "required": False,
-                "schema": cls(ModelNormalizer(cls))
+                "schema": cls(cls.Normalizer())
             },
             {
                 "name": "properties",
@@ -327,18 +334,20 @@ class Schema(Model):
                         {
                             "name": "schema",
                             "required": True,
-                            "schema": cls(ModelNormalizer(cls))
+                            "schema": cls(cls.Normalizer())
                         }
                     ]))
                 ))
             }
         ])).normalize(datum)
         st = datum["type"]
+        # Everything other than type becomes an attribute
+        attrs = datum.copy()
+        attrs.pop("type")
         # Then make sure the attributes are right
-        if ((st == "array" and 'items' not in datum.keys()) or
-            (st == "object" and 'properties' not in datum.keys()) or
-            (st not in ["array", "object"] and len(datum) > 1) or
-            (len(datum) == 3)):
+        if ((st == "array" and attrs.keys() != ['items']) or
+            (st == "object" and attrs.keys() != ['properties']) or
+            (st not in ["array", "object"] and len(attrs) > 1)):
             raise ValidationError("Invalid schema", datum)
         if st == "object":
             keys = [prop["name"] for prop in datum["properties"]]
@@ -346,25 +355,25 @@ class Schema(Model):
                 raise ValidationError("Duplicate properties in schema", datum)
         # Simple type?
         if st == "integer":
-            return IntegerNormalizer()
+            return IntegerNormalizer(**attrs)
         if st == "float":
-            return FloatNormalizer()
+            return FloatNormalizer(**attrs)
         if st == "string":
-            return StringNormalizer()
+            return StringNormalizer(**attrs)
         if st == "boolean":
-            return BooleanNormalizer()
+            return BooleanNormalizer(**attrs)
         if st == "array":
-            return ArrayNormalizer(datum["items"])
+            return ArrayNormalizer(**attrs)
         if st == "object":
-            return ObjectNormalizer(datum["properties"])
+            return ObjectNormalizer(**attrs)
         # One of the core models?
         if st == "core.JSON":
-            return ModelNormalizer(JSONData)
+            return JSONData.Normalizer(**attrs)
         if st == "core.Schema":
-            return ModelNormalizer(cls)
+            return cls.Normalizer(**attrs)
         if '.' in st:
             model = cls.fetch_model(st)
-            return ModelNormalizer(model)
+            return model.Normalizer(**attrs)
         raise ValidationError("Unknown type", st)
 
 

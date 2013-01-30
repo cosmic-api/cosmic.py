@@ -48,7 +48,7 @@ def get_arg_spec(func):
         return None
     # One argument: accepts a single JSON object
     if len(args) == 1:
-        return Schema(ModelNormalizer(JSONData))
+        return Schema(JSONData.Normalizer())
     # Multiple arguments: accepts a JSON object with a property for
     # each argument, each property being of type 'json'
     props = []
@@ -57,7 +57,7 @@ def get_arg_spec(func):
     for i, arg in enumerate(args):
         props.append({
             "name": arg,
-            "schema": Schema(ModelNormalizer(JSONData)),
+            "schema": Schema(JSONData.Normalizer()),
             "required": i < numargs
         })
     return Schema(ObjectNormalizer(props))
@@ -111,9 +111,9 @@ def serialize_action_arguments(*args, **kwargs):
     `apply_to_action_func`. If no arguments passed, returns None.
     """
     if len(args) == 1 and len(kwargs) == 0:
-        return ModelNormalizer(JSONData).normalize(args[0])
+        return JSONData.Normalizer().normalize(args[0])
     if len(args) == 0 and len(kwargs) > 0:
-        return ModelNormalizer(JSONData).normalize(kwargs)
+        return JSONData.Normalizer().normalize(kwargs)
     if len(args) == 0 and len(kwargs) == 0:
         return None
     raise SpecError("Action must be called either with one argument or with one or more keyword arguments")
@@ -156,5 +156,5 @@ def normalize(schema, datum):
     """Schema is expected to be a valid schema and datum is expected
     to be the return value of json.loads
     """
-    normalizer = CosmicSchema(ModelNormalizer(CosmicSchema)).normalize(schema)
+    normalizer = CosmicSchema(CosmicSchema.Normalizer()).normalize(schema)
     return normalizer.normalize(datum)

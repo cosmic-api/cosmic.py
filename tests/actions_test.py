@@ -91,7 +91,7 @@ class TestBasicAction(TestCase):
                 c = "sauerkraut"
             return "%s pounds of %s" % (12.0 / servings, c)
 
-        self.action = Action(cabbage, returns=Schema(ModelNormalizer(JSONData)))
+        self.action = Action(cabbage, returns=Schema(JSONData.Normalizer()))
         self.view = self.action.get_view()
 
     def test_successful_call(self):
