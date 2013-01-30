@@ -193,12 +193,12 @@ class API(BaseAPI):
         """
         if accepts:
             try:
-                accepts = Schema(Schema.Normalizer()).normalize(accepts)
+                accepts = Schema(Schema.make_normalizer()).normalize(accepts)
             except ValidationError:
                 raise SpecError("'%s' was passed an invalid accepts schema" % self.name)
         if returns:
             try:
-                returns = Schema(Schema.Normalizer()).normalize(returns)
+                returns = Schema(Schema.make_normalizer()).normalize(returns)
             except ValidationError:
                 raise SpecError("'%s' was passed an invalid returns schema" % self.name)
 

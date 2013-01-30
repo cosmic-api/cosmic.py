@@ -31,7 +31,7 @@ class ModelHook(type):
         return cls
 
 class Model(object):
-    __metaclass__ = ModelHook
+    #__metaclass__ = ModelHook
     def __init__(self, data=None):
         self.data = data
     def serialize(self):
@@ -41,12 +41,29 @@ class Model(object):
         return datum
     @classmethod
     def normalize(cls, datum):
-        return cls.Normalizer().normalize(datum)
+        return cls.make_normalizer().normalize(datum)
     @classmethod
     def get_schema(cls):
         if hasattr(cls, "schema"):
-            return Schema.Normalizer().normalize(cls.schema)
+            return Schema.make_normalizer().normalize(cls.schema)
         return None
+    @classmethod
+    def make_normalizer(cls, *args, **kwargs):
+        class N(ModelNormalizer):
+            model_cls = cls
+            @property
+            def validates(self):
+                return {u"type": cls.name}
+            def normalize(self, datum):
+                # Normalize against model schema
+                schema = cls.get_schema()
+                if schema:
+                    datum = schema.normalize(datum)
+                # Validate against model's custom validation function
+                datum = cls.validate(datum)
+                # Instantiate
+                return cls(datum)
+        return N(*args, **kwargs)
 
 class ObjectModel(Model):
     properties = []
@@ -73,7 +90,7 @@ class ObjectModel(Model):
 
     @classmethod
     def get_schema(cls):
-        return Schema.Normalizer().normalize({
+        return Schema.make_normalizer().normalize({
             "type": "object",
             "properties": cls.properties
         })
@@ -89,7 +106,7 @@ class JSONData(Model):
     def from_string(cls, s):
         if s == "":
             return None
-        return cls.Normalizer().normalize(json.loads(s))
+        return cls.make_normalizer().normalize(json.loads(s))
     @classmethod
     def validate(cls, datum):
         # Hack to make sure we don't end up with non-unicode strings in
@@ -230,7 +247,7 @@ class Schema(Model):
             {
                 "name": "items",
                 "required": False,
-                "schema": cls(cls.Normalizer())
+                "schema": cls(cls.make_normalizer())
             },
             {
                 "name": "properties",
@@ -250,7 +267,7 @@ class Schema(Model):
                         {
                             "name": "schema",
                             "required": True,
-                            "schema": cls(cls.Normalizer())
+                            "schema": cls(cls.make_normalizer())
                         }
                     ]))
                 ))
@@ -282,18 +299,17 @@ class Schema(Model):
         }
         # Simple type?
         if st in simple.keys():
-            normalizer = simple[st]
+            return simple[st](**attrs)
         # Model?
         else:
             if st == "core.JSON":
-                normalizer = JSONData.Normalizer
+                return JSONData.make_normalizer(**attrs)
             elif st == "core.Schema":
-                normalizer = cls.Normalizer
+                return cls.make_normalizer(**attrs)
             elif '.' in st:
-                normalizer = cls.fetch_model(st).Normalizer
+                return cls.fetch_model(st).make_normalizer(**attrs)
             else:
                 raise ValidationError("Unknown type", st)
-        return normalizer(**attrs)
 
 
 def serialize_json(datum):
