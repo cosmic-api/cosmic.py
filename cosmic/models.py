@@ -4,6 +4,12 @@ import json
 from cosmic.exceptions import ValidationError, UnicodeDecodeValidationError, SpecError
 
 
+class Normalizer(object):
+    pass
+
+class ModelNormalizer(Normalizer):
+    pass
+
 class ModelHook(type):
     def __new__(meta, name, bases, attrs):
         cls = super(ModelHook, meta).__new__(meta, name, bases, attrs)
@@ -16,7 +22,6 @@ class ModelHook(type):
                 # Normalize against model schema
                 schema = cls.get_schema()
                 if schema:
-                    schema = Schema.Normalizer().normalize(schema)
                     datum = schema.normalize(datum)
                 # Validate against model's custom validation function
                 datum = cls.validate(datum)
@@ -40,14 +45,8 @@ class Model(object):
     @classmethod
     def get_schema(cls):
         if hasattr(cls, "schema"):
-            return cls.schema
+            return Schema.Normalizer().normalize(cls.schema)
         return None
-
-class Normalizer(object):
-    pass
-
-class ModelNormalizer(Normalizer):
-    pass
 
 class ObjectModel(Model):
     properties = []
@@ -74,10 +73,10 @@ class ObjectModel(Model):
 
     @classmethod
     def get_schema(cls):
-        return {
+        return Schema.Normalizer().normalize({
             "type": "object",
             "properties": cls.properties
-        }
+        })
 
 class JSONData(Model):
     name = "core.JSON"
@@ -109,11 +108,6 @@ class JSONData(Model):
 class IntegerNormalizer(Normalizer):
     validates = {u"type": u"integer"}
     def normalize(self, datum):
-        """If *datum* is an integer, return it; if it is a float with a 0
-        for its fractional part, return the integer part as an
-        integer. Otherwise, raise a
-        :exc:`~cosmic.exceptions.ValidationError`.
-        """
         if type(datum) == int:
             return datum
         if type(datum) == float and datum.is_integer():
@@ -123,10 +117,6 @@ class IntegerNormalizer(Normalizer):
 class FloatNormalizer(Normalizer):
     validates = {u"type": u"float"}
     def normalize(self, datum):
-        """If *datum* is a float, return it; if it is an integer, cast it
-        to a float and return it. Otherwise, raise a
-        :exc:`~cosmic.exceptions.ValidationError`.
-        """
         if type(datum) == float:
             return datum
         if type(datum) == int:
@@ -136,13 +126,6 @@ class FloatNormalizer(Normalizer):
 class StringNormalizer(Normalizer):
     validates = {u"type": u"string"}
     def normalize(self, datum):
-        """If *datum* is a unicode string, return it. If it is a string,
-        decode it as UTF-8 and return the result. Otherwise, raise a
-        :exc:`~cosmic.exceptions.ValidationError`. Unicode errors are dealt
-        with strictly by raising
-        :exc:`~cosmic.exceptions.UnicodeDecodeValidationError`, a subclass
-        of the above.
-        """
         if type(datum) == unicode:
             return datum
         if type(datum) == str:
@@ -155,9 +138,6 @@ class StringNormalizer(Normalizer):
 class BooleanNormalizer(Normalizer):
     validates = {u"type": u"boolean"}
     def normalize(self, datum):
-        """If *datum* is a boolean, return it. Otherwise, raise a
-        :exc:`~cosmic.exceptions.ValidationError`.
-        """
         if type(datum) == bool:
             return datum
         raise ValidationError("Invalid boolean", datum)
@@ -172,18 +152,6 @@ class ArrayNormalizer(Normalizer):
             u"items": self.items.serialize()
         }
     def normalize(self, datum):
-        """If *datum* is a list, construct a new list by running the
-        *items* normalization function on each element of *datum*. This
-        normalization function may raise
-        :exc:`~cosmic.exceptions.ValidationError`. If *datum* is not a list,
-        :exc:`~cosmic.exceptions.ValidationError` will be raised.
-
-        .. code::
-
-            >>> normalize_array([1.0, 2, 3.0], normalize_integer)
-            [1, 2, 3]
-
-        """
         if type(datum) == list:
             ret = []
             for i, item in enumerate(datum):
@@ -212,33 +180,6 @@ class ObjectNormalizer(Normalizer):
             u"properties": props
         }
     def normalize(self, datum):
-        """If *datum* is a dict, normalize it against *properties* and
-        return the resulting dict. Otherwise raise a
-        :exc:`~cosmic.exceptions.ValidationError`.
-
-        *properties* must be a list of dicts, where each dict has three
-        attributes: *name*, *required* and *schema*. *name* is a string
-        representing the property name, *required* is a boolean specifying
-        whether the *datum* needs to contain this property in order to
-        pass validation and *schema* is a normalization function.
-
-        .. code::
-
-            >>> normalize_object({"spicy": True}, [{
-            ...    "name": "spicy",
-            ...    "required": True,
-            ...    "schema": normalize_boolean
-            ... }])
-            {"spicy": True}
-
-        A :exc:`~cosmic.exceptions.ValidationError` will be raised if:
-
-        1. *datum* is missing a required property
-        2. *datum* has a property not declared in *properties*.
-        3. One of the properties of *datum* does not pass validation as defined
-           by the corresponding *schema* value.
-
-        """
         properties = self.properties
         if type(datum) == dict:
             ret = {}
@@ -279,33 +220,8 @@ class Schema(Model):
         raise ValidationError("The schema you are validating refers to a model (%s), but fetch_model has not been implemented" % full_name)
 
     @classmethod
-    def validate(cls, datum):
-        """Given a JSON representation of a schema, return a function that
-        will normalize data against that schema.
-
-        For primitive types, it returns one of the simple normalization
-        functions defined in this module::
-
-            >>> normalizer = normalize_schema({"type": "integer"})
-            >>> normalizer(1.0)
-            1
-            >>> normalizer == normalize_integer
-            True
-
-        For array or object types, it will build a custom function by
-        wrapping :func:`~cosmic.models.normalize_array` or
-        :func:`~cosmic.models.normalize_object`. These can be nested as deep
-        as you want, :func:`~cosmic.models.normalize_schema` will recurse::
-
-            >>> normalizer = normalize_schema({
-            ...     "type": "array",
-            ...     "schema": {"type": "float"}
-            ... })
-            >>> normalizer([1, 2.2, 3])
-            [1.0, 2.2, 3.0]
-
-        """
-        datum = cls(ObjectNormalizer([
+    def get_schema(cls):
+        return cls(ObjectNormalizer([
             {
                 "name": "type",
                 "required": True,
@@ -339,7 +255,10 @@ class Schema(Model):
                     ]))
                 ))
             }
-        ])).normalize(datum)
+        ]))
+
+    @classmethod
+    def validate(cls, datum):
         st = datum["type"]
         # Everything other than type becomes an attribute
         attrs = datum.copy()
@@ -353,28 +272,28 @@ class Schema(Model):
             keys = [prop["name"] for prop in datum["properties"]]
             if len(set(keys)) < len(keys):
                 raise ValidationError("Duplicate properties in schema", datum)
+        simple = {
+            "integer": IntegerNormalizer,
+            "float": FloatNormalizer,
+            "string": StringNormalizer,
+            "boolean": BooleanNormalizer,
+            "array": ArrayNormalizer,
+            "object": ObjectNormalizer
+        }
         # Simple type?
-        if st == "integer":
-            return IntegerNormalizer(**attrs)
-        if st == "float":
-            return FloatNormalizer(**attrs)
-        if st == "string":
-            return StringNormalizer(**attrs)
-        if st == "boolean":
-            return BooleanNormalizer(**attrs)
-        if st == "array":
-            return ArrayNormalizer(**attrs)
-        if st == "object":
-            return ObjectNormalizer(**attrs)
-        # One of the core models?
-        if st == "core.JSON":
-            return JSONData.Normalizer(**attrs)
-        if st == "core.Schema":
-            return cls.Normalizer(**attrs)
-        if '.' in st:
-            model = cls.fetch_model(st)
-            return model.Normalizer(**attrs)
-        raise ValidationError("Unknown type", st)
+        if st in simple.keys():
+            normalizer = simple[st]
+        # Model?
+        else:
+            if st == "core.JSON":
+                normalizer = JSONData.Normalizer
+            elif st == "core.Schema":
+                normalizer = cls.Normalizer
+            elif '.' in st:
+                normalizer = cls.fetch_model(st).Normalizer
+            else:
+                raise ValidationError("Unknown type", st)
+        return normalizer(**attrs)
 
 
 def serialize_json(datum):

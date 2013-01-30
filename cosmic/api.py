@@ -39,7 +39,7 @@ API_SCHEMA = {
             "required": True,
             "schema": {
                 "type": "array",
-                "items": BaseAction.get_schema()
+                "items": BaseAction.get_schema().serialize()
             }
         },
         {
