@@ -16,8 +16,66 @@ from cosmic.models import serialize_json, Schema, ObjectModel
 from cosmic.http import ALL_METHODS, View, UrlRule, Response, CorsPreflightView, make_view
 from cosmic.plugins import FlaskPlugin
 
-API_SCHEMA = {
-    "type": "object",
+# The cosmic-index API is saved here for convenience
+cosmic_index = None
+
+def clear_module_cache():
+    global cosmic_index
+    for name in sys.modules.keys():
+        if name.startswith('cosmic.index'):
+            del sys.modules[name]
+    cosmic_index = None
+
+def ensure_bootstrapped():
+    """Ensures the COSMIC index API is loaded. Call this before trying
+    API.load
+    """
+    global cosmic_index
+    if not cosmic_index:
+        data = json.dumps("cosmic-index")
+        headers = { 'Content-Type': 'application/json' }
+        res = requests.post("http://api.cosmic.io/actions/get_spec_by_name", data=data,
+            headers=headers)
+        cosmic_index = RemoteAPI(res.json)
+        sys.modules.setdefault('cosmic.cosmic_index', cosmic_index)
+
+
+class APIModel(BaseModel):
+
+    schema = {
+        "type": "object",
+        "properties": [
+            {
+                "name": "name",
+                "required": True,
+                "schema": {"type": "string"}
+            },
+            {
+                "name": "schema",
+                "required": True,
+                "schema": {"type": "core.Schema"}
+            }
+        ]
+    }
+
+    def serialize(self):
+        return {
+            u"name": self.data.__name__,
+            u"schema": self.data.get_schema().serialize()
+        }
+
+    @classmethod
+    def validate(cls, datum):
+        # Take a schema and name and turn them into a model class
+        class M(BaseModel):
+            @classmethod
+            def get_schema(cls):
+                return datum['schema']
+        M.__name__ = str(datum['name'])
+        return M
+
+
+API_SCHEMA = {"type": "object",
     "properties": [
         {
             "name": "name",
@@ -47,62 +105,12 @@ API_SCHEMA = {
             "required": True,
             "schema": {
                 "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": [
-                        {
-                            "name": "name",
-                            "schema": {"type": "string"},
-                            "required": True,
-                        },
-                        {
-                            "name": "schema",
-                            "schema": {"type": "core.Schema"},
-                            "required": True,
-                        }
-                    ]
-                }
+                "items": APIModel.get_schema().serialize()
             }
         }
     ]
 }
 
-# The cosmic-index API is saved here for convenience
-cosmic_index = None
-
-def clear_module_cache():
-    global cosmic_index
-    for name in sys.modules.keys():
-        if name.startswith('cosmic.index'):
-            del sys.modules[name]
-    cosmic_index = None
-
-def ensure_bootstrapped():
-    """Ensures the COSMIC index API is loaded. Call this before trying
-    API.load
-    """
-    global cosmic_index
-    if not cosmic_index:
-        data = json.dumps("cosmic-index")
-        headers = { 'Content-Type': 'application/json' }
-        res = requests.post("http://api.cosmic.io/actions/get_spec_by_name", data=data,
-            headers=headers)
-        cosmic_index = RemoteAPI(res.json)
-        sys.modules.setdefault('cosmic.cosmic_index', cosmic_index)
-
-class APIModel(ObjectModel):
-    properties = [
-        {
-            "name": "name",
-            "required": True,
-            "schema": {"type": "string"}
-        },
-        {
-            "name": "schema",
-            "required": True,
-            "schema": {"type": "core.Schema"}
-        }
-    ]
 
 class BaseAPI(object):
     def __init__(self):
@@ -110,6 +118,8 @@ class BaseAPI(object):
         # will be registered as part of the API
         self.actions = Namespace()
         self.models = models = Namespace()
+        self.api_models = []
+
 
 class API(BaseAPI):
 
@@ -122,15 +132,9 @@ class API(BaseAPI):
 
     @property
     def spec(self):
-        models = []
-        for model in self.models:
-            models.append({
-                'name': model.__name__,
-                'schema': model.schema
-            })
         spec = {
             "actions": [action.serialize() for action in self.actions],
-            "models": models,
+            "models": [model.serialize() for model in self.api_models],
             "name": self.name,
             "url": self.url
         }
@@ -213,6 +217,7 @@ class API(BaseAPI):
         # Raise ValidationError if model schema is invalid
         normalize({"type": "core.Schema"}, model_cls.schema)
         self.models.add(model_cls.__name__, model_cls)
+        self.api_models.append(APIModel(model_cls))
 
     def authenticate(self):
         """Authenticates the user based on request headers. Returns
@@ -261,12 +266,8 @@ class RemoteAPI(BaseAPI):
             self.actions.add(spec['name'], action)
 
         for spec in self.spec['models']:
-            name = spec['name']
-            attrs = {
-                "schema": spec['schema']
-            }
-            cls = type(str(name), (BaseModel,), attrs)
-            self.models.add(name, cls)
+            api_model = APIModel.from_json(spec)
+            self.models.add(api_model.data.__name__, api_model.data)
 
     @property
     def name(self):

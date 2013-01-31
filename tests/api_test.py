@@ -270,7 +270,7 @@ class TestRemoteAPI(TestCase):
 
     def test_models(self):
         self.assertEqual(self.cookbook.models.__all__, ["Cookie", "Recipe"])
-        self.assertEqual(self.cookbook.models.Recipe.schema, {"type": "string"})
+        self.assertEqual(self.cookbook.models.Recipe.get_schema().serialize(), {"type": "string"})
         self.assertEqual(self.cookbook.models.Recipe.__bases__, (Model,))
 
 if __name__ == '__main__':
