@@ -97,12 +97,12 @@ class TestNormalize(TestCase):
             self.object_normalizer.normalize({"foo": True, "barr": 2.0})
 
     def test_schema(self):
-        self.assertEqual(Schema.make_normalizer().normalize({"type": "integer"}).data.__class__, IntegerNormalizer)
-        self.assertEqual(Schema.make_normalizer().normalize({"type": "float"}).data.__class__, FloatNormalizer)
-        self.assertEqual(Schema.make_normalizer().normalize({"type": "boolean"}).data.__class__, BooleanNormalizer)
-        self.assertEqual(Schema.make_normalizer().normalize({"type": "string"}).data.__class__, StringNormalizer)
-        self.assertEqual(Schema.make_normalizer().normalize({"type": "core.JSON"}).data.model_cls, JSONData)
-        self.assertEqual(Schema.make_normalizer().normalize({"type": "core.Schema"}).data.model_cls, Schema)
+        self.assertEqual(Schema.make_normalizer().normalize({"type": "integer"}).__class__, IntegerNormalizer)
+        self.assertEqual(Schema.make_normalizer().normalize({"type": "float"}).__class__, FloatNormalizer)
+        self.assertEqual(Schema.make_normalizer().normalize({"type": "boolean"}).__class__, BooleanNormalizer)
+        self.assertEqual(Schema.make_normalizer().normalize({"type": "string"}).__class__, StringNormalizer)
+        self.assertEqual(Schema.make_normalizer().normalize({"type": "core.JSON"}).model_cls, JSONData)
+        self.assertEqual(Schema.make_normalizer().normalize({"type": "core.Schema"}).model_cls, Schema)
 
     def test_schema_missing_parts(self):
         # Forgot items

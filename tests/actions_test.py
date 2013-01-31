@@ -91,7 +91,7 @@ class TestBasicAction(TestCase):
                 c = "sauerkraut"
             return "%s pounds of %s" % (12.0 / servings, c)
 
-        self.action = Action(cabbage, returns=Schema(JSONData.make_normalizer()))
+        self.action = Action(cabbage, returns=JSONData.make_normalizer())
         self.view = self.action.get_view()
 
     def test_successful_call(self):
@@ -106,20 +106,20 @@ class TestBasicAction(TestCase):
 class TestActionAnnotation(TestCase):
 
     def setUp(self):
-        self.a_schema = Schema(ObjectNormalizer({
+        self.a_schema = ObjectNormalizer({
             "properties": [
                 {
                     "name": "a",
                     "required": True,
-                    "schema": Schema(IntegerNormalizer())
+                    "schema": IntegerNormalizer()
                 },
                 {
                     "name": "b",
                     "required": False,
-                    "schema": Schema(IntegerNormalizer())
+                    "schema": IntegerNormalizer()
                 }
             ]
-        }))
+        })
 
     def test_no_args_no_accepts(self):
         def func():
@@ -143,7 +143,7 @@ class TestActionAnnotation(TestCase):
         def func(a, b=1):
             pass
         with self.assertRaisesRegexp(SpecError, "incompatible"):
-            action = Action(func, accepts=Schema(BooleanNormalizer()))
+            action = Action(func, accepts=BooleanNormalizer())
 
     def test_args_accepts_compatible_returns_compatible(self):
         def func(a, b=1):

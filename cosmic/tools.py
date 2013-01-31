@@ -48,7 +48,7 @@ def get_arg_spec(func):
         return None
     # One argument: accepts a single JSON object
     if len(args) == 1:
-        return Schema(JSONData.make_normalizer())
+        return JSONData.make_normalizer()
     # Multiple arguments: accepts a JSON object with a property for
     # each argument, each property being of type 'json'
     props = []
@@ -57,10 +57,10 @@ def get_arg_spec(func):
     for i, arg in enumerate(args):
         props.append({
             "name": arg,
-            "schema": Schema(JSONData.make_normalizer()),
+            "schema": JSONData.make_normalizer(),
             "required": i < numargs
         })
-    return Schema(ObjectNormalizer({"properties": props}))
+    return ObjectNormalizer({"properties": props})
 
 def apply_to_action_func(func, data):
     """Applies a JSONPayload object to the user-defined action
@@ -124,14 +124,14 @@ def schema_is_compatible(general, detailed):
     of JSON schema as returned by tools.get_arg_spec, the special
     schema is an arbitrary JSON schema as passed in by the user.
     """
-    if isinstance(general.data, ModelNormalizer) and general.data.model_cls == JSONData:
+    if isinstance(general, ModelNormalizer) and general.model_cls == JSONData:
         return True
     # If not "json", general has to be an "object". Make sure detailed
     # is an object too
-    if not isinstance(detailed.data, ObjectNormalizer):
+    if not isinstance(detailed, ObjectNormalizer):
         return False
-    gprops = general.data.data['properties']
-    dprops = detailed.data.data['properties']
+    gprops = general.data['properties']
+    dprops = detailed.data['properties']
     if len(gprops) != len(dprops):
         return False
     for i in range(len(gprops)):
@@ -158,5 +158,5 @@ def normalize(schema, datum):
     """Schema is expected to be a valid schema and datum is expected
     to be the return value of json.loads
     """
-    normalizer = CosmicSchema(CosmicSchema.make_normalizer()).normalize(schema)
+    normalizer = CosmicSchema.make_normalizer().normalize(schema)
     return normalizer.normalize(datum)
