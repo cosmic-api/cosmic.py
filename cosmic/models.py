@@ -69,6 +69,7 @@ class ObjectModel(Model):
             "properties": cls.properties
         })
 
+
 class JSONData(Model):
     name = "core.JSON"
 
@@ -100,7 +101,7 @@ class JSONData(Model):
         return datum
 
 
-class Normalizer(ObjectModel):
+class Normalizer(Model):
     pass
 
 class SimpleNormalizer(Normalizer):
@@ -263,6 +264,7 @@ class ObjectNormalizer(SimpleNormalizer):
 
     @classmethod
     def validate(cls, datum):
+        datum = super(ObjectNormalizer, cls).validate(datum)
         # Additional validation to check for duplicate properties
         props = [prop["name"] for prop in datum['properties']]
         if len(props) > len(set(props)):
@@ -361,6 +363,4 @@ def serialize_json(datum):
         for key, value in datum.items():
             ret[key] = serialize_json(value)
         return ret
-    if isinstance(datum, Model):
-        return serialize_json(datum.data)
 
