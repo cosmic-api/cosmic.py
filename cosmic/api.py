@@ -12,7 +12,7 @@ from cosmic.exceptions import APIError, SpecError, ValidationError
 from cosmic.actions import Action, RemoteAction, BaseAction
 from cosmic.tools import Namespace, normalize
 from cosmic.models import Model as BaseModel
-from cosmic.models import serialize_json, Schema, ObjectModel
+from cosmic.models import serialize_json, Schema, ObjectModel, ModelNormalizer
 from cosmic.http import ALL_METHODS, View, UrlRule, Response, CorsPreflightView, make_view
 from cosmic.plugins import FlaskPlugin
 
@@ -121,17 +121,20 @@ class BaseAPI(object):
         self.api_models = []
 
 
-class API(BaseAPI):
+class API(BaseModel):
 
     def __init__(self, name=None, url=None, homepage=None, **kwargs):
-        super(API, self).__init__()
+
+        self.actions = Namespace()
+        self.models = models = Namespace()
+        self.api_models = []
+
         self.name = name
         self.url = url
         self.homepage = homepage
         sys.modules['cosmic.index.' + name] = self
 
-    @property
-    def spec(self):
+    def serialize(self):
         spec = {
             "actions": [action.serialize() for action in self.actions],
             "models": [model.serialize() for model in self.api_models],
@@ -140,6 +143,10 @@ class API(BaseAPI):
         }
         if self.homepage: spec['homepage'] = self.homepage
         return serialize_json(spec)
+
+    @property
+    def spec(self):
+        return self.serialize()
 
     def get_rules(self, debug=False):
         """Get a list of URL rules necessary for implementing this API
@@ -197,12 +204,12 @@ class API(BaseAPI):
         """
         if accepts:
             try:
-                accepts = Schema.make_normalizer().normalize(accepts)
+                accepts = ModelNormalizer(Schema).normalize(accepts)
             except ValidationError:
                 raise SpecError("'%s' was passed an invalid accepts schema" % self.name)
         if returns:
             try:
-                returns = Schema.make_normalizer().normalize(returns)
+                returns = ModelNormalizer(Schema).normalize(returns)
             except ValidationError:
                 raise SpecError("'%s' was passed an invalid returns schema" % self.name)
 

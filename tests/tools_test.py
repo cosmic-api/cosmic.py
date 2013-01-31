@@ -174,7 +174,7 @@ class TestSerializeActionArguments(TestCase):
 class TestSchemaIsCompatible(TestCase):
 
     def test_base_cases(self):
-        json_schema = JSONData.make_normalizer()
+        json_schema = ModelNormalizer(JSONData)
         assert schema_is_compatible(json_schema, IntegerNormalizer())
         assert schema_is_compatible(json_schema, FloatNormalizer())
 

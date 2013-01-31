@@ -29,14 +29,8 @@ class Model(object):
     @classmethod
     def get_schema(cls):
         if hasattr(cls, "schema"):
-            return Schema.make_normalizer().normalize(cls.schema)
+            return ModelNormalizer(Schema).normalize(cls.schema)
         return None
-
-    @classmethod
-    def make_normalizer(cls, datum=None):
-        normalizer = ModelNormalizer(datum)
-        normalizer.model_cls = cls
-        return normalizer
 
 
 class ObjectModel(Model):
@@ -64,7 +58,7 @@ class ObjectModel(Model):
 
     @classmethod
     def get_schema(cls):
-        return Schema.make_normalizer().normalize({
+        return ModelNormalizer(Schema).normalize({
             "type": "object",
             "properties": cls.properties
         })
@@ -83,7 +77,7 @@ class JSONData(Model):
     def from_string(cls, s):
         if s == "":
             return None
-        return cls.make_normalizer().normalize(json.loads(s))
+        return ModelNormalizer(cls).normalize(json.loads(s))
 
     @classmethod
     def validate(cls, datum):
@@ -132,10 +126,10 @@ class SimpleNormalizer(Normalizer):
 class ModelNormalizer(Normalizer):
 
     def serialize(self):
-        return {u"type": self.model_cls.name}
+        return {u"type": self.data.name}
 
     def normalize(self, datum):
-        return self.model_cls.from_json(datum)
+        return self.data.from_json(datum)
 
 
 class IntegerNormalizer(SimpleNormalizer):
@@ -198,7 +192,7 @@ class ArrayNormalizer(SimpleNormalizer):
                 {
                     "name": "items",
                     "required": True,
-                    "schema": Schema.make_normalizer()
+                    "schema": ModelNormalizer(Schema)
                 }
             ]
         })
@@ -253,7 +247,7 @@ class ObjectNormalizer(SimpleNormalizer):
                                 {
                                     "name": "schema",
                                     "required": True,
-                                    "schema": Schema.make_normalizer()
+                                    "schema": ModelNormalizer(Schema)
                                 }
                             ]
                         })
@@ -337,15 +331,14 @@ class Schema(Model):
             if st == simple_cls.match_type:
                 return simple_cls.from_json(datum)
         # Model?
+        if st == "core.JSON":
+            return ModelNormalizer(JSONData)
+        elif st == "core.Schema":
+            return ModelNormalizer(cls)
+        elif '.' in st:
+            return ModelNormalizer(cls.fetch_model(st))
         else:
-            if st == "core.JSON":
-                return JSONData.make_normalizer(datum)
-            elif st == "core.Schema":
-                return cls.make_normalizer(datum)
-            elif '.' in st:
-                return cls.fetch_model(st).make_normalizer(datum)
-            else:
-                raise ValidationError("Unknown type", st)
+            raise ValidationError("Unknown type", st)
 
 
 def serialize_json(datum):
