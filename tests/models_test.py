@@ -108,24 +108,24 @@ class TestNormalize(TestCase):
         # Forgot items
         s = self.array_schema.copy()
         s.pop("items")
-        with self.assertRaisesRegexp(ValidationError, "Invalid schema"):
+        with self.assertRaisesRegexp(ValidationError, "Missing properties"):
             Schema.make_normalizer().normalize(s)
         # Forgot properties
         s = self.object_schema.copy()
         s.pop("properties")
-        with self.assertRaisesRegexp(ValidationError, "Invalid schema"):
+        with self.assertRaisesRegexp(ValidationError, "Missing properties"):
             Schema.make_normalizer().normalize(s)
 
-    def test_schema_mismatched_parts(self):
+    def test_schema_extra_parts(self):
         # object with items
         s = self.array_schema.copy()
-        s["type"] = "object"
-        with self.assertRaisesRegexp(ValidationError, "Invalid schema"):
+        s["properties"] = self.object_schema["properties"]
+        with self.assertRaisesRegexp(ValidationError, "Unexpected properties"):
             Schema.make_normalizer().normalize(s)
         # array with properties
         s = self.object_schema.copy()
-        s["type"] = "array"
-        with self.assertRaisesRegexp(ValidationError, "Invalid schema"):
+        s["items"] = self.array_schema["items"]
+        with self.assertRaisesRegexp(ValidationError, "Unexpected properties"):
             Schema.make_normalizer().normalize(s)
 
     def test_schema_duplicate_properties(self):
@@ -135,7 +135,7 @@ class TestNormalize(TestCase):
             Schema.make_normalizer().normalize(s)
 
     def test_schema_not_object(self):
-        with self.assertRaisesRegexp(ValidationError, "Invalid object"):
+        with self.assertRaisesRegexp(ValidationError, "Invalid schema: True"):
             Schema.make_normalizer().normalize(True)
 
     def test_schema_unknown_type(self):

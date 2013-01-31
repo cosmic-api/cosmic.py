@@ -106,18 +106,20 @@ class TestBasicAction(TestCase):
 class TestActionAnnotation(TestCase):
 
     def setUp(self):
-        self.a_schema = Schema(ObjectNormalizer([
-            {
-                "name": "a",
-                "required": True,
-                "schema": Schema(IntegerNormalizer())
-            },
-            {
-                "name": "b",
-                "required": False,
-                "schema": Schema(IntegerNormalizer())
-            }
-        ]))
+        self.a_schema = Schema(ObjectNormalizer({
+            "properties": [
+                {
+                    "name": "a",
+                    "required": True,
+                    "schema": Schema(IntegerNormalizer())
+                },
+                {
+                    "name": "b",
+                    "required": False,
+                    "schema": Schema(IntegerNormalizer())
+                }
+            ]
+        }))
 
     def test_no_args_no_accepts(self):
         def func():

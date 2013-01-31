@@ -60,7 +60,7 @@ def get_arg_spec(func):
             "schema": Schema(JSONData.make_normalizer()),
             "required": i < numargs
         })
-    return Schema(ObjectNormalizer(props))
+    return Schema(ObjectNormalizer({"properties": props}))
 
 def apply_to_action_func(func, data):
     """Applies a JSONPayload object to the user-defined action
