@@ -144,9 +144,6 @@ class BooleanNormalizer(Normalizer):
 
 class ArrayNormalizer(Model):
 
-    def __init__(self, datum):
-        self.items = datum['items']
-
     @classmethod
     def get_schema(cls):
         return Schema(ObjectNormalizer({
@@ -162,7 +159,7 @@ class ArrayNormalizer(Model):
     def serialize(self):
         return {
             u"type": u"array",
-            u"items": self.items.serialize()
+            u"items": self.data['items'].serialize()
         }
 
     def normalize(self, datum):
@@ -170,7 +167,7 @@ class ArrayNormalizer(Model):
             ret = []
             for i, item in enumerate(datum):
                 try:
-                    ret.append(self.items.normalize(item))
+                    ret.append(self.data['items'].normalize(item))
                 except ValidationError as e:
                     e.stack.append(i)
                     raise
@@ -178,9 +175,6 @@ class ArrayNormalizer(Model):
         raise ValidationError("Invalid array", datum)
 
 class ObjectNormalizer(Model):
-
-    def __init__(self, datum):
-        self.properties = datum['properties']
 
     @classmethod
     def get_schema(cls):
@@ -223,7 +217,7 @@ class ObjectNormalizer(Model):
 
     def serialize(self):
         props = []
-        for prop in self.properties:
+        for prop in self.data['properties']:
             props.append({
                 u"name": prop["name"],
                 u"required": prop["required"],
@@ -235,7 +229,7 @@ class ObjectNormalizer(Model):
         }
 
     def normalize(self, datum):
-        properties = self.properties
+        properties = self.data['properties']
         if type(datum) == dict:
             ret = {}
             required = {}

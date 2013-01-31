@@ -130,11 +130,13 @@ def schema_is_compatible(general, detailed):
     # is an object too
     if not isinstance(detailed.data, ObjectNormalizer):
         return False
-    if len(general.data.properties) != len(detailed.data.properties):
+    gprops = general.data.data['properties']
+    dprops = detailed.data.data['properties']
+    if len(gprops) != len(dprops):
         return False
-    for i in range(len(general.data.properties)):
-        gp = general.data.properties[i]
-        dp = detailed.data.properties[i]
+    for i in range(len(gprops)):
+        gp = gprops[i]
+        dp = dprops[i]
         if gp["name"] != dp["name"] or gp["required"] != dp["required"]:
             return False
     return True
