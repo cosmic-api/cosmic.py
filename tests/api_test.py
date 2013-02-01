@@ -178,7 +178,7 @@ class TestAPI(TestCase):
             normalize({"type": "cookingbook.Recipe"}, "turkey")
 
     def test_model_normalize_bad_model(self):
-        with self.assertRaisesRegexp(ValidationError, "Unknown model for cookbook"):
+        with self.assertRaisesRegexp(ValidationError, "Unknown model"):
             normalize({"type": "cookbook.Schmecipe"}, "turkey")
 
     def test_subclassing_hook(self):
