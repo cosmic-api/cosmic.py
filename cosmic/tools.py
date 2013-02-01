@@ -146,7 +146,7 @@ class CosmicSchema(Schema):
     def fetch_model(cls, full_name):
         api_name, model_name = full_name.split('.', 1)
         try:
-            api = sys.modules['cosmic.index.' + api_name]
+            api = sys.modules['cosmic.registry.' + api_name]
         except KeyError:
             raise ValidationError("Unknown API", api_name)
         try:

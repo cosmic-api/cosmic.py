@@ -16,28 +16,28 @@ from cosmic.models import serialize_json, Schema, ObjectModel, ModelNormalizer
 from cosmic.http import ALL_METHODS, View, UrlRule, Response, CorsPreflightView, make_view
 from cosmic.plugins import FlaskPlugin
 
-# The cosmic-index API is saved here for convenience
-cosmic_index = None
+# The Cosmic Registry API is saved here for convenience
+cosmic_registry = None
 
 def clear_module_cache():
-    global cosmic_index
+    global cosmic_registry
     for name in sys.modules.keys():
-        if name.startswith('cosmic.index'):
+        if name.startswith('cosmic.registry'):
             del sys.modules[name]
-    cosmic_index = None
+    cosmic_registry = None
 
 def ensure_bootstrapped():
-    """Ensures the COSMIC index API is loaded. Call this before trying
+    """Ensures the Cosmic Registry API is loaded. Call this before trying
     API.load
     """
-    global cosmic_index
-    if not cosmic_index:
-        data = json.dumps("cosmic-index")
+    global cosmic_registry
+    if not cosmic_registry:
+        data = json.dumps("cosmic-registry")
         headers = { 'Content-Type': 'application/json' }
         res = requests.post("http://api.cosmic.io/actions/get_spec_by_name", data=data,
             headers=headers)
-        cosmic_index = RemoteAPI(res.json)
-        sys.modules.setdefault('cosmic.cosmic_index', cosmic_index)
+        cosmic_registry = RemoteAPI(res.json)
+        sys.modules.setdefault('cosmic.cosmic_registry', cosmic_registry)
 
 
 class APIModel(BaseModel):
@@ -132,7 +132,7 @@ class API(BaseModel):
         self.name = name
         self.url = url
         self.homepage = homepage
-        sys.modules['cosmic.index.' + name] = self
+        sys.modules['cosmic.registry.' + name] = self
 
     def serialize(self):
         spec = {
@@ -179,15 +179,15 @@ class API(BaseModel):
     def run(self, *args, **kwargs):
         """Runs the API as a Flask app. All arguments channelled into
         :meth:`Flask.run` except for *api_key*, which is an optional
-        string argument that, if set, triggers a call to COSMIC index to
-        register the API.
+        string argument that, if set, triggers a call to Cosmic
+        registry to register the API.
         """
         debug = kwargs.get('debug', False)
         api_key = kwargs.pop('api_key', None)
         url_prefix = kwargs.pop('url_prefix', None)
         if api_key:
             ensure_bootstrapped()
-            cosmic_index.actions.register_spec({
+            cosmic_registry.actions.register_spec({
                 "api_key": api_key,
                 "spec": self.spec
             })
@@ -255,9 +255,9 @@ class API(BaseModel):
         else:
             name = name_or_url
             ensure_bootstrapped()
-            spec = cosmic_index.actions.get_spec_by_name(name).data
+            spec = cosmic_registry.actions.get_spec_by_name(name).data
         api = RemoteAPI(spec)
-        sys.modules["cosmic.index." + name] = api
+        sys.modules["cosmic.registry." + name] = api
         return api
 
 

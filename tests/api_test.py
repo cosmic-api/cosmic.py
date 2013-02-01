@@ -13,9 +13,9 @@ from cosmic.api import API, RemoteAPI, API_SCHEMA
 from cosmic.models import Model
 from cosmic import api
 
-index_spec = {
+registry_spec = {
     u'url': u'http://api.cosmic.io',
-    u'name': u'cosmic-index',
+    u'name': u'cosmic-registry',
     u'actions': [
         {
             u'name': u'register_spec',
@@ -79,10 +79,10 @@ class TestBootstrapping(TestCase):
         with patch.object(requests, 'post') as mock_post:
             # Test initializing cosmic module
             mock_post.return_value.status_code = 200
-            mock_post.return_value.json = index_spec
+            mock_post.return_value.json = registry_spec
             api.ensure_bootstrapped()
-            mock_post.assert_called_with('http://api.cosmic.io/actions/get_spec_by_name', headers={'Content-Type': 'application/json'}, data=json.dumps("cosmic-index"))
-        self.assertTrue(isinstance(api.cosmic_index, RemoteAPI))
+            mock_post.assert_called_with('http://api.cosmic.io/actions/get_spec_by_name', headers={'Content-Type': 'application/json'}, data=json.dumps("cosmic-registry"))
+        self.assertTrue(isinstance(api.cosmic_registry, RemoteAPI))
 
     def tearDown(self):
         api.clear_module_cache()
@@ -157,7 +157,7 @@ class TestAPI(TestCase):
         class Cookie(Model):
             schema = {u"type": u"boolean"}
 
-        api.cosmic_index = RemoteAPI(index_spec)
+        api.cosmic_registry = RemoteAPI(registry_spec)
         self.app = self.cookbook.get_flask_app(debug=True)
         self.werkzeug_client = self.app.test_client()
 
@@ -240,10 +240,10 @@ class TestAPI(TestCase):
             mock_get.return_value.status_code = 200
             cookbook_decentralized = API.load('http://example.com/spec.json')
             self.assertEqual(cookbook_decentralized.spec, cookbook_spec)
-            self.assertEqual(sys.modules['cosmic.index.cookbook'], cookbook_decentralized)
+            self.assertEqual(sys.modules['cosmic.registry.cookbook'], cookbook_decentralized)
 
     def test_api_module_cache(self):
-        self.assertEqual(sys.modules['cosmic.index.cookbook'], self.cookbook)
+        self.assertEqual(sys.modules['cosmic.registry.cookbook'], self.cookbook)
 
     def test_apierror_repr(self):
         """Make sure when APIError gets printed in stack trace we can see the message"""

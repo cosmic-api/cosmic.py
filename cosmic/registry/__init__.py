@@ -8,15 +8,15 @@ class DynamicLoader(object):
 
     def find_module(self, name, path=None):
         names = name.split('.')
-        if not name.startswith('cosmic.index'):
+        if not name.startswith('cosmic.registry'):
             return None
-        # If we are trying to import cosmic.index.x
+        # If we are trying to import cosmic.registry.x
         if len(names) >= 3:
             return self
         return None
 
     def get_package(self, api_name):
-        package_name = "cosmic.index.%s" % api_name
+        package_name = "cosmic.registry.%s" % api_name
         # Fetch the base package
         if package_name in sys.modules.keys():
             package = sys.modules[package_name]
