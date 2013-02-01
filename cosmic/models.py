@@ -65,7 +65,7 @@ class ObjectModel(Model):
 
 
 class JSONData(Model):
-    name = "core.JSON"
+    name = u"core.JSON"
 
     def __repr__(self):
         contents = json.dumps(self.data)
@@ -119,9 +119,6 @@ class SimpleNormalizer(Normalizer):
             raise ValidationError("%s expects type=%s" % (cls.__name__, cls.match_type,))
         return datum
 
-    def serialize(self):
-        return {u"type": self.match_type}
-
 
 class ModelNormalizer(Normalizer):
 
@@ -131,9 +128,21 @@ class ModelNormalizer(Normalizer):
     def normalize(self, datum):
         return self.data.from_json(datum)
 
+    @classmethod
+    def validate(cls, datum):
+        t = datum['type']
+        if t == "core.JSON":
+            return JSONData
+        elif t == "core.Schema":
+            return Schema
+        elif '.' in t:
+            return cls.fetch_model(t)
+        else:
+            raise ValidationError("Unknown model", t)
+
 
 class IntegerNormalizer(SimpleNormalizer):
-    match_type = "integer"
+    match_type = u"integer"
 
     def normalize(self, datum):
         if type(datum) == int:
@@ -144,7 +153,7 @@ class IntegerNormalizer(SimpleNormalizer):
 
 
 class FloatNormalizer(SimpleNormalizer):
-    match_type = "float"
+    match_type = u"float"
 
     def normalize(self, datum):
         if type(datum) == float:
@@ -155,7 +164,7 @@ class FloatNormalizer(SimpleNormalizer):
 
 
 class StringNormalizer(SimpleNormalizer):
-    match_type = "string"
+    match_type = u"string"
 
     def normalize(self, datum):
         if type(datum) == unicode:
@@ -169,7 +178,7 @@ class StringNormalizer(SimpleNormalizer):
 
 
 class BooleanNormalizer(SimpleNormalizer):
-    match_type = "boolean"
+    match_type = u"boolean"
 
     def normalize(self, datum):
         if type(datum) == bool:
@@ -178,7 +187,7 @@ class BooleanNormalizer(SimpleNormalizer):
 
 
 class ArrayNormalizer(SimpleNormalizer):
-    match_type = "array"
+    match_type = u"array"
 
     @classmethod
     def get_schema(cls):
@@ -197,12 +206,6 @@ class ArrayNormalizer(SimpleNormalizer):
             ]
         })
 
-    def serialize(self):
-        return {
-            u"type": u"array",
-            u"items": self.data['items'].serialize()
-        }
-
     def normalize(self, datum):
         if type(datum) == list:
             ret = []
@@ -217,7 +220,7 @@ class ArrayNormalizer(SimpleNormalizer):
 
 
 class ObjectNormalizer(SimpleNormalizer):
-    match_type = "object"
+    match_type = u"object"
 
     @classmethod
     def get_schema(cls):
@@ -264,19 +267,6 @@ class ObjectNormalizer(SimpleNormalizer):
         if len(props) > len(set(props)):
             raise ValidationError("Duplicate properties")
         return datum
-
-    def serialize(self):
-        props = []
-        for prop in self.data['properties']:
-            props.append({
-                u"name": prop["name"],
-                u"required": prop["required"],
-                u"schema": prop["schema"].serialize()
-            })
-        return {
-            u"type": u"object",
-            u"properties": props
-        }
 
     def normalize(self, datum):
         properties = self.data['properties']

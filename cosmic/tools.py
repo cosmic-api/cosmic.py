@@ -60,7 +60,7 @@ def get_arg_spec(func):
             "schema": ModelNormalizer(JSONData),
             "required": i < numargs
         })
-    return ObjectNormalizer({"properties": props})
+    return ObjectNormalizer({"type": "object", "properties": props})
 
 def apply_to_action_func(func, data):
     """Applies a JSONPayload object to the user-defined action
