@@ -39,11 +39,11 @@ the data is is meant to validate.
     needs to be ported.
 
 When a JSON representation of a schema gets compiled, the resulting
-object (an instance of :class:`~cosmic.models.Schema`) will provide a
-:meth:`normalize` method. This method will take JSON data as provided
-by :func:`json.loads` and either return the normalized data or
-raise a :class:`~cosmic.exceptions.ValidationError`. Here is the basic
-usage with a shortcut function, :func:`~cosmic.tools.normalize`::
+object will provide a :meth:`normalize` method. This method will take
+JSON data as provided by :func:`json.loads` and either return the
+normalized data or raise a
+:class:`~cosmic.exceptions.ValidationError`. Here is the basic usage
+with a shortcut function, :func:`~cosmic.tools.normalize`::
 
     >>> from cosmic.tools import normalize
     >>> normalize({"type": "integer"}, 1)
@@ -125,7 +125,7 @@ Of course, these schemas can be nested as deep as you like. For
 example, to validate ``[{"name": "Rose"}, {"name": "Lily"}]``, you
 could use the following schema:
 
-.. code:: json
+.. code:: python
 
     {
         "type": "array",
@@ -135,10 +135,91 @@ could use the following schema:
                 {
                     "name": "name",
                     "schema": {"type": "string"},
-                    "required": true
+                    "required": True
                 }
             ]
         }
     }
 
+Models
+------
 
+A *model* is a data type definition in the form of a Python class, a
+subclass of :class:`~cosmic.models.Model`. A model instance can be
+serialized to JSON and the class must provide a method to instantiate
+it from JSON. This method must also validate the model. You will find
+that a lot of Cosmic internal classes are actually models.
+
+Let's start with a minimal implementation::
+
+    >>> from cosmic.models import Model
+    >>> class Animal(Model):
+    ...     schema = {"type": "string"}
+    ... 
+
+There are two ways to instantiate this model, depending on whether you
+want your input validated. If the data is internally generated or has
+already been validated, use the model's constructor. If your input if
+coming from an untrusted source, use the model's
+:meth:`~cosmic.models.Model.from_json` static method::
+
+   >>> tiger = Animal.from_json("tiger")
+   >>> tiger.serialize()
+   u'tiger'
+   >>> Animal.from_json(21)
+    Traceback (most recent call last):
+      File "<stdin>", line 1, in <module>
+      File "cosmic/models.py", line 23, in from_json
+        datum = schema.normalize(datum)
+      File "cosmic/models.py", line 190, in normalize
+        raise ValidationError("Invalid string", datum)
+    cosmic.exceptions.ValidationError: Invalid string: 21
+
+If the schema validation passes, the normalized data will be passed
+into :meth:`~cosmic.models.Model.validate` for second-stage
+validation. The reason :meth:`validate` is a class method is to make
+sure no model gets instantiated until the data is validated::
+
+    >>> class Beatle(Model):
+    ...     schema = {"type": "string"}
+    ...     @classmethod
+    ...     def validate(cls, datum):
+    ...         if datum not in ["John", "Paul", "George", "Ringo"]:
+    ...             raise ValidationError("Beatle Not Found", datum)
+    ...         return datum
+    ... 
+    >>> ringo = Beatle.from_json("Ringo")
+    >>> yoko = Beatle.from_json("Yoko")
+    Traceback (most recent call last):
+      File "<stdin>", line 1, in <module>
+      File "cosmic/models.py", line 25, in from_json
+        datum = cls.validate(datum)
+      File "<stdin>", line 6, in validate
+    cosmic.exceptions.ValidationError: Beatle Not Found: u'Yoko'
+
+Most of the time, a model will be represented by a JSON object rather
+than a primitive type like a string. In those cases you may want to
+subclass :class:`cosmic.models.ObjectModel`, which will simplify you
+schema definition by asking directly for a list of properties::
+
+    >>> class Recipe(ObjectModel):
+    ...     properties = [
+    ...             {
+    ...                     "name": "name",
+    ...                     "required": True,
+    ...                     "schema": {"type": "string"}
+    ...             },
+    ...             {
+    ...                     "name": "spicy",
+    ...                     "required": False,
+    ...                     "schema": {"type": "boolean"}
+    ...             }
+    ...     ]
+    ... 
+    >>> poutine = Recipe.from_json({"name": "Poutine"})
+
+As an added benefit, you can now access these properties directly::
+
+    >>> poutine.spicy = True
+    >>> poutine.name
+    u'Poutine'
