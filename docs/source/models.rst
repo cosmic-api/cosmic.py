@@ -11,7 +11,7 @@ JSON Schema
 -----------
 
 A *schema* is a recursive JSON structure that mirrors the structure of
-the data is is meant to validate.
+the data it is meant to validate.
 
 .. note::
 
@@ -20,13 +20,14 @@ the data is is meant to validate.
     Before deciding to go with our own system, we took a good look at
     some existing options. Our best candidates were `JSON Schema
     <http://json-schema.org/>`_ and `Apache Avro
-    <http://avro.apache.org/>`_. JSON Schema has a significant flaw:
-    the order of object attributes is not preserved. Apache Avro had a
-    different problem: because an attribute can be defined as allowing
-    multiple types, objects needed to be wrapped in an annotation
-    layer to avoid ambiguity. Instead of ``{"name": "Jenn"}`` we would
-    have to output ``{"Person": {"name": "Jenn"}}``. In the context of
-    REST APIs, this is uncommon and potentially confusing.
+    <http://avro.apache.org/>`_. JSON Schema has a significant
+    limitation: the order of object attributes is not
+    preserved. Apache Avro had a different problem: because an
+    attribute can be defined as allowing multiple types, objects
+    needed to be wrapped in an annotation layer to avoid
+    ambiguity. Instead of ``{"name": "Jenn"}`` we would have to output
+    ``{"Person": {"name": "Jenn"}}``. In the context of REST APIs,
+    this is uncommon and potentially confusing.
 
     Because Cosmic must be extremely portable, it is essential that we
     keep the feature list to a minimum. In this instance, the minimum
@@ -199,21 +200,21 @@ sure no model gets instantiated until the data is validated::
 
 Most of the time, a model will be represented by a JSON object rather
 than a primitive type like a string. In those cases you may want to
-subclass :class:`cosmic.models.ObjectModel`, which will simplify you
+subclass :class:`~cosmic.models.ObjectModel`, which will simplify your
 schema definition by asking directly for a list of properties::
 
     >>> class Recipe(ObjectModel):
     ...     properties = [
-    ...             {
-    ...                     "name": "name",
-    ...                     "required": True,
-    ...                     "schema": {"type": "string"}
-    ...             },
-    ...             {
-    ...                     "name": "spicy",
-    ...                     "required": False,
-    ...                     "schema": {"type": "boolean"}
-    ...             }
+    ...         {
+    ...             "name": "name",
+    ...             "required": True,
+    ...             "schema": {"type": "string"}
+    ...         },
+    ...         {
+    ...             "name": "spicy",
+    ...             "required": False,
+    ...             "schema": {"type": "boolean"}
+    ...         }
     ...     ]
     ... 
     >>> poutine = Recipe.from_json({"name": "Poutine"})
@@ -223,3 +224,107 @@ As an added benefit, you can now access these properties directly::
     >>> poutine.spicy = True
     >>> poutine.name
     u'Poutine'
+
+The real power of models comes from the fact that once they have been
+registered with an :class:`~cosmic.api.API`, you can reference them
+from any schema. If the above model was part of an API called
+``cookbook``, we would be able to reference it like so: ``{"type":
+"cookbook.Recipe"}``. When a JSON object gets validated against such a
+schema, the returned value will be an instance of :class:`Recipe`.
+
+    >>> normalize({"type": "cookbook.recipe"}, {"name": "kimchi"})
+    <Recipe object at 0x297dc10>
+
+When you reference a model belonging to your own API,
+Cosmic will call the model's :meth:`~cosmic.models.Model.to_json`
+method in the background, and thus run the full validation on the
+data. If you reference a model belonging to a third-party API, Cosmic
+will fetch the model schema from the registry, dynamically create a
+class representing that model and try to instantiate it by validating
+the data against the schema. Keep in mind that it will not be able to
+run custom validation on the data, only schema validation.
+
+Core Models
+~~~~~~~~~~~
+
+The ``core`` namespace is reserved for standard Cosmic models. Right
+now Cosmic ships with two such models: ``core.JSON`` and
+``core.Schema``.
+
+The former is a simple wrapper over arbitrary JSON data. You may want
+to use it as a wildcard when you don't know in advance what the data
+will look like, or if you expect a separate system to deal with it and
+its validation. Please avoid using it as a way of allowing multiple
+types for a property. Each property should have one specific type.
+
+.. code:: python
+
+    >>> thing = normalize({"type": "core.JSON"}, {"stuff": True})
+    >>> thing
+    <JSONData {"stuff": true}>
+    >>> thing.data["stuff"]
+    True
+
+.. note::
+
+    *What about null?*
+
+    The only place where ``null`` is allowed within our JSON schema
+    system is in a ``core.JSON`` model. Trying to pass a ``null`` as
+    the value of an optional property will result in a
+    :exc:`~cosmic.exceptions.ValidationError`, such a property should
+    simply be omitted from the payload.
+
+    The reason we wrap arbitrary JSON with a model rather than just
+    dump it is to avoid ambiguity between ``null`` as an explicit
+    value and ``None`` as an absense of value. There are a couple of
+    places where this ambiguity may cause confusion. Say you define a
+    model as follows::
+
+        >>> class Thing(ObjectModel):
+        ...     properties = [
+        ...         {
+        ...             "name": "stuff",
+        ...             "required": False,
+        ...             "schema": {"type": "core.JSON"}
+        ...         }
+        ...     ]
+
+    When its optional property is omitted, the value will be a plain
+    Python ``None``::
+
+        >>> thing = Thing.from_json({})
+        >>> thing.stuff is None
+        True
+
+    However, when you pass in an explicit null value, the property will
+    be boxed::
+
+        >>> thing = Thing.from_json({"stuff": None"})
+        >>> thing.stuff is None
+        False
+        >>> thing.stuff
+        <JSONData null>
+        >>> thing.stuff.data is None
+        True
+
+    Here is a real-life example where this detail comes in handy. A
+    JSON HTTP request may either come with a payload or with an empty
+    body. A payload of ``null`` is different from an empty body, and
+    may have a subtly different meaning. Thus we need a way to
+    differentiate between them. Conveniently, the
+    :class:`~cosmic.models.JSONData` class responsible for the
+    ``core.JSON`` model comes with a
+    :meth:`~cosmic.models.JSONData.from_string` method.
+
+    An empty string will yield a plain Python ``None`` value::
+
+        >>> from cosmic.models import JSONData
+        >>> JSONData.from_string("") is None
+        True
+
+    But a ``null`` will yield a boxed value::
+    
+        >>> JSONData.from_string("null")
+        <JSONData null>
+
