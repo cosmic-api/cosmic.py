@@ -13,7 +13,7 @@ class Model(object):
 
     @classmethod
     def validate(cls, datum):
-        return datum
+        return
 
     @classmethod
     def from_json(cls, datum):
@@ -22,7 +22,7 @@ class Model(object):
         if schema:
             datum = schema.normalize(datum)
         # Validate against model's custom validation function
-        datum = cls.validate(datum)
+        cls.validate(datum)
         # Instantiate
         return cls(datum)
 
@@ -90,15 +90,13 @@ class JSONData(Model):
         # Hack to make sure we don't end up with non-unicode strings in
         # normalized data
         if type(datum) == str:
-            return StringNormalizer().normalize(datum)
-        if type(datum) == list:
-            return [cls.validate(item) for item in datum]
-        if type(datum) == dict:
-            ret = {}
-            for key, value in datum.items():
-                ret[key] = cls.validate(value)
-            return ret
-        return datum
+            StringNormalizer().normalize(datum)
+        elif type(datum) == list:
+            for item in datum:
+                cls.validate(item)
+        elif type(datum) == dict:
+            for value in datum.values():
+                cls.validate(value)
 
 
 class Normalizer(Model):
@@ -107,7 +105,6 @@ class Normalizer(Model):
     def validate(cls, datum):
         if datum["type"] != cls.match_type:
             raise ValidationError("%s expects type=%s" % (cls.__name__, cls.match_type,))
-        return datum
 
 
 class SimpleNormalizer(Normalizer):
@@ -133,7 +130,7 @@ class SimpleNormalizer(Normalizer):
         })
 
 
-class ModelNormalizer(Normalizer):
+class ModelNormalizer(SimpleNormalizer):
 
     def serialize(self):
         return {u"type": self.data.name}
@@ -142,16 +139,22 @@ class ModelNormalizer(Normalizer):
         return self.data.from_json(datum)
 
     @classmethod
-    def validate(cls, datum):
+    def from_json(cls, datum):
+        # Run the schema normalization
+        datum = cls.get_schema().normalize(datum)
+        # Find model
         t = datum['type']
         if t == "core.JSON":
-            return JSONData
+            model = JSONData
         elif t == "core.Schema":
-            return cls.get_schema_cls()
+            model = cls.get_schema_cls()
         elif '.' in t:
-            return cls.get_schema_cls().fetch_model(t)
+            model = cls.get_schema_cls().fetch_model(t)
         else:
             raise ValidationError("Unknown model", t)
+        # Instantiate
+        return cls(model)
+
 
 
 class IntegerNormalizer(SimpleNormalizer):
@@ -274,12 +277,11 @@ class ObjectNormalizer(SimpleNormalizer):
 
     @classmethod
     def validate(cls, datum):
-        datum = super(ObjectNormalizer, cls).validate(datum)
+        super(ObjectNormalizer, cls).validate(datum)
         # Additional validation to check for duplicate properties
         props = [prop["name"] for prop in datum['properties']]
         if len(props) > len(set(props)):
             raise ValidationError("Duplicate properties")
-        return datum
 
     def normalize(self, datum):
         properties = self.data['properties']

@@ -142,8 +142,11 @@ def schema_is_compatible(general, detailed):
     return True
 
 class CosmicSchema(Schema):
+    builtin_models = {}
     @classmethod
     def fetch_model(cls, full_name):
+        if full_name in cls.builtin_models.keys():
+            return cls.builtin_models[full_name]
         api_name, model_name = full_name.split('.', 1)
         try:
             api = sys.modules['cosmic.registry.' + api_name]

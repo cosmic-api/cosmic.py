@@ -65,14 +65,16 @@ class APIModel(BaseModel):
         }
 
     @classmethod
-    def validate(cls, datum):
+    def from_json(cls, datum):
+        # Run the schema normalization
+        datum = cls.get_schema().normalize(datum)
         # Take a schema and name and turn them into a model class
         class M(BaseModel):
             @classmethod
             def get_schema(cls):
                 return datum['schema']
         M.__name__ = str(datum['name'])
-        return M
+        return cls(M)
 
 
 API_SCHEMA = {"type": "object",

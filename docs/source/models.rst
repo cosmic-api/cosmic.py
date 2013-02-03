@@ -187,7 +187,6 @@ sure no model gets instantiated until the data is validated::
     ...     def validate(cls, datum):
     ...         if datum not in ["John", "Paul", "George", "Ringo"]:
     ...             raise ValidationError("Beatle Not Found", datum)
-    ...         return datum
     ... 
     >>> ringo = Beatle.from_json("Ringo")
     >>> yoko = Beatle.from_json("Yoko")
