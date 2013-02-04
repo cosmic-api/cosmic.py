@@ -13,7 +13,7 @@ class Model(object):
 
     @classmethod
     def validate(cls, datum):
-        return
+        pass
 
     @classmethod
     def from_json(cls, datum):
@@ -71,7 +71,10 @@ class ObjectModel(Model):
 
 
 class JSONData(Model):
-    name = u"core.JSON"
+    _name = u"core.JSON"
+
+    def serialize(self):
+        return self.data
 
     def __repr__(self):
         contents = json.dumps(self.data)
@@ -133,7 +136,7 @@ class SimpleNormalizer(Normalizer):
 class ModelNormalizer(SimpleNormalizer):
 
     def serialize(self):
-        return {u"type": self.data.name}
+        return {u"type": self.data._name}
 
     def normalize(self, datum):
         return self.data.from_json(datum)
@@ -312,7 +315,7 @@ class ObjectNormalizer(SimpleNormalizer):
 
 
 class Schema(Model):
-    name = u"core.Schema"
+    _name = u"core.Schema"
 
     @classmethod
     def fetch_model(cls, full_name):
@@ -361,6 +364,7 @@ def serialize_json(datum):
     if dt == dict:
         ret = {}
         for key, value in datum.items():
-            ret[key] = serialize_json(value)
+            if value != None:
+                ret[key] = serialize_json(value)
         return ret
 

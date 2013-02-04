@@ -10,7 +10,7 @@ from flask import request
 import cosmic.resources
 from cosmic.exceptions import APIError, SpecError, ValidationError
 from cosmic.actions import Action, RemoteAction, BaseAction
-from cosmic.tools import Namespace, normalize
+from cosmic.tools import Namespace, normalize, CosmicSchema
 from cosmic.models import Model as BaseModel
 from cosmic.models import serialize_json, Schema, ObjectModel, ModelNormalizer
 from cosmic.http import ALL_METHODS, View, UrlRule, Response, CorsPreflightView, make_view
@@ -36,33 +36,32 @@ def ensure_bootstrapped():
         headers = { 'Content-Type': 'application/json' }
         res = requests.post("http://api.cosmic.io/actions/get_spec_by_name", data=data,
             headers=headers)
-        cosmic_registry = RemoteAPI(res.json)
+        cosmic_registry = RemoteAPI.from_json(res.json)
         sys.modules.setdefault('cosmic.cosmic_registry', cosmic_registry)
 
 
-class APIModel(BaseModel):
+class APIModel(ObjectModel):
+    schema_cls = CosmicSchema
 
-    schema = {
-        "type": "object",
-        "properties": [
-            {
-                "name": "name",
-                "required": True,
-                "schema": {"type": "string"}
-            },
-            {
-                "name": "schema",
-                "required": True,
-                "schema": {"type": "core.Schema"}
-            }
-        ]
-    }
-
-    def serialize(self):
-        return {
-            u"name": self.data.__name__,
-            u"schema": self.data.get_schema().serialize()
+    properties = [
+        {
+            "name": "name",
+            "required": True,
+            "schema": {"type": "string"}
+        },
+        {
+            "name": "schema",
+            "required": True,
+            "schema": {"type": "core.Schema"}
         }
+    ]
+
+    @classmethod
+    def from_model_cls(cls, model_cls):
+        return cls({
+            "name": model_cls.__name__,
+            "schema": model_cls.get_schema()
+        })
 
     @classmethod
     def from_json(cls, datum):
@@ -74,81 +73,82 @@ class APIModel(BaseModel):
             def get_schema(cls):
                 return datum['schema']
         M.__name__ = str(datum['name'])
-        return cls(M)
+        ret = cls(datum)
+        ret.model = M
+        return ret
+
+CosmicSchema.builtin_models["cosmic.APIModel"] = APIModel
 
 
-API_SCHEMA = {"type": "object",
-    "properties": [
-        {
-            "name": "name",
-            "schema": {"type": "string"},
-            "required": True
-        },
-        {
-            "name": "url",
-            "schema": {"type": "string"},
-            "required": True
-        },
-        {
-            "name": "homepage",
-            "schema": {"type": "string"},
-            "required": False
-        },
-        {
-            "name": "actions",
-            "required": True,
-            "schema": {
-                "type": "array",
-                "items": BaseAction.get_schema().serialize()
-            }
-        },
-        {
-            "name": "models",
-            "required": True,
-            "schema": {
-                "type": "array",
-                "items": APIModel.get_schema().serialize()
-            }
-        }
-    ]
-}
 
+class BaseAPI(BaseModel):
+    schema_cls = CosmicSchema
+    _name = "cosmic.API"
 
-class BaseAPI(object):
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        super(BaseAPI, self).__init__(*args, **kwargs)
         # Custom metaclass. When you inherit from Model, the new class
         # will be registered as part of the API
         self.actions = Namespace()
         self.models = models = Namespace()
-        self.api_models = []
-
-
-class API(BaseModel):
-
-    def __init__(self, name=None, url=None, homepage=None, **kwargs):
-
-        self.actions = Namespace()
-        self.models = models = Namespace()
-        self.api_models = []
-
-        self.name = name
-        self.url = url
-        self.homepage = homepage
-        sys.modules['cosmic.registry.' + name] = self
-
-    def serialize(self):
-        spec = {
-            "actions": [action.serialize() for action in self.actions],
-            "models": [model.serialize() for model in self.api_models],
-            "name": self.name,
-            "url": self.url
-        }
-        if self.homepage: spec['homepage'] = self.homepage
-        return serialize_json(spec)
 
     @property
-    def spec(self):
-        return self.serialize()
+    def name(self):
+        return self.data['name']
+
+    @property
+    def url(self):
+        return self.data['url']
+
+    schema = {"type": "object",
+        "properties": [
+            {
+                "name": "name",
+                "schema": {"type": "string"},
+                "required": True
+            },
+            {
+                "name": "url",
+                "schema": {"type": "string"},
+                "required": True
+            },
+            {
+                "name": "homepage",
+                "schema": {"type": "string"},
+                "required": False
+            },
+            {
+                "name": "actions",
+                "required": True,
+                "schema": {
+                    "type": "array",
+                    "items": {"type": "cosmic.Action"}
+                }
+            },
+            {
+                "name": "models",
+                "required": True,
+                "schema": {
+                    "type": "array",
+                    "items": {"type": "cosmic.APIModel"}
+                }
+            }
+        ]
+    }
+
+
+
+class API(BaseAPI):
+
+    def __init__(self, name=None, url=None, homepage=None, **kwargs):
+        sys.modules['cosmic.registry.' + name] = self
+        super(API, self).__init__({
+            "name": name,
+            "url": url,
+            "homepage": homepage,
+            "actions": [],
+            "models": []
+        })
 
     def get_rules(self, debug=False):
         """Get a list of URL rules necessary for implementing this API
@@ -168,7 +168,7 @@ class API(BaseModel):
             rules.append(UrlRule(url, action.name + '_cors', cors))
         @make_view("GET", None, {"type": "core.JSON"})
         def spec_view(payload):
-            return self.spec
+            return self.serialize()
         rules.append(UrlRule("/spec.json", "spec", spec_view))
         return rules
 
@@ -191,7 +191,7 @@ class API(BaseModel):
             ensure_bootstrapped()
             cosmic_registry.actions.register_spec({
                 "api_key": api_key,
-                "spec": self.spec
+                "spec": self.serialize()
             })
         if 'dry_run' not in kwargs.keys(): # pragma: no cover
             app = self.get_flask_app(debug=debug, url_prefix=url_prefix)
@@ -219,6 +219,7 @@ class API(BaseModel):
             name = func.__name__
             action = Action(func, accepts=accepts, returns=returns)
             self.actions.add(name, action)
+            self.data['actions'].append(action)
             return func
         return wrapper
 
@@ -226,7 +227,7 @@ class API(BaseModel):
         # Raise ValidationError if model schema is invalid
         normalize({"type": "core.Schema"}, model_cls.schema)
         self.models.add(model_cls.__name__, model_cls)
-        self.api_models.append(APIModel(model_cls))
+        self.data['models'].append(APIModel.from_model_cls(model_cls))
 
     def authenticate(self):
         """Authenticates the user based on request headers. Returns
@@ -258,31 +259,21 @@ class API(BaseModel):
             name = name_or_url
             ensure_bootstrapped()
             spec = cosmic_registry.actions.get_spec_by_name(name).data
-        api = RemoteAPI(spec)
+        api = RemoteAPI.from_json(spec)
         sys.modules["cosmic.registry." + name] = api
         return api
 
 
 class RemoteAPI(BaseAPI):
 
-    def __init__(self, spec):
-        super(RemoteAPI, self).__init__()
-        self.spec = spec
+    def __init__(self, *args, **kwargs):
+        super(RemoteAPI, self).__init__(*args, **kwargs)
 
-        for spec in self.spec['actions']:
-            action = RemoteAction.from_json(spec)
+        for action in self.data['actions']:
             action.api_url = self.url
-            self.actions.add(spec['name'], action)
+            self.actions.add(action.name, action)
 
-        for spec in self.spec['models']:
-            api_model = APIModel.from_json(spec)
-            self.models.add(api_model.data.__name__, api_model.data)
+        for model in self.data['models']:
+            self.models.add(model.name, model.model)
 
-    @property
-    def name(self):
-        return self.spec['name']
-
-    @property
-    def url(self):
-        return self.spec['url']
-
+CosmicSchema.builtin_models["cosmic.API"] = RemoteAPI

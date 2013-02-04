@@ -9,7 +9,7 @@ import requests
 
 from cosmic.exceptions import *
 from cosmic.tools import normalize
-from cosmic.api import API, RemoteAPI, API_SCHEMA
+from cosmic.api import API, RemoteAPI
 from cosmic.models import Model
 from cosmic import api
 
@@ -157,7 +157,7 @@ class TestAPI(TestCase):
         class Cookie(Model):
             schema = {u"type": u"boolean"}
 
-        api.cosmic_registry = RemoteAPI(registry_spec)
+        api.cosmic_registry = RemoteAPI.from_json(registry_spec)
         self.app = self.cookbook.get_flask_app(debug=True)
         self.werkzeug_client = self.app.test_client()
 
@@ -214,12 +214,12 @@ class TestAPI(TestCase):
             self.cookbook.run(api_key="FAKE", dry_run=True)
             body = json.dumps({
                 "api_key": "FAKE",
-                "spec": self.cookbook.spec
+                "spec": self.cookbook.serialize()
             })
             mock_post.assert_called_with('http://api.cosmic.io/actions/register_spec', headers={'Content-Type': 'application/json'}, data=body)
 
     def test_serialize(self):
-        self.assertEqual(self.cookbook.spec, cookbook_spec)
+        self.assertEqual(self.cookbook.serialize(), cookbook_spec)
 
     def test_call(self):
         data = '{"spicy": true}'
@@ -231,7 +231,7 @@ class TestAPI(TestCase):
         self.assertEqual(json.loads(res.data), cookbook_spec)
 
     def test_schema(self):
-        normalize(API_SCHEMA, self.cookbook.spec)
+        normalize({"type": "cosmic.API"}, self.cookbook.serialize())
 
     def test_load_url(self):
         """Test the API.load function when given a spec URL"""
@@ -239,7 +239,7 @@ class TestAPI(TestCase):
             mock_get.return_value.json = cookbook_spec
             mock_get.return_value.status_code = 200
             cookbook_decentralized = API.load('http://example.com/spec.json')
-            self.assertEqual(cookbook_decentralized.spec, cookbook_spec)
+            self.assertEqual(cookbook_decentralized.serialize(), cookbook_spec)
             self.assertEqual(sys.modules['cosmic.registry.cookbook'], cookbook_decentralized)
 
     def test_api_module_cache(self):
@@ -255,7 +255,7 @@ class TestAPI(TestCase):
 class TestRemoteAPI(TestCase):
 
     def setUp(self):
-        self.cookbook = RemoteAPI(cookbook_spec)
+        self.cookbook = RemoteAPI.from_json(cookbook_spec)
 
     def test_remote_no_return_action(self):
         with patch.object(requests, 'post') as mock_post:
