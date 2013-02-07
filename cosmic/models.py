@@ -106,14 +106,44 @@ class Normalizer(Model):
 
     @classmethod
     def validate(cls, datum):
+        """Make sure the *type* attribute matches the normalizer
+        type.
+
+        Realistically, no one is going to try::
+
+            >>> StringNormalizer.from_json({"type": "integer"})
+
+        But because normalizers are models, validation has to be
+        thorough.
+        """
         if datum["type"] != cls.match_type:
             raise ValidationError("%s expects type=%s" % (cls.__name__, cls.match_type,))
 
 
 class SimpleNormalizer(Normalizer):
+    """All simple normalizers have the same schema, which they will
+    inherit from this class. Because there is, in effect, only one
+    legal value they can be instantiated with, the constructor will
+    make it optional for the sake of convenience.
+
+    Common schema:
+
+    .. code:: json
+
+        {
+            "type": "object",
+            "properties": [
+                {
+                    "name": "type",
+                    "required": true,
+                    "schema": {"type": "string"}
+                }
+            ]
+        }
+
+    """
 
     def __init__(self, data=None):
-        # Allow instantiating with no data for convenience's sake
         if data != None:
             self.data = data
         else:
@@ -164,6 +194,11 @@ class IntegerNormalizer(SimpleNormalizer):
     match_type = u"integer"
 
     def normalize(self, datum):
+        """If *datum* is an integer, return it; if it is a float with
+        a 0 for its fractional part, return the integer part as an
+        int. Otherwise, raise a
+        :exc:`~cosmic.exceptions.ValidationError`.
+        """
         if type(datum) == int:
             return datum
         if type(datum) == float and datum.is_integer():
@@ -175,6 +210,10 @@ class FloatNormalizer(SimpleNormalizer):
     match_type = u"float"
 
     def normalize(self, datum):
+        """If *datum* is a float, return it; if it is an integer, cast
+        it to a float and return it. Otherwise, raise a
+        :exc:`~cosmic.exceptions.ValidationError`.
+        """
         if type(datum) == float:
             return datum
         if type(datum) == int:
@@ -186,6 +225,13 @@ class StringNormalizer(SimpleNormalizer):
     match_type = u"string"
 
     def normalize(self, datum):
+        """If *datum* is of unicode type, return it. If it is a
+        string, decode it as UTF-8 and return the result. Otherwise,
+        raise a :exc:`~apio.exceptions.ValidationError`. Unicode
+        errors are dealt with strictly by raising
+        :exc:`~cosmic.exceptions.UnicodeDecodeValidationError`, a
+        subclass of the above.
+        """
         if type(datum) == unicode:
             return datum
         if type(datum) == str:
@@ -200,16 +246,40 @@ class BooleanNormalizer(SimpleNormalizer):
     match_type = u"boolean"
 
     def normalize(self, datum):
+        """If *datum* is a boolean, return it. Otherwise, raise a
+        :exc:`~apio.exceptions.ValidationError`.
+        """
         if type(datum) == bool:
             return datum
         raise ValidationError("Invalid boolean", datum)
 
 
-class ArrayNormalizer(SimpleNormalizer):
+class ArrayNormalizer(Normalizer):
     match_type = u"array"
 
     @classmethod
     def get_schema(cls):
+        """Schema is as follows:
+
+        .. code:: json
+
+            {
+                "type": "object",
+                "properties": [
+                    {
+                        "name": "type",
+                        "required": true,
+                        "schema": {"type": "string"}
+                    },
+                    {
+                        "name": "items",
+                        "required": true,
+                        "schema": {"type": "core.Schema"}
+                    }
+                ]
+            }
+
+        """
         return ObjectNormalizer({
             "properties": [
                 {
@@ -226,6 +296,13 @@ class ArrayNormalizer(SimpleNormalizer):
         })
 
     def normalize(self, datum):
+        """If *datum* is a list, construct a new list by putting each
+        element of *datum* through the normalizer provided as
+        *items*. This normalizer may raise
+        :exc:`~cosmic.exceptions.ValidationError`. If *datum* is not a
+        list, :exc:`~cosmic.exceptions.ValidationError` will be
+        raised.
+        """
         if type(datum) == list:
             ret = []
             for i, item in enumerate(datum):
@@ -238,11 +315,52 @@ class ArrayNormalizer(SimpleNormalizer):
         raise ValidationError("Invalid array", datum)
 
 
-class ObjectNormalizer(SimpleNormalizer):
+class ObjectNormalizer(Normalizer):
     match_type = u"object"
 
     @classmethod
     def get_schema(cls):
+        """Schema is as follows:
+
+        .. code:: json
+
+            {
+                "type": "object",
+                "properties": [
+                    {
+                        "name": "type",
+                        "required": true,
+                        "schema": {"type": "string"}
+                    },
+                    {
+                        "name": "properties",
+                        "required": true,
+                        "schema": {
+                            "items": {
+                                "properties": [
+                                    {
+                                        "name": "name",
+                                        "required": true,
+                                        "schema": {"type": "string"}
+                                    },
+                                    {
+                                        "name": "required",
+                                        "required": true,
+                                        "schema": {"type": "boolean"}
+                                    },
+                                    {
+                                        "name": "schema",
+                                        "required": True,
+                                        "schema": {"type": "core.Schema"}
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                ]
+            }
+
+        """
         return ObjectNormalizer({
             "properties": [
                 {
@@ -280,6 +398,9 @@ class ObjectNormalizer(SimpleNormalizer):
 
     @classmethod
     def validate(cls, datum):
+        """Raises :exc:`~cosmic.exception.ValidationError` if there
+        are two properties with the same name.
+        """
         super(ObjectNormalizer, cls).validate(datum)
         # Additional validation to check for duplicate properties
         props = [prop["name"] for prop in datum['properties']]
@@ -287,6 +408,25 @@ class ObjectNormalizer(SimpleNormalizer):
             raise ValidationError("Duplicate properties")
 
     def normalize(self, datum):
+        """If *datum* is a dict, normalize it against *properties* and
+        return the resulting dict. Otherwise raise a
+        :exc:`~cosmic.exceptions.ValidationError`.
+
+        *properties* must be a list of dicts, where each dict has
+        three attributes: *name*, *required* and *schema*. *name* is a
+        string representing the property name, *required* is a boolean
+        specifying whether the *datum* needs to contain this property
+        in order to pass validation and *schema* is a normalization
+        function.
+
+        A :exc:`~cosmic.exceptions.ValidationError` will be raised if:
+
+        1. *datum* is missing a required property
+        2. *datum* has a property not declared in *properties*.
+        3. One of the properties of *datum* does not pass validation as defined
+           by the corresponding *schema* value.
+
+        """
         properties = self.data['properties']
         if type(datum) == dict:
             ret = {}

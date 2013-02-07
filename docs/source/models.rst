@@ -109,7 +109,7 @@ will be an array of property objects::
     cosmic.exceptions.ValidationError: Item at [u'id'] Invalid integer: 'Chameleon'
 
 An array schema must always contain an *items* property, which must be
-a *schema* that describes every item in the array. Here is a schema
+a schema that describes every item in the array. Here is a schema
 describing an array or strings:
 
     >>> schema = {
@@ -231,7 +231,7 @@ from any schema. If the above model was part of an API called
 "cookbook.Recipe"}``. When a JSON object gets validated against such a
 schema, the returned value will be an instance of :class:`Recipe`.
 
-    >>> normalize({"type": "cookbook.recipe"}, {"name": "kimchi"})
+    >>> normalize({"type": "cookbook.Recipe"}, {"name": "kimchi"})
     <Recipe object at 0x297dc10>
 
 When you reference a model belonging to your own API,
@@ -264,66 +264,150 @@ types for a property. Each property should have one specific type.
     >>> thing.data["stuff"]
     True
 
-.. note::
+The class responsible for the ``core.JSON`` model is
+:class:`~cosmic.models.JSONData`, you can use it directly like so::
 
-    *What about null?*
+    >>> from cosmic.models import JSONData
+    >>> thing = JSONData.from_json({"stuff": "True})
 
-    The only place where ``null`` is allowed within our JSON schema
-    system is in a ``core.JSON`` model. Trying to pass a ``null`` as
-    the value of an optional property will result in a
-    :exc:`~cosmic.exceptions.ValidationError`, such a property should
-    simply be omitted from the payload.
+The class responsible for the ``core.Schema`` model is
+:class:`~cosmic.models.Schema`, you can use it to validate JSON
+schemas and instantiate the object responsible for normalizing the
+corresponding data. (The convenience function
+:func:`~cosmic.tools.normalize` is actually a two-liner: it tries to
+instantiate a normalizer from the schema, then it puts the data
+through that normalizer)
 
-    The reason we wrap arbitrary JSON with a model rather than just
-    dump it is to avoid ambiguity between ``null`` as an explicit
-    value and ``None`` as an absense of value. There are a couple of
-    places where this ambiguity may cause confusion. Say you define a
-    model as follows::
+.. code:: python
 
-        >>> class Thing(ObjectModel):
-        ...     properties = [
-        ...         {
-        ...             "name": "stuff",
-        ...             "required": False,
-        ...             "schema": {"type": "core.JSON"}
-        ...         }
-        ...     ]
+    >>> from cosmic.models import Schema
+    >>> normalizer = Schema.from_json({"type": "integer"})
+    >>> normalizer
+    <cosmic.models.IntegerNormalizer object at 0x1c518d0>
+    >>> normalizer.normalize(1.0)
+    1
 
-    When its optional property is omitted, the value will be a plain
-    Python ``None``::
-
-        >>> thing = Thing.from_json({})
-        >>> thing.stuff is None
-        True
-
-    However, when you pass in an explicit null value, the property will
-    be boxed::
-
-        >>> thing = Thing.from_json({"stuff": None"})
-        >>> thing.stuff is None
-        False
-        >>> thing.stuff
-        <JSONData null>
-        >>> thing.stuff.data is None
-        True
-
-    Here is a real-life example where this detail comes in handy. A
-    JSON HTTP request may either come with a payload or with an empty
-    body. A payload of ``null`` is different from an empty body, and
-    may have a subtly different meaning. Thus we need a way to
-    differentiate between them. Conveniently, the
-    :class:`~cosmic.models.JSONData` class responsible for the
-    ``core.JSON`` model comes with a
-    :meth:`~cosmic.models.JSONData.from_string` method.
-
-    An empty string will yield a plain Python ``None`` value::
-
-        >>> from cosmic.models import JSONData
-        >>> JSONData.from_string("") is None
-        True
-
-    But a ``null`` will yield a boxed value::
+If something is wrong with your JSON schema, it will raise a
+:exc:`~cosmic.exceptions.ValidationError`::
     
-        >>> JSONData.from_string("null")
-        <JSONData null>
+    >>> Schema.from_json({"type": "foo"})
+    Traceback (most recent call last):
+      File "<stdin>", line 1, in <module>
+      File "cosmic/models.py", line 351, in from_json
+        raise ValidationError("Unknown type", st)
+    cosmic.exceptions.ValidationError: Unknown type: 'foo'
+
+Internally, :meth:`Schema.from_json` looks at the type attribute and
+delegates the work to more specific classes, like the
+:class:`~cosmic.models.IntegerNormalizer` seen above. Even though they
+are an integral part of the model system itself, these classes are
+plain models. Like any models, they have a schema and a custom
+validation function. They can be serialized back into JSON.
+
+
+Schema Model Reference
+~~~~~~~~~~~~~~~~~~~~~~
+
+Here is a list of all the basic normalizer classes. You will rarely
+need to use these directly. For your purposes,
+:class:`~cosmic.models.Schema` will be sufficient.
+
+.. autoclass:: cosmic.models.Normalizer
+   :members:
+
+.. autoclass:: cosmic.models.SimpleNormalizer
+   :show-inheritance:
+   :members:
+
+.. autoclass:: cosmic.models.IntegerNormalizer
+   :show-inheritance:
+   :undoc-members:
+   :members:
+
+.. autoclass:: cosmic.models.FloatNormalizer
+   :show-inheritance:
+   :undoc-members:
+   :members:
+
+.. autoclass:: cosmic.models.BooleanNormalizer
+   :show-inheritance:
+   :undoc-members:
+   :members:
+
+.. autoclass:: cosmic.models.StringNormalizer
+   :show-inheritance:
+   :undoc-members:
+   :members:
+
+.. autoclass:: cosmic.models.ArrayNormalizer
+   :show-inheritance:
+   :undoc-members:
+   :members:
+
+.. autoclass:: cosmic.models.ObjectNormalizer
+   :show-inheritance:
+   :undoc-members:
+   :members:
+
+A Word About Null
+-----------------
+
+The only place where ``null`` is allowed within our JSON schema
+system is in a ``core.JSON`` model. Trying to pass a ``null`` as
+the value of an optional property will result in a
+:exc:`~cosmic.exceptions.ValidationError`, such a property should
+simply be omitted from the payload.
+
+The reason we wrap arbitrary JSON with a model rather than just
+dump it is to avoid ambiguity between ``null`` as an explicit
+value and ``None`` as an absense of value. There are a couple of
+places where this ambiguity may cause confusion. Say you define a
+model as follows::
+
+    >>> class Thing(ObjectModel):
+    ...     properties = [
+    ...         {
+    ...             "name": "stuff",
+    ...             "required": False,
+    ...             "schema": {"type": "core.JSON"}
+    ...         }
+    ...     ]
+
+When its optional property is omitted, the value will be a plain
+Python ``None``::
+
+    >>> thing = Thing.from_json({})
+    >>> thing.stuff is None
+    True
+
+However, when you pass in an explicit null value, the property will
+be boxed::
+
+    >>> thing = Thing.from_json({"stuff": None"})
+    >>> thing.stuff is None
+    False
+    >>> thing.stuff
+    <JSONData null>
+    >>> thing.stuff.data is None
+    True
+
+Here is a real-life example where this detail comes in handy. A
+JSON HTTP request may either come with a payload or with an empty
+body. A payload of ``null`` is different from an empty body, and
+may have a subtly different meaning. Thus we need a way to
+differentiate between them. Conveniently, the
+:class:`~cosmic.models.JSONData` class responsible for the
+``core.JSON`` model comes with a
+:meth:`~cosmic.models.JSONData.from_string` method.
+
+An empty string will yield a plain Python ``None`` value::
+
+    >>> from cosmic.models import JSONData
+    >>> JSONData.from_string("") is None
+    True
+
+But a ``null`` will yield a boxed value::
+
+    >>> JSONData.from_string("null")
+    <JSONData null>
 
