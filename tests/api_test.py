@@ -19,13 +19,13 @@ registry_spec = {
     u'actions': [
         {
             u'name': u'register_spec',
-            u'returns': {u'type': u'core.JSON'},
-            u'accepts': {u'type': u'core.JSON'}
+            u'returns': {u'type': u'json'},
+            u'accepts': {u'type': u'json'}
         },
         {
             u'name': u'get_spec_by_name',
-            u'returns': {u'type': u'core.JSON'},
-            u'accepts': {u'type': u'core.JSON'}
+            u'returns': {u'type': u'json'},
+            u'accepts': {u'type': u'json'}
         }
     ],
     u"models": []
@@ -43,17 +43,17 @@ cookbook_spec = {
                     {
                         u"name": u"spicy",
                         u"required": True,
-                        u"schema": {u"type": u"core.JSON"}
+                        u"schema": {u"type": u"json"}
                     },
                     {
                         u"name": u"capitalize",
                         u"required": False,
-                        u"schema": {u"type": u"core.JSON"}
+                        u"schema": {u"type": u"json"}
                     }
                 ]
             },
             u'returns': {
-                u'type': u'core.JSON'
+                u'type': u'json'
             }
         },
         {

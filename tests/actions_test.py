@@ -26,7 +26,7 @@ class TestBasicRemoteAction(TestCase):
                     {
                         "name": 'capitalize',
                         "required": False,
-                        "schema": { 'type': 'core.JSON' }
+                        "schema": { 'type': 'json' }
                     }
                 ]
             },
@@ -131,13 +131,13 @@ class TestActionAnnotation(TestCase):
         def func(a=None):
             pass
         action = Action(func)
-        self.assertEqual(action.accepts.serialize(), {"type": "core.JSON"})
+        self.assertEqual(action.accepts.serialize(), {"type": "json"})
 
     def test_no_args_accepts(self):
         def func():
             pass
         with self.assertRaisesRegexp(SpecError, "is said to take arguments"):
-            action = Action(func, accepts={"type": "core.JSON"})
+            action = Action(func, accepts={"type": "json"})
 
     def test_args_accepts_incompatible(self):
         def func(a, b=1):

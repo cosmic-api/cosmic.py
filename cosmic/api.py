@@ -166,7 +166,7 @@ class API(BaseAPI):
             url = "/actions/%s" % action.name
             rules.append(UrlRule(url, action.name, view))
             rules.append(UrlRule(url, action.name + '_cors', cors))
-        @make_view("GET", None, {"type": "core.JSON"})
+        @make_view("GET", None, {"type": "json"})
         def spec_view(payload):
             return self.serialize()
         rules.append(UrlRule("/spec.json", "spec", spec_view))
@@ -200,7 +200,7 @@ class API(BaseAPI):
             app.config['PROPAGATE_EXCEPTIONS'] = debug
             app.run(*args, **kwargs)
 
-    def action(self, accepts=None, returns={u"type": u"core.JSON"}):
+    def action(self, accepts=None, returns={u"type": u"json"}):
         """Registers the given function as an API action. To be used
         as a decorator.
         """

@@ -70,38 +70,6 @@ class ObjectModel(Model):
         })
 
 
-class JSONData(Model):
-    _name = u"core.JSON"
-
-    def serialize(self):
-        return self.data
-
-    def __repr__(self):
-        contents = json.dumps(self.data)
-        if len(contents) > 60:
-            contents = contents[:56] + " ..."
-        return "<JSONData %s>" % contents
-
-    @classmethod
-    def from_string(cls, s):
-        if s == "":
-            return None
-        return cls.normalize(json.loads(s))
-
-    @classmethod
-    def validate(cls, datum):
-        # Hack to make sure we don't end up with non-unicode strings in
-        # normalized data
-        if type(datum) == str:
-            StringNormalizer().normalize_data(datum)
-        elif type(datum) == list:
-            for item in datum:
-                cls.validate(item)
-        elif type(datum) == dict:
-            for value in datum.values():
-                cls.validate(value)
-
-
 class Normalizer(Model):
 
     @classmethod
@@ -177,7 +145,7 @@ class ModelNormalizer(SimpleNormalizer):
         datum = cls.get_schema().normalize_data(datum)
         # Find model
         t = datum['type']
-        if t == "core.JSON":
+        if t == "json":
             model = JSONData
         elif t == "core.Schema":
             model = cls.get_schema_cls()
@@ -190,169 +158,6 @@ class ModelNormalizer(SimpleNormalizer):
 
 
 
-class IntegerNormalizer(SimpleNormalizer):
-    match_type = u"integer"
-    def normalize_data(self, datum):
-        return IntegerModel.normalize(datum)
-
-class FloatNormalizer(SimpleNormalizer):
-    match_type = u"float"
-    def normalize_data(self, datum):
-        return FloatModel.normalize(datum)
-
-class StringNormalizer(SimpleNormalizer):
-    match_type = u"string"
-    def normalize_data(self, datum):
-        return StringModel.normalize(datum)
-
-class BooleanNormalizer(SimpleNormalizer):
-    match_type = u"boolean"
-    def normalize_data(self, datum):
-        return BooleanModel.normalize(datum)
-
-class ArrayNormalizer(Normalizer):
-    match_type = u"array"
-
-    @classmethod
-    def get_schema(cls):
-        """Schema is as follows:
-
-        .. code:: json
-
-            {
-                "type": "object",
-                "properties": [
-                    {
-                        "name": "type",
-                        "required": true,
-                        "schema": {"type": "string"}
-                    },
-                    {
-                        "name": "items",
-                        "required": true,
-                        "schema": {"type": "core.Schema"}
-                    }
-                ]
-            }
-
-        """
-        return ObjectNormalizer({
-            "properties": [
-                {
-                    "name": "type",
-                    "required": True,
-                    "schema": StringNormalizer()
-                },
-                {
-                    "name": "items",
-                    "required": True,
-                    "schema": ModelNormalizer(cls.get_schema_cls())
-                }
-            ]
-        })
-
-    def normalize_data(self, datum):
-        class N(ArrayModel):
-            items = self.data['items']
-        return N.normalize(datum)
-
-
-class ObjectNormalizer(Normalizer):
-    match_type = u"object"
-
-    @classmethod
-    def get_schema(cls):
-        """Schema is as follows:
-
-        .. code:: json
-
-            {
-                "type": "object",
-                "properties": [
-                    {
-                        "name": "type",
-                        "required": true,
-                        "schema": {"type": "string"}
-                    },
-                    {
-                        "name": "properties",
-                        "required": true,
-                        "schema": {
-                            "items": {
-                                "properties": [
-                                    {
-                                        "name": "name",
-                                        "required": true,
-                                        "schema": {"type": "string"}
-                                    },
-                                    {
-                                        "name": "required",
-                                        "required": true,
-                                        "schema": {"type": "boolean"}
-                                    },
-                                    {
-                                        "name": "schema",
-                                        "required": True,
-                                        "schema": {"type": "core.Schema"}
-                                    }
-                                ]
-                            }
-                        }
-                    }
-                ]
-            }
-
-        """
-        return ObjectNormalizer({
-            "properties": [
-                {
-                    "name": "type",
-                    "required": True,
-                    "schema": StringNormalizer()
-                },
-                {
-                    "name": "properties",
-                    "required": True,
-                    "schema": ArrayNormalizer({
-                        "items": ObjectNormalizer({
-                            "properties": [
-                                {
-                                    "name": "name",
-                                    "required": True,
-                                    "schema": StringNormalizer()
-                                },
-                                {
-                                    "name": "required",
-                                    "required": True,
-                                    "schema": BooleanNormalizer()
-                                },
-                                {
-                                    "name": "schema",
-                                    "required": True,
-                                    "schema": ModelNormalizer(cls.get_schema_cls())
-                                }
-                            ]
-                        })
-                    })
-                }
-            ]
-        })
-
-    @classmethod
-    def validate(cls, datum):
-        """Raises :exc:`~cosmic.exception.ValidationError` if there
-        are two properties with the same name.
-        """
-        super(ObjectNormalizer, cls).validate(datum)
-        # Additional validation to check for duplicate properties
-        props = [prop["name"] for prop in datum['properties']]
-        if len(props) > len(set(props)):
-            raise ValidationError("Duplicate properties")
-
-    def normalize_data(self, datum):
-        class N(ObjectMModel):
-            properties = self.data['properties']
-        return N.normalize(datum)
 
 
 class ObjectMModel(object):
@@ -491,8 +296,207 @@ class BooleanModel(object):
         raise ValidationError("Invalid boolean", datum)
 
 
+class JSONData(Model):
+    _name = u"json"
+
+    def serialize(self):
+        return self.data
+
+    def __repr__(self):
+        contents = json.dumps(self.data)
+        if len(contents) > 60:
+            contents = contents[:56] + " ..."
+        return "<JSONData %s>" % contents
+
+    @classmethod
+    def from_string(cls, s):
+        if s == "":
+            return None
+        return cls.normalize(json.loads(s))
+
+    @classmethod
+    def validate(cls, datum):
+        # Hack to make sure we don't end up with non-unicode strings in
+        # normalized data
+        if type(datum) == str:
+            StringNormalizer().normalize_data(datum)
+        elif type(datum) == list:
+            for item in datum:
+                cls.validate(item)
+        elif type(datum) == dict:
+            for value in datum.values():
+                cls.validate(value)
 
 
+class Foo(SimpleNormalizer):
+    def normalize_data(self, datum):
+        return self.model.normalize(datum)
+
+class JSONDataNormalizer(Foo):
+    match_type = u"json"
+    model = JSONData
+
+class IntegerNormalizer(Foo):
+    match_type = u"integer"
+    model = IntegerModel
+
+class FloatNormalizer(Foo):
+    match_type = u"float"
+    model = FloatModel
+
+class StringNormalizer(Foo):
+    match_type = u"string"
+    model = StringModel
+
+class BooleanNormalizer(Foo):
+    match_type = u"boolean"
+    model = BooleanModel
+
+class ArrayNormalizer(Normalizer):
+    match_type = u"array"
+    model = ArrayModel
+
+    @classmethod
+    def get_schema(cls):
+        """Schema is as follows:
+
+        .. code:: json
+
+            {
+                "type": "object",
+                "properties": [
+                    {
+                        "name": "type",
+                        "required": true,
+                        "schema": {"type": "string"}
+                    },
+                    {
+                        "name": "items",
+                        "required": true,
+                        "schema": {"type": "core.Schema"}
+                    }
+                ]
+            }
+
+        """
+        return ObjectNormalizer({
+            "properties": [
+                {
+                    "name": "type",
+                    "required": True,
+                    "schema": StringNormalizer()
+                },
+                {
+                    "name": "items",
+                    "required": True,
+                    "schema": ModelNormalizer(cls.get_schema_cls())
+                }
+            ]
+        })
+
+    def normalize_data(self, datum):
+        class N(ArrayModel):
+            items = self.data['items']
+        return N.normalize(datum)
+
+
+class ObjectNormalizer(Normalizer):
+    match_type = u"object"
+    model = ObjectModel
+
+    @classmethod
+    def get_schema(cls):
+        """Schema is as follows:
+
+        .. code:: json
+
+            {
+                "type": "object",
+                "properties": [
+                    {
+                        "name": "type",
+                        "required": true,
+                        "schema": {"type": "string"}
+                    },
+                    {
+                        "name": "properties",
+                        "required": true,
+                        "schema": {
+                            "items": {
+                                "properties": [
+                                    {
+                                        "name": "name",
+                                        "required": true,
+                                        "schema": {"type": "string"}
+                                    },
+                                    {
+                                        "name": "required",
+                                        "required": true,
+                                        "schema": {"type": "boolean"}
+                                    },
+                                    {
+                                        "name": "schema",
+                                        "required": True,
+                                        "schema": {"type": "core.Schema"}
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                ]
+            }
+
+        """
+        return ObjectNormalizer({
+            "properties": [
+                {
+                    "name": "type",
+                    "required": True,
+                    "schema": StringNormalizer()
+                },
+                {
+                    "name": "properties",
+                    "required": True,
+                    "schema": ArrayNormalizer({
+                        "items": ObjectNormalizer({
+                            "properties": [
+                                {
+                                    "name": "name",
+                                    "required": True,
+                                    "schema": StringNormalizer()
+                                },
+                                {
+                                    "name": "required",
+                                    "required": True,
+                                    "schema": BooleanNormalizer()
+                                },
+                                {
+                                    "name": "schema",
+                                    "required": True,
+                                    "schema": ModelNormalizer(cls.get_schema_cls())
+                                }
+                            ]
+                        })
+                    })
+                }
+            ]
+        })
+
+    @classmethod
+    def validate(cls, datum):
+        """Raises :exc:`~cosmic.exception.ValidationError` if there
+        are two properties with the same name.
+        """
+        super(ObjectNormalizer, cls).validate(datum)
+        # Additional validation to check for duplicate properties
+        props = [prop["name"] for prop in datum['properties']]
+        if len(props) > len(set(props)):
+            raise ValidationError("Duplicate properties")
+
+    def normalize_data(self, datum):
+        class N(ObjectMModel):
+            properties = self.data['properties']
+        return N.normalize(datum)
 
 class Schema(Model):
     _name = u"core.Schema"
@@ -506,29 +510,29 @@ class Schema(Model):
         if type(datum) != dict or "type" not in datum.keys():
             raise ValidationError("Invalid schema", datum)
         st = datum["type"]
+        # Simple type?
+        simple = [
+            IntegerNormalizer,
+            FloatNormalizer,
+            StringNormalizer,
+            BooleanNormalizer,
+            ArrayNormalizer,
+            ObjectNormalizer,
+            JSONDataNormalizer
+        ]
+        for simple_cls in simple:
+            if st == simple_cls.match_type:
+                class s(simple_cls):
+                    schema_cls = cls
+                s.__name__ = simple_cls.__name__
+                return s.normalize(datum)
         # Model?
         if '.' in st:
             class s(ModelNormalizer):
                 schema_cls = cls
             s.__name__ = ModelNormalizer.__name__
             return s.normalize(datum)
-        # Simple type?
-        else:
-            simple = [
-                IntegerNormalizer,
-                FloatNormalizer,
-                StringNormalizer,
-                BooleanNormalizer,
-                ArrayNormalizer,
-                ObjectNormalizer
-            ]
-            for simple_cls in simple:
-                if st == simple_cls.match_type:
-                    class s(simple_cls):
-                        schema_cls = cls
-                    s.__name__ = simple_cls.__name__
-                    return s.normalize(datum)
-            raise ValidationError("Unknown type", st)
+        raise ValidationError("Unknown type", st)
 
 
 def serialize_json(datum):

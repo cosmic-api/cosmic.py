@@ -101,7 +101,7 @@ class TestNormalize(TestCase):
         self.assertTrue(isinstance(Schema.normalize({"type": "float"}), FloatNormalizer))
         self.assertTrue(isinstance(Schema.normalize({"type": "boolean"}), BooleanNormalizer))
         self.assertTrue(isinstance(Schema.normalize({"type": "string"}), StringNormalizer))
-        self.assertTrue(isinstance(Schema.normalize({"type": "core.JSON"}), ModelNormalizer))
+        self.assertTrue(isinstance(Schema.normalize({"type": "json"}), JSONDataNormalizer))
         self.assertTrue(isinstance(Schema.normalize({"type": "core.Schema"}), ModelNormalizer))
 
     def test_schema_missing_parts(self):
@@ -189,7 +189,7 @@ class TestObjectModel(TestCase):
                 {
                     "name": "meta",
                     "required": False,
-                    "schema": {"type": "core.JSON"}
+                    "schema": {"type": "json"}
                 }
             ]
         self.RecipeModel = RecipeModel
@@ -259,7 +259,7 @@ class TestObjectModel(TestCase):
                 {
                     "name": "meta",
                     "required": False,
-                    "schema": {"type": "core.JSON"}
+                    "schema": {"type": "json"}
                 }
             ]
         })
