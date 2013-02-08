@@ -52,7 +52,7 @@ class APIModel(ObjectModel):
         {
             "name": "schema",
             "required": True,
-            "schema": {"type": "core.Schema"}
+            "schema": {"type": "schema"}
         }
     ]
 
@@ -225,7 +225,7 @@ class API(BaseAPI):
 
     def model(self, model_cls):
         # Raise ValidationError if model schema is invalid
-        normalize({"type": "core.Schema"}, model_cls.schema)
+        normalize({"type": "schema"}, model_cls.schema)
         self.models.add(model_cls.__name__, model_cls)
         self.data['models'].append(APIModel.from_model_cls(model_cls))
 

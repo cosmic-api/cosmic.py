@@ -102,7 +102,7 @@ class TestNormalize(TestCase):
         self.assertTrue(isinstance(Schema.normalize({"type": "boolean"}), BooleanNormalizer))
         self.assertTrue(isinstance(Schema.normalize({"type": "string"}), StringNormalizer))
         self.assertTrue(isinstance(Schema.normalize({"type": "json"}), JSONDataNormalizer))
-        self.assertTrue(isinstance(Schema.normalize({"type": "core.Schema"}), ModelNormalizer))
+        self.assertTrue(isinstance(Schema.normalize({"type": "schema"}), SchemaNormalizer))
 
     def test_schema_missing_parts(self):
         # Forgot items

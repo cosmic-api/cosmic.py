@@ -145,14 +145,9 @@ class ModelNormalizer(SimpleNormalizer):
         datum = cls.get_schema().normalize_data(datum)
         # Find model
         t = datum['type']
-        if t == "json":
-            model = JSONData
-        elif t == "core.Schema":
-            model = cls.get_schema_cls()
-        elif '.' in t:
-            model = cls.get_schema_cls().fetch_model(t)
-        else:
+        if '.' not in t:
             raise ValidationError("Unknown model", t)
+        model = cls.get_schema_cls().fetch_model(t)
         # Instantiate
         return cls(model)
 
@@ -327,6 +322,44 @@ class JSONData(Model):
             for value in datum.values():
                 cls.validate(value)
 
+class Schema(Model):
+    _name = u"schema"
+
+    @classmethod
+    def fetch_model(cls, full_name):
+        raise ValidationError("The schema you are validating refers to a model (%s), but fetch_model has not been implemented" % full_name)
+
+    @classmethod
+    def normalize(cls, datum):
+        if type(datum) != dict or "type" not in datum.keys():
+            raise ValidationError("Invalid schema", datum)
+        st = datum["type"]
+        # Simple type?
+        simple = [
+            IntegerNormalizer,
+            FloatNormalizer,
+            StringNormalizer,
+            BooleanNormalizer,
+            ArrayNormalizer,
+            ObjectNormalizer,
+            JSONDataNormalizer,
+            SchemaNormalizer
+        ]
+        for simple_cls in simple:
+            if st == simple_cls.match_type:
+                class s(simple_cls):
+                    schema_cls = cls
+                s.__name__ = simple_cls.__name__
+                return s.normalize(datum)
+        # Model?
+        if '.' in st:
+            class s(ModelNormalizer):
+                schema_cls = cls
+            s.__name__ = ModelNormalizer.__name__
+            return s.normalize(datum)
+        raise ValidationError("Unknown type", st)
+
+
 
 class Foo(SimpleNormalizer):
     def normalize_data(self, datum):
@@ -335,6 +368,10 @@ class Foo(SimpleNormalizer):
 class JSONDataNormalizer(Foo):
     match_type = u"json"
     model = JSONData
+
+class SchemaNormalizer(Foo):
+    match_type = u"schema"
+    model = Schema
 
 class IntegerNormalizer(Foo):
     match_type = u"integer"
@@ -373,7 +410,7 @@ class ArrayNormalizer(Normalizer):
                     {
                         "name": "items",
                         "required": true,
-                        "schema": {"type": "core.Schema"}
+                        "schema": {"type": "schema"}
                     }
                 ]
             }
@@ -437,7 +474,7 @@ class ObjectNormalizer(Normalizer):
                                     {
                                         "name": "schema",
                                         "required": True,
-                                        "schema": {"type": "core.Schema"}
+                                        "schema": {"type": "schema"}
                                     }
                                 ]
                             }
@@ -497,43 +534,6 @@ class ObjectNormalizer(Normalizer):
         class N(ObjectMModel):
             properties = self.data['properties']
         return N.normalize(datum)
-
-class Schema(Model):
-    _name = u"core.Schema"
-
-    @classmethod
-    def fetch_model(cls, full_name):
-        raise ValidationError("The schema you are validating refers to a model (%s), but fetch_model has not been implemented" % full_name)
-
-    @classmethod
-    def normalize(cls, datum):
-        if type(datum) != dict or "type" not in datum.keys():
-            raise ValidationError("Invalid schema", datum)
-        st = datum["type"]
-        # Simple type?
-        simple = [
-            IntegerNormalizer,
-            FloatNormalizer,
-            StringNormalizer,
-            BooleanNormalizer,
-            ArrayNormalizer,
-            ObjectNormalizer,
-            JSONDataNormalizer
-        ]
-        for simple_cls in simple:
-            if st == simple_cls.match_type:
-                class s(simple_cls):
-                    schema_cls = cls
-                s.__name__ = simple_cls.__name__
-                return s.normalize(datum)
-        # Model?
-        if '.' in st:
-            class s(ModelNormalizer):
-                schema_cls = cls
-            s.__name__ = ModelNormalizer.__name__
-            return s.normalize(datum)
-        raise ValidationError("Unknown type", st)
-
 
 def serialize_json(datum):
     if isinstance(datum, Model):
