@@ -66,7 +66,7 @@ class APIModel(ObjectModel):
     @classmethod
     def from_json(cls, datum):
         # Run the schema normalization
-        datum = cls.get_schema().normalize(datum)
+        datum = cls.get_schema().normalize_data(datum)
         # Take a schema and name and turn them into a model class
         class M(BaseModel):
             @classmethod
@@ -206,12 +206,12 @@ class API(BaseAPI):
         """
         if accepts:
             try:
-                accepts = ModelNormalizer(Schema).normalize(accepts)
+                accepts = ModelNormalizer(Schema).normalize_data(accepts)
             except ValidationError:
                 raise SpecError("'%s' was passed an invalid accepts schema" % self.name)
         if returns:
             try:
-                returns = ModelNormalizer(Schema).normalize(returns)
+                returns = ModelNormalizer(Schema).normalize_data(returns)
             except ValidationError:
                 raise SpecError("'%s' was passed an invalid returns schema" % self.name)
 

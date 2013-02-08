@@ -20,7 +20,7 @@ class Model(object):
         # Normalize against model schema
         schema = cls.get_schema()
         if schema:
-            datum = schema.normalize(datum)
+            datum = schema.normalize_data(datum)
         # Validate against model's custom validation function
         cls.validate(datum)
         # Instantiate
@@ -93,7 +93,7 @@ class JSONData(Model):
         # Hack to make sure we don't end up with non-unicode strings in
         # normalized data
         if type(datum) == str:
-            StringNormalizer().normalize(datum)
+            StringNormalizer().normalize_data(datum)
         elif type(datum) == list:
             for item in datum:
                 cls.validate(item)
@@ -168,13 +168,13 @@ class ModelNormalizer(SimpleNormalizer):
     def serialize(self):
         return {u"type": self.data._name}
 
-    def normalize(self, datum):
+    def normalize_data(self, datum):
         return self.data.from_json(datum)
 
     @classmethod
     def from_json(cls, datum):
         # Run the schema normalization
-        datum = cls.get_schema().normalize(datum)
+        datum = cls.get_schema().normalize_data(datum)
         # Find model
         t = datum['type']
         if t == "core.JSON":
@@ -192,67 +192,23 @@ class ModelNormalizer(SimpleNormalizer):
 
 class IntegerNormalizer(SimpleNormalizer):
     match_type = u"integer"
-
-    def normalize(self, datum):
-        """If *datum* is an integer, return it; if it is a float with
-        a 0 for its fractional part, return the integer part as an
-        int. Otherwise, raise a
-        :exc:`~cosmic.exceptions.ValidationError`.
-        """
-        if type(datum) == int:
-            return datum
-        if type(datum) == float and datum.is_integer():
-            return int(datum)
-        raise ValidationError("Invalid integer", datum)
-
+    def normalize_data(self, datum):
+        return IntegerModel.normalize(datum)
 
 class FloatNormalizer(SimpleNormalizer):
     match_type = u"float"
-
-    def normalize(self, datum):
-        """If *datum* is a float, return it; if it is an integer, cast
-        it to a float and return it. Otherwise, raise a
-        :exc:`~cosmic.exceptions.ValidationError`.
-        """
-        if type(datum) == float:
-            return datum
-        if type(datum) == int:
-            return float(datum)
-        raise ValidationError("Invalid float", datum)
-
+    def normalize_data(self, datum):
+        return FloatModel.normalize(datum)
 
 class StringNormalizer(SimpleNormalizer):
     match_type = u"string"
-
-    def normalize(self, datum):
-        """If *datum* is of unicode type, return it. If it is a
-        string, decode it as UTF-8 and return the result. Otherwise,
-        raise a :exc:`~apio.exceptions.ValidationError`. Unicode
-        errors are dealt with strictly by raising
-        :exc:`~cosmic.exceptions.UnicodeDecodeValidationError`, a
-        subclass of the above.
-        """
-        if type(datum) == unicode:
-            return datum
-        if type(datum) == str:
-            try:
-                return datum.decode('utf_8')
-            except UnicodeDecodeError as inst:
-                raise UnicodeDecodeValidationError(unicode(inst))
-        raise ValidationError("Invalid string", datum)
-
+    def normalize_data(self, datum):
+        return StringModel.normalize(datum)
 
 class BooleanNormalizer(SimpleNormalizer):
     match_type = u"boolean"
-
-    def normalize(self, datum):
-        """If *datum* is a boolean, return it. Otherwise, raise a
-        :exc:`~apio.exceptions.ValidationError`.
-        """
-        if type(datum) == bool:
-            return datum
-        raise ValidationError("Invalid boolean", datum)
-
+    def normalize_data(self, datum):
+        return BooleanModel.normalize(datum)
 
 class ArrayNormalizer(Normalizer):
     match_type = u"array"
@@ -295,24 +251,10 @@ class ArrayNormalizer(Normalizer):
             ]
         })
 
-    def normalize(self, datum):
-        """If *datum* is a list, construct a new list by putting each
-        element of *datum* through the normalizer provided as
-        *items*. This normalizer may raise
-        :exc:`~cosmic.exceptions.ValidationError`. If *datum* is not a
-        list, :exc:`~cosmic.exceptions.ValidationError` will be
-        raised.
-        """
-        if type(datum) == list:
-            ret = []
-            for i, item in enumerate(datum):
-                try:
-                    ret.append(self.data['items'].normalize(item))
-                except ValidationError as e:
-                    e.stack.append(i)
-                    raise
-            return ret
-        raise ValidationError("Invalid array", datum)
+    def normalize_data(self, datum):
+        class N(ArrayModel):
+            items = self.data['items']
+        return N.normalize(datum)
 
 
 class ObjectNormalizer(Normalizer):
@@ -407,7 +349,16 @@ class ObjectNormalizer(Normalizer):
         if len(props) > len(set(props)):
             raise ValidationError("Duplicate properties")
 
-    def normalize(self, datum):
+    def normalize_data(self, datum):
+        class N(ObjectMModel):
+            properties = self.data['properties']
+        return N.normalize(datum)
+
+
+class ObjectMModel(object):
+
+    @classmethod
+    def normalize(cls, datum):
         """If *datum* is a dict, normalize it against *properties* and
         return the resulting dict. Otherwise raise a
         :exc:`~cosmic.exceptions.ValidationError`.
@@ -427,7 +378,7 @@ class ObjectNormalizer(Normalizer):
            by the corresponding *schema* value.
 
         """
-        properties = self.data['properties']
+        properties = cls.properties
         if type(datum) == dict:
             ret = {}
             required = {}
@@ -446,12 +397,101 @@ class ObjectNormalizer(Normalizer):
             for prop, schema in optional.items() + required.items():
                 if prop in datum.keys():
                     try:
-                        ret[prop] = schema.normalize(datum[prop])
+                        ret[prop] = schema.normalize_data(datum[prop])
                     except ValidationError as e:
                         e.stack.append(prop)
                         raise
             return ret
         raise ValidationError("Invalid object", datum)
+
+class ArrayModel(object):
+
+    @classmethod
+    def normalize(cls, datum):
+        """If *datum* is a list, construct a new list by putting each
+        element of *datum* through the normalizer provided as
+        *items*. This normalizer may raise
+        :exc:`~cosmic.exceptions.ValidationError`. If *datum* is not a
+        list, :exc:`~cosmic.exceptions.ValidationError` will be
+        raised.
+        """
+        if type(datum) == list:
+            ret = []
+            for i, item in enumerate(datum):
+                try:
+                    ret.append(cls.items.normalize_data(item))
+                except ValidationError as e:
+                    e.stack.append(i)
+                    raise
+            return ret
+        raise ValidationError("Invalid array", datum)
+
+
+class IntegerModel(object):
+
+    @classmethod
+    def normalize(cls, datum):
+        """If *datum* is an integer, return it; if it is a float with
+        a 0 for its fractional part, return the integer part as an
+        int. Otherwise, raise a
+        :exc:`~cosmic.exceptions.ValidationError`.
+        """
+        if type(datum) == int:
+            return datum
+        if type(datum) == float and datum.is_integer():
+            return int(datum)
+        raise ValidationError("Invalid integer", datum)
+
+
+class FloatModel(object):
+
+    @classmethod
+    def normalize(cls, datum):
+        """If *datum* is a float, return it; if it is an integer, cast
+        it to a float and return it. Otherwise, raise a
+        :exc:`~cosmic.exceptions.ValidationError`.
+        """
+        if type(datum) == float:
+            return datum
+        if type(datum) == int:
+            return float(datum)
+        raise ValidationError("Invalid float", datum)
+
+
+class StringModel(object):
+
+    @classmethod
+    def normalize(cls, datum):
+        """If *datum* is of unicode type, return it. If it is a
+        string, decode it as UTF-8 and return the result. Otherwise,
+        raise a :exc:`~apio.exceptions.ValidationError`. Unicode
+        errors are dealt with strictly by raising
+        :exc:`~cosmic.exceptions.UnicodeDecodeValidationError`, a
+        subclass of the above.
+        """
+        if type(datum) == unicode:
+            return datum
+        if type(datum) == str:
+            try:
+                return datum.decode('utf_8')
+            except UnicodeDecodeError as inst:
+                raise UnicodeDecodeValidationError(unicode(inst))
+        raise ValidationError("Invalid string", datum)
+
+
+class BooleanModel(object):
+
+    @classmethod
+    def normalize(cls, datum):
+        """If *datum* is a boolean, return it. Otherwise, raise a
+        :exc:`~apio.exceptions.ValidationError`.
+        """
+        if type(datum) == bool:
+            return datum
+        raise ValidationError("Invalid boolean", datum)
+
+
+
 
 
 class Schema(Model):

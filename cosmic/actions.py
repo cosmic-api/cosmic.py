@@ -82,7 +82,7 @@ class RemoteAction(BaseAction):
             raise SpecError("%s takes arguments" % self.name)
         if json_data:
             try:
-                normalized = self.accepts.normalize(json_data.data)
+                normalized = self.accepts.normalize_data(json_data.data)
             except ValidationError as err:
                 raise SpecError(err.args[0])
             serialized = serialize_json(normalized)
@@ -99,7 +99,7 @@ class RemoteAction(BaseAction):
                 raise APIError("Call to %s failed with improper error response")
         try:
             if self.returns:
-                return self.returns.normalize(res.json)
+                return self.returns.normalize_data(res.json)
             else:
                 return None
         except ValidationError:

@@ -12,7 +12,7 @@ class TestNormalize(TestCase):
                 "type": "boolean"
             }
         }
-        self.array_normalizer = ModelNormalizer(Schema).normalize(self.array_schema)
+        self.array_normalizer = ModelNormalizer(Schema).normalize_data(self.array_schema)
         self.object_schema = {
             "type": "object",
             "properties": [
@@ -28,7 +28,7 @@ class TestNormalize(TestCase):
                 }
             ]
         }
-        self.object_normalizer = ModelNormalizer(Schema).normalize(self.object_schema)
+        self.object_normalizer = ModelNormalizer(Schema).normalize_data(self.object_schema)
         self.deep_schema = {
             "type": "array",
             "items": {
@@ -47,54 +47,54 @@ class TestNormalize(TestCase):
                 ]
             }
         }
-        self.deep_normalizer = ModelNormalizer(Schema).normalize(self.deep_schema)
+        self.deep_normalizer = ModelNormalizer(Schema).normalize_data(self.deep_schema)
 
     def test_json(self):
         for i in [1, True, 2.3, "blah", [], {}]:
             self.assertEqual(JSONData.from_json(i).data, i)
 
     def test_integer(self):
-        self.assertEqual(IntegerNormalizer().normalize(1), 1)
-        self.assertEqual(IntegerNormalizer().normalize(1.0), 1)
+        self.assertEqual(IntegerNormalizer().normalize_data(1), 1)
+        self.assertEqual(IntegerNormalizer().normalize_data(1.0), 1)
         with self.assertRaisesRegexp(ValidationError, "Invalid integer"):
-            IntegerNormalizer().normalize(1.1)
+            IntegerNormalizer().normalize_data(1.1)
 
     def test_float(self):
-        self.assertEqual(FloatNormalizer().normalize(1), 1.0)
-        self.assertEqual(FloatNormalizer().normalize(1.0), 1.0)
+        self.assertEqual(FloatNormalizer().normalize_data(1), 1.0)
+        self.assertEqual(FloatNormalizer().normalize_data(1.0), 1.0)
         with self.assertRaisesRegexp(ValidationError, "Invalid float"):
-            FloatNormalizer().normalize(True)
+            FloatNormalizer().normalize_data(True)
 
     def test_boolean(self):
-        self.assertEqual(BooleanNormalizer().normalize(True), True)
+        self.assertEqual(BooleanNormalizer().normalize_data(True), True)
         with self.assertRaisesRegexp(ValidationError, "Invalid boolean"):
-            BooleanNormalizer().normalize(0)
+            BooleanNormalizer().normalize_data(0)
 
     def test_string(self):
-        self.assertEqual(StringNormalizer().normalize("omg"), u"omg")
-        self.assertEqual(StringNormalizer().normalize(u"omg"), u"omg")
+        self.assertEqual(StringNormalizer().normalize_data("omg"), u"omg")
+        self.assertEqual(StringNormalizer().normalize_data(u"omg"), u"omg")
         with self.assertRaisesRegexp(ValidationError, "Invalid string"):
-            StringNormalizer().normalize(0)
+            StringNormalizer().normalize_data(0)
         with self.assertRaisesRegexp(UnicodeDecodeValidationError, "invalid start byte"):
-            StringNormalizer().normalize("\xff")
+            StringNormalizer().normalize_data("\xff")
 
     def test_array(self):
-        self.assertEqual(self.array_normalizer.normalize([True, False]), [True, False])
+        self.assertEqual(self.array_normalizer.normalize_data([True, False]), [True, False])
         with self.assertRaisesRegexp(ValidationError, "Invalid array"):
-            self.array_normalizer.normalize(("no", "tuples",))
+            self.array_normalizer.normalize_data(("no", "tuples",))
         with self.assertRaisesRegexp(ValidationError, "Invalid boolean"):
-            self.array_normalizer.normalize([True, False, 1])
+            self.array_normalizer.normalize_data([True, False, 1])
 
     def test_object(self):
-        res = self.object_normalizer.normalize({"foo": True, "bar": 2.0})
+        res = self.object_normalizer.normalize_data({"foo": True, "bar": 2.0})
         self.assertEqual(res, {"foo": True, "bar": 2})
         with self.assertRaisesRegexp(ValidationError, "Invalid object"):
-            self.object_normalizer.normalize([])
+            self.object_normalizer.normalize_data([])
         # Problems with properties
         with self.assertRaisesRegexp(ValidationError, "Missing properties"):
-            self.object_normalizer.normalize({"bar": 2.0})
+            self.object_normalizer.normalize_data({"bar": 2.0})
         with self.assertRaisesRegexp(ValidationError, "Unexpected properties"):
-            self.object_normalizer.normalize({"foo": True, "barr": 2.0})
+            self.object_normalizer.normalize_data({"foo": True, "barr": 2.0})
 
     def test_schema(self):
         self.assertTrue(isinstance(Schema.from_json({"type": "integer"}), IntegerNormalizer))
@@ -109,42 +109,42 @@ class TestNormalize(TestCase):
         s = self.array_schema.copy()
         s.pop("items")
         with self.assertRaisesRegexp(ValidationError, "Missing properties"):
-            ModelNormalizer(Schema).normalize(s)
+            ModelNormalizer(Schema).normalize_data(s)
         # Forgot properties
         s = self.object_schema.copy()
         s.pop("properties")
         with self.assertRaisesRegexp(ValidationError, "Missing properties"):
-            ModelNormalizer(Schema).normalize(s)
+            ModelNormalizer(Schema).normalize_data(s)
 
     def test_schema_extra_parts(self):
         # object with items
         s = self.array_schema.copy()
         s["properties"] = self.object_schema["properties"]
         with self.assertRaisesRegexp(ValidationError, "Unexpected properties"):
-            ModelNormalizer(Schema).normalize(s)
+            ModelNormalizer(Schema).normalize_data(s)
         # array with properties
         s = self.object_schema.copy()
         s["items"] = self.array_schema["items"]
         with self.assertRaisesRegexp(ValidationError, "Unexpected properties"):
-            ModelNormalizer(Schema).normalize(s)
+            ModelNormalizer(Schema).normalize_data(s)
 
     def test_schema_duplicate_properties(self):
         s = self.object_schema.copy()
         s["properties"][1]["name"] = "foo"
         with self.assertRaisesRegexp(ValidationError, "Duplicate properties"):
-            ModelNormalizer(Schema).normalize(s)
+            ModelNormalizer(Schema).normalize_data(s)
 
     def test_schema_not_object(self):
         with self.assertRaisesRegexp(ValidationError, "Invalid schema: True"):
-            ModelNormalizer(Schema).normalize(True)
+            ModelNormalizer(Schema).normalize_data(True)
 
     def test_schema_unknown_type(self):
         with self.assertRaisesRegexp(ValidationError, "Unknown type"):
-            ModelNormalizer(Schema).normalize({"type": "number"})
+            ModelNormalizer(Schema).normalize_data({"type": "number"})
 
     def test_deep_schema_validation_stack(self):
         with self.assertRaisesRegexp(ValidationError, "[0]"):
-            self.deep_normalizer.normalize([{"foo": True, "bar": False}])
+            self.deep_normalizer.normalize_data([{"foo": True, "bar": False}])
 
 class TestSerialize(TestCase):
 
@@ -168,7 +168,7 @@ class TestSerialize(TestCase):
                 ]
             }
         }
-        schema = ModelNormalizer(Schema).normalize(schema_json)
+        schema = ModelNormalizer(Schema).normalize_data(schema_json)
         self.assertEqual(schema_json, serialize_json(schema))
 
 class TestObjectModel(TestCase):

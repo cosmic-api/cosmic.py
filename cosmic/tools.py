@@ -111,9 +111,9 @@ def serialize_action_arguments(*args, **kwargs):
     `apply_to_action_func`. If no arguments passed, returns None.
     """
     if len(args) == 1 and len(kwargs) == 0:
-        return ModelNormalizer(JSONData).normalize(args[0])
+        return ModelNormalizer(JSONData).normalize_data(args[0])
     if len(args) == 0 and len(kwargs) > 0:
-        return ModelNormalizer(JSONData).normalize(kwargs)
+        return ModelNormalizer(JSONData).normalize_data(kwargs)
     if len(args) == 0 and len(kwargs) == 0:
         return None
     raise SpecError("Action must be called either with one argument or with one or more keyword arguments")
@@ -162,4 +162,4 @@ def normalize(schema, datum):
     to be the return value of json.loads
     """
     normalizer = CosmicSchema.from_json(schema)
-    return normalizer.normalize(datum)
+    return normalizer.normalize_data(datum)
