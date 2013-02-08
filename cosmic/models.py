@@ -131,29 +131,6 @@ class SimpleNormalizer(Normalizer):
         })
 
 
-class ModelNormalizer(SimpleNormalizer):
-
-    def serialize(self):
-        return {u"type": self.data._name}
-
-    def normalize_data(self, datum):
-        return self.data.normalize(datum)
-
-    @classmethod
-    def normalize(cls, datum):
-        # Run the schema normalization
-        datum = cls.get_schema().normalize_data(datum)
-        # Find model
-        t = datum['type']
-        if '.' not in t:
-            raise ValidationError("Unknown model", t)
-        model = cls.get_schema_cls().fetch_model(t)
-        # Instantiate
-        return cls(model)
-
-
-
-
 
 class ObjectMModel(object):
 
@@ -321,11 +298,22 @@ class JSONData(Model):
             for value in datum.values():
                 cls.validate(value)
 
+class Foo(SimpleNormalizer):
+    def normalize_data(self, datum):
+        return self.model.normalize(datum)
+
 class Schema(Model):
 
     @classmethod
     def fetch_model(cls, full_name):
         raise ValidationError("The schema you are validating refers to a model (%s), but fetch_model has not been implemented" % full_name)
+
+    @classmethod
+    def get_normalizer(cls):
+        class N(Foo):
+            match_type = u"schema"
+            model = cls
+        return N()
 
     @classmethod
     def normalize(cls, datum):
@@ -351,17 +339,13 @@ class Schema(Model):
                 return s.normalize(datum)
         # Model?
         if '.' in st:
-            class s(ModelNormalizer):
-                schema_cls = cls
-            s.__name__ = ModelNormalizer.__name__
+            model_cls = cls.fetch_model(st)
+            class s(Foo):
+                match_type = st
+                model = model_cls
             return s.normalize(datum)
         raise ValidationError("Unknown type", st)
 
-
-
-class Foo(SimpleNormalizer):
-    def normalize_data(self, datum):
-        return self.model.normalize(datum)
 
 class JSONDataNormalizer(Foo):
     match_type = u"json"
@@ -424,7 +408,7 @@ class ArrayNormalizer(Normalizer):
                 {
                     "name": "items",
                     "required": True,
-                    "schema": ModelNormalizer(cls.get_schema_cls())
+                    "schema": cls.get_schema_cls().get_normalizer()
                 }
             ]
         })
@@ -508,7 +492,7 @@ class ObjectNormalizer(Normalizer):
                                 {
                                     "name": "schema",
                                     "required": True,
-                                    "schema": ModelNormalizer(cls.get_schema_cls())
+                                    "schema": cls.get_schema_cls().get_normalizer()
                                 }
                             ]
                         })
@@ -532,6 +516,7 @@ class ObjectNormalizer(Normalizer):
         class N(ObjectMModel):
             properties = self.data['properties']
         return N.normalize(datum)
+
 
 def serialize_json(datum):
     if isinstance(datum, Model):

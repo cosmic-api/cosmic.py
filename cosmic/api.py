@@ -12,7 +12,7 @@ from cosmic.exceptions import APIError, SpecError, ValidationError
 from cosmic.actions import Action, RemoteAction, BaseAction
 from cosmic.tools import Namespace, normalize, CosmicSchema
 from cosmic.models import Model as BaseModel
-from cosmic.models import serialize_json, Schema, ObjectModel, ModelNormalizer
+from cosmic.models import serialize_json, Schema, ObjectModel, SchemaNormalizer
 from cosmic.http import ALL_METHODS, View, UrlRule, Response, CorsPreflightView, make_view
 from cosmic.plugins import FlaskPlugin
 
@@ -206,12 +206,12 @@ class API(BaseAPI):
         """
         if accepts:
             try:
-                accepts = ModelNormalizer(Schema).normalize_data(accepts)
+                accepts = SchemaNormalizer().normalize_data(accepts)
             except ValidationError:
                 raise SpecError("'%s' was passed an invalid accepts schema" % self.name)
         if returns:
             try:
-                returns = ModelNormalizer(Schema).normalize_data(returns)
+                returns = SchemaNormalizer().normalize_data(returns)
             except ValidationError:
                 raise SpecError("'%s' was passed an invalid returns schema" % self.name)
 
