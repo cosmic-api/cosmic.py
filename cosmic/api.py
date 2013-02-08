@@ -12,7 +12,7 @@ from cosmic.exceptions import APIError, SpecError, ValidationError
 from cosmic.actions import Action, RemoteAction, BaseAction
 from cosmic.tools import Namespace, normalize, CosmicSchema
 from cosmic.models import Model as BaseModel
-from cosmic.models import serialize_json, Schema, ObjectModel, SchemaNormalizer
+from cosmic.models import Schema, ObjectModel, SchemaNormalizer
 from cosmic.http import ALL_METHODS, View, UrlRule, Response, CorsPreflightView, make_view
 from cosmic.plugins import FlaskPlugin
 

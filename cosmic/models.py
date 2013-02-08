@@ -9,11 +9,11 @@ class Model(object):
         self.data = data
 
     def serialize(self):
-        return serialize_json(self.data)
-
-    @classmethod
-    def validate(cls, datum):
-        pass
+        # Serialize against model schema
+        schema = self.get_schema()
+        if schema:
+            return schema.serialize_data(self.data)
+        return self.data
 
     @classmethod
     def normalize(cls, datum):
@@ -25,6 +25,10 @@ class Model(object):
         cls.validate(datum)
         # Instantiate
         return cls(datum)
+
+    @classmethod
+    def validate(cls, datum):
+        pass
 
     @classmethod
     def get_schema_cls(cls):
@@ -51,16 +55,12 @@ class ObjectModel(Model):
     def __setattr__(self, key, value):
         for prop in self.properties:
             if prop["name"] == key:
-                self.data[key] = value
+                if value == None:
+                    del self.data[key]
+                else:
+                    self.data[key] = value
                 return
         super(ObjectModel, self).__setattr__(key, value)
-
-    def serialize(self):
-        ret = {}
-        for key, val in self.data.items():
-            if val != None:
-                ret[key] = val
-        return serialize_json(ret)
 
     @classmethod
     def get_schema(cls):
@@ -116,6 +116,12 @@ class SimpleNormalizer(Normalizer):
             self.data = data
         else:
             self.data = {u"type": self.match_type}
+
+    def normalize_data(self, datum):
+        return self.model.normalize(datum)
+
+    def serialize_data(self, datum):
+        return self.model.serialize(datum)
 
     @classmethod
     def get_schema(cls):
@@ -181,6 +187,16 @@ class ObjectMModel(object):
             return ret
         raise ValidationError("Invalid object", datum)
 
+    @classmethod
+    def serialize(cls, datum):
+        ret = {}
+        for prop in cls.properties:
+            name = prop['name']
+            if name in datum.keys():
+                ret[name] = prop['schema'].serialize_data(datum[name])
+        return ret
+
+
 class ArrayModel(object):
 
     @classmethod
@@ -203,6 +219,10 @@ class ArrayModel(object):
             return ret
         raise ValidationError("Invalid array", datum)
 
+    @classmethod
+    def serialize(cls, datum):
+        return [cls.items.serialize_data(item) for item in datum]
+
 
 class IntegerModel(object):
 
@@ -219,6 +239,9 @@ class IntegerModel(object):
             return int(datum)
         raise ValidationError("Invalid integer", datum)
 
+    @classmethod
+    def serialize(cls, datum):
+        return datum
 
 class FloatModel(object):
 
@@ -233,6 +256,10 @@ class FloatModel(object):
         if type(datum) == int:
             return float(datum)
         raise ValidationError("Invalid float", datum)
+
+    @classmethod
+    def serialize(cls, datum):
+        return datum
 
 
 class StringModel(object):
@@ -255,6 +282,10 @@ class StringModel(object):
                 raise UnicodeDecodeValidationError(unicode(inst))
         raise ValidationError("Invalid string", datum)
 
+    @classmethod
+    def serialize(cls, datum):
+        return datum
+
 
 class BooleanModel(object):
 
@@ -266,6 +297,10 @@ class BooleanModel(object):
         if type(datum) == bool:
             return datum
         raise ValidationError("Invalid boolean", datum)
+
+    @classmethod
+    def serialize(cls, datum):
+        return datum
 
 
 class JSONData(Model):
@@ -298,9 +333,6 @@ class JSONData(Model):
             for value in datum.values():
                 cls.validate(value)
 
-class Foo(SimpleNormalizer):
-    def normalize_data(self, datum):
-        return self.model.normalize(datum)
 
 class Schema(Model):
 
@@ -310,7 +342,7 @@ class Schema(Model):
 
     @classmethod
     def get_normalizer(cls):
-        class N(Foo):
+        class N(SimpleNormalizer):
             match_type = u"schema"
             model = cls
         return N()
@@ -340,34 +372,40 @@ class Schema(Model):
         # Model?
         if '.' in st:
             model_cls = cls.fetch_model(st)
-            class s(Foo):
+            class s(SimpleNormalizer):
                 match_type = st
                 model = model_cls
+                def serialize_data(self, datum):
+                    return datum.__class__.serialize(datum)
             return s.normalize(datum)
         raise ValidationError("Unknown type", st)
 
+    @classmethod
+    def serialize(cls, datum):
+        return datum.serialize()
 
-class JSONDataNormalizer(Foo):
+
+class JSONDataNormalizer(SimpleNormalizer):
     match_type = u"json"
     model = JSONData
 
-class SchemaNormalizer(Foo):
+class SchemaNormalizer(SimpleNormalizer):
     match_type = u"schema"
     model = Schema
 
-class IntegerNormalizer(Foo):
+class IntegerNormalizer(SimpleNormalizer):
     match_type = u"integer"
     model = IntegerModel
 
-class FloatNormalizer(Foo):
+class FloatNormalizer(SimpleNormalizer):
     match_type = u"float"
     model = FloatModel
 
-class StringNormalizer(Foo):
+class StringNormalizer(SimpleNormalizer):
     match_type = u"string"
     model = StringModel
 
-class BooleanNormalizer(Foo):
+class BooleanNormalizer(SimpleNormalizer):
     match_type = u"boolean"
     model = BooleanModel
 
@@ -417,6 +455,11 @@ class ArrayNormalizer(Normalizer):
         class N(ArrayModel):
             items = self.data['items']
         return N.normalize(datum)
+
+    def serialize_data(self, datum):
+        class N(ArrayModel):
+            items = self.data['items']
+        return N.serialize(datum)
 
 
 class ObjectNormalizer(Normalizer):
@@ -517,21 +560,8 @@ class ObjectNormalizer(Normalizer):
             properties = self.data['properties']
         return N.normalize(datum)
 
-
-def serialize_json(datum):
-    if isinstance(datum, Model):
-        return datum.serialize()
-    dt = type(datum)
-    if dt in [int, bool, float, unicode]:
-        return datum
-    if dt is str:
-        return datum.decode('utf_8')
-    if dt == list:
-        return [serialize_json(item) for item in datum]
-    if dt == dict:
-        ret = {}
-        for key, value in datum.items():
-            if value != None:
-                ret[key] = serialize_json(value)
-        return ret
+    def serialize_data(self, datum):
+        class N(ObjectMModel):
+            properties = self.data['properties']
+        return N.serialize(datum)
 

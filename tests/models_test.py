@@ -169,7 +169,7 @@ class TestSerialize(TestCase):
             }
         }
         schema = SchemaNormalizer().normalize_data(schema_json)
-        self.assertEqual(schema_json, serialize_json(schema))
+        self.assertEqual(schema_json, schema.serialize())
 
 class TestObjectModel(TestCase):
 

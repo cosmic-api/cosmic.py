@@ -8,7 +8,7 @@ from cosmic.tools import get_arg_spec, serialize_action_arguments, apply_to_acti
 from cosmic.http import ALL_METHODS, View, make_view
 from cosmic.exceptions import APIError, SpecError, AuthenticationError, ValidationError
 
-from cosmic.models import serialize_json, JSONData, ObjectModel
+from cosmic.models import JSONData, ObjectModel
 
 class BaseAction(ObjectModel):
     _name = "cosmic.Action"
@@ -85,7 +85,7 @@ class RemoteAction(BaseAction):
                 normalized = self.accepts.normalize_data(json_data.data)
             except ValidationError as err:
                 raise SpecError(err.args[0])
-            serialized = serialize_json(normalized)
+            serialized = self.accepts.serialize_data(normalized)
             data = json.dumps(serialized)
         else:
             data = ""

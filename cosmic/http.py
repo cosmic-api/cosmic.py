@@ -4,7 +4,7 @@ import json
 
 from cosmic.exceptions import *
 from cosmic.tools import normalize
-from cosmic.models import serialize_json, JSONData
+from cosmic.models import JSONData
 
 # We shouldn't have to do this, but Flask doesn't allow us to route
 # all methods implicitly. When we don't pass in methods Flask assumes
@@ -86,6 +86,10 @@ class View(object):
         self.method = method
         self.accepts = accepts
         self.returns = returns
+        if accepts != None:
+            self.accepts_schema = normalize({"type": "schema"}, accepts)
+        if returns != None:
+            self.returns_schema = normalize({"type": "schema"}, returns)
 
     def __call__(self, req, debug=False):
         """Turns a :class:`~cosmic.http.Request` into a
@@ -111,7 +115,7 @@ class View(object):
                     raise SpecError("Request content cannot be empty")
                 # Validate incoming data
                 if req.payload:
-                    normalize(self.accepts, req.payload.data)
+                    self.accepts_schema.normalize_data(req.payload.data)
             except SpecError as err:
                 raise ClientError(err.args[0])
             except JSONParseError:
@@ -124,8 +128,8 @@ class View(object):
                 # May raise ValidationError, will be caught below and
                 # rethrown if we are in debug mode
                 if self.returns:
-                    data = normalize(self.returns, data)
-                    res.body = json.dumps(serialize_json(data))
+                    data = self.returns_schema.normalize_data(data)
+                    res.body = json.dumps(self.returns_schema.serialize_data(data))
                 # Likewise, will be rethrown in debug mode
                 elif data != None:
                     raise SpecError("None expected, but the function returned %s instead" % (data))
