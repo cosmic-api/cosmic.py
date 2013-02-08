@@ -292,7 +292,6 @@ class BooleanModel(object):
 
 
 class JSONData(Model):
-    _name = u"json"
 
     def serialize(self):
         return self.data
@@ -323,7 +322,6 @@ class JSONData(Model):
                 cls.validate(value)
 
 class Schema(Model):
-    _name = u"schema"
 
     @classmethod
     def fetch_model(cls, full_name):

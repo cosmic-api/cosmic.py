@@ -48,7 +48,7 @@ def get_arg_spec(func):
         return None
     # One argument: accepts a single JSON object
     if len(args) == 1:
-        return ModelNormalizer(JSONData)
+        return JSONDataNormalizer()
     # Multiple arguments: accepts a JSON object with a property for
     # each argument, each property being of type 'json'
     props = []
@@ -57,7 +57,7 @@ def get_arg_spec(func):
     for i, arg in enumerate(args):
         props.append({
             "name": arg,
-            "schema": ModelNormalizer(JSONData),
+            "schema": JSONDataNormalizer(),
             "required": i < numargs
         })
     return ObjectNormalizer({"type": "object", "properties": props})
@@ -111,9 +111,9 @@ def serialize_action_arguments(*args, **kwargs):
     `apply_to_action_func`. If no arguments passed, returns None.
     """
     if len(args) == 1 and len(kwargs) == 0:
-        return ModelNormalizer(JSONData).normalize_data(args[0])
+        return JSONDataNormalizer().normalize_data(args[0])
     if len(args) == 0 and len(kwargs) > 0:
-        return ModelNormalizer(JSONData).normalize_data(kwargs)
+        return JSONDataNormalizer().normalize_data(kwargs)
     if len(args) == 0 and len(kwargs) == 0:
         return None
     raise SpecError("Action must be called either with one argument or with one or more keyword arguments")
@@ -124,7 +124,7 @@ def schema_is_compatible(general, detailed):
     of JSON schema as returned by tools.get_arg_spec, the special
     schema is an arbitrary JSON schema as passed in by the user.
     """
-    if isinstance(general, ModelNormalizer) and general.data == JSONData:
+    if isinstance(general, JSONDataNormalizer):
         return True
     # If not "json", general has to be an "object". Make sure detailed
     # is an object too

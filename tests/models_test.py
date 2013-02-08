@@ -12,7 +12,7 @@ class TestNormalize(TestCase):
                 "type": "boolean"
             }
         }
-        self.array_normalizer = ModelNormalizer(Schema).normalize_data(self.array_schema)
+        self.array_normalizer = SchemaNormalizer().normalize_data(self.array_schema)
         self.object_schema = {
             "type": "object",
             "properties": [
@@ -28,7 +28,7 @@ class TestNormalize(TestCase):
                 }
             ]
         }
-        self.object_normalizer = ModelNormalizer(Schema).normalize_data(self.object_schema)
+        self.object_normalizer = SchemaNormalizer().normalize_data(self.object_schema)
         self.deep_schema = {
             "type": "array",
             "items": {
@@ -47,7 +47,7 @@ class TestNormalize(TestCase):
                 ]
             }
         }
-        self.deep_normalizer = ModelNormalizer(Schema).normalize_data(self.deep_schema)
+        self.deep_normalizer = SchemaNormalizer().normalize_data(self.deep_schema)
 
     def test_json(self):
         for i in [1, True, 2.3, "blah", [], {}]:
@@ -109,38 +109,38 @@ class TestNormalize(TestCase):
         s = self.array_schema.copy()
         s.pop("items")
         with self.assertRaisesRegexp(ValidationError, "Missing properties"):
-            ModelNormalizer(Schema).normalize_data(s)
+            SchemaNormalizer().normalize_data(s)
         # Forgot properties
         s = self.object_schema.copy()
         s.pop("properties")
         with self.assertRaisesRegexp(ValidationError, "Missing properties"):
-            ModelNormalizer(Schema).normalize_data(s)
+            SchemaNormalizer().normalize_data(s)
 
     def test_schema_extra_parts(self):
         # object with items
         s = self.array_schema.copy()
         s["properties"] = self.object_schema["properties"]
         with self.assertRaisesRegexp(ValidationError, "Unexpected properties"):
-            ModelNormalizer(Schema).normalize_data(s)
+            SchemaNormalizer().normalize_data(s)
         # array with properties
         s = self.object_schema.copy()
         s["items"] = self.array_schema["items"]
         with self.assertRaisesRegexp(ValidationError, "Unexpected properties"):
-            ModelNormalizer(Schema).normalize_data(s)
+            SchemaNormalizer().normalize_data(s)
 
     def test_schema_duplicate_properties(self):
         s = self.object_schema.copy()
         s["properties"][1]["name"] = "foo"
         with self.assertRaisesRegexp(ValidationError, "Duplicate properties"):
-            ModelNormalizer(Schema).normalize_data(s)
+            SchemaNormalizer().normalize_data(s)
 
     def test_schema_not_object(self):
         with self.assertRaisesRegexp(ValidationError, "Invalid schema: True"):
-            ModelNormalizer(Schema).normalize_data(True)
+            SchemaNormalizer().normalize_data(True)
 
     def test_schema_unknown_type(self):
         with self.assertRaisesRegexp(ValidationError, "Unknown type"):
-            ModelNormalizer(Schema).normalize_data({"type": "number"})
+            SchemaNormalizer().normalize_data({"type": "number"})
 
     def test_deep_schema_validation_stack(self):
         with self.assertRaisesRegexp(ValidationError, "[0]"):
@@ -168,7 +168,7 @@ class TestSerialize(TestCase):
                 ]
             }
         }
-        schema = ModelNormalizer(Schema).normalize_data(schema_json)
+        schema = SchemaNormalizer().normalize_data(schema_json)
         self.assertEqual(schema_json, serialize_json(schema))
 
 class TestObjectModel(TestCase):
