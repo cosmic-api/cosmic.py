@@ -161,5 +161,5 @@ def normalize(schema, datum):
     """Schema is expected to be a valid schema and datum is expected
     to be the return value of json.loads
     """
-    normalizer = CosmicSchema.from_json(schema)
+    normalizer = CosmicSchema.normalize(schema)
     return normalizer.normalize_data(datum)

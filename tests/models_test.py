@@ -51,7 +51,7 @@ class TestNormalize(TestCase):
 
     def test_json(self):
         for i in [1, True, 2.3, "blah", [], {}]:
-            self.assertEqual(JSONData.from_json(i).data, i)
+            self.assertEqual(JSONData.normalize(i).data, i)
 
     def test_integer(self):
         self.assertEqual(IntegerNormalizer().normalize_data(1), 1)
@@ -97,12 +97,12 @@ class TestNormalize(TestCase):
             self.object_normalizer.normalize_data({"foo": True, "barr": 2.0})
 
     def test_schema(self):
-        self.assertTrue(isinstance(Schema.from_json({"type": "integer"}), IntegerNormalizer))
-        self.assertTrue(isinstance(Schema.from_json({"type": "float"}), FloatNormalizer))
-        self.assertTrue(isinstance(Schema.from_json({"type": "boolean"}), BooleanNormalizer))
-        self.assertTrue(isinstance(Schema.from_json({"type": "string"}), StringNormalizer))
-        self.assertTrue(isinstance(Schema.from_json({"type": "core.JSON"}), ModelNormalizer))
-        self.assertTrue(isinstance(Schema.from_json({"type": "core.Schema"}), ModelNormalizer))
+        self.assertTrue(isinstance(Schema.normalize({"type": "integer"}), IntegerNormalizer))
+        self.assertTrue(isinstance(Schema.normalize({"type": "float"}), FloatNormalizer))
+        self.assertTrue(isinstance(Schema.normalize({"type": "boolean"}), BooleanNormalizer))
+        self.assertTrue(isinstance(Schema.normalize({"type": "string"}), StringNormalizer))
+        self.assertTrue(isinstance(Schema.normalize({"type": "core.JSON"}), ModelNormalizer))
+        self.assertTrue(isinstance(Schema.normalize({"type": "core.Schema"}), ModelNormalizer))
 
     def test_schema_missing_parts(self):
         # Forgot items
@@ -193,11 +193,11 @@ class TestObjectModel(TestCase):
                 }
             ]
         self.RecipeModel = RecipeModel
-        self.recipe = RecipeModel.from_json({
+        self.recipe = RecipeModel.normalize({
             "author": "Alex",
             "spicy": True
         })
-        self.special_recipe = RecipeModel.from_json({
+        self.special_recipe = RecipeModel.normalize({
             "author": "Kyu",
             "meta": {"secret": True}
         })
@@ -211,7 +211,7 @@ class TestObjectModel(TestCase):
 
     def test_normalize_fail(self):
         with self.assertRaisesRegexp(ValidationError, "Missing properties"):
-            recipe = self.RecipeModel.from_json({
+            recipe = self.RecipeModel.normalize({
                 "maker": "Alex",
                 "spicy": True
             })

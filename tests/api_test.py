@@ -157,7 +157,7 @@ class TestAPI(TestCase):
         class Cookie(Model):
             schema = {u"type": u"boolean"}
 
-        api.cosmic_registry = RemoteAPI.from_json(registry_spec)
+        api.cosmic_registry = RemoteAPI.normalize(registry_spec)
         self.app = self.cookbook.get_flask_app(debug=True)
         self.werkzeug_client = self.app.test_client()
 
@@ -198,11 +198,11 @@ class TestAPI(TestCase):
 
     def test_model_schema_validation(self):
         with self.assertRaises(ValidationError):
-            self.cookbook.models.Recipe.from_json(1.1)
+            self.cookbook.models.Recipe.normalize(1.1)
 
     def test_model_custom_validation(self):
         with self.assertRaisesRegexp(ValidationError, "kosher"):
-            self.cookbook.models.Recipe.from_json("bacon")
+            self.cookbook.models.Recipe.normalize("bacon")
         # When not overridden, custom validation passes
         self.cookbook.models.Cookie(True)
 
@@ -255,7 +255,7 @@ class TestAPI(TestCase):
 class TestRemoteAPI(TestCase):
 
     def setUp(self):
-        self.cookbook = RemoteAPI.from_json(cookbook_spec)
+        self.cookbook = RemoteAPI.normalize(cookbook_spec)
 
     def test_remote_no_return_action(self):
         with patch.object(requests, 'post') as mock_post:

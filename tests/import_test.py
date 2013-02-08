@@ -9,7 +9,7 @@ from tests.api_test import registry_spec, cookbook_spec
 class TestAPIImport(TestCase):
 
     def setUp(self):
-        api.cosmic_registry = api.RemoteAPI.from_json(registry_spec)
+        api.cosmic_registry = api.RemoteAPI.normalize(registry_spec)
 
     def tearDown(self):
         api.clear_module_cache()

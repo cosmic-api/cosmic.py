@@ -16,7 +16,7 @@ class Model(object):
         pass
 
     @classmethod
-    def from_json(cls, datum):
+    def normalize(cls, datum):
         # Normalize against model schema
         schema = cls.get_schema()
         if schema:
@@ -35,7 +35,7 @@ class Model(object):
     @classmethod
     def get_schema(cls):
         if hasattr(cls, "schema"):
-            return cls.get_schema_cls().from_json(cls.schema)
+            return cls.get_schema_cls().normalize(cls.schema)
         return None
 
 
@@ -64,7 +64,7 @@ class ObjectModel(Model):
 
     @classmethod
     def get_schema(cls):
-        return cls.get_schema_cls().from_json({
+        return cls.get_schema_cls().normalize({
             "type": "object",
             "properties": cls.properties
         })
@@ -86,7 +86,7 @@ class JSONData(Model):
     def from_string(cls, s):
         if s == "":
             return None
-        return cls.from_json(json.loads(s))
+        return cls.normalize(json.loads(s))
 
     @classmethod
     def validate(cls, datum):
@@ -111,7 +111,7 @@ class Normalizer(Model):
 
         Realistically, no one is going to try::
 
-            >>> StringNormalizer.from_json({"type": "integer"})
+            >>> StringNormalizer.normalize({"type": "integer"})
 
         But because normalizers are models, validation has to be
         thorough.
@@ -169,10 +169,10 @@ class ModelNormalizer(SimpleNormalizer):
         return {u"type": self.data._name}
 
     def normalize_data(self, datum):
-        return self.data.from_json(datum)
+        return self.data.normalize(datum)
 
     @classmethod
-    def from_json(cls, datum):
+    def normalize(cls, datum):
         # Run the schema normalization
         datum = cls.get_schema().normalize_data(datum)
         # Find model
@@ -502,7 +502,7 @@ class Schema(Model):
         raise ValidationError("The schema you are validating refers to a model (%s), but fetch_model has not been implemented" % full_name)
 
     @classmethod
-    def from_json(cls, datum):
+    def normalize(cls, datum):
         if type(datum) != dict or "type" not in datum.keys():
             raise ValidationError("Invalid schema", datum)
         st = datum["type"]
@@ -511,7 +511,7 @@ class Schema(Model):
             class s(ModelNormalizer):
                 schema_cls = cls
             s.__name__ = ModelNormalizer.__name__
-            return s.from_json(datum)
+            return s.normalize(datum)
         # Simple type?
         else:
             simple = [
@@ -527,7 +527,7 @@ class Schema(Model):
                     class s(simple_cls):
                         schema_cls = cls
                     s.__name__ = simple_cls.__name__
-                    return s.from_json(datum)
+                    return s.normalize(datum)
             raise ValidationError("Unknown type", st)
 
 

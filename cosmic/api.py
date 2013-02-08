@@ -36,7 +36,7 @@ def ensure_bootstrapped():
         headers = { 'Content-Type': 'application/json' }
         res = requests.post("http://api.cosmic.io/actions/get_spec_by_name", data=data,
             headers=headers)
-        cosmic_registry = RemoteAPI.from_json(res.json)
+        cosmic_registry = RemoteAPI.normalize(res.json)
         sys.modules.setdefault('cosmic.cosmic_registry', cosmic_registry)
 
 
@@ -64,7 +64,7 @@ class APIModel(ObjectModel):
         })
 
     @classmethod
-    def from_json(cls, datum):
+    def normalize(cls, datum):
         # Run the schema normalization
         datum = cls.get_schema().normalize_data(datum)
         # Take a schema and name and turn them into a model class
@@ -259,7 +259,7 @@ class API(BaseAPI):
             name = name_or_url
             ensure_bootstrapped()
             spec = cosmic_registry.actions.get_spec_by_name(name).data
-        api = RemoteAPI.from_json(spec)
+        api = RemoteAPI.normalize(spec)
         sys.modules["cosmic.registry." + name] = api
         return api
 
