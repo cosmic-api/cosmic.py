@@ -192,7 +192,7 @@ class ObjectMModel(object):
         ret = {}
         for prop in cls.properties:
             name = prop['name']
-            if name in datum.keys():
+            if name in datum.keys() and datum[name] != None:
                 ret[name] = prop['schema'].serialize_data(datum[name])
         return ret
 
