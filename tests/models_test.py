@@ -78,6 +78,15 @@ class TestNormalize(TestCase):
         with self.assertRaisesRegexp(UnicodeDecodeValidationError, "invalid start byte"):
             StringNormalizer().normalize_data("\xff")
 
+    def test_binary(self):
+        self.assertEqual(BinaryNormalizer().normalize_data('YWJj'), "abc")
+        self.assertEqual(BinaryNormalizer().normalize_data(u'YWJj'), "abc")
+        with self.assertRaisesRegexp(ValidationError, "Invalid base64"):
+            # Will complain about incorrect padding
+            BinaryNormalizer().normalize_data("a")
+        with self.assertRaisesRegexp(ValidationError, "Invalid binary"):
+            BinaryNormalizer().normalize_data(1)
+
     def test_array(self):
         self.assertEqual(self.array_normalizer.normalize_data([True, False]), [True, False])
         with self.assertRaisesRegexp(ValidationError, "Invalid array"):
@@ -101,6 +110,7 @@ class TestNormalize(TestCase):
         self.assertTrue(isinstance(Schema.normalize({"type": "float"}), FloatNormalizer))
         self.assertTrue(isinstance(Schema.normalize({"type": "boolean"}), BooleanNormalizer))
         self.assertTrue(isinstance(Schema.normalize({"type": "string"}), StringNormalizer))
+        self.assertTrue(isinstance(Schema.normalize({"type": "binary"}), BinaryNormalizer))
         self.assertTrue(isinstance(Schema.normalize({"type": "json"}), JSONDataNormalizer))
         self.assertTrue(isinstance(Schema.normalize({"type": "schema"}), SchemaNormalizer))
 
@@ -170,6 +180,9 @@ class TestSerialize(TestCase):
         }
         schema = SchemaNormalizer().normalize_data(schema_json)
         self.assertEqual(schema_json, schema.serialize())
+
+    def serialize_binary(self):
+        self.assertEqual(BinaryNormalizer().serialize_data("abc"), 'YWJj')
 
 class TestObjectModel(TestCase):
 

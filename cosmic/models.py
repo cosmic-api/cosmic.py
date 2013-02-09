@@ -1,5 +1,6 @@
 import sys
 import json
+import base64
 
 from cosmic.exceptions import ValidationError, UnicodeDecodeValidationError, SpecError
 
@@ -243,6 +244,7 @@ class IntegerModel(object):
     def serialize(cls, datum):
         return datum
 
+
 class FloatModel(object):
 
     @classmethod
@@ -266,10 +268,10 @@ class StringModel(object):
 
     @classmethod
     def normalize(cls, datum):
-        """If *datum* is of unicode type, return it. If it is a
-        string, decode it as UTF-8 and return the result. Otherwise,
-        raise a :exc:`~apio.exceptions.ValidationError`. Unicode
-        errors are dealt with strictly by raising
+        """If *datum* is of unicode type, return it. If it is a string, decode
+        it as UTF-8 and return the result. Otherwise, raise a
+        :exc:`~cosmic.exceptions.ValidationError`. Unicode errors are dealt with
+        strictly by raising
         :exc:`~cosmic.exceptions.UnicodeDecodeValidationError`, a
         subclass of the above.
         """
@@ -287,12 +289,32 @@ class StringModel(object):
         return datum
 
 
+class BinaryModel(object):
+
+    @classmethod
+    def normalize(cls, datum):
+        """If *datum* is a base64-encoded string, decode and return it. If not a
+        string, or encoding is wrong, raise
+        :exc:`~cosmic.exceptions.ValidationError`.
+        """
+        if type(datum) in (str, unicode,):
+            try:
+                return base64.b64decode(datum)
+            except TypeError:
+                raise ValidationError("Invalid base64 encoding", datum)
+        raise ValidationError("Invalid binary data", datum)
+
+    @classmethod
+    def serialize(cls, datum):
+        return base64.b64encode(datum)
+
+
 class BooleanModel(object):
 
     @classmethod
     def normalize(cls, datum):
         """If *datum* is a boolean, return it. Otherwise, raise a
-        :exc:`~apio.exceptions.ValidationError`.
+        :exc:`~cosmic.exceptions.ValidationError`.
         """
         if type(datum) == bool:
             return datum
@@ -357,6 +379,7 @@ class Schema(Model):
             IntegerNormalizer,
             FloatNormalizer,
             StringNormalizer,
+            BinaryNormalizer,
             BooleanNormalizer,
             ArrayNormalizer,
             ObjectNormalizer,
@@ -404,6 +427,10 @@ class FloatNormalizer(SimpleNormalizer):
 class StringNormalizer(SimpleNormalizer):
     match_type = u"string"
     model = StringModel
+
+class BinaryNormalizer(SimpleNormalizer):
+    match_type = u"binary"
+    model = BinaryModel
 
 class BooleanNormalizer(SimpleNormalizer):
     match_type = u"boolean"
