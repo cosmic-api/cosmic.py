@@ -5,7 +5,10 @@ import base64
 from cosmic.exceptions import ValidationError, UnicodeDecodeValidationError, SpecError
 
 
-class Model(object):
+class BaseModel(object):
+    pass
+
+class Model(BaseModel):
     def __init__(self, data=None):
         self.data = data
 
@@ -43,32 +46,6 @@ class Model(object):
             return cls.get_schema_cls().normalize(cls.schema)
         return None
 
-
-class ObjectModel(Model):
-    properties = []
-
-    def __getattr__(self, key):
-        for prop in self.properties:
-            if prop["name"] == key:
-                return self.data.get(key, None)
-        raise AttributeError()
-
-    def __setattr__(self, key, value):
-        for prop in self.properties:
-            if prop["name"] == key:
-                if value == None:
-                    del self.data[key]
-                else:
-                    self.data[key] = value
-                return
-        super(ObjectModel, self).__setattr__(key, value)
-
-    @classmethod
-    def get_schema(cls):
-        return cls.get_schema_cls().normalize({
-            "type": "object",
-            "properties": cls.properties
-        })
 
 
 class Normalizer(Model):
@@ -138,21 +115,19 @@ class SimpleNormalizer(Normalizer):
         })
 
 
-
-class ObjectMModel(object):
+class ObjectModel(Model):
 
     @classmethod
     def normalize(cls, datum):
-        """If *datum* is a dict, normalize it against *properties* and
-        return the resulting dict. Otherwise raise a
+        """If *datum* is a dict, normalize it against *properties* and return
+        the resulting dict. Otherwise raise a
         :exc:`~cosmic.exceptions.ValidationError`.
 
-        *properties* must be a list of dicts, where each dict has
-        three attributes: *name*, *required* and *schema*. *name* is a
-        string representing the property name, *required* is a boolean
-        specifying whether the *datum* needs to contain this property
-        in order to pass validation and *schema* is a normalization
-        function.
+        *properties* must be a list of dicts, where each dict has three
+        attributes: *name*, *required* and *schema*. *name* is a string
+        representing the property name, *required* is a boolean specifying
+        whether the *datum* needs to contain this property in order to pass
+        validation and *schema* is a normalization function.
 
         A :exc:`~cosmic.exceptions.ValidationError` will be raised if:
 
@@ -198,16 +173,15 @@ class ObjectMModel(object):
         return ret
 
 
-class ArrayModel(object):
+class ArrayModel(BaseModel):
 
     @classmethod
     def normalize(cls, datum):
-        """If *datum* is a list, construct a new list by putting each
-        element of *datum* through the normalizer provided as
-        *items*. This normalizer may raise
-        :exc:`~cosmic.exceptions.ValidationError`. If *datum* is not a
-        list, :exc:`~cosmic.exceptions.ValidationError` will be
-        raised.
+        """If *datum* is a list, construct a new list by putting each element of
+        *datum* through the normalizer provided as *items*. This normalizer may
+        raise
+        :exc:`~cosmic.exceptions.ValidationError`. If *datum* is not a list,
+        :exc:`~cosmic.exceptions.ValidationError` will be raised.
         """
         if type(datum) == list:
             ret = []
@@ -225,7 +199,7 @@ class ArrayModel(object):
         return [cls.items.serialize_data(item) for item in datum]
 
 
-class IntegerModel(object):
+class IntegerModel(BaseModel):
 
     @classmethod
     def normalize(cls, datum):
@@ -245,12 +219,12 @@ class IntegerModel(object):
         return datum
 
 
-class FloatModel(object):
+class FloatModel(BaseModel):
 
     @classmethod
     def normalize(cls, datum):
-        """If *datum* is a float, return it; if it is an integer, cast
-        it to a float and return it. Otherwise, raise a
+        """If *datum* is a float, return it; if it is an integer, cast it to a
+        float and return it. Otherwise, raise a
         :exc:`~cosmic.exceptions.ValidationError`.
         """
         if type(datum) == float:
@@ -264,7 +238,7 @@ class FloatModel(object):
         return datum
 
 
-class StringModel(object):
+class StringModel(BaseModel):
 
     @classmethod
     def normalize(cls, datum):
@@ -289,7 +263,7 @@ class StringModel(object):
         return datum
 
 
-class BinaryModel(object):
+class BinaryModel(BaseModel):
 
     @classmethod
     def normalize(cls, datum):
@@ -309,7 +283,7 @@ class BinaryModel(object):
         return base64.b64encode(datum)
 
 
-class BooleanModel(object):
+class BooleanModel(BaseModel):
 
     @classmethod
     def normalize(cls, datum):
@@ -406,6 +380,41 @@ class Schema(Model):
     @classmethod
     def serialize(cls, datum):
         return datum.serialize()
+
+
+class ClassModel(ObjectModel):
+
+    def __getattr__(self, key):
+        for prop in self.properties:
+            if prop["name"] == key:
+                return self.data.get(key, None)
+        raise AttributeError()
+
+    def __setattr__(self, key, value):
+        for prop in self.properties:
+            if prop["name"] == key:
+                if value == None:
+                    del self.data[key]
+                else:
+                    self.data[key] = value
+                return
+        super(ObjectModel, self).__setattr__(key, value)
+
+    @classmethod
+    def normalize(cls, datum):
+        datum = super(ClassModel, cls).normalize(datum)
+        return cls(datum)
+
+    def serialize(self):
+        return super(ClassModel, self).serialize(self.data)
+
+    @classmethod
+    def get_schema(cls):
+        return ObjectNormalizer({
+            "type": "object",
+            "properties": cls.properties
+        })
+
 
 
 class JSONDataNormalizer(SimpleNormalizer):
@@ -573,8 +582,8 @@ class ObjectNormalizer(Normalizer):
 
     @classmethod
     def validate(cls, datum):
-        """Raises :exc:`~cosmic.exception.ValidationError` if there
-        are two properties with the same name.
+        """Raises :exc:`~cosmic.exception.ValidationError` if there are two
+        properties with the same name.
         """
         super(ObjectNormalizer, cls).validate(datum)
         # Additional validation to check for duplicate properties
@@ -583,12 +592,12 @@ class ObjectNormalizer(Normalizer):
             raise ValidationError("Duplicate properties")
 
     def normalize_data(self, datum):
-        class N(ObjectMModel):
+        class N(ObjectModel):
             properties = self.data['properties']
         return N.normalize(datum)
 
     def serialize_data(self, datum):
-        class N(ObjectMModel):
+        class N(ObjectModel):
             properties = self.data['properties']
         return N.serialize(datum)
 

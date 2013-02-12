@@ -12,7 +12,7 @@ from cosmic.exceptions import APIError, SpecError, ValidationError
 from cosmic.actions import Action, RemoteAction, BaseAction
 from cosmic.tools import Namespace, normalize, CosmicSchema
 from cosmic.models import Model as BaseModel
-from cosmic.models import Schema, ObjectModel, SchemaNormalizer
+from cosmic.models import Schema, ClassModel, SchemaNormalizer
 from cosmic.http import ALL_METHODS, View, UrlRule, Response, CorsPreflightView, make_view
 from cosmic.plugins import FlaskPlugin
 
@@ -40,19 +40,19 @@ def ensure_bootstrapped():
         sys.modules.setdefault('cosmic.cosmic_registry', cosmic_registry)
 
 
-class APIModel(ObjectModel):
+class APIModel(ClassModel):
     schema_cls = CosmicSchema
 
     properties = [
         {
             "name": "name",
             "required": True,
-            "schema": {"type": "string"}
+            "schema": CosmicSchema.normalize({"type": "string"})
         },
         {
             "name": "schema",
             "required": True,
-            "schema": {"type": "schema"}
+            "schema": CosmicSchema.normalize({"type": "schema"})
         }
     ]
 
@@ -65,17 +65,16 @@ class APIModel(ObjectModel):
 
     @classmethod
     def normalize(cls, datum):
-        # Run the schema normalization
-        datum = cls.get_schema().normalize_data(datum)
+        # Run the schema normalization, that's what ClassModel does
+        inst = super(APIModel, cls).normalize(datum)
         # Take a schema and name and turn them into a model class
         class M(BaseModel):
             @classmethod
             def get_schema(cls):
-                return datum['schema']
-        M.__name__ = str(datum['name'])
-        ret = cls(datum)
-        ret.model = M
-        return ret
+                return inst.schema
+        M.__name__ = str(inst.name)
+        inst.model = M
+        return inst
 
 CosmicSchema.builtin_models["cosmic.APIModel"] = APIModel
 

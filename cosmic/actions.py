@@ -8,24 +8,26 @@ from cosmic.tools import get_arg_spec, serialize_action_arguments, apply_to_acti
 from cosmic.http import ALL_METHODS, View, make_view
 from cosmic.exceptions import APIError, SpecError, AuthenticationError, ValidationError
 
-from cosmic.models import JSONData, ObjectModel
+from cosmic.models import JSONData, ClassModel
 
-class BaseAction(ObjectModel):
+class BaseAction(ClassModel):
+    schema_cls = CosmicSchema
+
     _name = "cosmic.Action"
     properties = [
         {
             "name": "name",
-            "schema": {"type": "string"},
+            "schema": CosmicSchema.normalize({"type": "string"}),
             "required": True
         },
         {
             "name": "accepts",
-            "schema": {"type": "schema"},
+            "schema": CosmicSchema.normalize({"type": "schema"}),
             "required": False
         },
         {
             "name": "returns",
-            "schema": {"type": "schema"},
+            "schema": CosmicSchema.normalize({"type": "schema"}),
             "required": False
         }
     ]

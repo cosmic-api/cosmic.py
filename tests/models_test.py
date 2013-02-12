@@ -184,27 +184,28 @@ class TestSerialize(TestCase):
     def serialize_binary(self):
         self.assertEqual(BinaryNormalizer().serialize_data("abc"), 'YWJj')
 
-class TestObjectModel(TestCase):
+class TestClassModel(TestCase):
 
     def setUp(self):
-        class RecipeModel(ObjectModel):
+        class RecipeModel(ClassModel):
             properties = [
                 {
                     "name": "author",
                     "required": True,
-                    "schema": {"type": "string"}
+                    "schema": Schema.normalize({"type": "string"})
                 },
                 {
                     "name": "spicy",
                     "required": False,
-                    "schema": {"type": "boolean"}
+                    "schema": Schema.normalize({"type": "boolean"})
                 },
                 {
                     "name": "meta",
                     "required": False,
-                    "schema": {"type": "json"}
+                    "schema": Schema.normalize({"type": "json"})
                 }
             ]
+
         self.RecipeModel = RecipeModel
         self.recipe = RecipeModel.normalize({
             "author": "Alex",
