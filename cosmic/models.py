@@ -5,10 +5,7 @@ import base64
 from cosmic.exceptions import ValidationError, UnicodeDecodeValidationError, SpecError
 
 
-class BaseModel(object):
-    pass
-
-class Model(BaseModel):
+class Model(object):
     def __init__(self, data=None):
         self.data = data
 
@@ -173,7 +170,7 @@ class ObjectModel(Model):
         return ret
 
 
-class ArrayModel(BaseModel):
+class ArrayModel(Model):
 
     @classmethod
     def normalize(cls, datum):
@@ -199,7 +196,7 @@ class ArrayModel(BaseModel):
         return [cls.items.serialize_data(item) for item in datum]
 
 
-class IntegerModel(BaseModel):
+class IntegerModel(Model):
 
     @classmethod
     def normalize(cls, datum):
@@ -219,7 +216,7 @@ class IntegerModel(BaseModel):
         return datum
 
 
-class FloatModel(BaseModel):
+class FloatModel(Model):
 
     @classmethod
     def normalize(cls, datum):
@@ -238,7 +235,7 @@ class FloatModel(BaseModel):
         return datum
 
 
-class StringModel(BaseModel):
+class StringModel(Model):
 
     @classmethod
     def normalize(cls, datum):
@@ -263,7 +260,7 @@ class StringModel(BaseModel):
         return datum
 
 
-class BinaryModel(BaseModel):
+class BinaryModel(Model):
 
     @classmethod
     def normalize(cls, datum):
@@ -283,7 +280,7 @@ class BinaryModel(BaseModel):
         return base64.b64encode(datum)
 
 
-class BooleanModel(BaseModel):
+class BooleanModel(Model):
 
     @classmethod
     def normalize(cls, datum):
