@@ -8,12 +8,14 @@ from cosmic.tools import get_arg_spec, serialize_action_arguments, apply_to_acti
 from cosmic.http import ALL_METHODS, View, make_view
 from cosmic.exceptions import APIError, SpecError, AuthenticationError, ValidationError
 
-from cosmic.models import JSONData, ClassModel
+from cosmic.models import JSONData, ClassModel, SN
 
 class BaseAction(ClassModel):
     schema_cls = CosmicSchema
 
-    _name = "cosmic.Action"
+    class N(SN):
+        match_type = "cosmic.Action"
+
     properties = [
         {
             "name": "name",
@@ -31,6 +33,7 @@ class BaseAction(ClassModel):
             "required": False
         }
     ]
+
 
 
 class Action(BaseAction):
@@ -107,5 +110,6 @@ class RemoteAction(BaseAction):
         except ValidationError:
             raise APIError("Call to %s returned an invalid value" % self.name)
 
+BaseAction.N.model_cls = RemoteAction
 # When deserializing, we want an instance of RemoteAction
 CosmicSchema.builtin_models["cosmic.Action"] = RemoteAction

@@ -6,10 +6,11 @@ from cosmic.exceptions import ValidationError, UnicodeDecodeValidationError, Spe
 
 
 class Model(object):
+
     def __init__(self, data=None):
         self.data = data
 
-    def serialize(self):
+    def serialize(self, data=None):
         # Serialize against model schema
         schema = self.get_schema()
         if schema:
@@ -17,7 +18,7 @@ class Model(object):
         return self.data
 
     @classmethod
-    def normalize(cls, datum):
+    def normalize(cls, datum, data=None):
         # Normalize against model schema
         schema = cls.get_schema()
         if schema:
@@ -32,20 +33,27 @@ class Model(object):
         pass
 
     @classmethod
-    def get_schema_cls(cls):
-        if hasattr(cls, "schema_cls"):
-            return cls.schema_cls
-        return Schema
-
-    @classmethod
     def get_schema(cls):
         if hasattr(cls, "schema"):
-            return cls.get_schema_cls().normalize(cls.schema)
+            return cls.schema
         return None
 
 
 
-class Normalizer(Model):
+class N(Model):
+
+    def __init__(self, data=None):
+        if data != None:
+            self.data = data
+        else:
+            self.data = {u"type": self.match_type}
+        # Everything except for the type becomes an option
+        self.opts = self.data.copy()
+        self.opts.pop("type", None)
+
+    @classmethod
+    def fetch_model(cls, model_name):
+        raise NotImplementedError("fetch_model not implemented")
 
     @classmethod
     def validate(cls, datum):
@@ -60,62 +68,206 @@ class Normalizer(Model):
         thorough.
         """
         if datum["type"] != cls.match_type:
-            raise ValidationError("%s expects type=%s" % (cls.__name__, cls.match_type,))
-
-
-class SimpleNormalizer(Normalizer):
-    """All simple normalizers have the same schema, which they will
-    inherit from this class. Because there is, in effect, only one
-    legal value they can be instantiated with, the constructor will
-    make it optional for the sake of convenience.
-
-    Common schema:
-
-    .. code:: json
-
-        {
-            "type": "object",
-            "properties": [
-                {
-                    "name": "type",
-                    "required": true,
-                    "schema": {"type": "string"}
-                }
-            ]
-        }
-
-    """
-
-    def __init__(self, data=None):
-        if data != None:
-            self.data = data
-        else:
-            self.data = {u"type": self.match_type}
+            raise ValidationError("%s expects type=%s" % (cls, cls.match_type,))
 
     def normalize_data(self, datum):
-        return self.model.normalize(datum)
+        if self.opts:
+            return self.model_cls.normalize(datum, self.opts)
+        else:
+            return self.model_cls.normalize(datum)
 
     def serialize_data(self, datum):
-        return self.model.serialize(datum)
+        if self.opts:
+            return self.model_cls.serialize(datum, self.opts)
+        else:
+            try:
+                return self.model_cls.serialize(datum)
+            except TypeError:
+                raise TypeError("Serializing %s with %s" % (self.model_cls, datum,))
+
+    @classmethod
+    def normalize(cls, datum):
+
+        invalid = ValidationError("Invalid schema", datum)
+
+        # Get type or fail
+        if type(datum) != dict or "type" not in datum.keys():
+            raise invalid
+        st = datum["type"]
+
+        # Special case, don't normalize, just instantiate
+        if st == "schema":
+            if len(datum) > 1:
+                raise invalid
+            return cls.N()
+
+        # Simple type?
+        simple = [
+            IntegerModel,
+            FloatModel,
+            StringModel,
+            BinaryModel,
+            BooleanModel,
+            ArrayModel,
+            ObjectModel,
+            JSONData
+        ]
+        for model_cls in simple:
+            if st == model_cls.N.match_type:
+                class m(model_cls):
+                    class N(model_cls.N, cls):
+                        schema_cls = cls
+                m.__name__ = model_cls.__name__
+                m.N.model_cls = m
+                inst = m.N.normalize(datum)
+                return inst
+
+        # Model?
+        if '.' in st:
+            model_cls = cls.fetch_model(st)
+            class m(model_cls):
+                class N(model_cls.N, cls):
+                    schema_cls = cls
+            m.__name__ = model_cls.__name__
+            m.N.model_cls = m
+            inst = m.N.normalize(datum)
+            return inst
+
+        raise ValidationError("Unknown type", st)
+
+class NN(N):
+    match_type = "schema"
+    model_cls = N
+
+N.N = NN
+
+
+class SN(N):
+
+    # COPY-PASTE
+    @classmethod
+    def normalize(cls, datum):
+        # Normalize against model schema
+        schema = cls.get_schema()
+        if schema:
+            datum = schema.normalize_data(datum)
+        # Validate against model's custom validation function
+        cls.validate(datum)
+        # Instantiate
+        return cls(datum)
 
     @classmethod
     def get_schema(cls):
-        return ObjectNormalizer({
+        return ObjectModel.N({
             "type": "object",
             "properties": [
                 {
                     "name": "type",
                     "required": True,
-                    "schema": StringNormalizer()
+                    "schema": StringModel.N()
                 }
             ]
         })
 
 
+
 class ObjectModel(Model):
 
+    class N(SN):
+        match_type = "object"
+
+        @classmethod
+        def get_schema(cls):
+            """Schema is as follows:
+
+            .. code:: json
+
+                {
+                    "type": "object",
+                    "properties": [
+                        {
+                            "name": "type",
+                            "required": true,
+                            "schema": {"type": "string"}
+                        },
+                        {
+                            "name": "properties",
+                            "required": true,
+                            "schema": {
+                                "items": {
+                                    "properties": [
+                                        {
+                                            "name": "name",
+                                            "required": true,
+                                            "schema": {"type": "string"}
+                                        },
+                                        {
+                                            "name": "required",
+                                            "required": true,
+                                            "schema": {"type": "boolean"}
+                                        },
+                                        {
+                                            "name": "schema",
+                                            "required": True,
+                                            "schema": {"type": "schema"}
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                }
+
+            """
+            return ObjectModel.N({
+                "properties": [
+                    {
+                        "name": "type",
+                        "required": True,
+                        "schema": StringModel.N()
+                    },
+                    {
+                        "name": "properties",
+                        "required": True,
+                        "schema": ArrayModel.N({
+                            "items": ObjectModel.N({
+                                "properties": [
+                                    {
+                                        "name": "name",
+                                        "required": True,
+                                        "schema": StringModel.N()
+                                    },
+                                    {
+                                        "name": "required",
+                                        "required": True,
+                                        "schema": BooleanModel.N()
+                                    },
+                                    {
+                                        "name": "schema",
+                                        "required": True,
+                                        "schema": cls.N()
+                                    }
+                                ]
+                            })
+                        })
+                    }
+                ]
+            })
+
+        @classmethod
+        def validate(cls, datum):
+            """Raises :exc:`~cosmic.exception.ValidationError` if there are two
+            properties with the same name.
+            """
+            super(N, cls).validate(datum)
+            # Additional validation to check for duplicate properties
+            props = [prop["name"] for prop in datum['properties']]
+            if len(props) > len(set(props)):
+                raise ValidationError("Duplicate properties")
+
+
     @classmethod
-    def normalize(cls, datum):
+    def normalize(cls, datum, opts):
         """If *datum* is a dict, normalize it against *properties* and return
         the resulting dict. Otherwise raise a
         :exc:`~cosmic.exceptions.ValidationError`.
@@ -134,7 +286,7 @@ class ObjectModel(Model):
            by the corresponding *schema* value.
 
         """
-        properties = cls.properties
+        properties = opts['properties']
         if type(datum) == dict:
             ret = {}
             required = {}
@@ -161,30 +313,74 @@ class ObjectModel(Model):
         raise ValidationError("Invalid object", datum)
 
     @classmethod
-    def serialize(cls, datum):
+    def serialize(cls, datum, opts):
         ret = {}
-        for prop in cls.properties:
+        for prop in opts['properties']:
             name = prop['name']
             if name in datum.keys() and datum[name] != None:
                 ret[name] = prop['schema'].serialize_data(datum[name])
         return ret
 
+ObjectModel.N.model_cls = ObjectModel
+
 
 class ArrayModel(Model):
 
+    class N(SN):
+        match_type = u"array"
+
+        @classmethod
+        def get_schema(cls):
+            """Schema is as follows:
+
+            .. code:: json
+
+                {
+                    "type": "object",
+                    "properties": [
+                        {
+                            "name": "type",
+                            "required": true,
+                            "schema": {"type": "string"}
+                        },
+                        {
+                            "name": "items",
+                            "required": true,
+                            "schema": {"type": "schema"}
+                        }
+                    ]
+                }
+
+            """
+            return ObjectModel.N({
+                "properties": [
+                    {
+                        "name": "type",
+                        "required": True,
+                        "schema": StringModel.N()
+                    },
+                    {
+                        "name": "items",
+                        "required": True,
+                        "schema": cls.N()
+                    }
+                ]
+            })
+
     @classmethod
-    def normalize(cls, datum):
+    def normalize(cls, datum, opts):
         """If *datum* is a list, construct a new list by putting each element of
         *datum* through the normalizer provided as *items*. This normalizer may
         raise
         :exc:`~cosmic.exceptions.ValidationError`. If *datum* is not a list,
         :exc:`~cosmic.exceptions.ValidationError` will be raised.
         """
+        items = opts['items']
         if type(datum) == list:
             ret = []
             for i, item in enumerate(datum):
                 try:
-                    ret.append(cls.items.normalize_data(item))
+                    ret.append(items.normalize_data(item))
                 except ValidationError as e:
                     e.stack.append(i)
                     raise
@@ -192,11 +388,16 @@ class ArrayModel(Model):
         raise ValidationError("Invalid array", datum)
 
     @classmethod
-    def serialize(cls, datum):
-        return [cls.items.serialize_data(item) for item in datum]
+    def serialize(cls, datum, opts):
+        return [opts['items'].serialize_data(item) for item in datum]
+
+ArrayModel.N.model_cls = ArrayModel
 
 
 class IntegerModel(Model):
+
+    class N(SN):
+        match_type = "integer"
 
     @classmethod
     def normalize(cls, datum):
@@ -215,8 +416,13 @@ class IntegerModel(Model):
     def serialize(cls, datum):
         return datum
 
+IntegerModel.N.model_cls = IntegerModel
+
 
 class FloatModel(Model):
+
+    class N(SN):
+        match_type = "float"
 
     @classmethod
     def normalize(cls, datum):
@@ -234,8 +440,14 @@ class FloatModel(Model):
     def serialize(cls, datum):
         return datum
 
+FloatModel.N.model_cls = FloatModel
+
+
 
 class StringModel(Model):
+
+    class N(SN):
+        match_type = "string"
 
     @classmethod
     def normalize(cls, datum):
@@ -259,8 +471,14 @@ class StringModel(Model):
     def serialize(cls, datum):
         return datum
 
+StringModel.N.model_cls = StringModel
+
+
 
 class BinaryModel(Model):
+
+    class N(SN):
+        match_type = "binary"
 
     @classmethod
     def normalize(cls, datum):
@@ -279,8 +497,15 @@ class BinaryModel(Model):
     def serialize(cls, datum):
         return base64.b64encode(datum)
 
+BinaryModel.N.model_cls = BinaryModel
+
+
+
 
 class BooleanModel(Model):
+
+    class N(SN):
+        match_type = "boolean"
 
     @classmethod
     def normalize(cls, datum):
@@ -295,8 +520,16 @@ class BooleanModel(Model):
     def serialize(cls, datum):
         return datum
 
+BooleanModel.N.model_cls = BooleanModel
+
+
+
+
 
 class JSONData(Model):
+
+    class N(SN):
+        match_type = "json"
 
     def serialize(self):
         return self.data
@@ -318,7 +551,7 @@ class JSONData(Model):
         # Hack to make sure we don't end up with non-unicode strings in
         # normalized data
         if type(datum) == str:
-            StringNormalizer().normalize_data(datum)
+            StringModel.N().normalize_data(datum)
         elif type(datum) == list:
             for item in datum:
                 cls.validate(item)
@@ -326,60 +559,14 @@ class JSONData(Model):
             for value in datum.values():
                 cls.validate(value)
 
+JSONData.N.model_cls = JSONData
 
-class Schema(Model):
-
-    @classmethod
-    def fetch_model(cls, full_name):
-        raise ValidationError("The schema you are validating refers to a model (%s), but fetch_model has not been implemented" % full_name)
-
-    @classmethod
-    def get_normalizer(cls):
-        class N(SimpleNormalizer):
-            match_type = u"schema"
-            model = cls
-        return N()
-
-    @classmethod
-    def normalize(cls, datum):
-        if type(datum) != dict or "type" not in datum.keys():
-            raise ValidationError("Invalid schema", datum)
-        st = datum["type"]
-        # Simple type?
-        simple = [
-            IntegerNormalizer,
-            FloatNormalizer,
-            StringNormalizer,
-            BinaryNormalizer,
-            BooleanNormalizer,
-            ArrayNormalizer,
-            ObjectNormalizer,
-            JSONDataNormalizer,
-            SchemaNormalizer
-        ]
-        for simple_cls in simple:
-            if st == simple_cls.match_type:
-                class s(simple_cls):
-                    schema_cls = cls
-                s.__name__ = simple_cls.__name__
-                return s.normalize(datum)
-        # Model?
-        if '.' in st:
-            model_cls = cls.fetch_model(st)
-            class s(SimpleNormalizer):
-                match_type = st
-                model = model_cls
-                def serialize_data(self, datum):
-                    return datum.__class__.serialize(datum)
-            return s.normalize(datum)
-        raise ValidationError("Unknown type", st)
-
-    @classmethod
-    def serialize(cls, datum):
-        return datum.serialize()
 
 
 class ClassModel(ObjectModel):
+
+    class N(SN):
+        pass
 
     def __getattr__(self, key):
         for prop in self.properties:
@@ -399,202 +586,18 @@ class ClassModel(ObjectModel):
 
     @classmethod
     def normalize(cls, datum):
-        datum = super(ClassModel, cls).normalize(datum)
+        datum = cls.get_schema().normalize_data(datum)
+        cls.validate(datum)
         return cls(datum)
 
     def serialize(self):
-        return super(ClassModel, self).serialize(self.data)
+        return self.get_schema().serialize_data(self.data)
 
     @classmethod
     def get_schema(cls):
-        return ObjectNormalizer({
+        return ObjectModel.N({
             "type": "object",
             "properties": cls.properties
         })
 
-
-
-class JSONDataNormalizer(SimpleNormalizer):
-    match_type = u"json"
-    model = JSONData
-
-class SchemaNormalizer(SimpleNormalizer):
-    match_type = u"schema"
-    model = Schema
-
-class IntegerNormalizer(SimpleNormalizer):
-    match_type = u"integer"
-    model = IntegerModel
-
-class FloatNormalizer(SimpleNormalizer):
-    match_type = u"float"
-    model = FloatModel
-
-class StringNormalizer(SimpleNormalizer):
-    match_type = u"string"
-    model = StringModel
-
-class BinaryNormalizer(SimpleNormalizer):
-    match_type = u"binary"
-    model = BinaryModel
-
-class BooleanNormalizer(SimpleNormalizer):
-    match_type = u"boolean"
-    model = BooleanModel
-
-class ArrayNormalizer(Normalizer):
-    match_type = u"array"
-    model = ArrayModel
-
-    @classmethod
-    def get_schema(cls):
-        """Schema is as follows:
-
-        .. code:: json
-
-            {
-                "type": "object",
-                "properties": [
-                    {
-                        "name": "type",
-                        "required": true,
-                        "schema": {"type": "string"}
-                    },
-                    {
-                        "name": "items",
-                        "required": true,
-                        "schema": {"type": "schema"}
-                    }
-                ]
-            }
-
-        """
-        return ObjectNormalizer({
-            "properties": [
-                {
-                    "name": "type",
-                    "required": True,
-                    "schema": StringNormalizer()
-                },
-                {
-                    "name": "items",
-                    "required": True,
-                    "schema": cls.get_schema_cls().get_normalizer()
-                }
-            ]
-        })
-
-    def normalize_data(self, datum):
-        class N(ArrayModel):
-            items = self.data['items']
-        return N.normalize(datum)
-
-    def serialize_data(self, datum):
-        class N(ArrayModel):
-            items = self.data['items']
-        return N.serialize(datum)
-
-
-class ObjectNormalizer(Normalizer):
-    match_type = u"object"
-    model = ObjectModel
-
-    @classmethod
-    def get_schema(cls):
-        """Schema is as follows:
-
-        .. code:: json
-
-            {
-                "type": "object",
-                "properties": [
-                    {
-                        "name": "type",
-                        "required": true,
-                        "schema": {"type": "string"}
-                    },
-                    {
-                        "name": "properties",
-                        "required": true,
-                        "schema": {
-                            "items": {
-                                "properties": [
-                                    {
-                                        "name": "name",
-                                        "required": true,
-                                        "schema": {"type": "string"}
-                                    },
-                                    {
-                                        "name": "required",
-                                        "required": true,
-                                        "schema": {"type": "boolean"}
-                                    },
-                                    {
-                                        "name": "schema",
-                                        "required": True,
-                                        "schema": {"type": "schema"}
-                                    }
-                                ]
-                            }
-                        }
-                    }
-                ]
-            }
-
-        """
-        return ObjectNormalizer({
-            "properties": [
-                {
-                    "name": "type",
-                    "required": True,
-                    "schema": StringNormalizer()
-                },
-                {
-                    "name": "properties",
-                    "required": True,
-                    "schema": ArrayNormalizer({
-                        "items": ObjectNormalizer({
-                            "properties": [
-                                {
-                                    "name": "name",
-                                    "required": True,
-                                    "schema": StringNormalizer()
-                                },
-                                {
-                                    "name": "required",
-                                    "required": True,
-                                    "schema": BooleanNormalizer()
-                                },
-                                {
-                                    "name": "schema",
-                                    "required": True,
-                                    "schema": cls.get_schema_cls().get_normalizer()
-                                }
-                            ]
-                        })
-                    })
-                }
-            ]
-        })
-
-    @classmethod
-    def validate(cls, datum):
-        """Raises :exc:`~cosmic.exception.ValidationError` if there are two
-        properties with the same name.
-        """
-        super(ObjectNormalizer, cls).validate(datum)
-        # Additional validation to check for duplicate properties
-        props = [prop["name"] for prop in datum['properties']]
-        if len(props) > len(set(props)):
-            raise ValidationError("Duplicate properties")
-
-    def normalize_data(self, datum):
-        class N(ObjectModel):
-            properties = self.data['properties']
-        return N.normalize(datum)
-
-    def serialize_data(self, datum):
-        class N(ObjectModel):
-            properties = self.data['properties']
-        return N.serialize(datum)
-
+ClassModel.N.model_cls = ClassModel

@@ -48,7 +48,7 @@ def get_arg_spec(func):
         return None
     # One argument: accepts a single JSON object
     if len(args) == 1:
-        return JSONDataNormalizer()
+        return JSONData.N()
     # Multiple arguments: accepts a JSON object with a property for
     # each argument, each property being of type 'json'
     props = []
@@ -57,10 +57,10 @@ def get_arg_spec(func):
     for i, arg in enumerate(args):
         props.append({
             "name": arg,
-            "schema": JSONDataNormalizer(),
+            "schema": JSONData.N(),
             "required": i < numargs
         })
-    return ObjectNormalizer({"type": "object", "properties": props})
+    return ObjectModel.N({"type": "object", "properties": props})
 
 def apply_to_action_func(func, data):
     """Applies a JSONPayload object to the user-defined action
@@ -111,9 +111,9 @@ def serialize_action_arguments(*args, **kwargs):
     `apply_to_action_func`. If no arguments passed, returns None.
     """
     if len(args) == 1 and len(kwargs) == 0:
-        return JSONDataNormalizer().normalize_data(args[0])
+        return JSONData.N().normalize_data(args[0])
     if len(args) == 0 and len(kwargs) > 0:
-        return JSONDataNormalizer().normalize_data(kwargs)
+        return JSONData.N().normalize_data(kwargs)
     if len(args) == 0 and len(kwargs) == 0:
         return None
     raise SpecError("Action must be called either with one argument or with one or more keyword arguments")
@@ -124,11 +124,11 @@ def schema_is_compatible(general, detailed):
     of JSON schema as returned by tools.get_arg_spec, the special
     schema is an arbitrary JSON schema as passed in by the user.
     """
-    if isinstance(general, JSONDataNormalizer):
+    if isinstance(general, JSONData.N):
         return True
     # If not "json", general has to be an "object". Make sure detailed
     # is an object too
-    if not isinstance(detailed, ObjectNormalizer):
+    if not isinstance(detailed, ObjectModel.N):
         return False
     gprops = general.data['properties']
     dprops = detailed.data['properties']
@@ -141,8 +141,12 @@ def schema_is_compatible(general, detailed):
             return False
     return True
 
-class CosmicSchema(Schema):
+class CosmicSchema(N):
     builtin_models = {}
+
+    class N(N.N):
+        pass
+
     @classmethod
     def fetch_model(cls, full_name):
         if full_name in cls.builtin_models.keys():
@@ -157,9 +161,13 @@ class CosmicSchema(Schema):
         except SpecError:
             raise ValidationError("Unknown model for %s API" % api_name, model_name)
 
+CosmicSchema.N.model_cls = CosmicSchema
+
+
 def normalize(schema, datum):
     """Schema is expected to be a valid schema and datum is expected
     to be the return value of json.loads
     """
     normalizer = CosmicSchema.normalize(schema)
     return normalizer.normalize_data(datum)
+

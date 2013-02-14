@@ -273,5 +273,3 @@ class TestRemoteAPI(TestCase):
         self.assertEqual(self.cookbook.models.Recipe.get_schema().serialize(), {"type": "string"})
         self.assertEqual(self.cookbook.models.Recipe.__bases__, (Model,))
 
-if __name__ == '__main__':
-    unittest.main()

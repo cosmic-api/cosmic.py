@@ -12,7 +12,7 @@ from cosmic.exceptions import APIError, SpecError, ValidationError
 from cosmic.actions import Action, RemoteAction, BaseAction
 from cosmic.tools import Namespace, normalize, CosmicSchema
 from cosmic.models import Model as BaseModel
-from cosmic.models import Schema, ClassModel, SchemaNormalizer
+from cosmic.models import ClassModel, N, SN
 from cosmic.http import ALL_METHODS, View, UrlRule, Response, CorsPreflightView, make_view
 from cosmic.plugins import FlaskPlugin
 
@@ -43,6 +43,9 @@ def ensure_bootstrapped():
 class APIModel(ClassModel):
     schema_cls = CosmicSchema
 
+    class N(SN):
+        match_type = "cosmic.APIModel"
+
     properties = [
         {
             "name": "name",
@@ -69,20 +72,26 @@ class APIModel(ClassModel):
         inst = super(APIModel, cls).normalize(datum)
         # Take a schema and name and turn them into a model class
         class M(BaseModel):
+            class N(CosmicSchema):
+                match_type = inst.name
             @classmethod
             def get_schema(cls):
                 return inst.schema
         M.__name__ = str(inst.name)
+        M.N.model_cls = M
         inst.model = M
         return inst
 
+APIModel.N.model_cls = APIModel
 CosmicSchema.builtin_models["cosmic.APIModel"] = APIModel
 
 
 
 class BaseAPI(BaseModel):
     schema_cls = CosmicSchema
-    _name = "cosmic.API"
+
+    class N(SN):
+        match_type = "cosmic.API"
 
     def __init__(self, *args, **kwargs):
         super(BaseAPI, self).__init__(*args, **kwargs)
@@ -99,7 +108,8 @@ class BaseAPI(BaseModel):
     def url(self):
         return self.data['url']
 
-    schema = {"type": "object",
+    schema = CosmicSchema.normalize({
+        "type": "object",
         "properties": [
             {
                 "name": "name",
@@ -133,7 +143,8 @@ class BaseAPI(BaseModel):
                 }
             }
         ]
-    }
+    })
+
 
 
 
@@ -205,12 +216,12 @@ class API(BaseAPI):
         """
         if accepts:
             try:
-                accepts = SchemaNormalizer().normalize_data(accepts)
+                accepts = N.normalize(accepts)
             except ValidationError:
                 raise SpecError("'%s' was passed an invalid accepts schema" % self.name)
         if returns:
             try:
-                returns = SchemaNormalizer().normalize_data(returns)
+                returns = N.normalize(returns)
             except ValidationError:
                 raise SpecError("'%s' was passed an invalid returns schema" % self.name)
 
@@ -275,4 +286,5 @@ class RemoteAPI(BaseAPI):
         for model in self.data['models']:
             self.models.add(model.name, model.model)
 
+BaseAPI.N.model_cls = RemoteAPI
 CosmicSchema.builtin_models["cosmic.API"] = RemoteAPI
