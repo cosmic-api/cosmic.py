@@ -9,7 +9,7 @@ from flask import request
 
 import cosmic.resources
 from cosmic.exceptions import APIError, SpecError, ValidationError
-from cosmic.actions import Action, RemoteAction, BaseAction
+from cosmic.actions import Action
 from cosmic.tools import Namespace, normalize, CosmicSchema
 from cosmic.models import Model as BaseModel
 from cosmic.models import ClassModel, N, SN
@@ -227,7 +227,7 @@ class API(BaseAPI):
 
         def wrapper(func):
             name = func.__name__
-            action = Action(func, accepts=accepts, returns=returns)
+            action = Action.from_func(func, accepts=accepts, returns=returns)
             self.actions.add(name, action)
             self.data['actions'].append(action)
             return func

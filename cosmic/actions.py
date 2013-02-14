@@ -10,7 +10,7 @@ from cosmic.exceptions import APIError, SpecError, AuthenticationError, Validati
 
 from cosmic.models import JSONData, ClassModel, SN
 
-class BaseAction(ClassModel):
+class Action(ClassModel):
     schema_cls = CosmicSchema
 
     class N(SN):
@@ -34,36 +34,6 @@ class BaseAction(ClassModel):
         }
     ]
 
-
-
-class Action(BaseAction):
-
-    def __init__(self, func, accepts=None, returns=None):
-
-        self.raw_func = func
-        name = func.__name__
-        arg_spec = get_arg_spec(func)
-
-        if accepts:
-            if not arg_spec:
-                raise SpecError("'%s' is said to take arguments, but doesn't" % name)
-            if not schema_is_compatible(arg_spec, accepts):
-                raise SpecError("The accepts parameter of '%s' action is incompatible with the function's arguments")
-        elif arg_spec:
-            accepts = arg_spec
-
-        super(Action, self).__init__({
-            "name": name,
-            "accepts": accepts,
-            "returns": returns
-        })
-
-    def __call__(self, *args, **kwargs):
-        # This seems redundant, but is necessary to make sure local
-        # actions behave same as remote ones
-        data = serialize_action_arguments(*args, **kwargs)
-        return apply_to_action_func(self.raw_func, data)
-
     def get_view(self, debug=False):
         """Wraps a user-defined action function to return a Flask view function
         that handles errors and returns proper HTTP responses"""
@@ -78,38 +48,60 @@ class Action(BaseAction):
             return apply_to_action_func(self.raw_func, payload)
         return action_view
 
-
-class RemoteAction(BaseAction):
-
     def __call__(self, *args, **kwargs):
         json_data = serialize_action_arguments(*args, **kwargs)
-        if not json_data and self.accepts:
-            raise SpecError("%s takes arguments" % self.name)
-        if json_data:
-            try:
-                normalized = self.accepts.normalize_data(json_data.data)
-            except ValidationError as err:
-                raise SpecError(err.args[0])
-            serialized = self.accepts.serialize_data(normalized)
-            data = json.dumps(serialized)
+        if hasattr(self, "raw_func"):
+            # This seems redundant, but is necessary to make sure local
+            # actions behave same as remote ones
+            return apply_to_action_func(self.raw_func, json_data)
         else:
-            data = ""
-        url = self.api_url + '/actions/' + self.name
-        headers = {'Content-Type': 'application/json'}
-        res = requests.post(url, data=data, headers=headers)
-        if res.status_code != requests.codes.ok:
-            if res.json and 'error' in res.json:
-                raise APIError(res.json['error'])
+            if not json_data and self.accepts:
+                raise SpecError("%s takes arguments" % self.name)
+            if json_data:
+                try:
+                    normalized = self.accepts.normalize_data(json_data.data)
+                except ValidationError as err:
+                    raise SpecError(err.args[0])
+                serialized = self.accepts.serialize_data(normalized)
+                data = json.dumps(serialized)
             else:
-                raise APIError("Call to %s failed with improper error response")
-        try:
-            if self.returns:
-                return self.returns.normalize_data(res.json)
-            else:
-                return None
-        except ValidationError:
-            raise APIError("Call to %s returned an invalid value" % self.name)
+                data = ""
+            url = self.api_url + '/actions/' + self.name
+            headers = {'Content-Type': 'application/json'}
+            res = requests.post(url, data=data, headers=headers)
+            if res.status_code != requests.codes.ok:
+                if res.json and 'error' in res.json:
+                    raise APIError(res.json['error'])
+                else:
+                    raise APIError("Call to %s failed with improper error response")
+            try:
+                if self.returns:
+                    return self.returns.normalize_data(res.json)
+                else:
+                    return None
+            except ValidationError:
+                raise APIError("Call to %s returned an invalid value" % self.name)
 
-BaseAction.N.model_cls = RemoteAction
-# When deserializing, we want an instance of RemoteAction
-CosmicSchema.builtin_models["cosmic.Action"] = RemoteAction
+    @classmethod
+    def from_func(cls, func, accepts=None, returns=None):
+
+        name = func.__name__
+        arg_spec = get_arg_spec(func)
+
+        if accepts:
+            if not arg_spec:
+                raise SpecError("'%s' is said to take arguments, but doesn't" % name)
+            if not schema_is_compatible(arg_spec, accepts):
+                raise SpecError("The accepts parameter of '%s' action is incompatible with the function's arguments")
+        elif arg_spec:
+            accepts = arg_spec
+
+        return cls({
+            "name": name,
+            "accepts": accepts,
+            "returns": returns
+        }, raw_func=func)
+
+
+Action.N.model_cls = Action
+CosmicSchema.builtin_models["cosmic.Action"] = Action

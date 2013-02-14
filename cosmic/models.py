@@ -7,8 +7,10 @@ from cosmic.exceptions import ValidationError, UnicodeDecodeValidationError, Spe
 
 class Model(object):
 
-    def __init__(self, data=None):
+    def __init__(self, data, **kwargs):
         self.data = data
+        for key, value in kwargs.items():
+            self.__dict__[key] = value
 
     def serialize(self, data=None):
         # Serialize against model schema

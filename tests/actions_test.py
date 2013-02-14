@@ -5,7 +5,7 @@ from unittest2 import TestCase
 from mock import patch, Mock
 
 from cosmic.api import Namespace
-from cosmic.actions import Action, RemoteAction
+from cosmic.actions import Action
 from cosmic.exceptions import SpecError, APIError
 from cosmic.http import Request
 from cosmic.models import *
@@ -35,7 +35,7 @@ class TestBasicRemoteAction(TestCase):
             }
         }
 
-        self.action = RemoteAction.normalize(spec)
+        self.action = Action.normalize(spec)
         self.action.api_url = "http://example.com"
 
     def test_call_success(self):
@@ -91,7 +91,7 @@ class TestBasicAction(TestCase):
                 c = "sauerkraut"
             return "%s pounds of %s" % (12.0 / servings, c)
 
-        self.action = Action(cabbage, returns=JSONData.N())
+        self.action = Action.from_func(cabbage, returns=JSONData.N())
         self.view = self.action.get_view()
 
     def test_successful_call(self):
@@ -124,31 +124,31 @@ class TestActionAnnotation(TestCase):
     def test_no_args_no_accepts(self):
         def func():
             pass
-        action = Action(func)
+        action = Action.from_func(func)
         self.assertEqual(action.accepts, None)
 
     def test_args_no_accepts(self):
         def func(a=None):
             pass
-        action = Action(func)
+        action = Action.from_func(func)
         self.assertEqual(action.accepts.serialize(), {"type": "json"})
 
     def test_no_args_accepts(self):
         def func():
             pass
         with self.assertRaisesRegexp(SpecError, "is said to take arguments"):
-            action = Action(func, accepts={"type": "json"})
+            action = Action.from_func(func, accepts={"type": "json"})
 
     def test_args_accepts_incompatible(self):
         def func(a, b=1):
             pass
         with self.assertRaisesRegexp(SpecError, "incompatible"):
-            action = Action(func, accepts=BooleanModel.N())
+            action = Action.from_func(func, accepts=BooleanModel.N())
 
     def test_args_accepts_compatible_returns_compatible(self):
         def func(a, b=1):
             pass
-        action = Action(func, accepts=self.a_schema, returns=self.a_schema)
+        action = Action.from_func(func, accepts=self.a_schema, returns=self.a_schema)
         self.assertEqual(action.accepts, self.a_schema)
         self.assertEqual(action.returns, self.a_schema)
 
