@@ -9,7 +9,7 @@ import requests
 
 from cosmic.exceptions import *
 from cosmic.tools import normalize
-from cosmic.api import API, RemoteAPI
+from cosmic.api import API
 from cosmic.models import Model
 from cosmic import api
 
@@ -82,7 +82,7 @@ class TestBootstrapping(TestCase):
             mock_post.return_value.json = registry_spec
             api.ensure_bootstrapped()
             mock_post.assert_called_with('http://api.cosmic.io/actions/get_spec_by_name', headers={'Content-Type': 'application/json'}, data=json.dumps("cosmic-registry"))
-        self.assertTrue(isinstance(api.cosmic_registry, RemoteAPI))
+        self.assertTrue(isinstance(api.cosmic_registry, API))
 
     def tearDown(self):
         api.clear_module_cache()
@@ -92,9 +92,9 @@ class TestAPIAuthentication(TestCase):
 
     def setUp(self):
 
-        self.magicbook = API('magicbook', "http://localhost:8882/api")
+        self.magicbook = API.create('magicbook', "http://localhost:8882/api")
 
-        self.cookbook = API('cookbook', "http://localhost:8881/api")
+        self.cookbook = API.create('cookbook', "http://localhost:8881/api")
         @self.cookbook.authentication
         def authenticate(headers):
             if headers['X-Wacky'] != 'Tobacky':
@@ -127,7 +127,7 @@ class TestAPI(TestCase):
     def setUp(self):
         self.maxDiff = None
 
-        self.cookbook = API('cookbook', "http://localhost:8881/api")
+        self.cookbook = API.create('cookbook', "http://localhost:8881/api")
 
         @self.cookbook.action()
         def cabbage(spicy, capitalize=False):
@@ -157,7 +157,7 @@ class TestAPI(TestCase):
         class Cookie(Model):
             schema = {u"type": u"boolean"}
 
-        api.cosmic_registry = RemoteAPI.normalize(registry_spec)
+        api.cosmic_registry = API.normalize(registry_spec)
         self.app = self.cookbook.get_flask_app(debug=True)
         self.werkzeug_client = self.app.test_client()
 
@@ -255,7 +255,7 @@ class TestAPI(TestCase):
 class TestRemoteAPI(TestCase):
 
     def setUp(self):
-        self.cookbook = RemoteAPI.normalize(cookbook_spec)
+        self.cookbook = API.normalize(cookbook_spec)
 
     def test_remote_no_return_action(self):
         with patch.object(requests, 'post') as mock_post:

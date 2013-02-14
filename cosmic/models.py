@@ -118,7 +118,7 @@ class N(Model):
             if st == model_cls.N.match_type:
                 class m(model_cls):
                     class N(model_cls.N, cls):
-                        schema_cls = cls
+                        pass
                 m.__name__ = model_cls.__name__
                 m.N.model_cls = m
                 inst = m.N.normalize(datum)
@@ -129,7 +129,7 @@ class N(Model):
             model_cls = cls.fetch_model(st)
             class m(model_cls):
                 class N(model_cls.N, cls):
-                    schema_cls = cls
+                    pass
             m.__name__ = model_cls.__name__
             m.N.model_cls = m
             inst = m.N.normalize(datum)

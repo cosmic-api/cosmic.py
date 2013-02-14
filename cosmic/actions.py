@@ -11,7 +11,6 @@ from cosmic.exceptions import APIError, SpecError, AuthenticationError, Validati
 from cosmic.models import JSONData, ClassModel, SN
 
 class Action(ClassModel):
-    schema_cls = CosmicSchema
 
     class N(SN):
         match_type = "cosmic.Action"

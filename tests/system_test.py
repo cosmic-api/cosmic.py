@@ -1,7 +1,7 @@
 def quickstart():
 
     from cosmic.api import API
-    cookbook = API('cookbook')
+    cookbook = API.create('cookbook')
 
     @cookbook.action(returns={"type": "string"})
     def cabbage(spicy=False):
