@@ -155,7 +155,7 @@ class TestAPI(TestCase):
 
         @self.cookbook.model
         class Cookie(Model):
-            schema = {u"type": u"boolean"}
+            schema = CosmicSchema.normalize({u"type": u"boolean"})
 
         api.cosmic_registry = API.normalize(registry_spec)
         self.app = self.cookbook.get_flask_app(debug=True)

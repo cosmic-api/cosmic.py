@@ -261,7 +261,7 @@ class API(BaseModel):
         # Add schema class
         if not hasattr(model_cls, "normalizer"):
             class normalizer(SimpleSchema, CosmicSchema):
-                match_type = "cookbook.Recipe"
+                match_type = "%s.%s" % (self.name, model_cls.__name__,)
             model_cls.normalizer = normalizer
             model_cls.normalizer.model_cls = model_cls
         return model_cls

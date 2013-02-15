@@ -81,7 +81,10 @@ class Schema(Model):
         if self.opts:
             return self.model_cls.serialize(datum, self.opts)
         else:
-            return self.model_cls.serialize(datum)
+            try:
+                return self.model_cls.serialize(datum)
+            except TypeError:
+                raise Exception(self.model_cls, datum)
 
     @classmethod
     def normalize(cls, datum):
@@ -110,14 +113,11 @@ class Schema(Model):
             ObjectSchema,
             JSONDataSchema
         ]
-        for model_cls in simple:
-            if st == model_cls.match_type:
-                class m(model_cls.model_cls):
-                    class normalizer(model_cls, cls):
-                        pass
-                m.__name__ = model_cls.__name__
-                m.normalizer.model_cls = m
-                inst = m.normalizer.normalize(datum)
+        for simple_cls in simple:
+            if st == simple_cls.match_type:
+                class normalizer(simple_cls, cls):
+                    pass
+                inst = normalizer.normalize(datum)
                 return inst
 
         # Model?
@@ -127,11 +127,6 @@ class Schema(Model):
 
         raise ValidationError("Unknown type", st)
 
-class SchemaSchema(Schema):
-    match_type = "schema"
-    model_cls = Schema
-
-Schema.normalizer = SchemaSchema
 
 
 class SimpleSchema(Schema):
@@ -160,6 +155,15 @@ class SimpleSchema(Schema):
                 }
             ]
         })
+
+class SchemaSchema(SimpleSchema):
+    match_type = "schema"
+    model_cls = Schema
+
+Schema.normalizer = SchemaSchema
+
+
+
 
 
 class ObjectSchema(SimpleSchema):
