@@ -12,7 +12,7 @@ from cosmic.exceptions import APIError, SpecError, ValidationError
 from cosmic.actions import Action
 from cosmic.tools import Namespace, normalize, CosmicSchema
 from cosmic.models import Model as BaseModel
-from cosmic.models import ClassModel, N, SN
+from cosmic.models import ClassModel, Schema, SimpleSchema
 from cosmic.http import ALL_METHODS, View, UrlRule, Response, CorsPreflightView, make_view
 from cosmic.plugins import FlaskPlugin
 
@@ -42,7 +42,7 @@ def ensure_bootstrapped():
 
 class APIModel(ClassModel):
 
-    class N(SN, CosmicSchema):
+    class normalizer(SimpleSchema, CosmicSchema):
         match_type = "cosmic.APIModel"
 
     properties = [
@@ -71,24 +71,24 @@ class APIModel(ClassModel):
         inst = super(APIModel, cls).normalize(datum)
         # Take a schema and name and turn them into a model class
         class M(BaseModel):
-            class N(CosmicSchema):
+            class normalizer(CosmicSchema):
                 match_type = inst.name
             @classmethod
             def get_schema(cls):
                 return inst.schema
         M.__name__ = str(inst.name)
-        M.N.model_cls = M
+        M.normalizer.model_cls = M
         inst.model = M
         return inst
 
-APIModel.N.model_cls = APIModel
+APIModel.normalizer.model_cls = APIModel
 CosmicSchema.builtin_models["cosmic.APIModel"] = APIModel
 
 
 
 class API(BaseModel):
 
-    class N(SN, CosmicSchema):
+    class normalizer(SimpleSchema, CosmicSchema):
         match_type = "cosmic.API"
 
     def __init__(self, *args, **kwargs):
@@ -236,12 +236,12 @@ class API(BaseModel):
         """
         if accepts:
             try:
-                accepts = N.normalize(accepts)
+                accepts = CosmicSchema.normalize(accepts)
             except ValidationError:
                 raise SpecError("'%s' was passed an invalid accepts schema" % self.name)
         if returns:
             try:
-                returns = N.normalize(returns)
+                returns = CosmicSchema.normalize(returns)
             except ValidationError:
                 raise SpecError("'%s' was passed an invalid returns schema" % self.name)
 
@@ -259,11 +259,11 @@ class API(BaseModel):
         # Add to namespace
         self.models.add(model_cls.__name__, model_cls)
         # Add schema class
-        if not hasattr(model_cls, "N"):
-            class N(SN, CosmicSchema):
+        if not hasattr(model_cls, "normalizer"):
+            class normalizer(SimpleSchema, CosmicSchema):
                 match_type = "cookbook.Recipe"
-            model_cls.N = N
-            model_cls.N.model_cls = model_cls
+            model_cls.normalizer = normalizer
+            model_cls.normalizer.model_cls = model_cls
         return model_cls
 
     def authenticate(self):
@@ -286,5 +286,5 @@ class API(BaseModel):
 
 
 
-API.N.model_cls = API
+API.normalizer.model_cls = API
 CosmicSchema.builtin_models["cosmic.API"] = API

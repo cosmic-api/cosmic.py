@@ -91,7 +91,7 @@ class TestBasicAction(TestCase):
                 c = "sauerkraut"
             return "%s pounds of %s" % (12.0 / servings, c)
 
-        self.action = Action.from_func(cabbage, returns=JSONData.N())
+        self.action = Action.from_func(cabbage, returns=JSONDataSchema())
         self.view = self.action.get_view()
 
     def test_successful_call(self):
@@ -106,17 +106,17 @@ class TestBasicAction(TestCase):
 class TestActionAnnotation(TestCase):
 
     def setUp(self):
-        self.a_schema = ObjectModel.N({
+        self.a_schema = ObjectSchema({
             "properties": [
                 {
                     "name": "a",
                     "required": True,
-                    "schema": IntegerModel.N()
+                    "schema": IntegerSchema()
                 },
                 {
                     "name": "b",
                     "required": False,
-                    "schema": IntegerModel.N()
+                    "schema": IntegerSchema()
                 }
             ]
         })
@@ -143,7 +143,7 @@ class TestActionAnnotation(TestCase):
         def func(a, b=1):
             pass
         with self.assertRaisesRegexp(SpecError, "incompatible"):
-            action = Action.from_func(func, accepts=BooleanModel.N())
+            action = Action.from_func(func, accepts=BooleanSchema())
 
     def test_args_accepts_compatible_returns_compatible(self):
         def func(a, b=1):

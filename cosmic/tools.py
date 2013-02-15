@@ -124,11 +124,11 @@ def schema_is_compatible(general, detailed):
     of JSON schema as returned by tools.get_arg_spec, the special
     schema is an arbitrary JSON schema as passed in by the user.
     """
-    if isinstance(general, JSONData.N):
+    if isinstance(general, JSONDataSchema):
         return True
     # If not "json", general has to be an "object". Make sure detailed
     # is an object too
-    if not isinstance(detailed, ObjectModel.N):
+    if not isinstance(detailed, ObjectSchema):
         return False
     gprops = general.data['properties']
     dprops = detailed.data['properties']
@@ -141,10 +141,10 @@ def schema_is_compatible(general, detailed):
             return False
     return True
 
-class CosmicSchema(N):
+class CosmicSchema(Schema):
     builtin_models = {}
 
-    class N(N.N):
+    class normalizer(Schema.normalizer):
         pass
 
     @classmethod
@@ -161,7 +161,7 @@ class CosmicSchema(N):
         except SpecError:
             raise ValidationError("Unknown model for %s API" % api_name, model_name)
 
-CosmicSchema.N.model_cls = CosmicSchema
+CosmicSchema.normalizer.model_cls = CosmicSchema
 
 
 def normalize(schema, datum):
