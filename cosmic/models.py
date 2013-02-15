@@ -11,7 +11,7 @@ class Model(object):
         for key, value in kwargs.items():
             self.__dict__[key] = value
 
-    def serialize(self, data=None):
+    def serialize(self):
         # Serialize against model schema
         schema = self.get_schema()
         if schema:
@@ -19,7 +19,7 @@ class Model(object):
         return self.data
 
     @classmethod
-    def normalize(cls, datum, data=None):
+    def normalize(cls, datum):
         # Normalize against model schema
         schema = cls.get_schema()
         if schema:
@@ -43,11 +43,10 @@ class Model(object):
 
 class Schema(Model):
 
-    def __init__(self, data=None):
-        if data != None:
-            self.data = data
-        else:
-            self.data = {u"type": self.match_type}
+    def __init__(self, data=None, **kwargs):
+        if data == None:
+            data = {u"type": self.match_type}
+        super(Schema, self).__init__(data, **kwargs)
         # Everything except for the type becomes an option
         self.opts = self.data.copy()
         self.opts.pop("type", None)
@@ -58,28 +57,18 @@ class Schema(Model):
 
     @classmethod
     def validate(cls, datum):
-        """Make sure the *type* attribute matches the normalizer
-        type.
-
-        Realistically, no one is going to try::
-
-            >>> StringNormalizer.normalize({"type": "integer"})
-
-        But because normalizers are models, validation has to be
-        thorough.
-        """
         if datum["type"] != cls.match_type:
             raise ValidationError("%s expects type=%s" % (cls, cls.match_type,))
 
     def normalize_data(self, datum):
         if self.opts:
-            return self.model_cls.normalize(datum, self.opts)
+            return self.model_cls.normalize(datum, **self.opts)
         else:
             return self.model_cls.normalize(datum)
 
     def serialize_data(self, datum):
         if self.opts:
-            return self.model_cls.serialize(datum, self.opts)
+            return self.model_cls.serialize(datum, **self.opts)
         else:
             return self.model_cls.serialize(datum)
 
@@ -97,7 +86,7 @@ class Schema(Model):
         if st == "schema":
             if len(datum) > 1:
                 raise invalid
-            return cls.normalizer()
+            return SchemaSchema(datum, fetch_model=cls.fetch_model)
 
         # Simple type?
         simple = [
@@ -221,7 +210,7 @@ class ObjectModel(Model):
     normalizer = ObjectSchema
 
     @classmethod
-    def normalize(cls, datum, opts):
+    def normalize(cls, datum, properties):
         """If *datum* is a dict, normalize it against *properties* and return
         the resulting dict. Otherwise raise a
         :exc:`~cosmic.exceptions.ValidationError`.
@@ -240,7 +229,6 @@ class ObjectModel(Model):
            by the corresponding *schema* value.
 
         """
-        properties = opts['properties']
         if type(datum) == dict:
             ret = {}
             required = {}
@@ -267,9 +255,9 @@ class ObjectModel(Model):
         raise ValidationError("Invalid object", datum)
 
     @classmethod
-    def serialize(cls, datum, opts):
+    def serialize(cls, datum, properties):
         ret = {}
-        for prop in opts['properties']:
+        for prop in properties:
             name = prop['name']
             if name in datum.keys() and datum[name] != None:
                 ret[name] = prop['schema'].serialize_data(datum[name])
@@ -308,14 +296,13 @@ class ArrayModel(Model):
     normalizer = ArraySchema
 
     @classmethod
-    def normalize(cls, datum, opts):
+    def normalize(cls, datum, items):
         """If *datum* is a list, construct a new list by putting each element of
         *datum* through the normalizer provided as *items*. This normalizer may
         raise
         :exc:`~cosmic.exceptions.ValidationError`. If *datum* is not a list,
         :exc:`~cosmic.exceptions.ValidationError` will be raised.
         """
-        items = opts['items']
         if type(datum) == list:
             ret = []
             for i, item in enumerate(datum):
@@ -328,8 +315,8 @@ class ArrayModel(Model):
         raise ValidationError("Invalid array", datum)
 
     @classmethod
-    def serialize(cls, datum, opts):
-        return [opts['items'].serialize_data(item) for item in datum]
+    def serialize(cls, datum, items):
+        return [items.serialize_data(item) for item in datum]
 
 ArraySchema.model_cls = ArrayModel
 
