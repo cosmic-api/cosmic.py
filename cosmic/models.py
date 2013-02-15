@@ -81,10 +81,7 @@ class Schema(Model):
         if self.opts:
             return self.model_cls.serialize(datum, self.opts)
         else:
-            try:
-                return self.model_cls.serialize(datum)
-            except TypeError:
-                raise Exception(self.model_cls, datum)
+            return self.model_cls.serialize(datum)
 
     @classmethod
     def normalize(cls, datum):
