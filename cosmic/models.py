@@ -83,10 +83,6 @@ class N(Model):
             return self.model_cls.serialize(datum, self.opts)
         else:
             return self.model_cls.serialize(datum)
-            try:
-                return self.model_cls.serialize(datum)
-            except TypeError:
-                raise TypeError("Serializing %s with %s" % (self.model_cls, datum,))
 
     @classmethod
     def normalize(cls, datum):
@@ -217,6 +213,7 @@ class ObjectModel(Model):
 
             """
             return ObjectModel.N({
+                "type": "object",
                 "properties": [
                     {
                         "name": "type",
@@ -562,7 +559,7 @@ JSONData.N.model_cls = JSONData
 
 class ClassModel(ObjectModel):
 
-    class N(SN):
+    class N(ObjectModel.N):
         pass
 
     def __getattr__(self, key):

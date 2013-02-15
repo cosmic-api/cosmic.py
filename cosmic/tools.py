@@ -48,7 +48,7 @@ def get_arg_spec(func):
         return None
     # One argument: accepts a single JSON object
     if len(args) == 1:
-        return JSONData.N()
+        return CosmicSchema.normalize({"type": "json"})
     # Multiple arguments: accepts a JSON object with a property for
     # each argument, each property being of type 'json'
     props = []
@@ -57,10 +57,10 @@ def get_arg_spec(func):
     for i, arg in enumerate(args):
         props.append({
             "name": arg,
-            "schema": JSONData.N(),
+            "schema": {"type": "json"},
             "required": i < numargs
         })
-    return ObjectModel.N({"type": "object", "properties": props})
+    return CosmicSchema.normalize({"type": "object", "properties": props})
 
 def apply_to_action_func(func, data):
     """Applies a JSONPayload object to the user-defined action
@@ -111,9 +111,9 @@ def serialize_action_arguments(*args, **kwargs):
     `apply_to_action_func`. If no arguments passed, returns None.
     """
     if len(args) == 1 and len(kwargs) == 0:
-        return JSONData.N().normalize_data(args[0])
+        return normalize({"type": "json"}, args[0])
     if len(args) == 0 and len(kwargs) > 0:
-        return JSONData.N().normalize_data(kwargs)
+        return normalize({"type": "json"}, kwargs)
     if len(args) == 0 and len(kwargs) == 0:
         return None
     raise SpecError("Action must be called either with one argument or with one or more keyword arguments")
