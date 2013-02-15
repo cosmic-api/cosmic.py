@@ -8,9 +8,9 @@ from mock import patch
 import requests
 
 from cosmic.exceptions import *
-from cosmic.tools import normalize
+from cosmic.tools import normalize, CosmicSchema
 from cosmic.api import API
-from cosmic.models import Model
+from cosmic.models import *
 from cosmic import api
 
 registry_spec = {
@@ -146,7 +146,7 @@ class TestAPI(TestCase):
 
         @self.cookbook.model
         class Recipe(Model):
-            schema = {u"type": u"string"}
+            schema = CosmicSchema.normalize({u"type": u"string"})
             @classmethod
             def validate(cls, datum):
                 if datum == "bacon":
@@ -194,7 +194,7 @@ class TestAPI(TestCase):
         with self.assertRaises(ValidationError):
             @self.cookbook.model
             class Pizza(Model):
-                schema = {"tipe": "object"}
+                schema = CosmicSchema.normalize({"tipe": "object"})
 
     def test_model_schema_validation(self):
         with self.assertRaises(ValidationError):

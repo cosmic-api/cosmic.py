@@ -42,7 +42,7 @@ def ensure_bootstrapped():
 
 class APIModel(ClassModel):
 
-    class N(SN):
+    class N(SN, CosmicSchema):
         match_type = "cosmic.APIModel"
 
     properties = [
@@ -88,7 +88,7 @@ CosmicSchema.builtin_models["cosmic.APIModel"] = APIModel
 
 class API(BaseModel):
 
-    class N(SN):
+    class N(SN, CosmicSchema):
         match_type = "cosmic.API"
 
     def __init__(self, *args, **kwargs):
@@ -254,10 +254,17 @@ class API(BaseModel):
         return wrapper
 
     def model(self, model_cls):
-        # Raise ValidationError if model schema is invalid
-        normalize({"type": "schema"}, model_cls.schema)
-        self.models.add(model_cls.__name__, model_cls)
+        # Add to data
         self.data['models'].append(APIModel.from_model_cls(model_cls))
+        # Add to namespace
+        self.models.add(model_cls.__name__, model_cls)
+        # Add schema class
+        if not hasattr(model_cls, "N"):
+            class N(SN, CosmicSchema):
+                match_type = "cookbook.Recipe"
+            model_cls.N = N
+            model_cls.N.model_cls = model_cls
+        return model_cls
 
     def authenticate(self):
         """Authenticates the user based on request headers. Returns

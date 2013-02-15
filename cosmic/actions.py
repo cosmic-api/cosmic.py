@@ -8,11 +8,11 @@ from cosmic.tools import get_arg_spec, serialize_action_arguments, apply_to_acti
 from cosmic.http import ALL_METHODS, View, make_view
 from cosmic.exceptions import APIError, SpecError, AuthenticationError, ValidationError
 
-from cosmic.models import JSONData, ClassModel, SN
+from cosmic.models import JSONData, ClassModel, N, SN
 
 class Action(ClassModel):
 
-    class N(SN):
+    class N(SN, CosmicSchema):
         match_type = "cosmic.Action"
 
     properties = [

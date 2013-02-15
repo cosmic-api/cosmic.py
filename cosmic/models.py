@@ -82,6 +82,7 @@ class N(Model):
         if self.opts:
             return self.model_cls.serialize(datum, self.opts)
         else:
+            return self.model_cls.serialize(datum)
             try:
                 return self.model_cls.serialize(datum)
             except TypeError:
@@ -127,13 +128,7 @@ class N(Model):
         # Model?
         if '.' in st:
             model_cls = cls.fetch_model(st)
-            class m(model_cls):
-                class N(model_cls.N, cls):
-                    pass
-            m.__name__ = model_cls.__name__
-            m.N.model_cls = m
-            inst = m.N.normalize(datum)
-            return inst
+            return model_cls.N.normalize(datum)
 
         raise ValidationError("Unknown type", st)
 
