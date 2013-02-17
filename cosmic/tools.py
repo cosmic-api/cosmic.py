@@ -144,8 +144,16 @@ def schema_is_compatible(general, detailed):
 class CosmicSchema(Schema):
     builtin_models = {}
 
-    class normalizer(Schema.normalizer):
+    class normalizer(SchemaSchema):
         pass
+
+    @classmethod
+    def fetch_model_normalizer(cls, full_name):
+        m = cls.fetch_model(full_name)
+        class normalizer(CosmicSchema, SchemaSchema):
+            model_cls = m
+            match_type = full_name
+        return normalizer
 
     @classmethod
     def fetch_model(cls, full_name):

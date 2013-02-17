@@ -52,8 +52,8 @@ class Schema(Model):
         self.opts.pop("type", None)
 
     @classmethod
-    def fetch_model(cls, model_name):
-        raise NotImplementedError("fetch_model not implemented")
+    def fetch_model_normalizer(cls, model_name):
+        raise NotImplementedError("fetch_model_normalizer not implemented")
 
     @classmethod
     def validate(cls, datum):
@@ -86,7 +86,7 @@ class Schema(Model):
         if st == "schema":
             if len(datum) > 1:
                 raise invalid
-            return SchemaSchema(datum, fetch_model=cls.fetch_model)
+            return SchemaSchema(datum, fetch_model_normalizer=cls.fetch_model_normalizer)
 
         # Simple type?
         simple = [
@@ -108,8 +108,8 @@ class Schema(Model):
 
         # Model?
         if '.' in st:
-            model_cls = cls.fetch_model(st)
-            return model_cls.normalizer.normalize(datum)
+            normalizer = cls.fetch_model_normalizer(st)
+            return normalizer.normalize(datum)
 
         raise ValidationError("Unknown type", st)
 
@@ -152,62 +152,7 @@ Schema.normalizer = SchemaSchema
 
 
 
-class ObjectSchema(SimpleSchema):
-    match_type = "object"
-
-    @classmethod
-    def get_schema(cls):
-        return ObjectSchema({
-            "type": "object",
-            "properties": [
-                {
-                    "name": "type",
-                    "required": True,
-                    "schema": StringSchema()
-                },
-                {
-                    "name": "properties",
-                    "required": True,
-                    "schema": ArraySchema({
-                        "items": ObjectSchema({
-                            "properties": [
-                                {
-                                    "name": "name",
-                                    "required": True,
-                                    "schema": StringSchema()
-                                },
-                                {
-                                    "name": "required",
-                                    "required": True,
-                                    "schema": BooleanSchema()
-                                },
-                                {
-                                    "name": "schema",
-                                    "required": True,
-                                    "schema": cls.normalizer()
-                                }
-                            ]
-                        })
-                    })
-                }
-            ]
-        })
-
-    @classmethod
-    def validate(cls, datum):
-        """Raises :exc:`~cosmic.exception.ValidationError` if there are two
-        properties with the same name.
-        """
-        super(ObjectSchema, cls).validate(datum)
-        # Additional validation to check for duplicate properties
-        props = [prop["name"] for prop in datum['properties']]
-        if len(props) > len(set(props)):
-            raise ValidationError("Duplicate properties")
-
-
 class ObjectModel(Model):
-
-    normalizer = ObjectSchema
 
     @classmethod
     def normalize(cls, datum, properties):
@@ -263,19 +208,14 @@ class ObjectModel(Model):
                 ret[name] = prop['schema'].serialize_data(datum[name])
         return ret
 
-ObjectSchema.model_cls = ObjectModel
-
-
-
-
-
-
-class ArraySchema(SimpleSchema):
-    match_type = u"array"
+class ObjectSchema(SimpleSchema):
+    model_cls = ObjectModel
+    match_type = "object"
 
     @classmethod
     def get_schema(cls):
         return ObjectSchema({
+            "type": "object",
             "properties": [
                 {
                     "name": "type",
@@ -283,17 +223,51 @@ class ArraySchema(SimpleSchema):
                     "schema": StringSchema()
                 },
                 {
-                    "name": "items",
+                    "name": "properties",
                     "required": True,
-                    "schema": cls.normalizer()
+                    "schema": ArraySchema({
+                        "items": ObjectSchema({
+                            "properties": [
+                                {
+                                    "name": "name",
+                                    "required": True,
+                                    "schema": StringSchema()
+                                },
+                                {
+                                    "name": "required",
+                                    "required": True,
+                                    "schema": BooleanSchema()
+                                },
+                                {
+                                    "name": "schema",
+                                    "required": True,
+                                    "schema": cls.normalizer()
+                                }
+                            ]
+                        })
+                    })
                 }
             ]
         })
 
+    @classmethod
+    def validate(cls, datum):
+        """Raises :exc:`~cosmic.exception.ValidationError` if there are two
+        properties with the same name.
+        """
+        super(ObjectSchema, cls).validate(datum)
+        # Additional validation to check for duplicate properties
+        props = [prop["name"] for prop in datum['properties']]
+        if len(props) > len(set(props)):
+            raise ValidationError("Duplicate properties")
+
+
+
+
+
+
 
 class ArrayModel(Model):
-
-    normalizer = ArraySchema
 
     @classmethod
     def normalize(cls, datum, items):
@@ -318,16 +292,32 @@ class ArrayModel(Model):
     def serialize(cls, datum, items):
         return [items.serialize_data(item) for item in datum]
 
-ArraySchema.model_cls = ArrayModel
+class ArraySchema(SimpleSchema):
+    model_cls = ArrayModel
+    match_type = u"array"
+
+    @classmethod
+    def get_schema(cls):
+        return ObjectSchema({
+            "properties": [
+                {
+                    "name": "type",
+                    "required": True,
+                    "schema": StringSchema()
+                },
+                {
+                    "name": "items",
+                    "required": True,
+                    "schema": cls.normalizer()
+                }
+            ]
+        })
 
 
 
-class IntegerSchema(SimpleSchema):
-    match_type = "integer"
+
 
 class IntegerModel(Model):
-
-    normalizer = IntegerSchema
 
     @classmethod
     def normalize(cls, datum):
@@ -346,16 +336,14 @@ class IntegerModel(Model):
     def serialize(cls, datum):
         return datum
 
-IntegerSchema.model_cls = IntegerModel
+class IntegerSchema(SimpleSchema):
+    model_cls = IntegerModel
+    match_type = "integer"
 
 
 
-class FloatSchema(SimpleSchema):
-    match_type = "float"
 
 class FloatModel(Model):
-
-    normalizer = FloatSchema
 
     @classmethod
     def normalize(cls, datum):
@@ -373,15 +361,14 @@ class FloatModel(Model):
     def serialize(cls, datum):
         return datum
 
-FloatSchema.model_cls = FloatModel
+class FloatSchema(SimpleSchema):
+    model_cls = FloatModel
+    match_type = "float"
 
 
-class StringSchema(SimpleSchema):
-    match_type = "string"
+
 
 class StringModel(Model):
-
-    normalizer = StringSchema
 
     @classmethod
     def normalize(cls, datum):
@@ -405,18 +392,15 @@ class StringModel(Model):
     def serialize(cls, datum):
         return datum
 
-StringSchema.model_cls = StringModel
+class StringSchema(SimpleSchema):
+    model_cls = StringModel
+    match_type = "string"
 
 
 
 
-
-class BinarySchema(SimpleSchema):
-    match_type = "binary"
 
 class BinaryModel(Model):
-
-    normalizer = BinarySchema
 
     @classmethod
     def normalize(cls, datum):
@@ -435,17 +419,14 @@ class BinaryModel(Model):
     def serialize(cls, datum):
         return base64.b64encode(datum)
 
-BinarySchema.model_cls = BinaryModel
+class BinarySchema(SimpleSchema):
+    model_cls = BinaryModel
+    match_type = "binary"
 
 
 
-
-class BooleanSchema(SimpleSchema):
-    match_type = "boolean"
 
 class BooleanModel(Model):
-
-    normalizer = BooleanSchema
 
     @classmethod
     def normalize(cls, datum):
@@ -460,17 +441,15 @@ class BooleanModel(Model):
     def serialize(cls, datum):
         return datum
 
-BooleanSchema.model_cls = BooleanModel
+class BooleanSchema(SimpleSchema):
+    model_cls = BooleanModel
+    match_type = "boolean"
 
 
 
 
-class JSONDataSchema(SimpleSchema):
-    match_type = "json"
 
 class JSONData(Model):
-
-    normalizer = JSONDataSchema
 
     def serialize(self):
         return self.data
@@ -500,16 +479,12 @@ class JSONData(Model):
             for value in datum.values():
                 cls.validate(value)
 
-JSONDataSchema.model_cls = JSONData
+class JSONDataSchema(SimpleSchema):
+    model_cls = JSONData
+    match_type = "json"
 
-
-
-class ClassSchema(ObjectSchema):
-    pass
 
 class ClassModel(ObjectModel):
-
-    normalizer = ClassSchema
 
     def __getattr__(self, key):
         for prop in self.properties:
@@ -543,4 +518,3 @@ class ClassModel(ObjectModel):
             "properties": cls.properties
         })
 
-ClassSchema.model_cls = ClassModel
