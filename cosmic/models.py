@@ -82,12 +82,6 @@ class Schema(Model):
             raise invalid
         st = datum["type"]
 
-        # Special case, don't normalize, just instantiate
-        if st == "schema":
-            if len(datum) > 1:
-                raise invalid
-            return SchemaSchema(datum, fetch_model_normalizer=cls.fetch_model_normalizer)
-
         # Simple type?
         simple = [
             IntegerSchema,
@@ -97,7 +91,8 @@ class Schema(Model):
             BooleanSchema,
             ArraySchema,
             ObjectSchema,
-            JSONDataSchema
+            JSONDataSchema,
+            SchemaSchema
         ]
         for simple_cls in simple:
             if st == simple_cls.match_type:
@@ -146,7 +141,7 @@ class SchemaSchema(SimpleSchema):
     match_type = "schema"
     model_cls = Schema
 
-Schema.normalizer = SchemaSchema
+Schema.schema_cls = SchemaSchema
 
 
 
@@ -241,7 +236,7 @@ class ObjectSchema(SimpleSchema):
                                 {
                                     "name": "schema",
                                     "required": True,
-                                    "schema": cls.normalizer()
+                                    "schema": cls.schema_cls()
                                 }
                             ]
                         })
@@ -308,7 +303,7 @@ class ArraySchema(SimpleSchema):
                 {
                     "name": "items",
                     "required": True,
-                    "schema": cls.normalizer()
+                    "schema": cls.schema_cls()
                 }
             ]
         })

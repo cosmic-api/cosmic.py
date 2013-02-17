@@ -144,7 +144,7 @@ def schema_is_compatible(general, detailed):
 class CosmicSchema(Schema):
     builtin_models = {}
 
-    class normalizer(SchemaSchema):
+    class schema_cls(SchemaSchema):
         pass
 
     @classmethod
@@ -169,7 +169,7 @@ class CosmicSchema(Schema):
         except SpecError:
             raise ValidationError("Unknown model for %s API" % api_name, model_name)
 
-CosmicSchema.normalizer.model_cls = CosmicSchema
+CosmicSchema.schema_cls.model_cls = CosmicSchema
 
 
 def normalize(schema, datum):
