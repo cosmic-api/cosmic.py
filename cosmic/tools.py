@@ -148,14 +148,6 @@ class CosmicSchema(Schema):
         pass
 
     @classmethod
-    def fetch_model_normalizer(cls, full_name):
-        m = cls.fetch_model(full_name)
-        class normalizer(CosmicSchema, SchemaSchema):
-            model_cls = m
-            match_type = full_name
-        return normalizer
-
-    @classmethod
     def fetch_model(cls, full_name):
         if full_name in cls.builtin_models.keys():
             return cls.builtin_models[full_name]

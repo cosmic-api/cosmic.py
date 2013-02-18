@@ -44,6 +44,8 @@ class Model(object):
 class Schema(Model):
 
     def __init__(self, data=None, **kwargs):
+        # It is okay to omit type in the constructor, the Schema
+        # will know its type from the match_type attibute
         if data == None:
             data = {u"type": self.match_type}
         super(Schema, self).__init__(data, **kwargs)
@@ -73,16 +75,25 @@ class Schema(Model):
             return self.model_cls.serialize(datum)
 
     @classmethod
+    def fetch_model_normalizer(cls, full_name):
+        m = cls.fetch_model(full_name)
+        class normalizer(cls.schema_cls, SimpleSchema):
+            model_cls = m
+            match_type = full_name
+        return normalizer
+
+    @classmethod
     def normalize(cls, datum):
 
         invalid = ValidationError("Invalid schema", datum)
 
-        # Get type or fail
+        # Peek into the object before letting the real models
+        # do proper validation
         if type(datum) != dict or "type" not in datum.keys():
             raise invalid
         st = datum["type"]
 
-        # Simple type?
+        # Simple model?
         simple = [
             IntegerSchema,
             FloatSchema,
@@ -98,8 +109,7 @@ class Schema(Model):
             if st == simple_cls.match_type:
                 class normalizer(simple_cls, cls):
                     pass
-                inst = normalizer.normalize(datum)
-                return inst
+                return normalizer.normalize(datum)
 
         # Model?
         if '.' in st:
@@ -117,8 +127,7 @@ class SimpleSchema(Schema):
     def normalize(cls, datum):
         # Normalize against model schema
         schema = cls.get_schema()
-        if schema:
-            datum = schema.normalize_data(datum)
+        datum = schema.normalize_data(datum)
         # Validate against model's custom validation function
         cls.validate(datum)
         # Instantiate
