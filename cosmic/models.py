@@ -1,6 +1,7 @@
 import sys
 import json
 import base64
+from contextlib import contextmanager
 
 from cosmic.exceptions import ValidationError, UnicodeDecodeValidationError, SpecError
 
@@ -8,6 +9,18 @@ from cosmic.exceptions import ValidationError, UnicodeDecodeValidationError, Spe
 def __fetch_model(full_name):
     raise NotImplementedError()
 
+
+@contextmanager
+def f(o):
+    yield o
+
+def schema_normalize(fetcher, datum):
+    with f(fetcher) as fetch_model:
+        return Schema.normalize(datum)
+
+def schema_serialize(fetcher, datum):
+    with f(fetcher) as fetch_model:
+        return Schema.serialize(datum)
 
 class Model(object):
 

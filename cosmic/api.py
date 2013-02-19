@@ -10,7 +10,7 @@ from flask import request
 import cosmic.resources
 from cosmic.exceptions import APIError, SpecError, ValidationError
 from cosmic.actions import Action
-from cosmic.tools import Namespace, normalize, CosmicSchema, ModelFetcher
+from cosmic.tools import Namespace, normalize, CosmicSchema, builtin_models
 from cosmic.models import Model as BaseModel
 from cosmic.models import ClassModel, Schema, SimpleSchema
 from cosmic.http import ALL_METHODS, View, UrlRule, Response, CorsPreflightView, make_view
@@ -82,7 +82,7 @@ class APIModel(ClassModel):
         return inst
 
 APIModel.normalizer.model_cls = APIModel
-ModelFetcher.builtin_models["cosmic.APIModel"] = APIModel
+builtin_models["cosmic.APIModel"] = APIModel
 
 
 
@@ -287,4 +287,4 @@ class API(BaseModel):
 
 
 API.normalizer.model_cls = API
-ModelFetcher.builtin_models["cosmic.API"] = API
+builtin_models["cosmic.API"] = API

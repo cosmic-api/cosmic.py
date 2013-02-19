@@ -142,47 +142,37 @@ def schema_is_compatible(general, detailed):
     return True
 
 
-class ModelFetcher(object):
-    builtin_models = {}
+builtin_models = {}
 
-    def __enter__(self):
-        def fetch_model(full_name):
-            if full_name in cls.builtin_models.keys():
-                return cls.builtin_models[full_name]
-            api_name, model_name = full_name.split('.', 1)
-            try:
-                api = sys.modules['cosmic.registry.' + api_name]
-            except KeyError:
-                raise ValidationError("Unknown API", api_name)
-            try:
-                return getattr(api.models, model_name)
-            except SpecError:
-                raise ValidationError("Unknown model for %s API" % api_name, model_name)
-        return fetch_model
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        return False
+def fetch(full_name):
+    if full_name in builtin_models.keys():
+        return builtin_models[full_name]
+    api_name, model_name = full_name.split('.', 1)
+    try:
+        api = sys.modules['cosmic.registry.' + api_name]
+    except KeyError:
+        raise ValidationError("Unknown API", api_name)
+    try:
+        return getattr(api.models, model_name)
+    except SpecError:
+        raise ValidationError("Unknown model for %s API" % api_name, model_name)
 
 
 class CosmicSchema(Schema):
 
     @classmethod
     def normalize(cls, datum):
-        with ModelFetcher() as fetch_model:
-            print fetch_model
-            return Schema.normalize(datum)
+        return schema_normalize(fetch, datum)
 
     @classmethod
     def serialize(cls, datum):
-        with ModelFetcher() as fetch_model:
-            return Schema.serialize(datum)
+        return schema_serialize(fetch, datum)
 
 
 def normalize(schema, datum):
     """Schema is expected to be a valid schema and datum is expected
     to be the return value of json.loads
     """
-    with ModelFetcher() as fetch_model:
-        normalizer = Schema.normalize(schema)
-        return normalizer.normalize_data(datum)
+    normalizer = schema_normalize(fetch, schema)
+    return normalizer.normalize_data(datum)
 

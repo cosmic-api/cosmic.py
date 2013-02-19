@@ -4,7 +4,7 @@ import json
 
 import requests
 
-from cosmic.tools import get_arg_spec, serialize_action_arguments, apply_to_action_func, schema_is_compatible, normalize, CosmicSchema, ModelFetcher
+from cosmic.tools import get_arg_spec, serialize_action_arguments, apply_to_action_func, schema_is_compatible, normalize, CosmicSchema, builtin_models
 from cosmic.http import ALL_METHODS, View, make_view
 from cosmic.exceptions import APIError, SpecError, AuthenticationError, ValidationError
 
@@ -103,4 +103,4 @@ class Action(ClassModel):
 
 
 Action.normalizer.model_cls = Action
-ModelFetcher.builtin_models["cosmic.Action"] = Action
+builtin_models["cosmic.Action"] = Action
