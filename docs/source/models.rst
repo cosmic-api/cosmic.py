@@ -1,11 +1,11 @@
 Model System
 ============
 
-Cosmic ships with a simple JSON-based schema and model system. A JSON
-schema is a way of describing JSON data for validation and generating
-documentation. A model is a Python class attached to a schema that may
-contain extra validation functionality. Once a model is created, any
-JSON schema can reference it by its name.
+Cosmic ships with a simple JSON-based schema and model system. A JSON schema
+is a way of describing JSON data for validation and generating documentation.
+A model is a Python class attached to a schema that may contain extra
+validation functionality. Once a model is created, any JSON schema can
+reference it by its name.
 
 JSON Schema
 -----------
@@ -17,39 +17,38 @@ the data it is meant to validate.
 
     *Why invent our own JSON schema system?*
     
-    Before deciding to go with our own system, we took a good look at
-    some existing options. Our best candidates were `JSON Schema
-    <http://json-schema.org/>`_ and `Apache Avro
-    <http://avro.apache.org/>`_. JSON Schema has a significant
-    limitation: the order of object attributes is not
-    preserved. Apache Avro had a different problem: because an
-    attribute can be defined as allowing multiple types, objects
-    needed to be wrapped in an annotation layer to avoid
-    ambiguity. Instead of ``{"name": "Jenn"}`` we would have to output
-    ``{"Person": {"name": "Jenn"}}``. In the context of REST APIs,
-    this is uncommon and potentially confusing.
+    Before deciding to go with our own system, we took a good look at some
+    existing options. Our best candidates were `JSON Schema <http://json-
+    schema.org/>`_ and `Apache Avro <http://avro.apache.org/>`_. JSON Schema
+    has a significant limitation: the order of object attributes is not
+    preserved. Apache Avro had a different problem: because an attribute can
+    be defined as allowing multiple types, objects needed to be wrapped in an
+    annotation layer to avoid ambiguity. Instead of ``{"name": "Jenn"}`` we
+    would have to output ``{"Person": {"name": "Jenn"}}``. In the context of
+    REST APIs, this is uncommon and potentially confusing.
 
-    Because Cosmic must be extremely portable, it is essential that we
-    keep the feature list to a minimum. In this instance, the minimum
-    is generating documentation and basic validation of data structure
-    and types. Instead of making you learn a new `DSL
-    <http://en.wikipedia.org/wiki/Domain-specific_language>`_ for
-    obscure validation, we encourage you to use the power of your
-    language. The benefits of describing schemas in minute detail are
-    greatly outweighed by the costs of growing the amount of code that
-    needs to be ported.
+    Because Cosmic must be extremely portable, it is essential that we keep
+    the feature list to a minimum. In this instance, the minimum is generating
+    documentation and basic validation of data structure and types. Instead of
+    making you learn a new `DSL <http://en.wikipedia.org/wiki/Domain-
+    specific_language>`_ for obscure validation, we encourage you to use the
+    power of your language. The benefits of describing schemas in minute
+    detail are greatly outweighed by the costs of growing the amount of code
+    that needs to be ported.
 
-When a JSON representation of a schema gets compiled, the resulting
-object will provide a :meth:`normalize` method. This method will take
-JSON data as provided by :func:`json.loads` and either return the
-normalized data or raise a
-:class:`~cosmic.exceptions.ValidationError`. Here is the basic usage
-with a shortcut function, :func:`~cosmic.tools.normalize`::
+When a JSON representation of a schema gets compiled, the resulting object
+will provide a :meth:`normalize_data` method. This method will take JSON data
+as provided by :func:`json.loads` and either return the normalized data or
+raise a :class:`~cosmic.exceptions.ValidationError`. Here is the basic usage
+with a convenience function, :func:`~cosmic.tools.normalize_schema`::
 
-    >>> from cosmic.tools import normalize
-    >>> normalize({"type": "integer"}, 1)
+    >>> from cosmic.tools import normalize_schema
+    >>> s = normalize_schema({"type": "integer"})
+    >>> s
+    <cosmic.models.IntegerSchema object at 0x201a450>
+    >>> s.normalize_data(1)
     1
-    >>> normalize({"type": "integer"}, 1.1)
+    >>> s.normalize_data(1.1)
     Traceback (most recent call last):
       File "<stdin>", line 1, in <module>
       File "cosmic/tools.py", line 147, in normalize
@@ -58,26 +57,27 @@ with a shortcut function, :func:`~cosmic.tools.normalize`::
         raise ValidationError("Invalid integer", datum)
     cosmic.exceptions.ValidationError: Invalid integer: 1.1
 
-A schema is always a Python dict. It must always contain the *type*
-attribute. Here is a list of simple types you can use just like in the
-above example:
+A schema is always a Python dict. It must always contain the *type* attribute.
+Here is a list of simple types you can use just like in the above example:
 
-+-------------------------+-------------+-------------+
-|         Schema          |  JSON type  | Python type |  
-+=========================+=============+=============+
-| ``{"type": "integer"}`` | ``number``  | ``int``     |
-+-------------------------+-------------+-------------+
-| ``{"type": "float"}``   | ``number``  | ``float``   |
-+-------------------------+-------------+-------------+
-| ``{"type": "string"}``  | ``string``  | ``unicode`` |
-+-------------------------+-------------+-------------+
-| ``{"type": "boolean"}`` | ``boolean`` | ``bool``    |
-+-------------------------+-------------+-------------+
++-------------------------+---------------------+---------------+
+|         Schema          |  JSON type          | `Python type` |  
++=========================+=====================+===============+
+| ``{"type": "integer"}`` | ``number``          | ``int``       |
++-------------------------+---------------------+---------------+
+| ``{"type": "float"}``   | ``number``          | ``float``     |
++-------------------------+---------------------+---------------+
+| ``{"type": "string"}``  | ``string``          | ``unicode``   |
++-------------------------+---------------------+---------------+
+| ``{"type": "boolean"}`` | ``boolean``         | ``bool``      |
++-------------------------+---------------------+---------------+
+| ``{"type": "binary"}``  | ``string`` (base64) | ``str``       |
++-------------------------+---------------------+---------------+
 
-An object schema must always contain a *properties* attribute, which
-will be an array of property objects::
+An object schema must always contain a *properties* attribute, which will be
+an array of property objects::
 
-    >>> schema = {
+    >>> s = normalize_schema({
     ...     "type": "object",
     ...     "properties": [
     ...         {
@@ -91,13 +91,13 @@ will be an array of property objects::
     ...             "required": False
     ...         }
     ...     ]
-    ... }
+    ... })
     ...
-    >>> normalize(schema, {"id": 1, "title": "Chameleon"})
+    >>> s.normalize({"id": 1, "title": "Chameleon"})
     {u'id': 1, u'title': u'Chameleon'}
-    >>> normalize(schema, {"id": 1})
+    >>> s.normalize({"id": 1})
     {u'id': 1}
-    >>> normalize(schema, {"id": "Chameleon"})
+    >>> s.normalize({"id": "Chameleon"})
     Traceback (most recent call last):
       File "<stdin>", line 1, in <module>
       File "cosmic/tools.py", line 147, in normalize
@@ -108,23 +108,23 @@ will be an array of property objects::
         raise ValidationError("Invalid integer", datum)
     cosmic.exceptions.ValidationError: Item at [u'id'] Invalid integer: 'Chameleon'
 
-An array schema must always contain an *items* property, which must be
-a schema that describes every item in the array. Here is a schema
-describing an array or strings:
+An array schema must always contain an *items* property, which must be a
+schema that describes every item in the array. Here is a schema describing an
+array or strings:
 
-    >>> schema = {
+    >>> s = normalize_schema({
     ...     "type": "array",
     ...     "items": {"type": "string"}
-    ... }
+    ... })
     ...
-    >>> normalize(schema, ["foo", "bar"])
+    >>> s.normalize(["foo", "bar"])
     [u'foo', u'bar']
-    >>> normalize(schema, [])
+    >>> s.normalize([])
     []
 
-Of course, these schemas can be nested as deep as you like. For
-example, to validate ``[{"name": "Rose"}, {"name": "Lily"}]``, you
-could use the following schema:
+Of course, these schemas can be nested as deep as you like. For example, to
+validate ``[{"name": "Rose"}, {"name": "Lily"}]``, you could use the following
+schema:
 
 .. code:: python
 
@@ -145,11 +145,11 @@ could use the following schema:
 Models
 ------
 
-A *model* is a data type definition in the form of a Python class, a
-subclass of :class:`~cosmic.models.Model`. A model instance can be
-serialized to JSON and the class must provide a method to instantiate
-it from JSON. This method must also validate the model. You will find
-that a lot of Cosmic internal classes are actually models.
+A *model* is a data type definition in the form of a Python class, a subclass
+of :class:`~cosmic.models.Model`. A model instance can be serialized to JSON
+and the class must provide a method to instantiate it from JSON. This method
+must also validate the model. You will find that a lot of Cosmic internal
+classes are actually models.
 
 Let's start with a minimal implementation::
 
