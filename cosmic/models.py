@@ -4,6 +4,11 @@ import base64
 
 from cosmic.exceptions import ValidationError, UnicodeDecodeValidationError, SpecError
 
+
+def __fetch_model(full_name):
+    raise NotImplementedError()
+
+
 class Model(object):
 
     def __init__(self, data, **kwargs):
@@ -54,10 +59,6 @@ class Schema(Model):
         self.opts.pop("type", None)
 
     @classmethod
-    def fetch_model_normalizer(cls, model_name):
-        raise NotImplementedError("fetch_model_normalizer not implemented")
-
-    @classmethod
     def validate(cls, datum):
         if datum["type"] != cls.match_type:
             raise ValidationError("%s expects type=%s" % (cls, cls.match_type,))
@@ -76,8 +77,8 @@ class Schema(Model):
 
     @classmethod
     def fetch_model_normalizer(cls, full_name):
-        m = cls.fetch_model(full_name)
-        class normalizer(cls.schema_cls, SimpleSchema):
+        m = fetch_model(full_name)
+        class normalizer(SimpleSchema):
             model_cls = m
             match_type = full_name
         return normalizer
@@ -107,9 +108,7 @@ class Schema(Model):
         ]
         for simple_cls in simple:
             if st == simple_cls.match_type:
-                class normalizer(simple_cls, cls):
-                    pass
-                return normalizer.normalize(datum)
+                return simple_cls.normalize(datum)
 
         # Model?
         if '.' in st:
@@ -150,7 +149,6 @@ class SchemaSchema(SimpleSchema):
     match_type = "schema"
     model_cls = Schema
 
-Schema.schema_cls = SchemaSchema
 
 
 
@@ -245,7 +243,7 @@ class ObjectSchema(SimpleSchema):
                                 {
                                     "name": "schema",
                                     "required": True,
-                                    "schema": cls.schema_cls()
+                                    "schema": SchemaSchema()
                                 }
                             ]
                         })
@@ -312,7 +310,7 @@ class ArraySchema(SimpleSchema):
                 {
                     "name": "items",
                     "required": True,
-                    "schema": cls.schema_cls()
+                    "schema": SchemaSchema()
                 }
             ]
         })
@@ -486,6 +484,9 @@ class JSONData(Model):
 class JSONDataSchema(SimpleSchema):
     model_cls = JSONData
     match_type = "json"
+
+
+
 
 
 class ClassModel(ObjectModel):
