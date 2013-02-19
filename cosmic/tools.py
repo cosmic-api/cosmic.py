@@ -48,7 +48,7 @@ def get_arg_spec(func):
         return None
     # One argument: accepts a single JSON object
     if len(args) == 1:
-        return CosmicSchema.normalize({"type": "json"})
+        return normalize_schema({"type": "json"})
     # Multiple arguments: accepts a JSON object with a property for
     # each argument, each property being of type 'json'
     props = []
@@ -60,7 +60,7 @@ def get_arg_spec(func):
             "schema": {"type": "json"},
             "required": i < numargs
         })
-    return CosmicSchema.normalize({"type": "object", "properties": props})
+    return normalize_schema({"type": "object", "properties": props})
 
 def apply_to_action_func(func, data):
     """Applies a JSONPayload object to the user-defined action
@@ -141,33 +141,32 @@ def schema_is_compatible(general, detailed):
             return False
     return True
 
-class CosmicSchema(Schema):
-    builtin_models = {}
 
-    class schema_cls(SchemaSchema):
-        pass
+builtin_models = {}
 
-    @classmethod
-    def fetch_model(cls, full_name):
-        if full_name in cls.builtin_models.keys():
-            return cls.builtin_models[full_name]
-        api_name, model_name = full_name.split('.', 1)
-        try:
-            api = sys.modules['cosmic.registry.' + api_name]
-        except KeyError:
-            raise ValidationError("Unknown API", api_name)
-        try:
-            return getattr(api.models, model_name)
-        except SpecError:
-            raise ValidationError("Unknown model for %s API" % api_name, model_name)
 
-CosmicSchema.schema_cls.model_cls = CosmicSchema
+def fetch_model(full_name):
+    if full_name in builtin_models.keys():
+        return builtin_models[full_name]
+    api_name, model_name = full_name.split('.', 1)
+    try:
+        api = sys.modules['cosmic.registry.' + api_name]
+    except KeyError:
+        raise ValidationError("Unknown API", api_name)
+    try:
+        return getattr(api.models, model_name)
+    except SpecError:
+        raise ValidationError("Unknown model for %s API" % api_name, model_name)
+
+
+def normalize_schema(schema):
+    return Schema.normalize(schema, fetcher=fetch_model)
 
 
 def normalize(schema, datum):
     """Schema is expected to be a valid schema and datum is expected
     to be the return value of json.loads
     """
-    normalizer = CosmicSchema.normalize(schema)
-    return normalizer.normalize_data(datum)
+    normalizer = normalize_schema(schema)
+    return normalizer.normalize_data(datum, fetcher=fetch_model)
 

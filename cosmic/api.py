@@ -10,7 +10,7 @@ from flask import request
 import cosmic.resources
 from cosmic.exceptions import APIError, SpecError, ValidationError
 from cosmic.actions import Action
-from cosmic.tools import Namespace, normalize, CosmicSchema
+from cosmic.tools import Namespace, normalize, builtin_models, normalize_schema
 from cosmic.models import Model as BaseModel
 from cosmic.models import ClassModel, Schema, SimpleSchema
 from cosmic.http import ALL_METHODS, View, UrlRule, Response, CorsPreflightView, make_view
@@ -42,19 +42,16 @@ def ensure_bootstrapped():
 
 class APIModel(ClassModel):
 
-    class normalizer(SimpleSchema, CosmicSchema):
-        match_type = "cosmic.APIModel"
-
     properties = [
         {
             "name": "name",
             "required": True,
-            "schema": CosmicSchema.normalize({"type": "string"})
+            "schema": normalize_schema({"type": "string"})
         },
         {
             "name": "schema",
             "required": True,
-            "schema": CosmicSchema.normalize({"type": "schema"})
+            "schema": normalize_schema({"type": "schema"})
         }
     ]
 
@@ -66,30 +63,23 @@ class APIModel(ClassModel):
         })
 
     @classmethod
-    def normalize(cls, datum):
+    def normalize(cls, datum, **kwargs):
         # Run the schema normalization, that's what ClassModel does
         inst = super(APIModel, cls).normalize(datum)
         # Take a schema and name and turn them into a model class
         class M(BaseModel):
-            class normalizer(CosmicSchema):
-                match_type = inst.name
             @classmethod
             def get_schema(cls):
                 return inst.schema
         M.__name__ = str(inst.name)
-        M.normalizer.model_cls = M
         inst.model = M
         return inst
 
-APIModel.normalizer.model_cls = APIModel
-CosmicSchema.builtin_models["cosmic.APIModel"] = APIModel
+builtin_models["cosmic.APIModel"] = APIModel
 
 
 
 class API(BaseModel):
-
-    class normalizer(SimpleSchema, CosmicSchema):
-        match_type = "cosmic.API"
 
     def __init__(self, *args, **kwargs):
         super(API, self).__init__(*args, **kwargs)
@@ -138,7 +128,7 @@ class API(BaseModel):
     def url(self):
         return self.data['url']
 
-    schema = CosmicSchema.normalize({
+    schema = normalize_schema({
         "type": "object",
         "properties": [
             {
@@ -236,12 +226,12 @@ class API(BaseModel):
         """
         if accepts:
             try:
-                accepts = CosmicSchema.normalize(accepts)
+                accepts = normalize_schema(accepts)
             except ValidationError:
                 raise SpecError("'%s' was passed an invalid accepts schema" % self.name)
         if returns:
             try:
-                returns = CosmicSchema.normalize(returns)
+                returns = normalize_schema(returns)
             except ValidationError:
                 raise SpecError("'%s' was passed an invalid returns schema" % self.name)
 
@@ -258,12 +248,6 @@ class API(BaseModel):
         self.data['models'].append(APIModel.from_model_cls(model_cls))
         # Add to namespace
         self.models.add(model_cls.__name__, model_cls)
-        # Add schema class
-        if not hasattr(model_cls, "normalizer"):
-            class normalizer(SimpleSchema, CosmicSchema):
-                match_type = "%s.%s" % (self.name, model_cls.__name__,)
-            model_cls.normalizer = normalizer
-            model_cls.normalizer.model_cls = model_cls
         return model_cls
 
     def authenticate(self):
@@ -286,5 +270,4 @@ class API(BaseModel):
 
 
 
-API.normalizer.model_cls = API
-CosmicSchema.builtin_models["cosmic.API"] = API
+builtin_models["cosmic.API"] = API

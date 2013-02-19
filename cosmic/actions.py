@@ -4,7 +4,7 @@ import json
 
 import requests
 
-from cosmic.tools import get_arg_spec, serialize_action_arguments, apply_to_action_func, schema_is_compatible, normalize, CosmicSchema
+from cosmic.tools import get_arg_spec, serialize_action_arguments, apply_to_action_func, schema_is_compatible, normalize, builtin_models, normalize_schema
 from cosmic.http import ALL_METHODS, View, make_view
 from cosmic.exceptions import APIError, SpecError, AuthenticationError, ValidationError
 
@@ -12,23 +12,20 @@ from cosmic.models import *
 
 class Action(ClassModel):
 
-    class normalizer(SimpleSchema, CosmicSchema):
-        match_type = "cosmic.Action"
-
     properties = [
         {
             "name": "name",
-            "schema": CosmicSchema.normalize({"type": "string"}),
+            "schema": normalize_schema({"type": "string"}),
             "required": True
         },
         {
             "name": "accepts",
-            "schema": CosmicSchema.normalize({"type": "schema"}),
+            "schema": normalize_schema({"type": "schema"}),
             "required": False
         },
         {
             "name": "returns",
-            "schema": CosmicSchema.normalize({"type": "schema"}),
+            "schema": normalize_schema({"type": "schema"}),
             "required": False
         }
     ]
@@ -102,5 +99,4 @@ class Action(ClassModel):
         }, raw_func=func)
 
 
-Action.normalizer.model_cls = Action
-CosmicSchema.builtin_models["cosmic.Action"] = Action
+builtin_models["cosmic.Action"] = Action

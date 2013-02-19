@@ -4,6 +4,13 @@ import base64
 
 from cosmic.exceptions import ValidationError, UnicodeDecodeValidationError, SpecError
 
+
+
+def fetch_model(full_name):
+    raise NotImplementedError()
+
+
+
 class Model(object):
 
     def __init__(self, data, **kwargs):
@@ -19,11 +26,11 @@ class Model(object):
         return self.data
 
     @classmethod
-    def normalize(cls, datum):
+    def normalize(cls, datum, fetcher=fetch_model):
         # Normalize against model schema
         schema = cls.get_schema()
         if schema:
-            datum = schema.normalize_data(datum)
+            datum = schema.normalize_data(datum, fetcher=fetcher)
         # Validate against model's custom validation function
         cls.validate(datum)
         # Instantiate
@@ -54,36 +61,24 @@ class Schema(Model):
         self.opts.pop("type", None)
 
     @classmethod
-    def fetch_model_normalizer(cls, model_name):
-        raise NotImplementedError("fetch_model_normalizer not implemented")
-
-    @classmethod
     def validate(cls, datum):
         if datum["type"] != cls.match_type:
             raise ValidationError("%s expects type=%s" % (cls, cls.match_type,))
 
-    def normalize_data(self, datum):
+    def normalize_data(self, datum, fetcher=fetch_model):
         if self.opts:
-            return self.model_cls.normalize(datum, **self.opts)
+            return self.model_cls.normalize(datum, self.opts, fetcher=fetcher)
         else:
-            return self.model_cls.normalize(datum)
+            return self.model_cls.normalize(datum, fetcher=fetcher)
 
     def serialize_data(self, datum):
         if self.opts:
-            return self.model_cls.serialize(datum, **self.opts)
+            return self.model_cls.serialize(datum, self.opts)
         else:
             return self.model_cls.serialize(datum)
 
     @classmethod
-    def fetch_model_normalizer(cls, full_name):
-        m = cls.fetch_model(full_name)
-        class normalizer(cls.schema_cls, SimpleSchema):
-            model_cls = m
-            match_type = full_name
-        return normalizer
-
-    @classmethod
-    def normalize(cls, datum):
+    def normalize(cls, datum, fetcher=fetch_model):
 
         invalid = ValidationError("Invalid schema", datum)
 
@@ -107,14 +102,15 @@ class Schema(Model):
         ]
         for simple_cls in simple:
             if st == simple_cls.match_type:
-                class normalizer(simple_cls, cls):
-                    pass
-                return normalizer.normalize(datum)
+                return simple_cls.normalize(datum, fetcher=fetcher)
 
         # Model?
         if '.' in st:
-            normalizer = cls.fetch_model_normalizer(st)
-            return normalizer.normalize(datum)
+            m = fetcher(st)
+            class normalizer(SimpleSchema):
+                model_cls = m
+                match_type = st
+            return normalizer.normalize(datum, fetcher=fetcher)
 
         raise ValidationError("Unknown type", st)
 
@@ -124,10 +120,10 @@ class SimpleSchema(Schema):
 
     # COPY-PASTE
     @classmethod
-    def normalize(cls, datum):
+    def normalize(cls, datum, fetcher=fetch_model):
         # Normalize against model schema
         schema = cls.get_schema()
-        datum = schema.normalize_data(datum)
+        datum = schema.normalize_data(datum, fetcher=fetcher)
         # Validate against model's custom validation function
         cls.validate(datum)
         # Instantiate
@@ -150,16 +146,13 @@ class SchemaSchema(SimpleSchema):
     match_type = "schema"
     model_cls = Schema
 
-Schema.schema_cls = SchemaSchema
-
-
 
 
 
 class ObjectModel(Model):
 
     @classmethod
-    def normalize(cls, datum, properties):
+    def normalize(cls, datum, opts, fetcher=fetch_model):
         """If *datum* is a dict, normalize it against *properties* and return
         the resulting dict. Otherwise raise a
         :exc:`~cosmic.exceptions.ValidationError`.
@@ -178,6 +171,7 @@ class ObjectModel(Model):
            by the corresponding *schema* value.
 
         """
+        properties = opts['properties']
         if type(datum) == dict:
             ret = {}
             required = {}
@@ -196,7 +190,7 @@ class ObjectModel(Model):
             for prop, schema in optional.items() + required.items():
                 if prop in datum.keys():
                     try:
-                        ret[prop] = schema.normalize_data(datum[prop])
+                        ret[prop] = schema.normalize_data(datum[prop], fetcher=fetcher)
                     except ValidationError as e:
                         e.stack.append(prop)
                         raise
@@ -204,9 +198,9 @@ class ObjectModel(Model):
         raise ValidationError("Invalid object", datum)
 
     @classmethod
-    def serialize(cls, datum, properties):
+    def serialize(cls, datum, opts):
         ret = {}
-        for prop in properties:
+        for prop in opts['properties']:
             name = prop['name']
             if name in datum.keys() and datum[name] != None:
                 ret[name] = prop['schema'].serialize_data(datum[name])
@@ -245,7 +239,7 @@ class ObjectSchema(SimpleSchema):
                                 {
                                     "name": "schema",
                                     "required": True,
-                                    "schema": cls.schema_cls()
+                                    "schema": SchemaSchema()
                                 }
                             ]
                         })
@@ -274,7 +268,7 @@ class ObjectSchema(SimpleSchema):
 class ArrayModel(Model):
 
     @classmethod
-    def normalize(cls, datum, items):
+    def normalize(cls, datum, opts, fetcher=fetch_model):
         """If *datum* is a list, construct a new list by putting each element of
         *datum* through the normalizer provided as *items*. This normalizer may
         raise
@@ -285,7 +279,7 @@ class ArrayModel(Model):
             ret = []
             for i, item in enumerate(datum):
                 try:
-                    ret.append(items.normalize_data(item))
+                    ret.append(opts['items'].normalize_data(item, fetcher=fetcher))
                 except ValidationError as e:
                     e.stack.append(i)
                     raise
@@ -293,8 +287,8 @@ class ArrayModel(Model):
         raise ValidationError("Invalid array", datum)
 
     @classmethod
-    def serialize(cls, datum, items):
-        return [items.serialize_data(item) for item in datum]
+    def serialize(cls, datum, opts):
+        return [opts['items'].serialize_data(item) for item in datum]
 
 class ArraySchema(SimpleSchema):
     model_cls = ArrayModel
@@ -312,7 +306,7 @@ class ArraySchema(SimpleSchema):
                 {
                     "name": "items",
                     "required": True,
-                    "schema": cls.schema_cls()
+                    "schema": SchemaSchema()
                 }
             ]
         })
@@ -324,7 +318,7 @@ class ArraySchema(SimpleSchema):
 class IntegerModel(Model):
 
     @classmethod
-    def normalize(cls, datum):
+    def normalize(cls, datum, **kwargs):
         """If *datum* is an integer, return it; if it is a float with
         a 0 for its fractional part, return the integer part as an
         int. Otherwise, raise a
@@ -350,7 +344,7 @@ class IntegerSchema(SimpleSchema):
 class FloatModel(Model):
 
     @classmethod
-    def normalize(cls, datum):
+    def normalize(cls, datum, **kwargs):
         """If *datum* is a float, return it; if it is an integer, cast it to a
         float and return it. Otherwise, raise a
         :exc:`~cosmic.exceptions.ValidationError`.
@@ -375,7 +369,7 @@ class FloatSchema(SimpleSchema):
 class StringModel(Model):
 
     @classmethod
-    def normalize(cls, datum):
+    def normalize(cls, datum, **kwargs):
         """If *datum* is of unicode type, return it. If it is a string, decode
         it as UTF-8 and return the result. Otherwise, raise a
         :exc:`~cosmic.exceptions.ValidationError`. Unicode errors are dealt with
@@ -407,7 +401,7 @@ class StringSchema(SimpleSchema):
 class BinaryModel(Model):
 
     @classmethod
-    def normalize(cls, datum):
+    def normalize(cls, datum, **kwargs):
         """If *datum* is a base64-encoded string, decode and return it. If not a
         string, or encoding is wrong, raise
         :exc:`~cosmic.exceptions.ValidationError`.
@@ -433,7 +427,7 @@ class BinarySchema(SimpleSchema):
 class BooleanModel(Model):
 
     @classmethod
-    def normalize(cls, datum):
+    def normalize(cls, datum, **kwargs):
         """If *datum* is a boolean, return it. Otherwise, raise a
         :exc:`~cosmic.exceptions.ValidationError`.
         """
@@ -507,8 +501,8 @@ class ClassModel(ObjectModel):
         super(ObjectModel, self).__setattr__(key, value)
 
     @classmethod
-    def normalize(cls, datum):
-        datum = cls.get_schema().normalize_data(datum)
+    def normalize(cls, datum, fetcher=fetch_model):
+        datum = cls.get_schema().normalize_data(datum, fetcher=fetcher)
         cls.validate(datum)
         return cls(datum)
 

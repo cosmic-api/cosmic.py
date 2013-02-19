@@ -8,7 +8,7 @@ from mock import patch
 import requests
 
 from cosmic.exceptions import *
-from cosmic.tools import normalize, CosmicSchema
+from cosmic.tools import normalize, normalize_schema
 from cosmic.api import API
 from cosmic.models import *
 from cosmic import api
@@ -146,7 +146,7 @@ class TestAPI(TestCase):
 
         @self.cookbook.model
         class Recipe(Model):
-            schema = CosmicSchema.normalize({u"type": u"string"})
+            schema = normalize_schema({u"type": u"string"})
             @classmethod
             def validate(cls, datum):
                 if datum == "bacon":
@@ -155,7 +155,7 @@ class TestAPI(TestCase):
 
         @self.cookbook.model
         class Cookie(Model):
-            schema = CosmicSchema.normalize({u"type": u"boolean"})
+            schema = normalize_schema({u"type": u"boolean"})
 
         api.cosmic_registry = API.normalize(registry_spec)
         self.app = self.cookbook.get_flask_app(debug=True)
@@ -194,7 +194,7 @@ class TestAPI(TestCase):
         with self.assertRaises(ValidationError):
             @self.cookbook.model
             class Pizza(Model):
-                schema = CosmicSchema.normalize({"tipe": "object"})
+                schema = normalize_schema({"tipe": "object"})
 
     def test_model_schema_validation(self):
         with self.assertRaises(ValidationError):
