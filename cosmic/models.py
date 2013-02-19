@@ -6,10 +6,6 @@ from cosmic.exceptions import ValidationError, UnicodeDecodeValidationError, Spe
 
 
 
-def fetch_model(full_name):
-    raise NotImplementedError()
-
-
 
 class Model(object):
 
@@ -26,7 +22,7 @@ class Model(object):
         return self.data
 
     @classmethod
-    def normalize(cls, datum, fetcher=fetch_model):
+    def normalize(cls, datum, fetcher=None):
         # Normalize against model schema
         schema = cls.get_schema()
         if schema:
@@ -65,7 +61,7 @@ class Schema(Model):
         if datum["type"] != cls.match_type:
             raise ValidationError("%s expects type=%s" % (cls, cls.match_type,))
 
-    def normalize_data(self, datum, fetcher=fetch_model):
+    def normalize_data(self, datum, fetcher=None):
         if self.opts:
             return self.model_cls.normalize(datum, self.opts, fetcher=fetcher)
         else:
@@ -78,7 +74,7 @@ class Schema(Model):
             return self.model_cls.serialize(datum)
 
     @classmethod
-    def normalize(cls, datum, fetcher=fetch_model):
+    def normalize(cls, datum, fetcher=None):
 
         invalid = ValidationError("Invalid schema", datum)
 
@@ -106,6 +102,8 @@ class Schema(Model):
 
         # Model?
         if '.' in st:
+            if not fetcher:
+                raise NotImplementedError()
             m = fetcher(st)
             class normalizer(SimpleSchema):
                 model_cls = m
@@ -120,7 +118,7 @@ class SimpleSchema(Schema):
 
     # COPY-PASTE
     @classmethod
-    def normalize(cls, datum, fetcher=fetch_model):
+    def normalize(cls, datum, fetcher=None):
         # Normalize against model schema
         schema = cls.get_schema()
         datum = schema.normalize_data(datum, fetcher=fetcher)
@@ -152,23 +150,24 @@ class SchemaSchema(SimpleSchema):
 class ObjectModel(Model):
 
     @classmethod
-    def normalize(cls, datum, opts, fetcher=fetch_model):
-        """If *datum* is a dict, normalize it against *properties* and return
-        the resulting dict. Otherwise raise a
+    def normalize(cls, datum, opts, fetcher=None):
+        """If *datum* is a dict, normalize it against ``opts['properties']``
+        and return the resulting dict. Otherwise raise a
         :exc:`~cosmic.exceptions.ValidationError`.
 
-        *properties* must be a list of dicts, where each dict has three
-        attributes: *name*, *required* and *schema*. *name* is a string
+        ``opts['properties']`` must be a list of dicts, where each dict has
+        three attributes: *name*, *required* and *schema*. *name* is a string
         representing the property name, *required* is a boolean specifying
-        whether the *datum* needs to contain this property in order to pass
-        validation and *schema* is a normalization function.
+        whether *datum* needs to contain this property in order to pass
+        validation and *schema* is an instance of a
+        :class:`~cosmic.models.Schema` subclass, such as :class:`IntegerSchema`.
 
         A :exc:`~cosmic.exceptions.ValidationError` will be raised if:
 
         1. *datum* is missing a required property
-        2. *datum* has a property not declared in *properties*.
+        2. *datum* has a property not declared in *properties*
         3. One of the properties of *datum* does not pass validation as defined
-           by the corresponding *schema* value.
+           by the corresponding *schema*
 
         """
         properties = opts['properties']
@@ -199,6 +198,10 @@ class ObjectModel(Model):
 
     @classmethod
     def serialize(cls, datum, opts):
+        """For each property in ``opts['properties']``, serialize the
+        corresponding value in the *datum* dict against the property schema
+        (if it exists). Return the resulting dict.
+        """
         ret = {}
         for prop in opts['properties']:
             name = prop['name']
@@ -268,10 +271,10 @@ class ObjectSchema(SimpleSchema):
 class ArrayModel(Model):
 
     @classmethod
-    def normalize(cls, datum, opts, fetcher=fetch_model):
-        """If *datum* is a list, construct a new list by putting each element of
-        *datum* through the normalizer provided as *items*. This normalizer may
-        raise
+    def normalize(cls, datum, opts, fetcher=None):
+        """If *datum* is a list, construct a new list by putting each element
+        of *datum* through a schema provided as ``opts['items']``. This schema
+        may raise
         :exc:`~cosmic.exceptions.ValidationError`. If *datum* is not a list,
         :exc:`~cosmic.exceptions.ValidationError` will be raised.
         """
@@ -288,6 +291,9 @@ class ArrayModel(Model):
 
     @classmethod
     def serialize(cls, datum, opts):
+        """Serialize each item in the *datum* list using the schema provided
+        in ``opts['items']``. Returns the resulting list.
+        """
         return [opts['items'].serialize_data(item) for item in datum]
 
 class ArraySchema(SimpleSchema):
@@ -319,9 +325,9 @@ class IntegerModel(Model):
 
     @classmethod
     def normalize(cls, datum, **kwargs):
-        """If *datum* is an integer, return it; if it is a float with
-        a 0 for its fractional part, return the integer part as an
-        int. Otherwise, raise a
+        """If *datum* is an integer, return it; if it is a float with a 0 for
+        its fractional part, return the integer part as an int. Otherwise,
+        raise a
         :exc:`~cosmic.exceptions.ValidationError`.
         """
         if type(datum) == int:
@@ -372,8 +378,8 @@ class StringModel(Model):
     def normalize(cls, datum, **kwargs):
         """If *datum* is of unicode type, return it. If it is a string, decode
         it as UTF-8 and return the result. Otherwise, raise a
-        :exc:`~cosmic.exceptions.ValidationError`. Unicode errors are dealt with
-        strictly by raising
+        :exc:`~cosmic.exceptions.ValidationError`. Unicode errors are dealt
+        with strictly by raising
         :exc:`~cosmic.exceptions.UnicodeDecodeValidationError`, a
         subclass of the above.
         """
@@ -402,8 +408,8 @@ class BinaryModel(Model):
 
     @classmethod
     def normalize(cls, datum, **kwargs):
-        """If *datum* is a base64-encoded string, decode and return it. If not a
-        string, or encoding is wrong, raise
+        """If *datum* is a base64-encoded string, decode and return it. If not
+        a string, or encoding is wrong, raise
         :exc:`~cosmic.exceptions.ValidationError`.
         """
         if type(datum) in (str, unicode,):
@@ -415,6 +421,7 @@ class BinaryModel(Model):
 
     @classmethod
     def serialize(cls, datum):
+        """Encode *datum* in base64"""
         return base64.b64encode(datum)
 
 class BinarySchema(SimpleSchema):
@@ -501,7 +508,7 @@ class ClassModel(ObjectModel):
         super(ObjectModel, self).__setattr__(key, value)
 
     @classmethod
-    def normalize(cls, datum, fetcher=fetch_model):
+    def normalize(cls, datum, fetcher=None):
         datum = cls.get_schema().normalize_data(datum, fetcher=fetcher)
         cls.validate(datum)
         return cls(datum)

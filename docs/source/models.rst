@@ -209,8 +209,35 @@ Note that there is an equivalent way of calling this method::
 Internally, Cosmic prefers this syntax because it allows to represent
 primitive types with model classes by implementing :meth:`serialize` as a
 classmethod. These models are never instantiated, they are effectively just
-namespaces holding two corresponding classmethods: :meth:`normalize` and
-:meth:`serialize`.
+namespaces holding two classmethods: :meth:`normalize` and :meth:`serialize`.
+:meth:`normalize` can return any kind of data, as long as :meth:`serialize`
+accepts it.
+
+Simple Builtin Models
+~~~~~~~~~~~~~~~~~~~~~
+
+Most JSON schema types are implemented as explained above:
+
+.. autoclass:: cosmic.models.IntegerModel
+   :members:
+
+.. autoclass:: cosmic.models.FloatModel
+   :members:
+
+.. autoclass:: cosmic.models.StringModel
+   :members:
+
+.. autoclass:: cosmic.models.BinaryModel
+   :members:
+
+.. autoclass:: cosmic.models.BooleanModel
+   :members:
+
+.. autoclass:: cosmic.models.ArrayModel
+   :members:
+
+.. autoclass:: cosmic.models.ObjectModel
+   :members:
 
 Key-Value Models
 ~~~~~~~~~~~~~~~~
