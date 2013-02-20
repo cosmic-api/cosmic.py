@@ -168,5 +168,5 @@ def normalize(schema, datum):
     to be the return value of json.loads
     """
     normalizer = normalize_schema(schema)
-    return normalizer.normalize_data(datum, fetcher=fetch_model)
+    return normalizer.normalize_data(datum)
 

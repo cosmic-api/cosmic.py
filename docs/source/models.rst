@@ -10,8 +10,8 @@ reference it by its name.
 JSON Schema Basics
 ------------------
 
-A *schema* is a recursive JSON structure that mirrors the structure of
-the data it is meant to validate.
+A *schema* is a recursive JSON structure that mirrors the structure of the
+data it is meant to validate.
 
 .. note::
 
@@ -344,21 +344,86 @@ Please note that :class:`IntegerSchema`'s :meth:`normalize` classmethod
 normalizes the schema itself (incidentally, the only acceptable value is
 ``{"type": "integer"}``), while its :meth:`normalize_data` method normalizes
 the data it represents, namely an integer. :meth:`normalize_data` and
-:meth:`serialize_data` simply call on the corresponding model's :meth:`normalize`
-and :meth:`serialize` methods. Most schema classes (except for 
-:class:`~cosmic.models.ArraySchema` and :class:`~cosmic.models.ObjectSchema`)
-are simple wrappers around a model class.
+:meth:`serialize_data` simply call :class:`~cosmic.models.IntegerModel`'s
+:meth:`normalize` and :meth:`serialize` methods.
 
-If something is wrong with your JSON schema, like any model it will raise a
-:exc:`~cosmic.exceptions.ValidationError`::
-    
-    >>> Schema.normalize({"type": "foo"})
-    Traceback (most recent call last):
-      File "<stdin>", line 1, in <module>
-      File "cosmic/models.py", line 351, in from_json
-        raise ValidationError("Unknown type", st)
-    cosmic.exceptions.ValidationError: Unknown type: 'foo'
+Most schema classes are just wrappers around a model class. Like most models,
+however, they do have a schema of their own. It simply matches a dict with a
+single attribute *type*. The schema is as follows::
 
+    {
+        "type": "object",
+        "properties": [
+            {
+                "name": "type",
+                "required": True,
+                "schema": {"type": "string"}
+            }
+        ]
+    }
+
+:class:`~cosmic.models.ArraySchema` needs more than just type, it also needs
+*items*::
+
+    {
+        "type": "object",
+        "properties": [
+            {
+                "name": "type",
+                "required": True,
+                "schema": {"type": "string"}
+            },
+            {
+                "name": "items",
+                "required": True,
+                "schema": {"type": "schema"}
+            }
+        ]
+    }
+
+:class:`~cosmic.models.ObjectSchema` requires *properties*::
+
+    {
+        "type": "object",
+        "properties": [
+            {
+                "name": "type",
+                "required": True,
+                "schema": {"type": "string"}
+            },
+            {
+                "name": "properties",
+                "required": True,
+                "schema": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": [
+                            {
+                                "name": "name",
+                                "required": True,
+                                "schema": {"type": "string"}
+                            },
+                            {
+                                "name": "required",
+                                "required": True,
+                                "schema": {"type": "boolean"}
+                            },
+                            {
+                                "name": "schema",
+                                "required": True,
+                                "schema": {"type": "schema"}
+                            }
+                        ]
+                    }
+                }
+            }
+        ]
+    }
+
+As you can see, the ``schema`` type is quite handy. Not only is it used by the
+model system internally but also by other modules in Cosmic. It allows such
+things as actions to be implemented as simple models.
 
 A Word About Null
 -----------------
@@ -421,4 +486,30 @@ But a ``null`` will yield a 'boxed' value::
 
     >>> JSONData.from_string("null")
     <JSONData null>
+
+Extending The Model System
+--------------------------
+
+Instead of using the convenience function
+:func:`cosmic.tools.normalize_schema`, try to call :meth:`Schema.normalize`
+directly::
+
+    >>> Schema.normalize({"type": "cookbook.Recipe"})
+    Traceback (most recent call last):
+      File "<stdin>", line 1, in <module>
+      File "cosmic/models.py", line 106, in normalize
+        raise NotImplementedError()
+    NotImplementedError
+
+The error is thrown because the model system doesn't know where to find API
+models by itself. Cosmic extends the model system by defining a
+:func:`cosmic.tools.fetch_model` function that it passes into the model
+system like so:
+
+    >>> Schema.normalize({"type": "cookbook.Recipe"}, fetcher=fetch_model)
+
+:func:`fetch_model` needs to be passed into any :meth:`normalize` or
+:meth:`normalize_data` call whenever user-defined models need to be accessed.
+
+
 

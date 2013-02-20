@@ -471,22 +471,10 @@ class JSONData(Model):
             return None
         return cls.normalize(json.loads(s))
 
-    @classmethod
-    def validate(cls, datum):
-        # Hack to make sure we don't end up with non-unicode strings in
-        # normalized data
-        if type(datum) == str:
-            StringSchema().normalize_data(datum)
-        elif type(datum) == list:
-            for item in datum:
-                cls.validate(item)
-        elif type(datum) == dict:
-            for value in datum.values():
-                cls.validate(value)
-
 class JSONDataSchema(SimpleSchema):
     model_cls = JSONData
     match_type = "json"
+
 
 
 class ClassModel(ObjectModel):
