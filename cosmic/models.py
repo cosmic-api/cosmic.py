@@ -199,8 +199,8 @@ class ObjectModel(Model):
     @classmethod
     def serialize(cls, datum, opts):
         """For each property in ``opts['properties']``, serialize the
-        corresponding value in the *datum* dict against the property schema
-        (if it exists). Return the resulting dict.
+        corresponding value in *datum* (if the value exists) against the
+        property schema. Return the resulting dict.
         """
         ret = {}
         for prop in opts['properties']:
@@ -292,7 +292,7 @@ class ArrayModel(Model):
     @classmethod
     def serialize(cls, datum, opts):
         """Serialize each item in the *datum* list using the schema provided
-        in ``opts['items']``. Returns the resulting list.
+        in ``opts['items']``. Return the resulting list.
         """
         return [opts['items'].serialize_data(item) for item in datum]
 
@@ -421,7 +421,7 @@ class BinaryModel(Model):
 
     @classmethod
     def serialize(cls, datum):
-        """Encode *datum* in base64"""
+        """Encode *datum* in base64."""
         return base64.b64encode(datum)
 
 class BinarySchema(SimpleSchema):

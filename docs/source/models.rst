@@ -160,8 +160,8 @@ Let's start with a minimal implementation::
 
 There are two ways to instantiate this model, depending on whether you want
 your input validated or not. If the data is internally generated or has
-already been validated, use the model's constructor. If your input if coming
-from an untrusted source, use the model's
+already been validated, simply use the model's constructor. If your input is
+coming from an untrusted source, use the model's
 :meth:`~cosmic.models.Model.normalize` static method::
 
    >>> Animal.normalize(21)
@@ -172,6 +172,13 @@ from an untrusted source, use the model's
       File "cosmic/models.py", line 190, in normalize
         raise ValidationError("Invalid string", datum)
     cosmic.exceptions.ValidationError: Invalid string: 21
+
+When instantiated, the normalized data will be put in the model instance's
+*data* property::
+
+    >>> tiger = Animal.normalize("Tiger")
+    >>> tiger.data
+    u'Tiger'
 
 If the schema validation passes, the normalized data will be passed into
 :meth:`~cosmic.models.Model.validate` for second-stage validation. By default,
@@ -210,13 +217,17 @@ Internally, Cosmic prefers this syntax because it allows to represent
 primitive types with model classes by implementing :meth:`serialize` as a
 classmethod. These models are never instantiated, they are effectively just
 namespaces holding two classmethods: :meth:`normalize` and :meth:`serialize`.
-:meth:`normalize` can return any kind of data, as long as :meth:`serialize`
-accepts it.
+In general, :meth:`serialize` does not validate data, it can assume that its
+input is in the same format as the output of the corresponding
+:meth:`normalize` method.
 
 Simple Builtin Models
 ~~~~~~~~~~~~~~~~~~~~~
 
-Most JSON schema types are implemented as explained above:
+Most JSON schema types are implemented as explained above. Note that all of
+the classes below inherit :meth:`serialize` from
+:class:`~cosmic.models.SimpleSchema`. The default implementation of this method
+simply returns the given value.
 
 .. autoclass:: cosmic.models.IntegerModel
    :members:
@@ -317,29 +328,28 @@ and serialized themselves. In order to enable this, they are implemented as
 models, validated against ``{"type": "schema"}``.
 
 The class responsible for this type is :class:`~cosmic.models.Schema`.
-Internally, its :meth:`normalize` method looks at the type attribute and
-delegates the work to a more specific class, like
-:class:`~cosmic.models.IntegerSchema` by calling its own :meth:`normalize`
-method::
+Internally, its :meth:`normalize` method looks at the *type* attribute of the
+data (which is expected to be a dict) and delegates the work to a more
+specific class, like :class:`~cosmic.models.IntegerSchema`, by calling its own
+:meth:`normalize` method::
 
     >>> from cosmic.models import Schema
     >>> s = Schema.normalize({"type": "integer"})
     >>> s
     <cosmic.models.IntegerSchema object at 0x1c518d0>
+    >>> s.normalize_data(1.0)
+    1
 
-Please note that :class:`IntegerSchema`'s :meth:`normalize` method normalizes
-the schema itself (incidentally, the only acceptable value is 
-``{"type": "integer"}``), while its :meth:`normalize_data` method normalizes 
+Please note that :class:`IntegerSchema`'s :meth:`normalize` classmethod
+normalizes the schema itself (incidentally, the only acceptable value is
+``{"type": "integer"}``), while its :meth:`normalize_data` method normalizes
 the data it represents, namely an integer. :meth:`normalize_data` and
 :meth:`serialize_data` simply call on the corresponding model's :meth:`normalize`
 and :meth:`serialize` methods. Most schema classes (except for 
 :class:`~cosmic.models.ArraySchema` and :class:`~cosmic.models.ObjectSchema`)
-are simple wrappers around a model class and can be implemented by specifying:
+are simple wrappers around a model class.
 
-1. The model representing the data
-2. Which ``type`` to match in a JSON schema
-
-If something is wrong with your JSON schema, it will raise a
+If something is wrong with your JSON schema, like any model it will raise a
 :exc:`~cosmic.exceptions.ValidationError`::
     
     >>> Schema.normalize({"type": "foo"})
@@ -370,21 +380,21 @@ model as follows::
     ...         {
     ...             "name": "stuff",
     ...             "required": False,
-    ...             "schema": {"type": "core.JSON"}
+    ...             "schema": {"type": "json"}
     ...         }
     ...     ]
 
 When its optional property is omitted, the value will be a plain
 Python ``None``::
 
-    >>> thing = Thing.from_json({})
+    >>> thing = Thing.normalize({})
     >>> thing.stuff is None
     True
 
 However, when you pass in an explicit null value, the property will
 be boxed::
 
-    >>> thing = Thing.from_json({"stuff": None"})
+    >>> thing = Thing.normalize({"stuff": None})
     >>> thing.stuff is None
     False
     >>> thing.stuff
@@ -398,7 +408,7 @@ body. A payload of ``null`` is different from an empty body, and
 may have a subtly different meaning. Thus we need a way to
 differentiate between them. Conveniently, the
 :class:`~cosmic.models.JSONData` class responsible for the
-``core.JSON`` model comes with a
+``core`` model comes with a
 :meth:`~cosmic.models.JSONData.from_string` method.
 
 An empty string will yield a plain Python ``None`` value::
@@ -407,7 +417,7 @@ An empty string will yield a plain Python ``None`` value::
     >>> JSONData.from_string("") is None
     True
 
-But a ``null`` will yield a boxed value::
+But a ``null`` will yield a 'boxed' value::
 
     >>> JSONData.from_string("null")
     <JSONData null>
