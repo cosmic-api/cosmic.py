@@ -28,11 +28,9 @@ Documentation is built using Sphinx, which is going to be installed by Tox in th
 
 .. code:: bash
 
-    $ source .tox/py27/bin/activate
-    $ cd docs
-    $ make html
+    $ make docs
 
-The output will be in ``docs/build/html``.
+The output will be in ``docs/_build/html``.
 
 License
 -------
