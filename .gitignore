@@ -41,5 +41,5 @@ pip-log.txt
 /venv
 
 # Docs
-/docs/build
+/docs/_build
 
