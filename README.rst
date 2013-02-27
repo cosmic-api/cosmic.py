@@ -30,7 +30,7 @@ Documentation is built using Sphinx, which is going to be installed by Tox in th
 
     $ make docs
 
-The output will be in ``docs/_build/html``.
+The output will be in ``docs/build/html``.
 
 License
 -------
