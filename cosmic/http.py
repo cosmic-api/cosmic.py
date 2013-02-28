@@ -33,10 +33,11 @@ class Request(object):
         self.body = body
 
 class JSONRequest(Request):
-    """If the passed in :class:`~cosmic.http.Request` validates, the
-    resulting :class:`JSONRequest` will have a *payload* attribute,
-    storing a :class:`~cosmic.tools.JSONPayload` object or ``None`` if
-    the request body was empty.
+    """If the passed in :class:`~cosmic.http.Request` *req* validates, the
+    resulting :class:`JSONRequest` will have a *payload* attribute, storing a
+    :class:`~cosmic.models.JSONData` object or ``None`` if the request body
+    was empty. For a non-GET request, Content-Type has to be
+    ``application/json``.
 
     :param req: :class:`~cosmic.http.Request`
     :raises: :exc:`SpecError`, :exc:`~cosmic.exceptions.JSONParseError`
@@ -71,7 +72,7 @@ class View(object):
     """An HTTP request handler.
 
     :param function func: A function that takes a
-        :class:`~cosmic.tools.JSONPayload` and returns a
+        :class:`~cosmic.models.JSONData` and returns a
         :class:`~cosmic.http.Response`. This function may raise an
         :class:`~cosmic.exceptions.APIError`,
         :class:`~cosmic.exceptions.ValidationError` or an
@@ -92,7 +93,7 @@ class View(object):
             self.returns_schema = normalize({"type": "schema"}, returns)
 
     def __call__(self, req, debug=False):
-        """Turns a :class:`~cosmic.http.Request` into a
+        """Uses *func* to turn a :class:`~cosmic.http.Request` into a
         :class:`~cosmic.http.Response`.
 
         :param bool debug: If ``True``, an unhandled error in *func* will
@@ -145,7 +146,9 @@ class View(object):
             return err.get_response()
 
 def make_view(method, accepts=None, returns=None):
-    """A decorator for creating views more conveniently.
+    """A decorator for creating views more conveniently. Passes the function
+    below, and the decorator arguments into the :class:`~cosmic.http.View`
+    constructor.
 
     .. code::
 
@@ -201,9 +204,9 @@ class CorsPreflightView(object):
 class UrlRule(object):
     """Represents the relationship between a URL and a
     :class:`~cosmic.http.View`. Your :class:`~cosmic.api.API` will be represented
-    as a list of URL rules in order to get served.
+    as a list of URL rules.
 
-    :param string URL: The URL which is mapped to the *view*
+    :param string url: The URL which is mapped to the *view*
     :param string name: Endpoint name, necessary for Flask
     :param View view: When the client visits the URL, the *view* will handle
         her request.
