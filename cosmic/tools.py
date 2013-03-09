@@ -142,12 +142,16 @@ def schema_is_compatible(general, detailed):
     return True
 
 
-builtin_models = {}
-
-
 def fetch_model(full_name):
-    if full_name in builtin_models.keys():
-        return builtin_models[full_name]
+    if full_name == "cosmic.API":
+        from cosmic.api import API
+        return API
+    if full_name == "cosmic.APIModel":
+        from cosmic.api import APIModel
+        return APIModel
+    if full_name == "cosmic.Action":
+        from cosmic.actions import Action
+        return Action
     api_name, model_name = full_name.split('.', 1)
     try:
         api = sys.modules['cosmic.registry.' + api_name]
