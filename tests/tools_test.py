@@ -334,3 +334,27 @@ class TestNamespace(TestCase):
         with self.assertRaisesRegexp(SpecError, "not defined"):
             self.dispatcher.width([0, 1, 2])
 
+
+class TestSchemaHelpers(TestCase):
+
+    def setUp(self):
+        self.api = {
+            "name": "Foo",
+            "url": "http://www.example.com",
+            "actions": [
+                {
+                    "name": "foo",
+                    "accepts": {"type": "string"},
+                    "returns": {"type": "boolean"}
+                }
+            ],
+            "models": []
+        }
+
+    def test_normalize(self):
+        api = normalize({"type": "cosmic.API"}, self.api)
+        self.assertEqual(api.__class__.__name__, "API")
+
+    def test_normalize_schema(self):
+        schema = normalize_schema({"type": "cosmic.API"})
+        self.assertEqual(schema.normalize_data(self.api).__class__.__name__, "API")
