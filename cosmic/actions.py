@@ -89,8 +89,6 @@ class Action(ClassModel):
                 raise SpecError("'%s' is said to take arguments, but doesn't" % name)
             if not schema_is_compatible(arg_spec, accepts):
                 raise SpecError("The accepts parameter of '%s' action is incompatible with the function's arguments")
-        elif arg_spec:
-            accepts = arg_spec
 
         return cls({
             "name": name,

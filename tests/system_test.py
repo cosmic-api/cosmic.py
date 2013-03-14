@@ -3,7 +3,23 @@ def quickstart():
     from cosmic.api import API
     cookbook = API.create('cookbook')
 
-    @cookbook.action(returns={"type": "string"})
+    @cookbook.action(
+        accepts={
+            'type': 'object',
+            'properties': [
+                {
+                    "name": "spicy",
+                    "required": True,
+                    "schema": {"type": "boolean"}
+                },
+                {
+                    "name": "capitalize",
+                    "required": False,
+                    "schema": {"type": "boolean"}
+                }
+            ]
+        },
+        returns={"type": "string"})
     def cabbage(spicy=False):
         if spicy:
             return "kimchi"

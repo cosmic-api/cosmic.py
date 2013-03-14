@@ -89,21 +89,20 @@ def apply_to_action_func(func, data):
         raise SpecError("%s expects an object" % func.__name__)
     # Number of non-keyword arguments (required ones)
     numargs = len(args) - (len(defaults) if defaults else 0)
-    apply_args = []
     apply_kwargs = {}
     for i, arg in enumerate(args):
         # args
         if i < numargs:
             if arg not in data.data.keys():
                 raise SpecError("%s is a required argument" % arg)
-            apply_args.append(data.data.pop(arg))
+            apply_kwargs[arg] = data.data.pop(arg)
         # kwargs
         elif arg in data.data.keys():
             apply_kwargs[arg] = data.data.pop(arg)
     # Some stuff still remaining in the object?
     if data.data:
         raise SpecError("Unknown arguments: %s" % ", ".join(data.data.keys()))
-    return func(*apply_args, **apply_kwargs)
+    return func(**apply_kwargs)
 
 def serialize_action_arguments(*args, **kwargs):
     """Takes arbitrary args and kwargs, serializes them into a
@@ -140,6 +139,8 @@ def schema_is_compatible(general, detailed):
         if gp["name"] != dp["name"] or gp["required"] != dp["required"]:
             return False
     return True
+
+
 
 
 def fetch_model(full_name):

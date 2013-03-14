@@ -92,7 +92,23 @@ class TestBasicAction(TestCase):
                 c = "sauerkraut"
             return "%s pounds of %s" % (12.0 / servings, c)
 
-        self.action = Action.from_func(cabbage, returns=JSONDataSchema())
+        self.action = Action.from_func(cabbage,
+            accepts=normalize_schema({
+                "type": "object",
+                "properties": [
+                    {
+                        "name": "spicy",
+                        "schema": {"type": "boolean"},
+                        "required": True
+                    },
+                    {
+                        "name": "servings",
+                        "schema": {"type": "integer"},
+                        "required": False
+                    }
+                ]
+            }),
+            returns=normalize_schema({"type": "json"}))
         self.view = self.action.get_view()
 
     def test_successful_call(self):
@@ -151,18 +167,6 @@ class TestActionAnnotation(TestCase):
                 }
             ]
         })
-
-    def test_no_args_no_accepts(self):
-        def func():
-            pass
-        action = Action.from_func(func)
-        self.assertEqual(action.accepts, None)
-
-    def test_args_no_accepts(self):
-        def func(a=None):
-            pass
-        action = Action.from_func(func)
-        self.assertEqual(action.accepts.serialize(), {"type": "json"})
 
     def test_no_args_accepts(self):
         def func():

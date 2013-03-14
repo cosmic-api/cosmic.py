@@ -43,12 +43,12 @@ cookbook_spec = {
                     {
                         u"name": u"spicy",
                         u"required": True,
-                        u"schema": {u"type": u"json"}
+                        u"schema": {u"type": u"boolean"}
                     },
                     {
                         u"name": u"capitalize",
                         u"required": False,
-                        u"schema": {u"type": u"json"}
+                        u"schema": {u"type": u"boolean"}
                     }
                 ]
             },
@@ -127,9 +127,25 @@ class TestAPI(TestCase):
     def setUp(self):
         self.maxDiff = None
 
-        self.cookbook = API.create('cookbook', "http://localhost:8881/api")
+        self.cookbook = API.create(u'cookbook', u"http://localhost:8881/api")
 
-        @self.cookbook.action()
+        @self.cookbook.action(
+            accepts={
+                "type": "object",
+                "properties": [
+                    {
+                        "name": "spicy",
+                        "schema": {"type": "boolean"},
+                        "required": True
+                    },
+                    {
+                        "name": "capitalize",
+                        "schema": {"type": "boolean"},
+                        "required": False
+                    }
+                ]
+            },
+            returns={"type": "json"})
         def cabbage(spicy, capitalize=False):
             if spicy:
                 c = "kimchi"
@@ -140,7 +156,7 @@ class TestAPI(TestCase):
             else:
                 return c
 
-        @self.cookbook.action(returns=None)
+        @self.cookbook.action(accepts=None, returns=None)
         def noop():
             pass
 
