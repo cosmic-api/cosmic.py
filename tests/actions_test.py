@@ -55,7 +55,7 @@ class TestBasicRemoteAction(TestCase):
             mock_post.return_value.status_code = 500
             mock_post.return_value.json = {'error': 'Cannot capitalize'}
             with self.assertRaisesRegexp(APIError, "Cannot capitalize"):
-                self.action(spicy=True, capitalize=True)
+                self.action(spicy=True, capitalize=JSONData(True))
 
     def test_call_failed_bad_response(self):
         with patch.object(requests, 'post') as mock_post:
@@ -143,6 +143,12 @@ class TestActionWithModelData(TestCase):
 
     def test_direct_call(self):
         self.assertEqual(self.action(self.action), self.action)
+
+    def _test_remote_call(self):
+        with patch.object(requests, 'post') as mock_post:
+            mock_post.return_value.status_code = 200
+            mock_post.return_value.json = self.spec
+            self.remote_action(self.action)
 
     def test_answer_request(self):
         res = self.view(Request("POST", json.dumps(self.spec), {"Content-Type": "application/json"}))

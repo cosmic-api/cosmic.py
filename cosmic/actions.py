@@ -4,7 +4,7 @@ import json
 
 import requests
 
-from cosmic.tools import get_arg_spec, serialize_action_arguments, apply_to_action_func, schema_is_compatible, normalize, normalize_schema, fetch_model
+from cosmic.tools import get_arg_spec, pack_action_arguments, apply_to_func, schema_is_compatible, normalize, normalize_schema, fetch_model
 from cosmic.http import ALL_METHODS, View, make_view
 from cosmic.exceptions import APIError, SpecError, AuthenticationError, ValidationError
 
@@ -41,27 +41,33 @@ class Action(ClassModel):
             returns = returns.serialize()
         @make_view("POST", accepts=accepts, returns=returns)
         def action_view(payload):
-            return apply_to_action_func(self.raw_func, payload)
+            return apply_to_func(self.raw_func, payload.data)
         return action_view
 
     def __call__(self, *args, **kwargs):
-        json_data = serialize_action_arguments(*args, **kwargs)
+        packed = pack_action_arguments(*args, **kwargs)
+
+        if not packed and self.accepts:
+            raise SpecError("%s takes arguments" % self.name)
+
+        if packed:
+            serialized = self.accepts.serialize_data(packed)
+            # Try to normalize, just for the sake of validation
+            try:
+                self.accepts.normalize_data(serialized, fetcher=fetch_model)
+            except ValidationError as err:
+                raise SpecError(err.args[0])
+
         if hasattr(self, "raw_func"):
             # This seems redundant, but is necessary to make sure local
             # actions behave same as remote ones
-            return apply_to_action_func(self.raw_func, json_data)
+            return apply_to_func(self.raw_func, packed)
         else:
-            if not json_data and self.accepts:
-                raise SpecError("%s takes arguments" % self.name)
-            if json_data:
-                try:
-                    normalized = self.accepts.normalize_data(json_data.data, fetcher=fetch_model)
-                except ValidationError as err:
-                    raise SpecError(err.args[0])
-                serialized = self.accepts.serialize_data(normalized)
+            if packed:
                 data = json.dumps(serialized)
             else:
                 data = ""
+            
             url = self.api_url + '/actions/' + self.name
             headers = {'Content-Type': 'application/json'}
             res = requests.post(url, data=data, headers=headers)
