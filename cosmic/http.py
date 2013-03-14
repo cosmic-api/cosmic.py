@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 import json
 
 from cosmic.exceptions import *
-from cosmic.tools import normalize
+from cosmic.tools import normalize, normalize_schema, fetch_model
 from cosmic.models import JSONData
 
 # We shouldn't have to do this, but Flask doesn't allow us to route
@@ -88,9 +88,9 @@ class View(object):
         self.accepts = accepts
         self.returns = returns
         if accepts != None:
-            self.accepts_schema = normalize({"type": "schema"}, accepts)
+            self.accepts_schema = normalize_schema(accepts)
         if returns != None:
-            self.returns_schema = normalize({"type": "schema"}, returns)
+            self.returns_schema = normalize_schema(returns)
 
     def __call__(self, req, debug=False):
         """Uses *func* to turn a :class:`~cosmic.http.Request` into a
@@ -116,7 +116,7 @@ class View(object):
                     raise SpecError("Request content cannot be empty")
                 # Validate incoming data
                 if req.payload:
-                    self.accepts_schema.normalize_data(req.payload.data)
+                    self.accepts_schema.normalize_data(req.payload.data, fetcher=fetch_model)
             except SpecError as err:
                 raise ClientError(err.args[0])
             except JSONParseError:
@@ -129,7 +129,7 @@ class View(object):
                 # May raise ValidationError, will be caught below and
                 # rethrown if we are in debug mode
                 if self.returns:
-                    data = self.returns_schema.normalize_data(data)
+                    data = self.returns_schema.normalize_data(data, fetcher=fetch_model)
                     res.body = json.dumps(self.returns_schema.serialize_data(data))
                 # Likewise, will be rethrown in debug mode
                 elif data != None:

@@ -9,6 +9,7 @@ from cosmic.actions import Action
 from cosmic.exceptions import SpecError, APIError
 from cosmic.http import Request
 from cosmic.models import *
+from cosmic.tools import normalize_schema, fetch_model
 
 class TestBasicRemoteAction(TestCase):
 
@@ -102,6 +103,36 @@ class TestBasicAction(TestCase):
     def test_unhandled_exception_debug(self):
         with self.assertRaises(ZeroDivisionError):
             self.view(Request("POST", '{"spicy":true,"servings":0}', {"Content-Type": "application/json"}), debug=True)
+
+
+class TestActionWithModelData(TestCase):
+
+    def setUp(self):
+
+        def get_some(action):
+            return action
+
+        self.spec = {
+            "name": "get_some",
+            "accepts": {"type": "cosmic.Action"},
+            "returns": {"type": "cosmic.Action"}
+        }
+
+        self.action = Action.from_func(get_some,
+            accepts=normalize_schema({"type": "cosmic.Action"}),
+            returns=normalize_schema({"type": "cosmic.Action"}))
+
+        self.view = self.action.get_view()
+        self.remote_action = Action.normalize(self.spec, fetcher=fetch_model)
+
+    def test_direct_call(self):
+        self.assertEqual(self.action(self.action), self.action)
+
+    def test_answer_request(self):
+        res = self.view(Request("POST", json.dumps(self.spec), {"Content-Type": "application/json"}))
+        answer = json.loads(res.body)
+        self.assertEqual(self.spec, answer)
+
 
 class TestActionAnnotation(TestCase):
 

@@ -4,7 +4,7 @@ import json
 
 import requests
 
-from cosmic.tools import get_arg_spec, serialize_action_arguments, apply_to_action_func, schema_is_compatible, normalize, normalize_schema
+from cosmic.tools import get_arg_spec, serialize_action_arguments, apply_to_action_func, schema_is_compatible, normalize, normalize_schema, fetch_model
 from cosmic.http import ALL_METHODS, View, make_view
 from cosmic.exceptions import APIError, SpecError, AuthenticationError, ValidationError
 
@@ -55,7 +55,7 @@ class Action(ClassModel):
                 raise SpecError("%s takes arguments" % self.name)
             if json_data:
                 try:
-                    normalized = self.accepts.normalize_data(json_data.data)
+                    normalized = self.accepts.normalize_data(json_data.data, fetcher=fetch_model)
                 except ValidationError as err:
                     raise SpecError(err.args[0])
                 serialized = self.accepts.serialize_data(normalized)
@@ -72,7 +72,7 @@ class Action(ClassModel):
                     raise APIError("Call to %s failed with improper error response")
             try:
                 if self.returns:
-                    return self.returns.normalize_data(res.json)
+                    return self.returns.normalize_data(res.json, fetcher=fetch_model)
                 else:
                     return None
             except ValidationError:
