@@ -105,15 +105,60 @@ def apply_to_action_func(func, data):
         raise SpecError("Unknown arguments: %s" % ", ".join(data.data.keys()))
     return func(*apply_args, **apply_kwargs)
 
-def serialize_action_arguments(*args, **kwargs):
-    """Takes arbitrary args and kwargs, serializes them into a
-    JSONPayload object to be passed over the wire then deserialized by
-    `apply_to_action_func`. If no arguments passed, returns None.
+def apply_to_func(func, data):
+    """Applies a normalized object to the user-defined action function based
+    on its argument spec. If object is None, function is called with no
+    arguments.
+    """
+    args, varargs, keywords, defaults = inspect.getargspec(func)
+    if len(args) == 0:
+        if data:
+            raise SpecError("%s takes no arguments" % func.__name__)
+        return func()
+    if len(args) == 1:
+        # We weren't passed a value
+        if not data:
+            # Function does not have defaults but we weren't passed a
+            # value
+            if not defaults:
+                raise SpecError("%s takes one argument" % func.__name__)
+            # We weren't passed a value, but there's a default
+            return func()
+        # We were passed a value, safe to apply regardless of defaults
+        return func(data)
+    # Special case
+    if isinstance(data, JSONData):
+        data = data.data
+    # func takes multiple arguments, make sure we have something to
+    # work with..
+    if type(data) != dict:
+        raise SpecError("%s expects an object, got %s instead" % (func.__name__, type(data)))
+    # Number of non-keyword arguments (required ones)
+    numargs = len(args) - (len(defaults) if defaults else 0)
+    apply_args = []
+    apply_kwargs = {}
+    for i, arg in enumerate(args):
+        # args
+        if i < numargs:
+            if arg not in data.keys():
+                raise SpecError("%s is a required argument" % arg)
+            apply_args.append(data.pop(arg))
+        # kwargs
+        elif arg in data.keys():
+            apply_kwargs[arg] = data.pop(arg)
+    # Some stuff still remaining in the object?
+    if data:
+        raise SpecError("Unknown arguments: %s" % ", ".join(data.keys()))
+    return func(*apply_args, **apply_kwargs)
+
+def pack_action_arguments(*args, **kwargs):
+    """Takes arbitrary args and kwargs and packs them into a dict if there are
+    more than one. Returns `None` if there are no arguments.
     """
     if len(args) == 1 and len(kwargs) == 0:
-        return normalize({"type": "json"}, args[0])
+        return args[0]
     if len(args) == 0 and len(kwargs) > 0:
-        return normalize({"type": "json"}, kwargs)
+        return kwargs
     if len(args) == 0 and len(kwargs) == 0:
         return None
     raise SpecError("Action must be called either with one argument or with one or more keyword arguments")

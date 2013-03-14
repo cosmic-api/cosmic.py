@@ -146,30 +146,30 @@ class TestApplyToActionFunc(TestCase):
             def f(a, b=1): return a, b
             apply_to_action_func(f, JSONData({}))
 
-class TestSerializeActionArguments(TestCase):
+class TestPackActionArguments(TestCase):
 
     def test_one_arg(self):
-        res = serialize_action_arguments("universe").data
+        res = pack_action_arguments("universe")
         self.assertEqual(res, "universe")
 
     def test_one_kwarg(self):
-        res = serialize_action_arguments(what="universe").data
+        res = pack_action_arguments(what="universe")
         self.assertEqual(res, {"what": "universe"})
 
     def test_many_kwargs(self):
-        ser = serialize_action_arguments(what="universe", when="now")
-        self.assertEqual(ser.data, {"what": "universe", "when": "now"})
+        res = pack_action_arguments(what="universe", when="now")
+        self.assertEqual(res, {"what": "universe", "when": "now"})
 
     def test_multiple_args(self):
         with self.assertRaises(SpecError):
-            serialize_action_arguments("universe", "now")
+            pack_action_arguments("universe", "now")
 
     def test_no_args_no_kwargs(self):
-        self.assertEqual(serialize_action_arguments(), None)
+        self.assertEqual(pack_action_arguments(), None)
 
     def test_mixed_args_and_kwargs(self):
         with self.assertRaises(SpecError):
-            serialize_action_arguments("universe", when="now")
+            pack_action_arguments("universe", when="now")
 
 class TestSchemaIsCompatible(TestCase):
 
