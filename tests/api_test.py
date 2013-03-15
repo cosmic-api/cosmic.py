@@ -8,7 +8,7 @@ from mock import patch
 import requests
 
 from cosmic.exceptions import *
-from cosmic.tools import normalize, normalize_schema
+from cosmic.tools import normalize, normalize_schema, fetch_model
 from cosmic.api import API
 from cosmic.models import *
 from cosmic import api
@@ -19,13 +19,26 @@ registry_spec = {
     u'actions': [
         {
             u'name': u'register_spec',
-            u'returns': {u'type': u'json'},
-            u'accepts': {u'type': u'json'}
+            u'accepts': {
+                u'type': u'object',
+                u'properties': [
+                    {
+                        "name": "api_key",
+                        "required": True,
+                        "schema": {"type": "string"}
+                    },
+                    {
+                        "name": "spec",
+                        "required": True,
+                        "schema": {"type": "cosmic.API"}
+                    }
+                ]
+            }
         },
         {
             u'name': u'get_spec_by_name',
-            u'returns': {u'type': u'json'},
-            u'accepts': {u'type': u'json'}
+            u'returns': {u'type': u'cosmic.API'},
+            u'accepts': {u'type': u'string'}
         }
     ],
     u"models": []
@@ -173,7 +186,7 @@ class TestAPI(TestCase):
         class Cookie(Model):
             schema = normalize_schema({u"type": u"boolean"})
 
-        api.cosmic_registry = API.normalize(registry_spec)
+        api.cosmic_registry = API.normalize(registry_spec, fetcher=fetch_model)
         self.app = self.cookbook.get_flask_app(debug=True)
         self.werkzeug_client = self.app.test_client()
 

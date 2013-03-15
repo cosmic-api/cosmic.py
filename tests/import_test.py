@@ -4,12 +4,13 @@ from mock import patch
 from unittest2 import TestCase
 
 from cosmic import api
+from cosmic.tools import fetch_model
 from tests.api_test import registry_spec, cookbook_spec
 
 class TestAPIImport(TestCase):
 
     def setUp(self):
-        api.cosmic_registry = api.API.normalize(registry_spec)
+        api.cosmic_registry = api.API.normalize(registry_spec, fetcher=fetch_model)
 
     def tearDown(self):
         api.clear_module_cache()

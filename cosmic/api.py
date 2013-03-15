@@ -10,7 +10,7 @@ from flask import request
 import cosmic.resources
 from cosmic.exceptions import APIError, SpecError, ValidationError
 from cosmic.actions import Action
-from cosmic.tools import Namespace, normalize, normalize_schema
+from cosmic.tools import Namespace, normalize, normalize_schema, fetch_model
 from cosmic.models import Model as BaseModel
 from cosmic.models import ClassModel, Schema, SimpleSchema
 from cosmic.http import ALL_METHODS, View, UrlRule, Response, CorsPreflightView, make_view
@@ -36,7 +36,7 @@ def ensure_bootstrapped():
         headers = { 'Content-Type': 'application/json' }
         res = requests.post("http://api.cosmic.io/actions/get_spec_by_name", data=data,
             headers=headers)
-        cosmic_registry = API.normalize(res.json)
+        cosmic_registry = API.normalize(res.json, fetcher=fetch_model)
         sys.modules.setdefault('cosmic.cosmic_registry', cosmic_registry)
 
 
@@ -112,11 +112,11 @@ class API(BaseModel):
             res = requests.get(name_or_url)
             spec = res.json
             name = spec['name']
+            return API.normalize(res.json, fetcher=fetch_model)
         else:
             name = name_or_url
             ensure_bootstrapped()
-            spec = cosmic_registry.actions.get_spec_by_name(name).data
-        return API.normalize(spec)
+            return cosmic_registry.actions.get_spec_by_name(name)
 
     @property
     def name(self):
@@ -202,10 +202,7 @@ class API(BaseModel):
         url_prefix = kwargs.pop('url_prefix', None)
         if api_key:
             ensure_bootstrapped()
-            cosmic_registry.actions.register_spec({
-                "api_key": api_key,
-                "spec": self.serialize()
-            })
+            cosmic_registry.actions.register_spec(api_key=api_key, spec=self)
         if 'dry_run' not in kwargs.keys(): # pragma: no cover
             app = self.get_flask_app(debug=debug, url_prefix=url_prefix)
             # Flask will catch exceptions to return a nice HTTP

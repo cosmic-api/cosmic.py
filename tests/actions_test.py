@@ -22,12 +22,12 @@ class TestBasicRemoteAction(TestCase):
                     {
                         "name": 'spicy',
                         "required": True,
-                        "schema": { 'type': 'boolean' }
+                        "schema": {'type': 'boolean'}
                     },
                     {
                         "name": 'capitalize',
                         "required": False,
-                        "schema": { 'type': 'json' }
+                        "schema": {'type': 'boolean'}
                     }
                 ]
             },
@@ -55,7 +55,7 @@ class TestBasicRemoteAction(TestCase):
             mock_post.return_value.status_code = 500
             mock_post.return_value.json = {'error': 'Cannot capitalize'}
             with self.assertRaisesRegexp(APIError, "Cannot capitalize"):
-                self.action(spicy=True, capitalize=JSONData(True))
+                self.action(spicy=True, capitalize=True)
 
     def test_call_failed_bad_response(self):
         with patch.object(requests, 'post') as mock_post:
