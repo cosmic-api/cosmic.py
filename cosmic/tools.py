@@ -62,48 +62,6 @@ def get_arg_spec(func):
         })
     return normalize_schema({"type": "object", "properties": props})
 
-def apply_to_action_func(func, data):
-    """Applies a JSONPayload object to the user-defined action
-    function based on its argument spec. If data is None, function is
-    called with no arguments.
-    """
-    args, varargs, keywords, defaults = inspect.getargspec(func)
-    if len(args) == 0:
-        if data:
-            raise SpecError("%s takes no arguments" % func.__name__)
-        return func()
-    if len(args) == 1:
-        # We weren't passed a value
-        if not data:
-            # Function does not have defaults but we weren't passed a
-            # value
-            if not defaults:
-                raise SpecError("%s takes one argument" % func.__name__)
-            # We weren't passed a value, but there's a default
-            return func()
-        # We were passed a value, safe to apply regardless of defaults
-        return func(data.data)
-    # func takes multiple arguments, make sure we have something to
-    # work with..
-    if not data or type(data.data) is not dict:
-        raise SpecError("%s expects an object" % func.__name__)
-    # Number of non-keyword arguments (required ones)
-    numargs = len(args) - (len(defaults) if defaults else 0)
-    apply_kwargs = {}
-    for i, arg in enumerate(args):
-        # args
-        if i < numargs:
-            if arg not in data.data.keys():
-                raise SpecError("%s is a required argument" % arg)
-            apply_kwargs[arg] = data.data.pop(arg)
-        # kwargs
-        elif arg in data.data.keys():
-            apply_kwargs[arg] = data.data.pop(arg)
-    # Some stuff still remaining in the object?
-    if data.data:
-        raise SpecError("Unknown arguments: %s" % ", ".join(data.data.keys()))
-    return func(**apply_kwargs)
-
 def apply_to_func(func, data):
     """Applies a normalized object to the user-defined action function based
     on its argument spec. If object is None, function is called with no
@@ -116,7 +74,7 @@ def apply_to_func(func, data):
         return func()
     if len(args) == 1:
         # We weren't passed a value
-        if not data:
+        if data == None:
             # Function does not have defaults but we weren't passed a
             # value
             if not defaults:
@@ -125,9 +83,6 @@ def apply_to_func(func, data):
             return func()
         # We were passed a value, safe to apply regardless of defaults
         return func(data)
-    # Special case
-    if isinstance(data, JSONData):
-        data = data.data
     # func takes multiple arguments, make sure we have something to
     # work with..
     if type(data) != dict:
