@@ -108,28 +108,10 @@ class View(object):
             # Validate request
             try:
                 req = JSONRequest(req)
-                # If function takes no arguments, request must be empty
-                if self.accepts == None and req.payload:
-                    raise SpecError("Request content must be empty")
-                # If function takes arguments, request cannot be empty
-                if self.accepts != None and not req.payload:
-                    raise SpecError("Request content cannot be empty")
-                # Validate incoming data
-                if req.payload:
-                    self.accepts_schema.normalize_data(req.payload.data, fetcher=fetch_model)
-            except SpecError as err:
-                raise ClientError(err.args[0])
-            except JSONParseError:
-                raise ClientError("Invalid JSON")
-            except ValidationError as e:
-                raise ClientError(e.print_json())
-            # Run the actual function
-            try:
                 data = self.func(req.payload)
                 # May raise ValidationError, will be caught below and
                 # rethrown if we are in debug mode
                 if self.returns:
-                    data = self.returns_schema.normalize_data(data, fetcher=fetch_model)
                     res.body = json.dumps(self.returns_schema.serialize_data(data))
                 # Likewise, will be rethrown in debug mode
                 elif data != None:
@@ -137,6 +119,12 @@ class View(object):
                 return res
             except HttpError:
                 raise
+            except JSONParseError:
+                raise ClientError("Invalid JSON")
+            except SpecError as err:
+                raise ClientError(err.args[0])
+            except ValidationError as e:
+                raise ClientError(e.print_json())
             # Any other exception should be handled gracefully
             except:
                 if debug:

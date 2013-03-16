@@ -108,7 +108,7 @@ class TestBasicAction(TestCase):
                     }
                 ]
             }),
-            returns=normalize_schema({"type": "json"}))
+            returns=normalize_schema({"type": "string"}))
         self.view = self.action.get_view()
 
     def test_successful_call(self):

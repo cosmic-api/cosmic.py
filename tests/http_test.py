@@ -50,11 +50,6 @@ class TestView(TestCase):
 
     def setUp(self):
 
-        @make_view("POST", {"type": "string"}, None)
-        def takes_string(payload):
-            pass
-        self.takes_string = takes_string
-
         @make_view("POST", None, None)
         def noop(payload):
             pass
@@ -84,21 +79,6 @@ class TestView(TestCase):
         res = self.noop(Request("POST", '{"spicy":farse}', {"Content-Type": "application/json"}))
         self.assertEqual(res.code, 400)
         self.assertRegexpMatches(res.body, "Invalid JSON")
-
-    def test_validation_error(self):
-        res = self.takes_string(Request("POST", "true", {"Content-Type": "application/json"}))
-        self.assertEqual(res.code, 400)
-        self.assertRegexpMatches(res.body, "Invalid string")
-
-    def test_no_data(self):
-        res = self.takes_string(Request("POST", "", {"Content-Type": "application/json"}))
-        self.assertEqual(res.code, 400)
-        self.assertRegexpMatches(res.body, "cannot be empty")
-
-    def test_action_no_args_with_data(self):
-        res = self.noop(Request("POST", "true", {"Content-Type": "application/json"}))
-        self.assertEqual(res.code, 400)
-        self.assertRegexpMatches(res.body, "must be empty")
 
     def test_unhandled_error(self):
         res = self.unhandled_error(Request("POST", "", {"Content-Type": "application/json"}))
@@ -132,21 +112,6 @@ class TestView(TestCase):
         res = self.noop(Request("POST", "", {"Content-Type": "application/json"}))
         self.assertEqual(res.code, 200)
         self.assertEqual(res.body, "")
-
-    def test_action_returns_value_instead_of_none(self):
-        @make_view("POST", None, None)
-        def returns_none(payload):
-            return 0
-        res = returns_none(Request("POST", "", {"Content-Type": "application/json"}))
-        self.assertEqual(res.code, 500)
-
-    def test_action_returns_value_instead_of_none_debug(self):
-        @make_view("POST", None, None)
-        def returns_none_debug(payload):
-            return 0
-        with self.assertRaisesRegexp(SpecError, "returned 0 instead"):
-            returns_none_debug(Request("POST", "", {"Content-Type": "application/json"}), debug=True)
-
 
     def test_CORS_allow_origin(self):
         headers = {

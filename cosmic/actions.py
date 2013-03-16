@@ -41,7 +41,16 @@ class Action(ClassModel):
             returns = returns.serialize()
         @make_view("POST", accepts=accepts, returns=returns)
         def action_view(payload):
-            return apply_to_func(self.raw_func, payload.data)
+            # If function takes no arguments, request must be empty
+            if self.accepts == None and payload != None:
+                raise SpecError("Request content must be empty")
+            # If function takes arguments, request cannot be empty
+            if self.accepts != None and payload == None:
+                raise SpecError("Request content cannot be empty")
+            # Validate incoming data
+            if payload:
+                normalized = self.accepts.normalize_data(payload.data, fetcher=fetch_model)
+            return apply_to_func(self.raw_func, normalized)
         return action_view
 
     def __call__(self, *args, **kwargs):

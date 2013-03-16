@@ -7,12 +7,11 @@ import requests
 # Still necessary for authentication
 from flask import request
 
-import cosmic.resources
 from cosmic.exceptions import APIError, SpecError, ValidationError
 from cosmic.actions import Action
 from cosmic.tools import Namespace, normalize, normalize_schema, fetch_model
 from cosmic.models import Model as BaseModel
-from cosmic.models import ClassModel, Schema, SimpleSchema
+from cosmic.models import ClassModel, Schema, SimpleSchema, JSONData
 from cosmic.http import ALL_METHODS, View, UrlRule, Response, CorsPreflightView, make_view
 from cosmic.plugins import FlaskPlugin
 
@@ -181,7 +180,7 @@ class API(BaseModel):
             rules.append(UrlRule(url, action.name + '_cors', cors))
         @make_view("GET", None, {"type": "json"})
         def spec_view(payload):
-            return self.serialize()
+            return JSONData(self.serialize())
         rules.append(UrlRule("/spec.json", "spec", spec_view))
         return rules
 
