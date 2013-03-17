@@ -33,13 +33,7 @@ class Action(ClassModel):
     def get_view(self, debug=False):
         """Wraps a user-defined action function to return a Flask view function
         that handles errors and returns proper HTTP responses"""
-        accepts = self.accepts
-        if accepts:
-            accepts = accepts.serialize()
-        returns = self.returns
-        if returns:
-            returns = returns.serialize()
-        @make_view("POST", accepts=accepts, returns=returns)
+        @make_view("POST")
         def action_view(payload):
             # If function takes no arguments, request must be empty
             if self.accepts == None and payload != None:
@@ -50,7 +44,14 @@ class Action(ClassModel):
             # Validate incoming data
             if payload:
                 normalized = self.accepts.normalize_data(payload.data, fetcher=fetch_model)
-            return apply_to_func(self.raw_func, normalized)
+            ret = apply_to_func(self.raw_func, normalized)
+            if self.returns == None and ret != None:
+                raise SpecError("None expected, but the function returned %s instead" % (data))
+            if self.returns != None and ret == None:
+                raise SpecError("Value expected, but the function returned None")
+            if ret != None:
+                ret = JSONData(self.returns.serialize_data(ret))
+            return ret
         return action_view
 
     def __call__(self, *args, **kwargs):

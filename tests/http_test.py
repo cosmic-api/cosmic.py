@@ -50,22 +50,22 @@ class TestView(TestCase):
 
     def setUp(self):
 
-        @make_view("POST", None, None)
+        @make_view("POST")
         def noop(payload):
             pass
         self.noop = noop
 
-        @make_view("POST", None, None)
+        @make_view("POST")
         def unhandled_error(payload):
             return 1 / 0
         self.unhandled_error = unhandled_error
 
-        @make_view("POST", None, None)
+        @make_view("POST")
         def api_error(payload):
             raise APIError("fizzbuzz")
         self.api_error = api_error
 
-        @make_view("POST", None, None)
+        @make_view("POST")
         def authentication_error(payload):
             raise AuthenticationError()
         self.authentication_error = authentication_error
@@ -88,7 +88,7 @@ class TestView(TestCase):
         })
 
     def test_unhandled_error_debug(self):
-        @make_view("POST", None, None)
+        @make_view("POST")
         def unhandled_error(payload):
             return 1 / 0
         with self.assertRaises(ZeroDivisionError):

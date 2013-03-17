@@ -178,7 +178,7 @@ class API(BaseModel):
             url = "/actions/%s" % action.name
             rules.append(UrlRule(url, action.name, view))
             rules.append(UrlRule(url, action.name + '_cors', cors))
-        @make_view("GET", None, {"type": "json"})
+        @make_view("GET")
         def spec_view(payload):
             return JSONData(self.serialize())
         rules.append(UrlRule("/spec.json", "spec", spec_view))

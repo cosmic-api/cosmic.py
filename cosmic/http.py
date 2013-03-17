@@ -73,24 +73,12 @@ class View(object):
 
     :param function func: A function that takes a
         :class:`~cosmic.models.JSONData` and returns a
-        :class:`~cosmic.http.Response`. This function may raise an
-        :class:`~cosmic.exceptions.APIError`,
-        :class:`~cosmic.exceptions.ValidationError` or an
-        :class:`~cosmic.exceptions.AuthenticationError`. Any other exception will
-        result in 500 Internal Server Error response.
+        :class:`~cosmic.models.JSONData`.
     :param string method: HTTP method that the view will respond to
-    :param dict accepts: A JSON schema for validating *func* input
-    :param dict returns: A JSON schema for validating *func* output
     """
-    def __init__(self, func, method, accepts=None, returns=None):
+    def __init__(self, func, method):
         self.func = func
         self.method = method
-        self.accepts = accepts
-        self.returns = returns
-        if accepts != None:
-            self.accepts_schema = normalize_schema(accepts)
-        if returns != None:
-            self.returns_schema = normalize_schema(returns)
 
     def __call__(self, req, debug=False):
         """Uses *func* to turn a :class:`~cosmic.http.Request` into a
@@ -109,13 +97,8 @@ class View(object):
             try:
                 req = JSONRequest(req)
                 data = self.func(req.payload)
-                # May raise ValidationError, will be caught below and
-                # rethrown if we are in debug mode
-                if self.returns:
-                    res.body = json.dumps(self.returns_schema.serialize_data(data))
-                # Likewise, will be rethrown in debug mode
-                elif data != None:
-                    raise SpecError("None expected, but the function returned %s instead" % (data))
+                if data != None:
+                    res.body = json.dumps(data.data)
                 return res
             except HttpError:
                 raise
@@ -133,7 +116,7 @@ class View(object):
         except HttpError as err:
             return err.get_response()
 
-def make_view(method, accepts=None, returns=None):
+def make_view(method):
     """A decorator for creating views more conveniently. Passes the function
     below, and the decorator arguments into the :class:`~cosmic.http.View`
     constructor.
@@ -141,9 +124,9 @@ def make_view(method, accepts=None, returns=None):
     .. code::
 
         >>> from cosmic.http import make_view
-        >>> @make_view("POST", None, {"type": "int"})
+        >>> @make_view("POST")
         ... def number(payload):
-        ...     return 42
+        ...     return JSONData(42)
         ...
         >>> number
         <cosmic.http.View object at 0x110ed50>
@@ -151,7 +134,7 @@ def make_view(method, accepts=None, returns=None):
     """
 
     def decorator(func):
-        return View(func, method, accepts, returns)
+        return View(func, method)
     return decorator
 
 class CorsPreflightView(object):
