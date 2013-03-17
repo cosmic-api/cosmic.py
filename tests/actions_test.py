@@ -47,7 +47,7 @@ class TestBasicRemoteAction(TestCase):
             mock_post.assert_called_with('http://example.com/actions/cabbage', headers={'Content-Type': 'application/json'}, data='{"spicy": true}')
 
     def test_call_no_args(self):
-        with self.assertRaisesRegexp(SpecError, "takes arguments"):
+        with self.assertRaisesRegexp(ValidationError, "Expected data"):
             self.action()
 
     def test_call_failed_good_response(self):
@@ -65,7 +65,7 @@ class TestBasicRemoteAction(TestCase):
                 self.action(spicy=True)
 
     def test_call_with_bad_args(self):
-        with self.assertRaisesRegexp(SpecError, "Invalid boolean"):
+        with self.assertRaisesRegexp(ValidationError, "Invalid boolean"):
             self.action(spicy="yes")
 
     def test_call_invalid_response(self):

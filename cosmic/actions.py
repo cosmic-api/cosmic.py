@@ -35,64 +35,40 @@ class Action(ClassModel):
         that handles errors and returns proper HTTP responses"""
         @make_view("POST")
         def action_view(payload):
-            # If function takes no arguments, request must be empty
-            if self.accepts == None and payload != None:
-                raise SpecError("Request content must be empty")
-            # If function takes arguments, request cannot be empty
-            if self.accepts != None and payload == None:
-                raise SpecError("Request content cannot be empty")
-            # Validate incoming data
-            if payload:
-                normalized = self.accepts.normalize_data(payload.data, fetcher=fetch_model)
+            normalized = normalize_json(self.accepts, payload, fetcher=fetch_model)
             ret = apply_to_func(self.raw_func, normalized)
-            if self.returns == None and ret != None:
-                raise SpecError("None expected, but the function returned %s instead" % (data))
-            if self.returns != None and ret == None:
-                raise SpecError("Value expected, but the function returned None")
-            if ret != None:
-                ret = JSONData(self.returns.serialize_data(ret))
-            return ret
+            return serialize_json(self.returns, ret)
         return action_view
 
     def __call__(self, *args, **kwargs):
         packed = pack_action_arguments(*args, **kwargs)
 
-        if not packed and self.accepts:
-            raise SpecError("%s takes arguments" % self.name)
-
-        if packed:
-            serialized = self.accepts.serialize_data(packed)
-            # Try to normalize, just for the sake of validation
-            try:
-                self.accepts.normalize_data(serialized, fetcher=fetch_model)
-            except ValidationError as err:
-                raise SpecError(err.args[0])
-
         if hasattr(self, "raw_func"):
-            # This seems redundant, but is necessary to make sure local
-            # actions behave same as remote ones
+            # It may seem reduntant to pack then unpack arguments, but we need
+            # to make sure local actions behave same as remote ones
             return apply_to_func(self.raw_func, packed)
-        else:
-            if packed:
-                data = json.dumps(serialized)
+
+        serialized = serialize_json(self.accepts, packed)
+        # Try to normalize, just for the sake of validation
+        normalize_json(self.accepts, serialized)
+
+        data = JSONData.to_string(serialized)
+
+        url = self.api_url + '/actions/' + self.name
+        headers = {'Content-Type': 'application/json'}
+        res = requests.post(url, data=data, headers=headers)
+        if res.status_code != requests.codes.ok:
+            if res.json and 'error' in res.json:
+                raise APIError(res.json['error'])
             else:
-                data = ""
-            
-            url = self.api_url + '/actions/' + self.name
-            headers = {'Content-Type': 'application/json'}
-            res = requests.post(url, data=data, headers=headers)
-            if res.status_code != requests.codes.ok:
-                if res.json and 'error' in res.json:
-                    raise APIError(res.json['error'])
-                else:
-                    raise APIError("Call to %s failed with improper error response")
-            try:
-                if self.returns:
-                    return self.returns.normalize_data(res.json, fetcher=fetch_model)
-                else:
-                    return None
-            except ValidationError:
-                raise APIError("Call to %s returned an invalid value" % self.name)
+                raise APIError("Call to %s failed with improper error response")
+        try:
+            if self.returns:
+                return self.returns.normalize_data(res.json, fetcher=fetch_model)
+            else:
+                return None
+        except ValidationError:
+            raise APIError("Call to %s returned an invalid value" % self.name)
 
     @classmethod
     def from_func(cls, func, accepts=None, returns=None):

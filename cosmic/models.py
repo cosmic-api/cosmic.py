@@ -2,7 +2,7 @@ import sys
 import json
 import base64
 
-from cosmic.exceptions import ValidationError, UnicodeDecodeValidationError, SpecError
+from cosmic.exceptions import ValidationError, UnicodeDecodeValidationError, SpecError, JSONParseError
 
 
 
@@ -60,6 +60,7 @@ class Schema(Model):
     def validate(cls, datum):
         if datum["type"] != cls.match_type:
             raise ValidationError("%s expects type=%s" % (cls, cls.match_type,))
+
 
     def normalize_data(self, datum, fetcher=None):
         if self.opts:
@@ -471,6 +472,12 @@ class JSONData(Model):
             return None
         return cls.normalize(json.loads(s))
 
+    @classmethod
+    def to_string(cls, s):
+        if s == None:
+            return ""
+        return json.dumps(s.serialize())
+
 class JSONDataSchema(SimpleSchema):
     model_cls = JSONData
     match_type = "json"
@@ -510,4 +517,23 @@ class ClassModel(ObjectModel):
             "type": "object",
             "properties": cls.properties
         })
+
+
+def normalize_json(schema, datum, fetcher=None):
+    if schema and not datum:
+        raise ValidationError("Expected JSONData, found None")
+    if datum and not schema:
+        raise ValidationError("Expected None, found JSONData")
+    if schema and datum:
+        return schema.normalize_data(datum.data, fetcher=fetcher)
+    return None
+
+def serialize_json(schema, datum):
+    if schema and not datum:
+        raise ValidationError("Expected data, found None")
+    if datum and not schema:
+        raise ValidationError("Expected None, found data")
+    if schema and datum:
+        return JSONData(schema.serialize_data(datum))
+    return None
 
