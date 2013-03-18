@@ -1,6 +1,10 @@
 Model System
 ============
 
+.. important::
+    This document is meant to get you started in Python. For a strict specification,
+    consult `this page </documentation/models.html>`_.
+
 Cosmic ships with a simple JSON-based schema and model system. A JSON schema
 is a way of describing JSON data for validation and generating documentation.
 A model is a Python class attached to a schema that may contain extra
@@ -12,29 +16,6 @@ JSON Schema Basics
 
 A *schema* is a recursive JSON structure that mirrors the structure of the
 data it is meant to validate.
-
-.. note::
-
-    *Why invent our own JSON schema system?*
-    
-    Before deciding to go with our own system, we took a good look at some
-    existing options. Our best candidates were `JSON Schema <http://json-
-    schema.org/>`_ and `Apache Avro <http://avro.apache.org/>`_. JSON Schema
-    has a significant limitation: the order of object attributes is not
-    preserved. Apache Avro had a different problem: because an attribute can
-    be defined as allowing multiple types, objects needed to be wrapped in an
-    annotation layer to avoid ambiguity. Instead of ``{"name": "Jenn"}`` we
-    would have to output ``{"Person": {"name": "Jenn"}}``. In the context of
-    REST APIs, this is uncommon and potentially confusing.
-
-    Because Cosmic must be extremely portable, it is essential that we keep
-    the feature list to a minimum. In this instance, the minimum is generating
-    documentation and basic validation of data structure and types. Instead of
-    making you learn a new `DSL <http://en.wikipedia.org/wiki/Domain-
-    specific_language>`_ for obscure validation, we encourage you to use the
-    power of your language. The benefits of describing schemas in minute
-    detail are greatly outweighed by the costs of growing the amount of code
-    that needs to be ported.
 
 When a JSON representation of a schema gets compiled, the resulting object
 will provide a :meth:`normalize_data` method. This method will take JSON data
@@ -347,80 +328,6 @@ the data it represents, namely an integer. :meth:`normalize_data` and
 :meth:`serialize_data` simply call :class:`~cosmic.models.IntegerModel`'s
 :meth:`normalize` and :meth:`serialize` methods.
 
-Most schema classes are just wrappers around a model class. Like most models,
-however, they do have a schema of their own. It simply matches a dict with a
-single attribute *type*. The schema is as follows::
-
-    {
-        "type": "object",
-        "properties": [
-            {
-                "name": "type",
-                "required": True,
-                "schema": {"type": "string"}
-            }
-        ]
-    }
-
-:class:`~cosmic.models.ArraySchema` needs more than just type, it also needs
-*items*::
-
-    {
-        "type": "object",
-        "properties": [
-            {
-                "name": "type",
-                "required": True,
-                "schema": {"type": "string"}
-            },
-            {
-                "name": "items",
-                "required": True,
-                "schema": {"type": "schema"}
-            }
-        ]
-    }
-
-:class:`~cosmic.models.ObjectSchema` requires *properties*::
-
-    {
-        "type": "object",
-        "properties": [
-            {
-                "name": "type",
-                "required": True,
-                "schema": {"type": "string"}
-            },
-            {
-                "name": "properties",
-                "required": True,
-                "schema": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": [
-                            {
-                                "name": "name",
-                                "required": True,
-                                "schema": {"type": "string"}
-                            },
-                            {
-                                "name": "required",
-                                "required": True,
-                                "schema": {"type": "boolean"}
-                            },
-                            {
-                                "name": "schema",
-                                "required": True,
-                                "schema": {"type": "schema"}
-                            }
-                        ]
-                    }
-                }
-            }
-        ]
-    }
-
 As you can see, the ``schema`` type is quite handy. Not only is it used by the
 model system internally but also by other modules in Cosmic. It allows such
 things as actions to be implemented as simple models.
@@ -510,6 +417,3 @@ system like so:
 
 :func:`fetch_model` needs to be passed into any :meth:`normalize` or
 :meth:`normalize_data` call whenever user-defined models need to be accessed.
-
-
-
