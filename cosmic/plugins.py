@@ -1,15 +1,18 @@
 from __future__ import unicode_literals
 
+from werkzeug.local import release_local
 from flask import Flask, Blueprint, request, make_response
 
+from cosmic import context
 from cosmic.http import Request
-from cosmic.exceptions import ClientError
+from cosmic.exceptions import ClientError, AuthenticationError
 
 
 class FlaskPlugin(object):
 
-    def __init__(self, rules, url_prefix=None, debug=False):
+    def __init__(self, rules, setup_func, url_prefix=None, debug=False):
         self.rules = rules
+        self.setup_func = setup_func
         self.app = Flask(__name__, static_folder=None)
         self.debug = debug
         self.blueprint = Blueprint('API', __name__)
@@ -23,7 +26,17 @@ class FlaskPlugin(object):
             headers = request.headers
             method = request.method
             body = request.data
+            try:
+                # Authenticate the user, make local context
+                release_local(context)
+                for key, value in self.setup_func(headers).items():
+                    setattr(context, key, value)
+            except AuthenticationError as e:
+                return self.make_flask_response(e.get_response())
             req = Request(method, body, headers)
-            r = view(req, debug=self.debug)
-            return make_response(r.body, r.code, r.headers)
+            resp = view(req, debug=self.debug)
+            return self.make_flask_response(resp)
         return flask_view
+
+    def make_flask_response(self, resp):
+        return make_response(resp.body, resp.code, resp.headers)

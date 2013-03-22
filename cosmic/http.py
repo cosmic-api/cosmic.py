@@ -49,7 +49,7 @@ class JSONRequest(Request):
         # request is GET, in which case just continue
         ct = req.headers.get('Content-Type', None)
         if req.method != "GET" and ct != "application/json":
-            raise SpecError('Content-Type must be "application/json"')
+            raise SpecError('Content-Type must be "application/json" got %s instead' % ct)
         try:
             self.payload = JSONData.from_string(req.body)
         except ValueError:

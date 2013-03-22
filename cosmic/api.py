@@ -187,7 +187,11 @@ class API(BaseModel):
     def get_flask_app(self, debug=False, url_prefix=None):
         """Returns a Flask test client
         """
-        plugin = FlaskPlugin(self.get_rules(debug=debug), url_prefix=url_prefix, debug=debug)
+        rules = self.get_rules(debug=debug)
+        plugin = FlaskPlugin(rules,
+            setup_func=self.context_func,
+            url_prefix=url_prefix,
+            debug=debug)
         return plugin.app
 
     def run(self, *args, **kwargs):
@@ -214,7 +218,7 @@ class API(BaseModel):
 
 
 
-    def action(self, accepts=None, returns={u"type": u"json"}):
+    def action(self, accepts=None, returns=None):
         """Registers the given function as an API action. To be used
         as a decorator.
         """
@@ -244,19 +248,12 @@ class API(BaseModel):
         self.models.add(model_cls.__name__, model_cls)
         return model_cls
 
-    def authenticate(self):
-        """Authenticates the user based on request headers. Returns
-        user-related data upon successful authentication, raises
-        AuthenticationError upon unsuccessful authentication and
-        returns None if no authentication info was passed in.
-        """
-        return None
+    def context_func(self, headers):
+        return {}
 
-    def authentication(self, func):
+    def context(self, func):
         """Registers the given function as an authentication function
         for the API.
         """
-        def authenticate():
-            return func(request.headers)
-        self.authenticate = authenticate
+        self.context_func = func
         return func

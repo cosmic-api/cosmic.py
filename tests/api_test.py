@@ -11,7 +11,7 @@ from cosmic.exceptions import *
 from cosmic.tools import normalize, normalize_schema, fetch_model
 from cosmic.api import API
 from cosmic.models import *
-from cosmic import api
+from cosmic import api, context
 
 registry_spec = {
     u'url': u'http://api.cosmic.io',
@@ -100,40 +100,6 @@ class TestBootstrapping(TestCase):
     def tearDown(self):
         api.clear_module_cache()
 
-class TestAPIAuthentication(TestCase):
-    """Tests API.authenticate method"""
-
-    def setUp(self):
-
-        self.magicbook = API.create('magicbook', "http://localhost:8882/api")
-
-        self.cookbook = API.create('cookbook', "http://localhost:8881/api")
-        @self.cookbook.authentication
-        def authenticate(headers):
-            if headers['X-Wacky'] != 'Tobacky':
-                raise AuthenticationError()
-            return "boronine"
-
-        self.cook_app = self.cookbook.get_flask_app(url_prefix='/api')
-        self.magic_app = self.cookbook.get_flask_app(url_prefix='/api')
-
-    def tearDown(self):
-        api.clear_module_cache()
-
-    def test_authentication_okay(self):
-        headers = {"X-Wacky": "Tobacky"}
-        with self.cook_app.test_request_context(headers=headers):
-            self.assertEqual(self.cookbook.authenticate(), 'boronine')
-
-    def test_authentication_error(self):
-        headers = {"X-Wacky": "Tomeato"}
-        with self.cook_app.test_request_context(headers=headers):
-            with self.assertRaises(AuthenticationError):
-                self.cookbook.authenticate()
-
-    def test_default_authentication(self):
-        with self.magic_app.test_request_context(headers={}):
-            self.assertEqual(self.magicbook.authenticate(), None)
 
 class TestAPI(TestCase):
 
@@ -280,6 +246,37 @@ class TestAPI(TestCase):
             raise APIError("Blah")
         except APIError as e:
             self.assertEqual(unicode(e), "Blah")
+
+class TextContext(TestCase):
+
+    def setUp(self):
+        self.cookbook = API.create(u'authenticator', u"http://localhost:8881/api")
+
+        @self.cookbook.action(returns={"type": "string"})
+        def hello():
+            return context.secret
+
+        @self.cookbook.context
+        def setup(headers):
+            if "Password" in headers and headers["Password"] == "crimson":
+                return { "secret": "1234" }
+            raise AuthenticationError()
+            
+        self.app = self.cookbook.get_flask_app(debug=True)
+        self.werkzeug_client = self.app.test_client()
+
+    def test_fail_authentication(self):
+        res = self.werkzeug_client.post('/actions/hello', content_type="application/json")
+        self.assertEqual(res.status_code, 401)
+        self.assertEqual(json.loads(res.data), {"error": "Authentication failed"})
+
+    def test_successful_authentication(self):
+        res = self.werkzeug_client.post('/actions/hello',
+            content_type="application/json",
+            headers={ 'Password': "crimson" })
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(json.loads(res.data), '1234')
+
 
 class TestRemoteAPI(TestCase):
 
