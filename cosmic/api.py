@@ -15,30 +15,6 @@ from cosmic.models import ClassModel, Schema, SimpleSchema, JSONData
 from cosmic.http import ALL_METHODS, View, UrlRule, Response, CorsPreflightView, make_view
 from cosmic.plugins import FlaskPlugin
 
-# The Cosmic Registry API is saved here for convenience
-cosmic_registry = None
-
-def clear_module_cache():
-    global cosmic_registry
-    for name in sys.modules.keys():
-        if name.startswith('cosmic.registry'):
-            del sys.modules[name]
-    cosmic_registry = None
-
-def ensure_bootstrapped():
-    """Ensures the Cosmic Registry API is loaded. Call this before trying
-    API.load
-    """
-    global cosmic_registry
-    if not cosmic_registry:
-        data = json.dumps("cosmic-registry")
-        headers = { 'Content-Type': 'application/json' }
-        res = requests.post("http://api.cosmic.io/actions/get_spec_by_name", data=data,
-            headers=headers)
-        cosmic_registry = API.normalize(res.json, fetcher=fetch_model)
-        sys.modules.setdefault('cosmic.cosmic_registry', cosmic_registry)
-
-
 class APIModel(ClassModel):
 
     properties = [
@@ -103,19 +79,16 @@ class API(BaseModel):
         })
 
     @staticmethod
-    def load(name_or_url):
-        """Given an API name, loads the API and returns an API
-        object. If given a spec URL, loads the API from the url.
+    def load(url):
+        """Given a spec URL, loads the API.
+
+        :param url: URL pointing to the API's ``/spec.json`` endpoint.
+        :returns: :class:`~cosmic.api.API`
         """
-        if name_or_url.startswith('http'):
-            res = requests.get(name_or_url)
-            spec = res.json
-            name = spec['name']
-            return API.normalize(res.json, fetcher=fetch_model)
-        else:
-            name = name_or_url
-            ensure_bootstrapped()
-            return cosmic_registry.actions.get_spec_by_name(name)
+        res = requests.get(url)
+        spec = res.json
+        name = spec['name']
+        return API.normalize(res.json, fetcher=fetch_model)
 
     @property
     def name(self):
@@ -196,16 +169,10 @@ class API(BaseModel):
 
     def run(self, *args, **kwargs):
         """Runs the API as a Flask app. All arguments channelled into
-        :meth:`Flask.run` except for *api_key*, which is an optional
-        string argument that, if set, triggers a call to Cosmic
-        registry to register the API.
+        :meth:`Flask.run`.
         """
         debug = kwargs.get('debug', False)
-        api_key = kwargs.pop('api_key', None)
         url_prefix = kwargs.pop('url_prefix', None)
-        if api_key:
-            ensure_bootstrapped()
-            cosmic_registry.actions.register_spec(api_key=api_key, spec=self)
         if 'dry_run' not in kwargs.keys(): # pragma: no cover
             app = self.get_flask_app(debug=debug, url_prefix=url_prefix)
             # Flask will catch exceptions to return a nice HTTP
@@ -214,13 +181,25 @@ class API(BaseModel):
             app.run(*args, **kwargs)
 
 
-
-
-
-
     def action(self, accepts=None, returns=None):
-        """Registers the given function as an API action. To be used
-        as a decorator.
+        """A decorator for creating actions out of functions and registering
+        them with the API.
+
+        The *accepts* parameter is a :class:`~cosmic.models.Schema` instance
+        that will normalize the input of the action, *returns* is a
+        :class:`~cosmic.models.Schema` instance that will serialize the input
+        of the action. The name of the function becomes the name of the
+        action. Internally :meth:`~cosmic.actions.Action.from_func` is used.
+
+        .. code:: python
+
+            from cosmic.tools import normalize_schema
+
+            random = API("random")
+
+            @squeegee.action(returns=normalize_schema({"type": "integer"}))
+            def generate():
+                return 9
         """
 
         def wrapper(func):
@@ -232,6 +211,20 @@ class API(BaseModel):
         return wrapper
 
     def model(self, model_cls):
+        """A decorator for registering a model with an API. The name of the
+        model class is used as the name of the resulting model.
+
+        .. code:: python
+
+            from cosmic.tools import normalize_schema
+            from cosmic.models import Model
+
+            dictionary = API("dictionary")
+
+            @dictionary.model
+            class Word(Model):
+                schema = normalize_schema({"type": "string"})
+        """
         # Add to data
         self.data['models'].append(APIModel.from_model_cls(model_cls))
         # Add to namespace

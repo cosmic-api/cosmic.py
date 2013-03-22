@@ -13,37 +13,6 @@ from cosmic.api import API
 from cosmic.models import *
 from cosmic import api, context
 
-registry_spec = {
-    u'url': u'http://api.cosmic.io',
-    u'name': u'cosmic-registry',
-    u'actions': [
-        {
-            u'name': u'register_spec',
-            u'accepts': {
-                u'type': u'object',
-                u'properties': [
-                    {
-                        "name": "api_key",
-                        "required": True,
-                        "schema": {"type": "string"}
-                    },
-                    {
-                        "name": "spec",
-                        "required": True,
-                        "schema": {"type": "cosmic.API"}
-                    }
-                ]
-            }
-        },
-        {
-            u'name': u'get_spec_by_name',
-            u'returns': {u'type': u'cosmic.API'},
-            u'accepts': {u'type': u'string'}
-        }
-    ],
-    u"models": []
-}
-
 cookbook_spec = {
     u'name': u'cookbook',
     u'url': u'http://localhost:8881/api',
@@ -85,20 +54,6 @@ cookbook_spec = {
     ]
 }
 
-
-class TestBootstrapping(TestCase):
-
-    def test_successful(self):
-        with patch.object(requests, 'post') as mock_post:
-            # Test initializing cosmic module
-            mock_post.return_value.status_code = 200
-            mock_post.return_value.json = registry_spec
-            api.ensure_bootstrapped()
-            mock_post.assert_called_with('http://api.cosmic.io/actions/get_spec_by_name', headers={'Content-Type': 'application/json'}, data=json.dumps("cosmic-registry"))
-        self.assertTrue(isinstance(api.cosmic_registry, API))
-
-    def tearDown(self):
-        api.clear_module_cache()
 
 
 class TestAPI(TestCase):
@@ -152,12 +107,8 @@ class TestAPI(TestCase):
         class Cookie(Model):
             schema = normalize_schema({u"type": u"boolean"})
 
-        api.cosmic_registry = API.normalize(registry_spec, fetcher=fetch_model)
         self.app = self.cookbook.get_flask_app(debug=True)
         self.werkzeug_client = self.app.test_client()
-
-    def tearDown(self):
-        api.clear_module_cache()
 
     def test_accepts_invalid_schema(self):
         with self.assertRaisesRegexp(ValidationError, "Missing properties"):
@@ -200,18 +151,6 @@ class TestAPI(TestCase):
             self.cookbook.models.Recipe.normalize("bacon")
         # When not overridden, custom validation passes
         self.cookbook.models.Cookie(True)
-
-    def test_register_api(self):
-        with patch.object(requests, 'post') as mock_post:
-            # Register API
-            mock_post.return_value.status_code = 200
-            mock_post.return_value.json = True
-            self.cookbook.run(api_key="FAKE", dry_run=True)
-            body = json.dumps({
-                "api_key": "FAKE",
-                "spec": self.cookbook.serialize()
-            })
-            mock_post.assert_called_with('http://api.cosmic.io/actions/register_spec', headers={'Content-Type': 'application/json'}, data=body)
 
     def test_serialize(self):
         self.assertEqual(self.cookbook.serialize(), cookbook_spec)
