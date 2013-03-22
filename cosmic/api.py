@@ -222,16 +222,6 @@ class API(BaseModel):
         """Registers the given function as an API action. To be used
         as a decorator.
         """
-        if accepts:
-            try:
-                accepts = normalize_schema(accepts)
-            except ValidationError:
-                raise SpecError("'%s' was passed an invalid accepts schema" % self.name)
-        if returns:
-            try:
-                returns = normalize_schema(returns)
-            except ValidationError:
-                raise SpecError("'%s' was passed an invalid returns schema" % self.name)
 
         def wrapper(func):
             name = func.__name__

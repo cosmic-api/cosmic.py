@@ -1,10 +1,12 @@
 def quickstart():
 
     from cosmic.api import API
+    from cosmic.tools import normalize_schema
+    
     cookbook = API.create('cookbook')
 
     @cookbook.action(
-        accepts={
+        accepts=normalize_schema({
             'type': 'object',
             'properties': [
                 {
@@ -18,8 +20,8 @@ def quickstart():
                     "schema": {"type": "boolean"}
                 }
             ]
-        },
-        returns={"type": "string"})
+        }),
+        returns=normalize_schema({"type": "string"}))
     def cabbage(spicy=False):
         if spicy:
             return "kimchi"

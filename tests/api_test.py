@@ -109,7 +109,7 @@ class TestAPI(TestCase):
         self.cookbook = API.create(u'cookbook', u"http://localhost:8881/api")
 
         @self.cookbook.action(
-            accepts={
+            accepts=normalize_schema({
                 "type": "object",
                 "properties": [
                     {
@@ -123,8 +123,8 @@ class TestAPI(TestCase):
                         "required": False
                     }
                 ]
-            },
-            returns={"type": "json"})
+            }),
+            returns=normalize_schema({"type": "json"}))
         def cabbage(spicy, capitalize=False):
             if spicy:
                 c = "kimchi"
@@ -160,8 +160,8 @@ class TestAPI(TestCase):
         api.clear_module_cache()
 
     def test_accepts_invalid_schema(self):
-        with self.assertRaisesRegexp(SpecError, "invalid returns"):
-            @self.cookbook.action(returns={"type": "object"})
+        with self.assertRaisesRegexp(ValidationError, "Missing properties"):
+            @self.cookbook.action(returns=normalize_schema({"type": "object"}))
             def func(a, b=1):
                 pass
 
@@ -252,7 +252,7 @@ class TextContext(TestCase):
     def setUp(self):
         self.cookbook = API.create(u'authenticator', u"http://localhost:8881/api")
 
-        @self.cookbook.action(returns={"type": "string"})
+        @self.cookbook.action(returns=normalize_schema({"type": "string"}))
         def hello():
             return context.secret
 
