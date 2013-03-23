@@ -341,7 +341,6 @@ class TestSchemaHelpers(TestCase):
     def setUp(self):
         self.api = {
             "name": "Foo",
-            "url": "http://www.example.com",
             "actions": [
                 {
                     "name": "foo",

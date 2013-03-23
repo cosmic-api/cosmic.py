@@ -4,7 +4,7 @@ import json
 from unittest2 import TestCase
 from mock import patch, Mock
 
-from cosmic.api import Namespace
+from cosmic.api import Namespace, API
 from cosmic.actions import Action
 from cosmic.exceptions import SpecError, APIError
 from cosmic.http import Request
@@ -37,7 +37,11 @@ class TestBasicRemoteAction(TestCase):
         }
 
         self.action = Action.normalize(spec)
-        self.action.api_url = "http://example.com"
+
+        # Without this, the action won't know its URL
+        api = API.create("foodie")
+        api.url = "http://example.com"
+        self.action.api = api
 
     def test_call_success(self):
         with patch.object(requests, 'post') as mock_post:

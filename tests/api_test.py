@@ -15,7 +15,6 @@ from cosmic import api, context
 
 cookbook_spec = {
     u'name': u'cookbook',
-    u'url': u'http://localhost:8881/api',
     u'actions': [
         {
             u'name': u'cabbage',
@@ -61,7 +60,7 @@ class TestAPI(TestCase):
     def setUp(self):
         self.maxDiff = None
 
-        self.cookbook = API.create(u'cookbook', u"http://localhost:8881/api")
+        self.cookbook = API.create(u'cookbook')
 
         @self.cookbook.action(
             accepts=normalize_schema({
@@ -189,7 +188,7 @@ class TestAPI(TestCase):
 class TextContext(TestCase):
 
     def setUp(self):
-        self.cookbook = API.create(u'authenticator', u"http://localhost:8881/api")
+        self.cookbook = API.create(u'authenticator')
 
         @self.cookbook.action(returns=normalize_schema({"type": "string"}))
         def hello():
@@ -221,6 +220,7 @@ class TestRemoteAPI(TestCase):
 
     def setUp(self):
         self.cookbook = API.normalize(cookbook_spec)
+        self.cookbook.url = 'http://localhost:8881/api'
 
     def test_remote_no_return_action(self):
         with patch.object(requests, 'post') as mock_post:

@@ -54,7 +54,7 @@ class Action(ClassModel):
 
         data = JSONData.to_string(serialized)
 
-        url = self.api_url + '/actions/' + self.name
+        url = self.api.url + '/actions/' + self.name
         headers = {'Content-Type': 'application/json'}
         res = requests.post(url, data=data, headers=headers)
         if res.status_code != requests.codes.ok:

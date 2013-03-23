@@ -61,7 +61,7 @@ class API(BaseModel):
         self.models = models = Namespace()
         # Populate them if we have initial data
         for action in self.data['actions']:
-            action.api_url = self.url
+            action.api = self
             self.actions.add(action.name, action)
         for model in self.data['models']:
             self.models.add(model.name, model.model)
@@ -69,10 +69,9 @@ class API(BaseModel):
         sys.modules['cosmic.registry.' + self.name] = self
 
     @classmethod
-    def create(cls, name=None, url=None, homepage=None, **kwargs):
+    def create(cls, name=None, homepage=None, **kwargs):
         return cls({
             "name": name,
-            "url": url,
             "homepage": homepage,
             "actions": [],
             "models": []
@@ -88,26 +87,20 @@ class API(BaseModel):
         res = requests.get(url)
         spec = res.json
         name = spec['name']
-        return API.normalize(res.json, fetcher=fetch_model)
+        api = API.normalize(res.json, fetcher=fetch_model)
+        # Set the API url to be the spec URL, minus the /spec.json
+        api.url = url[:-10]
+        return api
 
     @property
     def name(self):
         return self.data['name']
-
-    @property
-    def url(self):
-        return self.data['url']
 
     schema = normalize_schema({
         "type": "object",
         "properties": [
             {
                 "name": "name",
-                "schema": {"type": "string"},
-                "required": True
-            },
-            {
-                "name": "url",
                 "schema": {"type": "string"},
                 "required": True
             },
@@ -205,6 +198,7 @@ class API(BaseModel):
         def wrapper(func):
             name = func.__name__
             action = Action.from_func(func, accepts=accepts, returns=returns)
+            action.api = self
             self.actions.add(name, action)
             self.data['actions'].append(action)
             return func
