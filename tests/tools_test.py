@@ -92,26 +92,14 @@ class TestApplyToFunc(TestCase):
         def f(): return "okay"
         self.assertEqual(apply_to_func(f, None), "okay")
 
-    def test_no_arg_fail(self):
-        def f(): return "okay"
-        with self.assertRaises(SpecError):
-            apply_to_func(f, "oops")
-
     def test_one_arg_okay(self):
         def f(a): return a
         self.assertEqual(apply_to_func(f, 1), 1)
 
-    def test_one_arg_fail(self):
-        with self.assertRaises(SpecError):
-            def f(a): return a
-            apply_to_func(f, None)
-
     def test_one_kwarg_okay(self):
         def f(a=2): return a
         self.assertEqual(apply_to_func(f, 1), 1)
-        def f(a=2): return a
         self.assertEqual(apply_to_func(f, {}), {})
-        def f(a=2): return a
         self.assertEqual(apply_to_func(f, None), 2)
 
     def test_one_kwarg_passed_none(self):
@@ -124,7 +112,6 @@ class TestApplyToFunc(TestCase):
         def f(a, b=1): return a, b
         res = apply_to_func(f, {'a': 2})
         self.assertEqual(res, (2, 1,))
-        def f(a, b=1): return a, b
         res = apply_to_func(f, {'a': 2, 'b': 2})
         self.assertEqual(res, (2, 2,))
 
@@ -132,20 +119,6 @@ class TestApplyToFunc(TestCase):
         def f(a=5, b=1): return a, b
         self.assertEqual(apply_to_func(f, {}), (5, 1,))
 
-    def test_unknown_kwarg(self):
-        with self.assertRaises(SpecError):
-            def f(a=5, b=1): return a, b
-            apply_to_func(f, {'c': 4})
-
-    def test_not_an_object(self):
-        with self.assertRaises(SpecError):
-            def f(a=5, b=1): return a, b
-            apply_to_func(f, "hello")
-
-    def test_missing_required_arg(self):
-        with self.assertRaises(SpecError):
-            def f(a, b=1): return a, b
-            apply_to_func(f, JSONData({}))
 
 class TestPackActionArguments(TestCase):
 

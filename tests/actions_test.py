@@ -120,6 +120,11 @@ class TestBasicAction(TestCase):
         self.assertEqual(res.code, 200)
         self.assertEqual(json.loads(res.body), "12.0 pounds of kimchi")
 
+    def test_call_invalid_args(self):
+        res = self.view(Request("POST", '{"spicy":1}', {"Content-Type": "application/json"}))
+        self.assertEqual(res.code, 400)
+        self.assertRegexpMatches(json.loads(res.body)["error"], "Invalid boolean")
+
     def test_unhandled_exception_debug(self):
         with self.assertRaises(ZeroDivisionError):
             self.view(Request("POST", '{"spicy":true,"servings":0}', {"Content-Type": "application/json"}), debug=True)

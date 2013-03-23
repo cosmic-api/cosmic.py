@@ -63,30 +63,23 @@ def get_arg_spec(func):
     return normalize_schema({"type": "object", "properties": props})
 
 def apply_to_func(func, data):
-    """Applies a normalized object to the user-defined action function based
-    on its argument spec. If object is None, function is called with no
-    arguments.
+    """Applies a piece of normalized data to the user-defined action function
+    based on its argument spec. The data is assumed to be normalized by a
+    schema compatible with *func*. (see
+    :func:`~cosmic.tools.schema_is_compatible`). Thus, no validation is
+    performed.
+
+    If *func* takes a single argument, *data* is passed in as is. If it takes
+    multiple arguments, *data* is assumed to be a dict and is unpacked into
+    the function arguments.
+
+    If object is None, *func* is called with no arguments.
     """
-    args, varargs, keywords, defaults = inspect.getargspec(func)
-    if len(args) == 0:
-        if data:
-            raise SpecError("%s takes no arguments" % func.__name__)
+    if data == None:
         return func()
+    args, varargs, keywords, defaults = inspect.getargspec(func)
     if len(args) == 1:
-        # We weren't passed a value
-        if data == None:
-            # Function does not have defaults but we weren't passed a
-            # value
-            if not defaults:
-                raise SpecError("%s takes one argument" % func.__name__)
-            # We weren't passed a value, but there's a default
-            return func()
-        # We were passed a value, safe to apply regardless of defaults
         return func(data)
-    # func takes multiple arguments, make sure we have something to
-    # work with..
-    if type(data) != dict:
-        raise SpecError("%s expects an object, got %s instead" % (func.__name__, type(data)))
     # Number of non-keyword arguments (required ones)
     numargs = len(args) - (len(defaults) if defaults else 0)
     apply_args = []
@@ -94,15 +87,10 @@ def apply_to_func(func, data):
     for i, arg in enumerate(args):
         # args
         if i < numargs:
-            if arg not in data.keys():
-                raise SpecError("%s is a required argument" % arg)
             apply_args.append(data.pop(arg))
         # kwargs
         elif arg in data.keys():
             apply_kwargs[arg] = data.pop(arg)
-    # Some stuff still remaining in the object?
-    if data:
-        raise SpecError("Unknown arguments: %s" % ", ".join(data.keys()))
     return func(*apply_args, **apply_kwargs)
 
 def pack_action_arguments(*args, **kwargs):

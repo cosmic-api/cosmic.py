@@ -160,18 +160,17 @@ class API(BaseModel):
             debug=debug)
         return plugin.app
 
-    def run(self, *args, **kwargs):
+    def run(self, *args, **kwargs): # pragma: no cover
         """Runs the API as a Flask app. All arguments channelled into
         :meth:`Flask.run`.
         """
         debug = kwargs.get('debug', False)
         url_prefix = kwargs.pop('url_prefix', None)
-        if 'dry_run' not in kwargs.keys(): # pragma: no cover
-            app = self.get_flask_app(debug=debug, url_prefix=url_prefix)
-            # Flask will catch exceptions to return a nice HTTP
-            # response in debug mode, we want things to FAIL!
-            app.config['PROPAGATE_EXCEPTIONS'] = debug
-            app.run(*args, **kwargs)
+        app = self.get_flask_app(debug=debug, url_prefix=url_prefix)
+        # Flask will catch exceptions to return a nice HTTP
+        # response in debug mode, we want things to FAIL!
+        app.config['PROPAGATE_EXCEPTIONS'] = debug
+        app.run(*args, **kwargs)
 
 
     def action(self, accepts=None, returns=None):
