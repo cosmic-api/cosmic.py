@@ -1,6 +1,5 @@
 from unittest2 import TestCase
 
-import base64
 from copy import deepcopy
 
 from cosmic.exceptions import ValidationError, UnicodeDecodeValidationError
@@ -62,6 +61,10 @@ class TestSchema(TestCase):
         self.assertTrue(isinstance(Schema.normalize({"type": "binary"}), BinarySchema))
         self.assertTrue(isinstance(Schema.normalize({"type": "json"}), JSONDataSchema))
         self.assertTrue(isinstance(Schema.normalize({"type": "schema"}), SchemaSchema))
+
+    def test_schema_subclass_wrong_type(self):
+        with self.assertRaisesRegexp(ValidationError, "expects type=string"):
+            StringSchema.normalize({"type": "str"})
 
     def test_schema_missing_parts(self):
         # Forgot items
@@ -167,7 +170,7 @@ class TestBinaryModel(TestCase):
             BinaryModel.normalize(1)
 
     def test_serialize(self):
-        self.assertEqual(BinaryModel.serialize("yo"), base64.b64encode("yo"))
+        self.assertEqual(BinaryModel.serialize("abc"), "YWJj")
 
 
 class TestArrayModel(TestCase):
@@ -305,3 +308,20 @@ class TestJSONData(TestCase):
         self.assertEqual(repr(j), '<JSONData {"a": 1, "c": true, "b": [1, 2, 3, 4, 5, 6, 7, 8, 9, 8,  ...>')
 
 
+class TestNormalizeSerializeJSON(TestCase):
+
+    def test_normalize_json(self):
+        arr = [True, False, True]
+        with self.assertRaisesRegexp(ValidationError, "Expected JSONData"):
+            normalize_json(array_normalizer, None)
+        with self.assertRaisesRegexp(ValidationError, "Expected None"):
+            normalize_json(None, arr)
+        self.assertEqual(normalize_json(array_normalizer, JSONData(arr)), arr)
+
+    def test_serialize_json(self):
+        arr = [True, False, True]
+        with self.assertRaisesRegexp(ValidationError, "Expected data"):
+            serialize_json(array_normalizer, None)
+        with self.assertRaisesRegexp(ValidationError, "Expected None"):
+            serialize_json(None, arr)
+        self.assertEqual(serialize_json(array_normalizer, arr).data, arr)

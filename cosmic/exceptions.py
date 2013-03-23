@@ -6,11 +6,9 @@ class JSONParseError(Exception):
     pass
 
 class HttpError(Exception):
-    def __init__(self, message, http_code=None):
+    def __init__(self, message):
         self.message = message
         self.args = [message]
-        if http_code:
-            self.http_code = http_code
     def get_response(self):
         from cosmic.http import Response
         body = json.dumps({"error": self.message})
