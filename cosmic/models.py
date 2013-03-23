@@ -5,42 +5,45 @@ import base64
 from cosmic.exceptions import ValidationError, UnicodeDecodeValidationError, SpecError, JSONParseError
 
 
+class BaseModel(object):
 
+    def serialize(self):
+        return self.data
 
-class Model(object):
+    @classmethod
+    def normalize(cls, datum, fetcher=None):
+        # Validate against model's custom validation function
+        cls.validate(datum)
+        # Instantiate
+        return cls(datum)
 
     def __init__(self, data, **kwargs):
         self.data = data
         for key, value in kwargs.items():
             self.__dict__[key] = value
 
+    @classmethod
+    def validate(cls, datum):
+        pass
+
+
+class Model(BaseModel):
+
     def serialize(self):
         # Serialize against model schema
         schema = self.get_schema()
-        if schema:
-            return schema.serialize_data(self.data)
-        return self.data
+        return schema.serialize_data(self.data)
 
     @classmethod
     def normalize(cls, datum, fetcher=None):
         # Normalize against model schema
         schema = cls.get_schema()
-        if schema:
-            datum = schema.normalize_data(datum, fetcher=fetcher)
-        # Validate against model's custom validation function
-        cls.validate(datum)
-        # Instantiate
-        return cls(datum)
-
-    @classmethod
-    def validate(cls, datum):
-        pass
+        datum = schema.normalize_data(datum, fetcher=fetcher)
+        return super(Model, cls).normalize(datum, fetcher=fetcher)
 
     @classmethod
     def get_schema(cls):
-        if hasattr(cls, "schema"):
-            return cls.schema
-        return None
+        return cls.schema
 
 
 
@@ -148,7 +151,7 @@ class SchemaSchema(SimpleSchema):
 
 
 
-class ObjectModel(Model):
+class ObjectModel(BaseModel):
 
     @classmethod
     def normalize(cls, datum, opts, fetcher=None):
@@ -210,6 +213,7 @@ class ObjectModel(Model):
                 ret[name] = prop['schema'].serialize_data(datum[name])
         return ret
 
+
 class ObjectSchema(SimpleSchema):
     model_cls = ObjectModel
     match_type = "object"
@@ -266,10 +270,7 @@ class ObjectSchema(SimpleSchema):
 
 
 
-
-
-
-class ArrayModel(Model):
+class ArrayModel(BaseModel):
 
     @classmethod
     def normalize(cls, datum, opts, fetcher=None):
@@ -322,7 +323,7 @@ class ArraySchema(SimpleSchema):
 
 
 
-class IntegerModel(Model):
+class IntegerModel(BaseModel):
 
     @classmethod
     def normalize(cls, datum, **kwargs):
@@ -348,7 +349,7 @@ class IntegerSchema(SimpleSchema):
 
 
 
-class FloatModel(Model):
+class FloatModel(BaseModel):
 
     @classmethod
     def normalize(cls, datum, **kwargs):
@@ -373,7 +374,7 @@ class FloatSchema(SimpleSchema):
 
 
 
-class StringModel(Model):
+class StringModel(BaseModel):
 
     @classmethod
     def normalize(cls, datum, **kwargs):
@@ -405,7 +406,7 @@ class StringSchema(SimpleSchema):
 
 
 
-class BinaryModel(Model):
+class BinaryModel(BaseModel):
 
     @classmethod
     def normalize(cls, datum, **kwargs):
@@ -432,7 +433,7 @@ class BinarySchema(SimpleSchema):
 
 
 
-class BooleanModel(Model):
+class BooleanModel(BaseModel):
 
     @classmethod
     def normalize(cls, datum, **kwargs):
@@ -455,10 +456,7 @@ class BooleanSchema(SimpleSchema):
 
 
 
-class JSONData(Model):
-
-    def serialize(self):
-        return self.data
+class JSONData(BaseModel):
 
     def __repr__(self):
         contents = json.dumps(self.data)
