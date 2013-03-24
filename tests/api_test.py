@@ -100,7 +100,6 @@ class TestAPI(TestCase):
             def validate(cls, datum):
                 if datum == "bacon":
                     raise ValidationError("Not kosher")
-                return datum
 
         @self.cookbook.model
         class Cookie(Model):

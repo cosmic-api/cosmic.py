@@ -47,11 +47,11 @@ class Action(ClassModel):
             if not schema_is_compatible(arg_spec, accepts):
                 raise SpecError("The accepts parameter of '%s' action is incompatible with the function's arguments")
 
-        return cls({
-            "name": name,
-            "accepts": accepts,
-            "returns": returns
-        }, raw_func=func)
+        return cls(
+            name=name,
+            accepts=accepts,
+            returns=returns,
+            raw_func=func)
 
 
     def get_view(self, debug=False):

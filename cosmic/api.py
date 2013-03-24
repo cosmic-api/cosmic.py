@@ -34,16 +34,6 @@ class APIModel(ClassModel):
     ]
 
     @classmethod
-    def from_model_cls(cls, model_cls):
-        """Create an :class:`~cosmic.api.APIModel` from a model class by
-        extracting its schema and using the class name for the model name.
-        """
-        return cls({
-            "name": model_cls.__name__,
-            "schema": model_cls.get_schema()
-        })
-
-    @classmethod
     def normalize(cls, datum, **kwargs):
         # Run the schema normalization, that's what ClassModel does
         inst = super(APIModel, cls).normalize(datum)
@@ -222,8 +212,11 @@ class API(BaseModel):
             class Word(Model):
                 schema = normalize_schema({"type": "string"})
         """
+        api_model = APIModel(
+            name=model_cls.__name__,
+            schema=model_cls.get_schema())
         # Add to data
-        self.data['models'].append(APIModel.from_model_cls(model_cls))
+        self.data['models'].append(api_model)
         # Add to namespace
         self.models.add(model_cls.__name__, model_cls)
         return model_cls

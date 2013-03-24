@@ -7,20 +7,24 @@ from cosmic.exceptions import ValidationError, UnicodeDecodeValidationError, Spe
 
 class BaseModel(object):
 
+    def __init__(self, data, **kwargs):
+        self.data = data
+
     def serialize(self):
+        """Serialize could be a classmethod like normalize, but by defining it
+        this way, we are allowing a more natural syntax. Both of these work
+        identically:
+         
+            >>> Animal.serialize(cat)
+            >>> cat.serialize()
+
+        """
         return self.data
 
     @classmethod
-    def normalize(cls, datum, fetcher=None):
-        # Validate against model's custom validation function
+    def normalize(cls, datum, fetcher=None): # pragma: no cover
         cls.validate(datum)
-        # Instantiate
-        return cls(datum)
-
-    def __init__(self, data, **kwargs):
-        self.data = data
-        for key, value in kwargs.items():
-            self.__dict__[key] = value
+        return datum
 
     @classmethod
     def validate(cls, datum):
@@ -39,7 +43,8 @@ class Model(BaseModel):
         # Normalize against model schema
         schema = cls.get_schema()
         datum = schema.normalize_data(datum, fetcher=fetcher)
-        return super(Model, cls).normalize(datum, fetcher=fetcher)
+        cls.validate(datum)
+        return cls(datum)
 
     @classmethod
     def get_schema(cls):
@@ -468,7 +473,12 @@ class JSONData(BaseModel):
     def from_string(cls, s):
         if s == "":
             return None
+        # No need to validate:
         return cls.normalize(json.loads(s))
+
+    @classmethod
+    def normalize(cls, datum, fetcher=None):
+        return cls(datum)
 
     @classmethod
     def to_string(cls, s):
@@ -483,6 +493,17 @@ class JSONDataSchema(SimpleSchema):
 
 
 class ClassModel(ObjectModel):
+
+    def __init__(self, **kwargs):
+        self.data = {}
+        self.props = {}
+        for prop in self.properties:
+            self.props[prop["name"]] = prop
+        for key, value in kwargs.items():
+            if key in self.props.keys():
+                self.data[key] = value
+            else:
+                self.__dict__[key] = value
 
     def __getattr__(self, key):
         for prop in self.properties:
@@ -504,7 +525,7 @@ class ClassModel(ObjectModel):
     def normalize(cls, datum, fetcher=None):
         datum = cls.get_schema().normalize_data(datum, fetcher=fetcher)
         cls.validate(datum)
-        return cls(datum)
+        return cls(**datum)
 
     def serialize(self):
         return self.get_schema().serialize_data(self.data)
