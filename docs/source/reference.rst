@@ -1,6 +1,9 @@
 Reference
 =========
 
+APIs
+----
+
 .. module:: cosmic.api
 
 .. autoclass:: cosmic.api.API
@@ -8,6 +11,14 @@ Reference
 
 .. autoclass:: cosmic.api.APIModel
    :members:
+
+Actions
+-------
+
+.. module:: cosmic.actions
+
+.. autoclass:: cosmic.actions.Action
+   :members: from_func, get_view, __call__
 
 Exceptions
 ----------

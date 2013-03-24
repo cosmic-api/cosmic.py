@@ -95,7 +95,8 @@ def apply_to_func(func, data):
 
 def pack_action_arguments(*args, **kwargs):
     """Takes arbitrary args and kwargs and packs them into a dict if there are
-    more than one. Returns `None` if there are no arguments.
+    more than one. Returns `None` if there are no arguments. Must be called
+    with either a single argument or multiple keyword arguments.
     """
     if len(args) == 1 and len(kwargs) == 0:
         return args[0]

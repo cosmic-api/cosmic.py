@@ -30,6 +30,30 @@ class Action(ClassModel):
         }
     ]
 
+
+    @classmethod
+    def from_func(cls, func, accepts=None, returns=None):
+        """Create an action from a function *func* that expects data as
+        normalized by the *accepts* schema and returns data that will be
+        serialized by the *returns* schema. Both *accepts* and *returns* must
+        be :class:`~cosmic.models.Schema` instances.
+        """
+        name = func.__name__
+        arg_spec = get_arg_spec(func)
+
+        if accepts:
+            if not arg_spec:
+                raise SpecError("'%s' is said to take arguments, but doesn't" % name)
+            if not schema_is_compatible(arg_spec, accepts):
+                raise SpecError("The accepts parameter of '%s' action is incompatible with the function's arguments")
+
+        return cls({
+            "name": name,
+            "accepts": accepts,
+            "returns": returns
+        }, raw_func=func)
+
+
     def get_view(self, debug=False):
         """Wraps a user-defined action function to return a Flask view function
         that handles errors and returns proper HTTP responses"""
@@ -40,7 +64,14 @@ class Action(ClassModel):
             return serialize_json(self.returns, ret)
         return action_view
 
+
     def __call__(self, *args, **kwargs):
+        """If action was generated from a function, calls it with the passed
+        in data, otherwise serializes the data, makes an HTTP request to the
+        API and returns its normalized response.
+
+        Uses :func:`~cosmic.tools.pack_action_arguments`.
+        """
         packed = pack_action_arguments(*args, **kwargs)
 
         if hasattr(self, "raw_func"):
@@ -69,21 +100,3 @@ class Action(ClassModel):
                 return None
         except ValidationError:
             raise APIError("Call to %s returned an invalid value" % self.name)
-
-    @classmethod
-    def from_func(cls, func, accepts=None, returns=None):
-
-        name = func.__name__
-        arg_spec = get_arg_spec(func)
-
-        if accepts:
-            if not arg_spec:
-                raise SpecError("'%s' is said to take arguments, but doesn't" % name)
-            if not schema_is_compatible(arg_spec, accepts):
-                raise SpecError("The accepts parameter of '%s' action is incompatible with the function's arguments")
-
-        return cls({
-            "name": name,
-            "accepts": accepts,
-            "returns": returns
-        }, raw_func=func)
