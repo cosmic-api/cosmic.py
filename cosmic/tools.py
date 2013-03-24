@@ -132,6 +132,10 @@ def schema_is_compatible(general, detailed):
 
 
 def fetch_model(full_name):
+    """When passed into the model system's :meth:`normalize` or :meth:`normalize_data`
+    methods, this function will allow the model system to retrieve models referenced
+    by name. Without it, the model system would be limited to the core models.
+    """
     if full_name == "cosmic.API":
         from cosmic.api import API
         return API
@@ -153,12 +157,15 @@ def fetch_model(full_name):
 
 
 def normalize_schema(schema):
+    """A convenience method for normalizing a JSON schema into a
+    :class:`~cosmic.models.Schema` object.
+    """
     return Schema.normalize(schema, fetcher=fetch_model)
 
 
 def normalize(schema, datum):
-    """Schema is expected to be a valid schema and datum is expected
-    to be the return value of json.loads
+    """Schema is a JSON schema and datum is the JSON form of the data. Returns
+    the data normalized against the schema.
     """
     normalizer = normalize_schema(schema)
     return normalizer.normalize_data(datum, fetcher=fetch_model)

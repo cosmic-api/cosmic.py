@@ -3,24 +3,37 @@ from __future__ import unicode_literals
 import json
 
 class JSONParseError(Exception):
-    pass
+    """Raised in place of the generic :exc:`ValueError`"""
 
 class HttpError(Exception):
+    """Raised to interrupt an API function and return an HTTP error code to
+    the client.
+    """
     def __init__(self, message):
         self.message = message
         self.args = [message]
     def get_response(self):
+        """Create a :class:`~cosmic.http.Response` object with the error code
+        and message.
+        """
         from cosmic.http import Response
         body = json.dumps({"error": self.message})
         return Response(self.http_code, body, {})
 
 class APIError(HttpError):
+    """An :class:`~cosmic.exceptions.HttpError` with default HTTP code 500.
+    """
     http_code = 500
 
 class ClientError(HttpError):
+    """An :class:`~cosmic.exceptions.HttpError` with default HTTP code 400.
+    """
     http_code = 400
 
 class AuthenticationError(ClientError):
+    """A :class:`~cosmic.exceptions.ClientError` with 401 HTTP code and
+    "Authentication failed" message.
+    """
     http_code = 401
     message = "Authentication failed"
     def __init__(self):
@@ -30,6 +43,12 @@ class SpecError(Exception):
     pass
 
 class ValidationError(Exception):
+    """Raised by the model system. Stores the location of the error in the
+    JSON document relative to its root for a more useful stack trace.
+
+    First parameter is the error *message*, second optional parameter is the
+    object that failed validation.
+    """
 
     def __init__(self, message, *args):
         super(ValidationError, self).__init__(message)
@@ -68,4 +87,6 @@ class ValidationError(Exception):
         return self._print_with_format(json.dumps)
 
 class UnicodeDecodeValidationError(ValidationError):
-    pass
+    """A subclass of :exc:`~cosmic.exceptions.ValidationError` raised
+    in place of a :exc:`UnicodeDecodeError`.
+    """

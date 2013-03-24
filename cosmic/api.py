@@ -16,6 +16,9 @@ from cosmic.http import ALL_METHODS, View, UrlRule, Response, CorsPreflightView,
 from cosmic.plugins import FlaskPlugin
 
 class APIModel(ClassModel):
+    """Normalizes and serialized API model classes. The serialized form
+    contains the model name and its schema.
+    """
 
     properties = [
         {
@@ -32,6 +35,9 @@ class APIModel(ClassModel):
 
     @classmethod
     def from_model_cls(cls, model_cls):
+        """Create an :class:`~cosmic.api.APIModel` from a model class by
+        extracting its schema and using the class name for the model name.
+        """
         return cls({
             "name": model_cls.__name__,
             "schema": model_cls.get_schema()
@@ -70,6 +76,10 @@ class API(BaseModel):
 
     @classmethod
     def create(cls, name=None, homepage=None, **kwargs):
+        """Create a new :class:`~cosmic.api.API`. This method is more
+        convenient than the constructor, because it doesn't ask about actions
+        or models.
+        """
         return cls({
             "name": name,
             "homepage": homepage,
@@ -79,10 +89,8 @@ class API(BaseModel):
 
     @staticmethod
     def load(url):
-        """Given a spec URL, loads the API.
-
-        :param url: URL pointing to the API's ``/spec.json`` endpoint.
-        :returns: :class:`~cosmic.api.API`
+        """Given a spec URL, loads it and normalizes, returning the
+        :class:`~cosmic.api.API` object.
         """
         res = requests.get(url)
         spec = res.json
@@ -129,13 +137,10 @@ class API(BaseModel):
     })
 
     def get_rules(self, debug=False):
-        """Get a list of URL rules necessary for implementing this API
-
-        :param debug:
-            Will be passed into the :class:`cosmic.http.View`
-            constructor of all the views in the app
-        :returns:
-            A list of :class:`cosmic.http.UrlRule` objects
+        """Get a list of URL rules necessary for implementing this API The
+        *debug* parameter will be passed into the :class:`cosmic.http.View`
+        constructor of all the views in the API. Returns a list of
+        :class:`cosmic.http.UrlRule` objects.
         """
         rules = []
         for action in self.actions:
@@ -151,7 +156,7 @@ class API(BaseModel):
         return rules
 
     def get_flask_app(self, debug=False, url_prefix=None):
-        """Returns a Flask test client
+        """Returns a Flask application.
         """
         rules = self.get_rules(debug=debug)
         plugin = FlaskPlugin(rules,
@@ -161,8 +166,8 @@ class API(BaseModel):
         return plugin.app
 
     def run(self, *args, **kwargs): # pragma: no cover
-        """Runs the API as a Flask app. All arguments channelled into
-        :meth:`Flask.run`.
+        """Runs the API as a Flask app. All arguments except *url_prefix*
+        channelled into :meth:`Flask.run`.
         """
         debug = kwargs.get('debug', False)
         url_prefix = kwargs.pop('url_prefix', None)
@@ -193,7 +198,6 @@ class API(BaseModel):
             def generate():
                 return 9
         """
-
         def wrapper(func):
             name = func.__name__
             action = Action.from_func(func, accepts=accepts, returns=returns)
