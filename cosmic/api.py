@@ -65,7 +65,7 @@ class API(BaseModel):
         sys.modules['cosmic.registry.' + self.name] = self
 
     @classmethod
-    def create(cls, name=None, homepage=None, **kwargs):
+    def create(cls, name=None, homepage=None):
         """Create a new :class:`~cosmic.api.API`. This method is more
         convenient than the constructor, because it doesn't ask about actions
         or models.
@@ -155,17 +155,16 @@ class API(BaseModel):
             debug=debug)
         return plugin.app
 
-    def run(self, *args, **kwargs): # pragma: no cover
-        """Runs the API as a Flask app. All arguments except *url_prefix*
-        channelled into :meth:`Flask.run`.
+    def run(self, url_prefix=None, **kwargs): # pragma: no cover
+        """Runs the API as a Flask app. All keyword arguments except
+        *url_prefix* channelled into :meth:`Flask.run`.
         """
         debug = kwargs.get('debug', False)
-        url_prefix = kwargs.pop('url_prefix', None)
         app = self.get_flask_app(debug=debug, url_prefix=url_prefix)
         # Flask will catch exceptions to return a nice HTTP
         # response in debug mode, we want things to FAIL!
         app.config['PROPAGATE_EXCEPTIONS'] = debug
-        app.run(*args, **kwargs)
+        app.run(**kwargs)
 
 
     def action(self, accepts=None, returns=None):

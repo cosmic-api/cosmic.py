@@ -231,6 +231,8 @@ simply returns the given value.
 .. autoclass:: cosmic.models.ObjectModel
    :members:
 
+.. _key-value-models:
+
 Key-Value Models
 ~~~~~~~~~~~~~~~~
 

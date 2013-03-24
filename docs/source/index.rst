@@ -3,8 +3,11 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Python Reference
+Cosmic in Python
 ================
+
+Here you will find the documentation for the Python implementation of Cosmic.
+The tutorial should be the best way to get up and running.
 
 Contents:
 
@@ -14,8 +17,8 @@ Contents:
 
    tutorial
    models
-   http
    reference
+   http
 
 Indices and tables
 ==================
