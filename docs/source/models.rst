@@ -399,23 +399,16 @@ But a ``null`` will yield a 'boxed' value::
 Extending The Model System
 --------------------------
 
-Instead of using the convenience function
-:func:`cosmic.tools.normalize_schema`, try to call :meth:`Schema.normalize`
-directly::
+The model system is decoupled from the rest of Cosmic, it does not know
+anything about APIs. When it encounters a namespaced type such as
+``cookbook.Recipe``, it leaves a placeholder in place of the recipe model.
+In order to fetch the actual recipe model, you must *resolve* the models
+by passing in a model fetcher into :meth:`Schema.resolve`.
 
-    >>> Schema.normalize({"type": "cookbook.Recipe"})
-    Traceback (most recent call last):
-      File "<stdin>", line 1, in <module>
-      File "cosmic/models.py", line 106, in normalize
-        raise NotImplementedError()
-    NotImplementedError
+    >>> from cosmic.tools import fetch_model
+    >>> schema = Schema.normalize({"type": "cookbook.Recipe"})
+    >>> schema.resolve(fetcher=fetch_model)
 
-The error is thrown because the model system doesn't know where to find API
-models by itself. Cosmic extends the model system by defining a
-:func:`cosmic.tools.fetch_model` function that it passes into the model
-system like so:
-
-    >>> Schema.normalize({"type": "cookbook.Recipe"}, fetcher=fetch_model)
-
-:func:`fetch_model` needs to be passed into any :meth:`normalize` or
-:meth:`normalize_data` call whenever user-defined models need to be accessed.
+You will rarely have to do this yourself if you stick to the convenience
+functions provided in :mod:`cosmic.tools`: :func:`~cosmic.tools.normalize`
+and :func:`~cosmic.tools.normalize_schema`.
