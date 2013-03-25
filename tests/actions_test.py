@@ -148,7 +148,7 @@ class TestActionWithModelData(TestCase):
             returns=normalize_schema({"type": "cosmic.Action"}))
 
         self.view = self.action.get_view()
-        self.remote_action = Action.normalize(self.spec, fetcher=fetch_model)
+        self.remote_action = Action.normalize(self.spec)
 
     def test_direct_call(self):
         self.assertEqual(self.action(self.action), self.action)

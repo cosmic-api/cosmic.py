@@ -13,6 +13,7 @@ Start by creating a new API object::
     from cosmic.api import API
     from cosmic.tools import normalize_schema
     from cosmic.models import Model
+    from cosmic.exceptions import ValidationError
 
     horoscope = API.create("horoscope")
 
@@ -108,6 +109,13 @@ You can now interact with your new API via POST requests:
 
     $ curl -X POST -H "Content-Type: application/json" -d '"leo"' http://localhost:5000/actions/create
     "For leo, now is a good time to get a snake tatoo. It is probable that you will meet a handsome stranger."
+
+If you try to submit an invalid zodiac sign, you'll get a 400 error response:
+
+.. code:: bash
+
+    $ curl -X POST -H "Content-Type: application/json" -d '"tiger"' http://localhost:5000/actions/predict
+    {"error": "Unknown zodiac sign: \"tiger\""}
 
 Consuming an API
 """"""""""""""""

@@ -22,7 +22,7 @@ class BaseModel(object):
         return self.data
 
     @classmethod
-    def normalize(cls, datum, fetcher=None): # pragma: no cover
+    def normalize(cls, datum): # pragma: no cover
         cls.validate(datum)
         return datum
 
@@ -39,10 +39,10 @@ class Model(BaseModel):
         return schema.serialize_data(self.data)
 
     @classmethod
-    def normalize(cls, datum, fetcher=None):
+    def normalize(cls, datum):
         # Normalize against model schema
         schema = cls.get_schema()
-        datum = schema.normalize_data(datum, fetcher=fetcher)
+        datum = schema.normalize_data(datum)
         cls.validate(datum)
         return cls(datum)
 
@@ -70,11 +70,11 @@ class Schema(Model):
             raise ValidationError("%s expects type=%s" % (cls, cls.match_type,))
 
 
-    def normalize_data(self, datum, fetcher=None):
+    def normalize_data(self, datum):
         if self.opts:
-            return self.model_cls.normalize(datum, self.opts, fetcher=fetcher)
+            return self.model_cls.normalize(datum, self.opts)
         else:
-            return self.model_cls.normalize(datum, fetcher=fetcher)
+            return self.model_cls.normalize(datum)
 
     def serialize_data(self, datum):
         if self.opts:
@@ -83,7 +83,7 @@ class Schema(Model):
             return self.model_cls.serialize(datum)
 
     @classmethod
-    def normalize(cls, datum, fetcher=None):
+    def normalize(cls, datum):
 
         invalid = ValidationError("Invalid schema", datum)
 
@@ -107,17 +107,14 @@ class Schema(Model):
         ]
         for simple_cls in simple:
             if st == simple_cls.match_type:
-                return simple_cls.normalize(datum, fetcher=fetcher)
+                return simple_cls.normalize(datum)
 
         # Model?
         if '.' in st:
-            if not fetcher:
-                raise NotImplementedError()
-            m = fetcher(st)
             class normalizer(SimpleSchema):
-                model_cls = m
+                model_cls = None
                 match_type = st
-            return normalizer.normalize(datum, fetcher=fetcher)
+            return normalizer.normalize(datum)
 
         raise ValidationError("Unknown type", st)
 
@@ -127,10 +124,10 @@ class SimpleSchema(Schema):
 
     # COPY-PASTE
     @classmethod
-    def normalize(cls, datum, fetcher=None):
+    def normalize(cls, datum):
         # Normalize against model schema
         schema = cls.get_schema()
-        datum = schema.normalize_data(datum, fetcher=fetcher)
+        datum = schema.normalize_data(datum)
         # Validate against model's custom validation function
         cls.validate(datum)
         # Instantiate
@@ -149,6 +146,11 @@ class SimpleSchema(Schema):
             ]
         })
 
+    def resolve(self, fetcher):
+        if self.model_cls == None:
+            self.model_cls = fetcher(self.match_type)
+
+
 class SchemaSchema(SimpleSchema):
     match_type = "schema"
     model_cls = Schema
@@ -159,7 +161,7 @@ class SchemaSchema(SimpleSchema):
 class ObjectModel(BaseModel):
 
     @classmethod
-    def normalize(cls, datum, opts, fetcher=None):
+    def normalize(cls, datum, opts):
         """If *datum* is a dict, normalize it against ``opts['properties']``
         and return the resulting dict. Otherwise raise a
         :exc:`~cosmic.exceptions.ValidationError`.
@@ -198,7 +200,7 @@ class ObjectModel(BaseModel):
             for prop, schema in optional.items() + required.items():
                 if prop in datum.keys():
                     try:
-                        ret[prop] = schema.normalize_data(datum[prop], fetcher=fetcher)
+                        ret[prop] = schema.normalize_data(datum[prop])
                     except ValidationError as e:
                         e.stack.append(prop)
                         raise
@@ -272,13 +274,17 @@ class ObjectSchema(SimpleSchema):
         if len(props) > len(set(props)):
             raise ValidationError("Duplicate properties")
 
+    def resolve(self, fetcher):
+        super(ObjectSchema, self).resolve(fetcher)
+        for prop in self.opts["properties"]:
+            prop["schema"].resolve(fetcher)
 
 
 
 class ArrayModel(BaseModel):
 
     @classmethod
-    def normalize(cls, datum, opts, fetcher=None):
+    def normalize(cls, datum, opts):
         """If *datum* is a list, construct a new list by putting each element
         of *datum* through a schema provided as ``opts['items']``. This schema
         may raise
@@ -289,7 +295,7 @@ class ArrayModel(BaseModel):
             ret = []
             for i, item in enumerate(datum):
                 try:
-                    ret.append(opts['items'].normalize_data(item, fetcher=fetcher))
+                    ret.append(opts['items'].normalize_data(item))
                 except ValidationError as e:
                     e.stack.append(i)
                     raise
@@ -323,6 +329,10 @@ class ArraySchema(SimpleSchema):
                 }
             ]
         })
+
+    def resolve(self, fetcher):
+        super(ArraySchema, self).resolve(fetcher)
+        self.opts["items"].resolve(fetcher)
 
 
 
@@ -477,7 +487,7 @@ class JSONData(BaseModel):
         return cls.normalize(json.loads(s))
 
     @classmethod
-    def normalize(cls, datum, fetcher=None):
+    def normalize(cls, datum):
         return cls(datum)
 
     @classmethod
@@ -522,8 +532,8 @@ class ClassModel(ObjectModel):
         super(ObjectModel, self).__setattr__(key, value)
 
     @classmethod
-    def normalize(cls, datum, fetcher=None):
-        datum = cls.get_schema().normalize_data(datum, fetcher=fetcher)
+    def normalize(cls, datum):
+        datum = cls.get_schema().normalize_data(datum)
         cls.validate(datum)
         return cls(**datum)
 
@@ -538,13 +548,13 @@ class ClassModel(ObjectModel):
         })
 
 
-def normalize_json(schema, datum, fetcher=None):
+def normalize_json(schema, datum):
     if schema and not datum:
         raise ValidationError("Expected JSONData, found None")
     if datum and not schema:
         raise ValidationError("Expected None, found JSONData")
     if schema and datum:
-        return schema.normalize_data(datum.data, fetcher=fetcher)
+        return schema.normalize_data(datum.data)
     return None
 
 def serialize_json(schema, datum):

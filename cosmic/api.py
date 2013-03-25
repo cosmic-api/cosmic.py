@@ -37,6 +37,7 @@ class APIModel(ClassModel):
     def normalize(cls, datum, **kwargs):
         # Run the schema normalization, that's what ClassModel does
         inst = super(APIModel, cls).normalize(datum)
+        inst.schema.resolve(fetcher=fetch_model)
         # Take a schema and name and turn them into a model class
         class M(BaseModel):
             @classmethod
@@ -85,7 +86,7 @@ class API(BaseModel):
         res = requests.get(url)
         spec = res.json
         name = spec['name']
-        api = API.normalize(res.json, fetcher=fetch_model)
+        api = API.normalize(res.json)
         # Set the API url to be the spec URL, minus the /spec.json
         api.url = url[:-10]
         return api

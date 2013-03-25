@@ -161,7 +161,9 @@ def normalize_schema(schema):
     """A convenience method for normalizing a JSON schema into a
     :class:`~cosmic.models.Schema` object.
     """
-    return Schema.normalize(schema, fetcher=fetch_model)
+    schema = Schema.normalize(schema)
+    schema.resolve(fetcher=fetch_model)
+    return schema
 
 
 def normalize(schema, datum):
@@ -169,5 +171,5 @@ def normalize(schema, datum):
     the data normalized against the schema.
     """
     normalizer = normalize_schema(schema)
-    return normalizer.normalize_data(datum, fetcher=fetch_model)
+    return normalizer.normalize_data(datum)
 

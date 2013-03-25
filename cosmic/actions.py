@@ -59,7 +59,7 @@ class Action(ClassModel):
         that handles errors and returns proper HTTP responses"""
         @make_view("POST")
         def action_view(payload):
-            normalized = normalize_json(self.accepts, payload, fetcher=fetch_model)
+            normalized = normalize_json(self.accepts, payload)
             ret = apply_to_func(self.raw_func, normalized)
             return serialize_json(self.returns, ret)
         return action_view
@@ -95,7 +95,7 @@ class Action(ClassModel):
                 raise APIError("Call to %s failed with improper error response")
         try:
             if self.returns:
-                return self.returns.normalize_data(res.json, fetcher=fetch_model)
+                return self.returns.normalize_data(res.json)
             else:
                 return None
         except ValidationError:
