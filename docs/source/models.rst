@@ -19,9 +19,9 @@ data it is meant to validate.
 
 When a JSON representation of a schema gets compiled, the resulting object
 will provide a :meth:`normalize_data` method. This method will take JSON data
-as provided by :func:`json.loads` and either return the normalized data or
-raise a :class:`~cosmic.exceptions.ValidationError`. Here is the basic usage
-with a convenience function, :func:`~cosmic.tools.normalize_schema`::
+as provided by :func:`json.loads` and either return the native data or raise a
+:class:`~cosmic.exceptions.ValidationError`. Here is the basic usage with a
+convenience function, :func:`~cosmic.tools.normalize_schema`::
 
     >>> from cosmic.tools import normalize_schema
     >>> s = normalize_schema({"type": "integer"})
@@ -154,14 +154,14 @@ coming from an untrusted source, use the model's
         raise ValidationError("Invalid string", datum)
     cosmic.exceptions.ValidationError: Invalid string: 21
 
-When instantiated, the normalized data will be put in the model instance's
-*data* property::
+When instantiated, the native data will be put in the model instance's *data*
+property::
 
     >>> tiger = Animal.normalize("Tiger")
     >>> tiger.data
     u'Tiger'
 
-If the schema validation passes, the normalized data will be passed into
+If the schema validation passes, the native data will be passed into
 :meth:`~cosmic.models.Model.validate` for second-stage validation. By default,
 this method does nothing.
 
