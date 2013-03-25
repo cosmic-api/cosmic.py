@@ -105,10 +105,10 @@ class Schema(Model):
 
         # Model?
         if '.' in st:
-            class normalizer(SimpleSchema):
-                model_cls = None
-                match_type = st
-            return normalizer.normalize(datum)
+            schema = SimpleSchema({"type": st})
+            schema.match_type = st
+            schema.model_cls = None
+            return schema
 
         raise ValidationError("Unknown type", st)
 
