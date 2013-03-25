@@ -71,16 +71,10 @@ class Schema(Model):
 
 
     def normalize_data(self, datum):
-        if self.opts:
-            return self.model_cls.normalize(datum, self.opts)
-        else:
-            return self.model_cls.normalize(datum)
+        return self.model_cls.normalize(datum, **self.opts)
 
     def serialize_data(self, datum):
-        if self.opts:
-            return self.model_cls.serialize(datum, self.opts)
-        else:
-            return self.model_cls.serialize(datum)
+        return self.model_cls.serialize(datum, **self.opts)
 
     @classmethod
     def normalize(cls, datum):
@@ -161,13 +155,13 @@ class SchemaSchema(SimpleSchema):
 class ObjectModel(BaseModel):
 
     @classmethod
-    def normalize(cls, datum, opts):
-        """If *datum* is a dict, normalize it against ``opts['properties']``
-        and return the resulting dict. Otherwise raise a
+    def normalize(cls, datum, properties):
+        """If *datum* is a dict, normalize it against *properties* and return
+        the resulting dict. Otherwise raise a
         :exc:`~cosmic.exceptions.ValidationError`.
 
-        ``opts['properties']`` must be a list of dicts, where each dict has
-        three attributes: *name*, *required* and *schema*. *name* is a string
+        *properties* must be a list of dicts, where each dict has three
+        attributes: *name*, *required* and *schema*. *name* is a string
         representing the property name, *required* is a boolean specifying
         whether *datum* needs to contain this property in order to pass
         validation and *schema* is an instance of a
@@ -181,7 +175,6 @@ class ObjectModel(BaseModel):
            by the corresponding *schema*
 
         """
-        properties = opts['properties']
         if type(datum) == dict:
             ret = {}
             required = {}
@@ -208,13 +201,13 @@ class ObjectModel(BaseModel):
         raise ValidationError("Invalid object", datum)
 
     @classmethod
-    def serialize(cls, datum, opts):
-        """For each property in ``opts['properties']``, serialize the
-        corresponding value in *datum* (if the value exists) against the
-        property schema. Return the resulting dict.
+    def serialize(cls, datum, properties):
+        """For each property in *properties*, serialize the corresponding
+        value in *datum* (if the value exists) against the property schema.
+        Return the resulting dict.
         """
         ret = {}
-        for prop in opts['properties']:
+        for prop in properties:
             name = prop['name']
             if name in datum.keys() and datum[name] != None:
                 ret[name] = prop['schema'].serialize_data(datum[name])
@@ -284,10 +277,9 @@ class ObjectSchema(SimpleSchema):
 class ArrayModel(BaseModel):
 
     @classmethod
-    def normalize(cls, datum, opts):
+    def normalize(cls, datum, items):
         """If *datum* is a list, construct a new list by putting each element
-        of *datum* through a schema provided as ``opts['items']``. This schema
-        may raise
+        of *datum* through a schema provided as *items*. This schema may raise
         :exc:`~cosmic.exceptions.ValidationError`. If *datum* is not a list,
         :exc:`~cosmic.exceptions.ValidationError` will be raised.
         """
@@ -295,7 +287,7 @@ class ArrayModel(BaseModel):
             ret = []
             for i, item in enumerate(datum):
                 try:
-                    ret.append(opts['items'].normalize_data(item))
+                    ret.append(items.normalize_data(item))
                 except ValidationError as e:
                     e.stack.append(i)
                     raise
@@ -303,11 +295,11 @@ class ArrayModel(BaseModel):
         raise ValidationError("Invalid array", datum)
 
     @classmethod
-    def serialize(cls, datum, opts):
+    def serialize(cls, datum, items):
         """Serialize each item in the *datum* list using the schema provided
-        in ``opts['items']``. Return the resulting list.
+        in *items*. Return the resulting list.
         """
-        return [opts['items'].serialize_data(item) for item in datum]
+        return [items.serialize_data(item) for item in datum]
 
 class ArraySchema(SimpleSchema):
     model_cls = ArrayModel
