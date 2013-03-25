@@ -126,7 +126,25 @@ Now that we've launched our API, we can consume it using the same library we use
 
     >>> from cosmic.api import API
     >>> horoscope = API.load("http://localhost:5000/spec.json")
-    >>> pisces = horoscope.Sign("pisces")
+    >>> pisces = horoscope.models.Sign("pisces")
     >>> horoscope.predict(pisces)
     "For pisces, now is a good time to mow the lawn. It is not entirely out of the question that you will meet a handsome stranger."
+
+When we instantiate a model from a third-party API, the only validation Cosmic can run is schema
+validation. Thus, this will work without error:
+
+.. code:: python
+
+    >>> pisces = horoscope.models.Sign("pies")
+
+However, when you try to use it in an action, you will receive and error:
+
+.. code:: python
+
+    >>> horoscope.actions.predict(pisces)
+    Traceback (most recent call last):
+      File "<stdin>", line 1, in <module>
+      File "cosmic/actions.py", line 93, in __call__
+        raise APIError(res.json['error'])
+    cosmic.exceptions.APIError: Unknown zodiac sign: "pies"
 
