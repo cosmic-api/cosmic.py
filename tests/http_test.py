@@ -57,7 +57,7 @@ class TestView(TestCase):
 
         @make_view("POST")
         def unhandled_error(payload):
-            return 1 / 0
+            return JSONData(1 / 0)
         self.unhandled_error = unhandled_error
 
         @make_view("POST")
@@ -69,6 +69,11 @@ class TestView(TestCase):
         def authentication_error(payload):
             raise AuthenticationError()
         self.authentication_error = authentication_error
+
+        @make_view("POST")
+        def validation_error(payload):
+            raise ValidationError("Invalid!")
+        self.validation_error = validation_error
 
     def test_wrong_content_type(self):
         res = self.noop(Request("POST", "", {"Content-Type": "application/jason"}))
@@ -85,6 +90,13 @@ class TestView(TestCase):
         self.assertEqual(res.code, 500)
         self.assertEqual(json.loads(res.body), {
             "error": "Internal Server Error"
+        })
+
+    def test_validation_error(self):
+        res = self.validation_error(Request("POST", "", {"Content-Type": "application/json"}))
+        self.assertEqual(res.code, 400)
+        self.assertEqual(json.loads(res.body), {
+            "error": "Invalid!"
         })
 
     def test_unhandled_error_debug(self):
