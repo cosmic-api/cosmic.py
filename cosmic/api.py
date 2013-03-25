@@ -35,9 +35,8 @@ class APIModel(ClassModel):
 
     @classmethod
     def normalize(cls, datum, **kwargs):
-        # Run the schema normalization, that's what ClassModel does
+        # Run the schema normalization
         inst = super(APIModel, cls).normalize(datum)
-        inst.schema.resolve(fetcher=fetch_model)
         # Take a schema and name and turn them into a model class
         class M(BaseModel):
             @classmethod
@@ -64,6 +63,16 @@ class API(BaseModel):
             self.models.add(model.name, model.model)
         # Add to registry so we can reference its models
         sys.modules['cosmic.registry.' + self.name] = self
+        # Now that fetch_model has access to the API, resolve the models
+        for model in self.data["models"]:
+            model.schema.resolve(fetcher=fetch_model)
+        # Then resolve the actions
+        for action in self.data["actions"]:
+            if action.accepts:
+                action.accepts.resolve(fetcher=fetch_model)
+            if action.returns:
+                action.returns.resolve(fetcher=fetch_model)
+
 
     @classmethod
     def create(cls, name=None, homepage=None):
