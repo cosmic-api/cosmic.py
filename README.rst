@@ -3,7 +3,7 @@
 cosmic.py
 =========
 
-The canonical implementation of [Cosmic](http://www.cosmic-api.com/).
+The canonical implementation of `Cosmic <http://www.cosmic-api.com/>`_.
 
 Testing
 -------
