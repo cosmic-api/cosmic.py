@@ -3,6 +3,8 @@
 cosmic.py
 =========
 
+The canonical implementation of [Cosmic](http://www.cosmic-api.com/).
+
 Testing
 -------
 
