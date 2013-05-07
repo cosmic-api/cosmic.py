@@ -4,6 +4,9 @@ import base64
 
 from cosmic.exceptions import ValidationError, UnicodeDecodeValidationError, SpecError, JSONParseError
 
+from teleport import Integer, Float, String, Boolean, Binary, JSON
+from teleport import Schema as TSchema
+
 
 class BaseModel(object):
 
@@ -70,6 +73,8 @@ class Schema(Model):
         return self.model_cls.normalize(datum, **self.opts)
 
     def serialize_data(self, datum):
+        if self.model_cls == Schema and not isinstance(datum, Schema):
+            return TSchema().serialize(datum)
         return self.model_cls.serialize(datum, **self.opts)
 
 
@@ -332,21 +337,12 @@ class ArraySchema(SimpleSchema):
 class IntegerModel(BaseModel):
 
     @classmethod
-    def normalize(cls, datum, **kwargs):
-        """If *datum* is an integer, return it; if it is a float with a 0 for
-        its fractional part, return the integer part as an int. Otherwise,
-        raise a
-        :exc:`~cosmic.exceptions.ValidationError`.
-        """
-        if type(datum) == int:
-            return datum
-        if type(datum) == float and datum.is_integer():
-            return int(datum)
-        raise ValidationError("Invalid integer", datum)
+    def normalize(cls, datum):
+        return Integer().deserialize(datum)
 
     @classmethod
     def serialize(cls, datum):
-        return datum
+        return Integer().serialize(datum)
 
 class IntegerSchema(SimpleSchema):
     model_cls = IntegerModel
@@ -358,20 +354,12 @@ class IntegerSchema(SimpleSchema):
 class FloatModel(BaseModel):
 
     @classmethod
-    def normalize(cls, datum, **kwargs):
-        """If *datum* is a float, return it; if it is an integer, cast it to a
-        float and return it. Otherwise, raise a
-        :exc:`~cosmic.exceptions.ValidationError`.
-        """
-        if type(datum) == float:
-            return datum
-        if type(datum) == int:
-            return float(datum)
-        raise ValidationError("Invalid float", datum)
+    def normalize(cls, datum):
+        return Float().deserialize(datum)
 
     @classmethod
     def serialize(cls, datum):
-        return datum
+        return Float().serialize(datum)
 
 class FloatSchema(SimpleSchema):
     model_cls = FloatModel
@@ -383,7 +371,7 @@ class FloatSchema(SimpleSchema):
 class StringModel(BaseModel):
 
     @classmethod
-    def normalize(cls, datum, **kwargs):
+    def normalize(cls, datum):
         """If *datum* is of unicode type, return it. If it is a string, decode
         it as UTF-8 and return the result. Otherwise, raise a
         :exc:`~cosmic.exceptions.ValidationError`. Unicode errors are dealt
@@ -398,7 +386,6 @@ class StringModel(BaseModel):
                 return datum.decode('utf_8')
             except UnicodeDecodeError as inst:
                 raise UnicodeDecodeValidationError(unicode(inst))
-        raise ValidationError("Invalid string", datum)
 
     @classmethod
     def serialize(cls, datum):
@@ -415,22 +402,12 @@ class StringSchema(SimpleSchema):
 class BinaryModel(BaseModel):
 
     @classmethod
-    def normalize(cls, datum, **kwargs):
-        """If *datum* is a base64-encoded string, decode and return it. If not
-        a string, or encoding is wrong, raise
-        :exc:`~cosmic.exceptions.ValidationError`.
-        """
-        if type(datum) in (str, unicode,):
-            try:
-                return base64.b64decode(datum)
-            except TypeError:
-                raise ValidationError("Invalid base64 encoding", datum)
-        raise ValidationError("Invalid binary data", datum)
+    def normalize(cls, datum):
+        return Binary().deserialize(datum)
 
     @classmethod
     def serialize(cls, datum):
-        """Encode *datum* in base64."""
-        return base64.b64encode(datum)
+        return Binary().serialize(datum)
 
 class BinarySchema(SimpleSchema):
     model_cls = BinaryModel
@@ -442,17 +419,12 @@ class BinarySchema(SimpleSchema):
 class BooleanModel(BaseModel):
 
     @classmethod
-    def normalize(cls, datum, **kwargs):
-        """If *datum* is a boolean, return it. Otherwise, raise a
-        :exc:`~cosmic.exceptions.ValidationError`.
-        """
-        if type(datum) == bool:
-            return datum
-        raise ValidationError("Invalid boolean", datum)
+    def normalize(cls, datum):
+        return Boolean().deserialize(datum)
 
     @classmethod
     def serialize(cls, datum):
-        return datum
+        return Boolean().serialize(datum)
 
 class BooleanSchema(SimpleSchema):
     model_cls = BooleanModel

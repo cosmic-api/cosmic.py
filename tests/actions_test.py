@@ -11,6 +11,8 @@ from cosmic.http import Request
 from cosmic.models import *
 from cosmic.tools import normalize_schema, fetch_model
 
+from teleport import ValidationError as VError
+
 class TestBasicRemoteAction(TestCase):
 
     def setUp(self):
@@ -69,7 +71,7 @@ class TestBasicRemoteAction(TestCase):
                 self.action(spicy=True)
 
     def test_call_with_bad_args(self):
-        with self.assertRaisesRegexp(ValidationError, "Invalid boolean"):
+        with self.assertRaisesRegexp(VError, "Invalid boolean"):
             self.action(spicy="yes")
 
     def test_call_invalid_response(self):

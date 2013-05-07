@@ -2,6 +2,8 @@ from __future__ import unicode_literals
 
 import json
 
+from teleport import ValidationError as V
+
 class JSONParseError(Exception):
     """Raised in place of the generic :exc:`ValueError`"""
 
@@ -42,7 +44,7 @@ class AuthenticationError(ClientError):
 class SpecError(Exception):
     pass
 
-class ValidationError(Exception):
+class ValidationError(V):
     """Raised by the model system. Stores the location of the error in the
     JSON document relative to its root for a more useful stack trace.
 

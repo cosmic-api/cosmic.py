@@ -13,6 +13,8 @@ from cosmic.api import API
 from cosmic.models import *
 from cosmic import api, context
 
+from teleport import ValidationError as VError
+
 cookbook_spec = {
     u'name': u'cookbook',
     u'actions': [
