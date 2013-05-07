@@ -17,8 +17,8 @@ class TestBasicRemoteAction(TestCase):
         spec = {
             'name': 'cabbage',
             'accepts': {
-                'type': 'object',
-                'properties': [
+                'type': "struct",
+                "fields": [
                     {
                         "name": 'spicy',
                         "required": True,
@@ -98,8 +98,8 @@ class TestBasicAction(TestCase):
 
         self.action = Action.from_func(cabbage,
             accepts=normalize_schema({
-                "type": "object",
-                "properties": [
+                "type": "struct",
+                "fields": [
                     {
                         "name": "spicy",
                         "schema": {"type": "boolean"},
@@ -169,7 +169,7 @@ class TestActionAnnotation(TestCase):
 
     def setUp(self):
         self.a_schema = ObjectSchema({
-            "properties": [
+            "fields": [
                 {
                     "name": "a",
                     "required": True,

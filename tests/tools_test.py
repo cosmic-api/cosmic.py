@@ -24,8 +24,8 @@ class TestGetArgSpec(TestCase):
     def test_multiple_args(self):
         def f(x, y): pass
         self.assertEqual(get_arg_spec(f).serialize(), {
-            'type': 'object',
-            'properties': [
+            'type': "struct",
+            "fields": [
                 {
                     "name": "x",
                     "required": True,
@@ -42,8 +42,8 @@ class TestGetArgSpec(TestCase):
     def test_multiple_args_and_kwargs(self):
         def f(x, y=1): pass
         self.assertEqual(get_arg_spec(f).serialize(), {
-            'type': 'object',
-            'properties': [
+            'type': "struct",
+            "fields": [
                 {
                     "name": "x",
                     "required": True,
@@ -60,8 +60,8 @@ class TestGetArgSpec(TestCase):
     def test_multiple_kwargs(self):
         def f(x=0, y=1): pass
         self.assertEqual(get_arg_spec(f).serialize(), {
-            'type': 'object',
-            'properties': [
+            'type': "struct",
+            "fields": [
                 {
                     "name": "x",
                     "required": False,
@@ -154,7 +154,7 @@ class TestSchemaIsCompatible(TestCase):
 
     def test_object_keys_mismatch(self):
         g = ObjectSchema({
-            "properties": [
+            "fields": [
                 {
                     u"name": u"a",
                     u"required": False,
@@ -168,7 +168,7 @@ class TestSchemaIsCompatible(TestCase):
             ]
         })
         d = ObjectSchema({
-            "properties": [
+            "fields": [
                 {
                     u"name": u"a",
                     u"required": False,
@@ -184,7 +184,7 @@ class TestSchemaIsCompatible(TestCase):
         assert not schema_is_compatible(g, d)
     def test_object_keys_mismatch(self):
         g = ObjectSchema({
-            "properties": [
+            "fields": [
                 {
                     u"name": u"a",
                     u"required": False,
@@ -198,7 +198,7 @@ class TestSchemaIsCompatible(TestCase):
             ]
         })
         d = ObjectSchema({
-            "properties": [
+            "fields": [
                 {
                     u"name": u"a",
                     u"required": False,
@@ -215,7 +215,7 @@ class TestSchemaIsCompatible(TestCase):
 
     def test_object_number_mismatch(self):
         g = ObjectSchema({
-            "properties": [
+            "fields": [
                 {
                     u"name": u"a",
                     u"required": False,
@@ -224,7 +224,7 @@ class TestSchemaIsCompatible(TestCase):
             ]
         })
         d = ObjectSchema({
-            "properties": [
+            "fields": [
                 {
                     u"name": u"a",
                     u"required": False,
@@ -241,7 +241,7 @@ class TestSchemaIsCompatible(TestCase):
 
     def test_object_match(self):
         g = ObjectSchema({
-            "properties": [
+            "fields": [
                 {
                     u"name": u"a",
                     u"required": True,
@@ -250,7 +250,7 @@ class TestSchemaIsCompatible(TestCase):
             ]
         })
         d = ObjectSchema({
-            "properties": [
+            "fields": [
                 {
                     u"name": u"a",
                     u"required": True,
@@ -262,7 +262,7 @@ class TestSchemaIsCompatible(TestCase):
 
     def test_object_no_match(self):
         g = ObjectSchema({
-            "properties": [
+            "fields": [
                 {
                     u"name": u"a",
                     u"required": True,
@@ -271,7 +271,7 @@ class TestSchemaIsCompatible(TestCase):
             ]
         })
         d = ObjectSchema({
-            "properties": [
+            "fields": [
                 {
                     u"name": u"a",
                     u"required": False,

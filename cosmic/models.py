@@ -64,10 +64,6 @@ class Schema(Model):
         self.opts = self.data.copy()
         self.opts.pop("type", None)
 
-    @classmethod
-    def validate(cls, datum):
-        if datum["type"] != cls.match_type:
-            raise ValidationError("%s expects type=%s" % (cls, cls.match_type,))
 
 
     def normalize_data(self, datum):
@@ -75,6 +71,7 @@ class Schema(Model):
 
     def serialize_data(self, datum):
         return self.model_cls.serialize(datum, **self.opts)
+
 
     @classmethod
     def normalize(cls, datum):
@@ -130,8 +127,8 @@ class SimpleSchema(Schema):
     @classmethod
     def get_schema(cls):
         return ObjectSchema({
-            "type": "object",
-            "properties": [
+            "type": "struct",
+            "fields": [
                 {
                     "name": "type",
                     "required": True,
@@ -155,7 +152,7 @@ class SchemaSchema(SimpleSchema):
 class ObjectModel(BaseModel):
 
     @classmethod
-    def normalize(cls, datum, properties):
+    def normalize(cls, datum, fields):
         """If *datum* is a dict, normalize it against *properties* and return
         the resulting dict. Otherwise raise a
         :exc:`~cosmic.exceptions.ValidationError`.
@@ -175,6 +172,7 @@ class ObjectModel(BaseModel):
            by the corresponding *schema*
 
         """
+        properties = fields
         if type(datum) == dict:
             ret = {}
             required = {}
@@ -201,11 +199,12 @@ class ObjectModel(BaseModel):
         raise ValidationError("Invalid object", datum)
 
     @classmethod
-    def serialize(cls, datum, properties):
+    def serialize(cls, datum, fields):
         """For each property in *properties*, serialize the corresponding
         value in *datum* (if the value exists) against the property schema.
         Return the resulting dict.
         """
+        properties = fields
         ret = {}
         for prop in properties:
             name = prop['name']
@@ -216,24 +215,24 @@ class ObjectModel(BaseModel):
 
 class ObjectSchema(SimpleSchema):
     model_cls = ObjectModel
-    match_type = "object"
+    match_type = "struct"
 
     @classmethod
     def get_schema(cls):
         return ObjectSchema({
-            "type": "object",
-            "properties": [
+            "type": "struct",
+            "fields": [
                 {
                     "name": "type",
                     "required": True,
                     "schema": StringSchema()
                 },
                 {
-                    "name": "properties",
+                    "name": "fields",
                     "required": True,
                     "schema": ArraySchema({
                         "items": ObjectSchema({
-                            "properties": [
+                            "fields": [
                                 {
                                     "name": "name",
                                     "required": True,
@@ -263,13 +262,13 @@ class ObjectSchema(SimpleSchema):
         """
         super(ObjectSchema, cls).validate(datum)
         # Additional validation to check for duplicate properties
-        props = [prop["name"] for prop in datum['properties']]
+        props = [prop["name"] for prop in datum["fields"]]
         if len(props) > len(set(props)):
             raise ValidationError("Duplicate properties")
 
     def resolve(self, fetcher):
         super(ObjectSchema, self).resolve(fetcher)
-        for prop in self.opts["properties"]:
+        for prop in self.opts["fields"]:
             prop["schema"].resolve(fetcher)
 
 
@@ -308,7 +307,7 @@ class ArraySchema(SimpleSchema):
     @classmethod
     def get_schema(cls):
         return ObjectSchema({
-            "properties": [
+            "fields": [
                 {
                     "name": "type",
                     "required": True,
@@ -535,8 +534,8 @@ class ClassModel(ObjectModel):
     @classmethod
     def get_schema(cls):
         return ObjectSchema({
-            "type": "object",
-            "properties": cls.properties
+            "type": "struct",
+            "fields": cls.properties
         })
 
 

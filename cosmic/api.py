@@ -8,12 +8,15 @@ import requests
 from flask import request
 
 from cosmic.exceptions import APIError, SpecError, ValidationError
-from cosmic.actions import Action
+from cosmic.actions import Action, ActionSerializer
 from cosmic.tools import Namespace, normalize, normalize_schema, fetch_model
 from cosmic.models import Model as BaseModel
 from cosmic.models import ClassModel, Schema, SimpleSchema, JSONData
 from cosmic.http import ALL_METHODS, View, UrlRule, Response, CorsPreflightView, make_view
 from cosmic.plugins import FlaskPlugin
+
+import teleport
+
 
 class APIModel(ClassModel):
     """Normalizes and serialized API model classes. The serialized form
@@ -47,6 +50,29 @@ class APIModel(ClassModel):
         return inst
 
 
+class APIModelSerializer(object):
+
+    schema = teleport.Struct([
+        teleport.required("name", teleport.String()),
+        teleport.optional("schema", teleport.Schema())
+    ])
+
+    def deserialize(self, datum):
+        opts = self.schema.deserialize(datum)
+        inst = APIModel(**opts)
+        # Take a schema and name and turn them into a model class
+        class M(BaseModel):
+            @classmethod
+            def get_schema(cls):
+                return inst.schema
+        M.__name__ = str(inst.name)
+        inst.model = M
+        return inst
+
+    def serialize(self, datum):
+        self.schema.serialize(datum.data)
+
+
 
 class API(BaseModel):
 
@@ -65,12 +91,13 @@ class API(BaseModel):
         sys.modules['cosmic.registry.' + self.name] = self
         # Now that fetch_model has access to the API, resolve the models
         for model in self.data["models"]:
-            model.schema.resolve(fetcher=fetch_model)
+            if hasattr(model.schema, "resolve"):
+                model.schema.resolve(fetcher=fetch_model)
         # Then resolve the actions
         for action in self.data["actions"]:
-            if action.accepts:
+            if action.accepts and hasattr(action.accepts, "resolve"):
                 action.accepts.resolve(fetcher=fetch_model)
-            if action.returns:
+            if action.returns and hasattr(action.returns, "resolve"):
                 action.returns.resolve(fetcher=fetch_model)
 
 
@@ -95,7 +122,8 @@ class API(BaseModel):
         res = requests.get(url)
         spec = res.json
         name = spec['name']
-        api = API.normalize(res.json)
+        #api = API.normalize(res.json)
+        api = APISerializer().deserialize(res.json)
         # Set the API url to be the spec URL, minus the /spec.json
         api.url = url[:-10]
         return api
@@ -105,8 +133,8 @@ class API(BaseModel):
         return self.data['name']
 
     schema = normalize_schema({
-        "type": "object",
-        "properties": [
+        "type": "struct",
+        "fields": [
             {
                 "name": "name",
                 "schema": {"type": "string"},
@@ -239,3 +267,20 @@ class API(BaseModel):
         """
         self.context_func = func
         return func
+
+
+class APISerializer(object):
+
+    schema = teleport.Struct([
+        teleport.required("name", teleport.String()),
+        teleport.optional("homepage", teleport.String()),
+        teleport.required("actions", teleport.Array(ActionSerializer())),
+        teleport.required("models", teleport.Array(APIModelSerializer()))
+    ])
+
+    def deserialize(self, datum):
+        opts = self.schema.deserialize(datum)
+        return API(opts)
+
+    def serialize(self, datum):
+        self.schema.serialize(datum.data)

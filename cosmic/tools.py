@@ -60,7 +60,7 @@ def get_arg_spec(func):
             "schema": {"type": "json"},
             "required": i < numargs
         })
-    return normalize_schema({"type": "object", "properties": props})
+    return normalize_schema({"type": "struct", "fields": props})
 
 def apply_to_func(func, data):
     """Applies a piece of normalized data to the user-defined action function
@@ -114,12 +114,12 @@ def schema_is_compatible(general, detailed):
     """
     if isinstance(general, JSONDataSchema):
         return True
-    # If not "json", general has to be an "object". Make sure detailed
+    # If not "json", general has to be an "struct". Make sure detailed
     # is an object too
     if not isinstance(detailed, ObjectSchema):
         return False
-    gprops = general.data['properties']
-    dprops = detailed.data['properties']
+    gprops = general.data["fields"]
+    dprops = detailed.data["fields"]
     if len(gprops) != len(dprops):
         return False
     for i in range(len(gprops)):

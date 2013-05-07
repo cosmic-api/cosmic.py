@@ -7,8 +7,8 @@ def quickstart():
 
     @cookbook.action(
         accepts=normalize_schema({
-            'type': 'object',
-            'properties': [
+            'type': "struct",
+            "fields": [
                 {
                     "name": "spicy",
                     "required": True,

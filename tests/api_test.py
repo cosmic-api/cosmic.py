@@ -19,8 +19,8 @@ cookbook_spec = {
         {
             u'name': u'cabbage',
             u'accepts': {
-                u'type': u'object',
-                u'properties': [
+                u'type': u"struct",
+                u"fields": [
                     {
                         u"name": u"spicy",
                         u"required": True,
@@ -64,8 +64,8 @@ class TestAPI(TestCase):
 
         @self.cookbook.action(
             accepts=normalize_schema({
-                "type": "object",
-                "properties": [
+                "type": "struct",
+                "fields": [
                     {
                         "name": "spicy",
                         "schema": {"type": "boolean"},
@@ -110,7 +110,7 @@ class TestAPI(TestCase):
 
     def test_accepts_invalid_schema(self):
         with self.assertRaisesRegexp(ValidationError, "Missing properties"):
-            @self.cookbook.action(returns=normalize_schema({"type": "object"}))
+            @self.cookbook.action(returns=normalize_schema({"type": "struct"}))
             def func(a, b=1):
                 pass
 
@@ -138,7 +138,7 @@ class TestAPI(TestCase):
         with self.assertRaises(ValidationError):
             @self.cookbook.model
             class Pizza(Model):
-                schema = normalize_schema({"tipe": "object"})
+                schema = normalize_schema({"tipe": "struct"})
 
     def test_model_schema_validation(self):
         with self.assertRaises(ValidationError):

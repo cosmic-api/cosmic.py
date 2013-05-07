@@ -10,6 +10,8 @@ from cosmic.exceptions import APIError, SpecError, AuthenticationError, Validati
 
 from cosmic.models import *
 
+import teleport
+
 class Action(ClassModel):
 
     properties = [
@@ -100,3 +102,19 @@ class Action(ClassModel):
                 return None
         except ValidationError:
             raise APIError("Call to %s returned an invalid value" % self.name)
+
+class ActionSerializer(object):
+
+    schema = teleport.Struct([
+        teleport.required("name", teleport.String()),
+        teleport.optional("accepts", teleport.Schema()),
+        teleport.optional("returns", teleport.Schema())
+    ])
+
+    def deserialize(self, datum):
+        opts = self.schema.deserialize(datum)
+        return Action(**opts)
+
+    def serialize(self, datum):
+        self.schema.serialize(datum.data)
+        
