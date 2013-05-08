@@ -10,8 +10,7 @@ from flask import request
 from cosmic.exceptions import APIError, SpecError, ValidationError
 from cosmic.actions import Action, ActionSerializer
 from cosmic.tools import Namespace, normalize, normalize_schema
-from cosmic.models import Model as BaseModel
-from cosmic.models import ClassModel, Schema, SimpleSchema, JSONData
+from cosmic.models import JSONData
 from cosmic.http import ALL_METHODS, View, UrlRule, Response, CorsPreflightView, make_view
 from cosmic.plugins import FlaskPlugin
 
@@ -29,7 +28,7 @@ class APIModelSerializer(object):
     def deserialize(self, datum):
         opts = self.schema.deserialize(datum)
         # Take a schema and name and turn them into a model class
-        class M(BaseModel):
+        class M(object):
             @classmethod
             def get_schema(cls):
                 return opts["schema"]

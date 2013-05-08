@@ -12,6 +12,7 @@ from cosmic.models import *
 from cosmic.tools import normalize_schema
 
 from teleport import ValidationError as VError
+import teleport
 
 class TestBasicRemoteAction(TestCase):
 
@@ -170,20 +171,10 @@ class TestActionWithModelData(TestCase):
 class TestActionAnnotation(TestCase):
 
     def setUp(self):
-        self.a_schema = ObjectSchema({
-            "fields": [
-                {
-                    "name": "a",
-                    "required": True,
-                    "schema": IntegerSchema()
-                },
-                {
-                    "name": "b",
-                    "required": False,
-                    "schema": IntegerSchema()
-                }
-            ]
-        })
+        self.a_schema = teleport.Struct([
+            teleport.required("a", teleport.Integer()),
+            teleport.optional("b", teleport.Integer())
+        ])
 
     def test_no_args_accepts(self):
         def func():

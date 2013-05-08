@@ -238,5 +238,4 @@ class TestRemoteAPI(TestCase):
     def test_models(self):
         self.assertEqual(self.cookbook.models.__all__, ["Cookie", "Recipe"])
         self.assertEqual(TSchema().serialize(self.cookbook.models.Recipe.get_schema()), {"type": "string"})
-        self.assertEqual(self.cookbook.models.Recipe.__bases__, (Model,))
 
