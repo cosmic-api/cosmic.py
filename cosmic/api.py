@@ -18,37 +18,6 @@ from cosmic.plugins import FlaskPlugin
 import teleport
 
 
-class APIModel(ClassModel):
-    """Normalizes and serialized API model classes. The serialized form
-    contains the model name and its schema.
-    """
-
-    properties = [
-        {
-            "name": "name",
-            "required": True,
-            "schema": normalize_schema({"type": "string"})
-        },
-        {
-            "name": "schema",
-            "required": True,
-            "schema": normalize_schema({"type": "schema"})
-        }
-    ]
-
-    @classmethod
-    def normalize(cls, datum, **kwargs):
-        # Run the schema normalization
-        inst = super(APIModel, cls).normalize(datum)
-        # Take a schema and name and turn them into a model class
-        class M(BaseModel):
-            @classmethod
-            def get_schema(cls):
-                return inst.schema
-        M.__name__ = str(inst.name)
-        inst.model = M
-        return inst
-
 
 class APIModelSerializer(object):
 
@@ -59,20 +28,24 @@ class APIModelSerializer(object):
 
     def deserialize(self, datum):
         opts = self.schema.deserialize(datum)
-        inst = APIModel(**opts)
         # Take a schema and name and turn them into a model class
         class M(BaseModel):
             @classmethod
             def get_schema(cls):
-                return inst.schema
-        M.__name__ = str(inst.name)
-        inst.model = M
-        return inst
+                return opts["schema"]
+        M.__name__ = str(opts["name"])
+        return {
+            "name": opts["name"],
+            "schema": opts["schema"],
+            "model": M
+        }
 
     def serialize(self, datum):
-        return self.schema.serialize(datum.data)
+        return self.schema.serialize({
+            "name": datum["name"],
+            "schema": datum["schema"]
+        })
 
-APIModel.serializer = APIModelSerializer
 
 
 class API(object):
@@ -87,7 +60,7 @@ class API(object):
             action.api = self
             self.actions.add(action.name, action)
         for model in self.data['models']:
-            self.models.add(model.name, model.model)
+            self.models.add(model["name"], model["model"])
         # Add to registry so we can reference its models
         sys.modules['cosmic.registry.' + self.name] = self
 
@@ -208,9 +181,10 @@ class API(object):
             class Word(Model):
                 schema = normalize_schema({"type": "string"})
         """
-        api_model = APIModel(
-            name=model_cls.__name__,
-            schema=model_cls.get_schema())
+        api_model = {
+            "name": model_cls.__name__,
+            "schema": model_cls.get_schema()
+        }
         # Add to data
         self.data['models'].append(api_model)
         # Add to namespace

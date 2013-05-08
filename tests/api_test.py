@@ -138,7 +138,7 @@ class TestAPI(TestCase):
         self.assertEqual(set(self.cookbook.models.__all__), set(["Recipe", "Cookie", "ChocolateCookie"]))
 
     def test_model_illegal_schema(self):
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(VError):
             @self.cookbook.model
             class Pizza(Model):
                 schema = normalize_schema({"tipe": "struct"})
