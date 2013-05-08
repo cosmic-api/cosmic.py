@@ -6,9 +6,8 @@ from mock import patch, Mock
 
 from cosmic.api import Namespace, API
 from cosmic.actions import Action, ActionSerializer
-from cosmic.exceptions import SpecError, APIError
+from cosmic.exceptions import SpecError, APIError, ValidationError
 from cosmic.http import Request
-from cosmic.models import *
 from cosmic.tools import normalize_schema
 
 from teleport import ValidationError as VError

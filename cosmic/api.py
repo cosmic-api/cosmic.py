@@ -10,7 +10,6 @@ from flask import request
 from cosmic.exceptions import APIError, SpecError, ValidationError
 from cosmic.actions import Action, ActionSerializer
 from cosmic.tools import Namespace, normalize, normalize_schema
-from cosmic.models import JSONData
 from cosmic.http import ALL_METHODS, View, UrlRule, Response, CorsPreflightView, make_view
 from cosmic.plugins import FlaskPlugin
 
@@ -110,7 +109,7 @@ class API(object):
             rules.append(UrlRule(url, action.name + '_cors', cors))
         @make_view("GET")
         def spec_view(payload):
-            return JSONData(APISerializer().serialize(self))
+            return teleport.Box(APISerializer().serialize(self))
         rules.append(UrlRule("/spec.json", "spec", spec_view))
         return rules
 

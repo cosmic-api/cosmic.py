@@ -4,11 +4,9 @@ import json
 
 import requests
 
-from cosmic.tools import get_arg_spec, pack_action_arguments, apply_to_func, schema_is_compatible, normalize, normalize_schema
+from cosmic.tools import get_arg_spec, pack_action_arguments, apply_to_func, schema_is_compatible, normalize, normalize_schema, normalize_json, serialize_json, json_to_string
 from cosmic.http import ALL_METHODS, View, make_view
 from cosmic.exceptions import APIError, SpecError, AuthenticationError, ValidationError
-
-from cosmic.models import *
 
 import teleport
 
@@ -72,7 +70,7 @@ class Action(object):
         # Try to normalize, just for the sake of validation
         normalize_json(self.accepts, serialized)
 
-        data = JSONData.to_string(serialized)
+        data = json_to_string(serialized)
 
         url = self.api.url + '/actions/' + self.name
         headers = {'Content-Type': 'application/json'}

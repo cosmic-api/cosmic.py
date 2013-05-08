@@ -16,7 +16,6 @@ Contents:
    :numbered:
 
    tutorial
-   models
    reference
    http
 

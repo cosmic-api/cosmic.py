@@ -5,10 +5,9 @@ import json
 import sys
 
 from cosmic.exceptions import SpecError, ValidationError, APIError, AuthenticationError
-from cosmic.models import *
 
 from teleport import Schema as TSchema
-from teleport import JSON, Struct
+from teleport import JSON, Struct, Box
 
 class Namespace(object):
     """Essentially a sorted dictionary. Allows to reference actions or
@@ -150,3 +149,32 @@ def normalize(schema, datum):
     normalizer = normalize_schema(schema)
     return normalizer.deserialize(datum)
 
+
+def normalize_json(schema, datum):
+    if schema and not datum:
+        raise ValidationError("Expected Box, found None")
+    if datum and not schema:
+        raise ValidationError("Expected None, found Box")
+    if schema and datum:
+        return schema.deserialize(datum.datum)
+    return None
+
+def serialize_json(schema, datum):
+    if schema and not datum:
+        raise ValidationError("Expected data, found None")
+    if datum and not schema:
+        raise ValidationError("Expected None, found data")
+    if schema and datum:
+        return Box(schema.serialize(datum))
+    return None
+
+def string_to_json(s):
+    if s == "":
+        return None
+    else:
+        return Box(json.loads(s))
+
+def json_to_string(box):
+    if box == None:
+        return ""
+    return json.dumps(box.datum)

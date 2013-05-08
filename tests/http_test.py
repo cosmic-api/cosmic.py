@@ -3,6 +3,8 @@ from unittest2 import TestCase
 from cosmic.tools import *
 from cosmic.http import *
 
+import teleport
+
 
 class TestCorsPreflightView(TestCase):
 
@@ -57,7 +59,7 @@ class TestView(TestCase):
 
         @make_view("POST")
         def unhandled_error(payload):
-            return JSONData(1 / 0)
+            return teleport.Box(1 / 0)
         self.unhandled_error = unhandled_error
 
         @make_view("POST")

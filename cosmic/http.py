@@ -3,8 +3,9 @@ from __future__ import unicode_literals
 import json
 
 from cosmic.exceptions import *
-from cosmic.tools import normalize, normalize_schema
-from cosmic.models import JSONData
+from cosmic.tools import normalize, normalize_schema, string_to_json
+
+from teleport import Box
 
 # We shouldn't have to do this, but Flask doesn't allow us to route
 # all methods implicitly. When we don't pass in methods Flask assumes
@@ -35,9 +36,8 @@ class Request(object):
 class JSONRequest(Request):
     """If the passed in :class:`~cosmic.http.Request` *req* validates, the
     resulting :class:`JSONRequest` will have a *payload* attribute, storing a
-    :class:`~cosmic.models.JSONData` object or ``None`` if the request body
-    was empty. For a non-GET request, Content-Type has to be
-    ``application/json``.
+    :class:`~teleport.Box` object or ``None`` if the request body was empty.
+    For a non-GET request, Content-Type has to be ``application/json``.
 
     :param req: :class:`~cosmic.http.Request`
     :raises: :exc:`SpecError`, :exc:`~cosmic.exceptions.JSONParseError`
@@ -51,7 +51,7 @@ class JSONRequest(Request):
         if req.method != "GET" and ct != "application/json":
             raise SpecError('Content-Type must be "application/json" got %s instead' % ct)
         try:
-            self.payload = JSONData.from_string(req.body)
+            self.payload = string_to_json(req.body)
         except ValueError:
             # Let's be more specific
             raise JSONParseError()
@@ -72,8 +72,7 @@ class View(object):
     """An HTTP request handler.
 
     :param function func: A function that takes a
-        :class:`~cosmic.models.JSONData` and returns a
-        :class:`~cosmic.models.JSONData`.
+        :class:`~teleport.Box` and returns a :class:`~teleport.Box`.
     :param string method: HTTP method that the view will respond to
     """
     def __init__(self, func, method):
@@ -98,7 +97,7 @@ class View(object):
                 req = JSONRequest(req)
                 data = self.func(req.payload)
                 if data != None:
-                    res.body = json.dumps(data.data)
+                    res.body = json.dumps(data.datum)
                 return res
             except HttpError:
                 raise
@@ -126,7 +125,7 @@ def make_view(method):
         >>> from cosmic.http import make_view
         >>> @make_view("POST")
         ... def number(payload):
-        ...     return JSONData(42)
+        ...     return Box(42)
         ...
         >>> number
         <cosmic.http.View object at 0x110ed50>

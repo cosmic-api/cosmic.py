@@ -10,7 +10,6 @@ import requests
 from cosmic.exceptions import *
 from cosmic.tools import normalize, normalize_schema
 from cosmic.api import API, APISerializer
-from cosmic.models import *
 from cosmic import api, context
 
 from teleport import ValidationError as VError

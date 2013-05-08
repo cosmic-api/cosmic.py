@@ -3,10 +3,9 @@ from mock import patch, Mock
 
 from cosmic.exceptions import *
 from cosmic.tools import *
-from cosmic.models import *
 
 from teleport import Schema as TSchema
-from teleport import Integer, Float, Struct, required, optional
+from teleport import Integer, Float, Struct, required, optional, Box
 
 class TestGetArgSpec(TestCase):
 
@@ -108,7 +107,7 @@ class TestApplyToFunc(TestCase):
     def test_one_kwarg_passed_none(self):
         # None is an explicit value
         def f(a=2): return a
-        n = JSONData(None)
+        n = Box(None)
         self.assertEqual(apply_to_func(f, n), n)
 
     def test_multiple_args_and_kwargs_okay(self):
