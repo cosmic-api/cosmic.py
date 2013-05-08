@@ -79,7 +79,7 @@ class TestBasicRemoteAction(TestCase):
         with patch.object(requests, 'post') as mock_post:
             mock_post.return_value.status_code = 200
             mock_post.return_value.json = 1
-            with self.assertRaisesRegexp(APIError, "invalid value"):
+            with self.assertRaisesRegexp(VError, "Invalid string"):
                 self.action(spicy=True, capitalize=True)
 
 
@@ -151,7 +151,7 @@ class TestActionWithModelData(TestCase):
             returns=normalize_schema({"type": "cosmic.Action"}))
 
         self.view = self.action.get_view()
-        self.remote_action = Action.normalize(self.spec)
+        self.remote_action = ActionSerializer().deserialize(self.spec)
 
     def test_direct_call(self):
         self.assertEqual(self.action(self.action), self.action)
@@ -186,7 +186,7 @@ class TestActionAnnotation(TestCase):
         def func(a, b=1):
             pass
         with self.assertRaisesRegexp(SpecError, "incompatible"):
-            action = Action.from_func(func, accepts=BooleanSchema())
+            action = Action.from_func(func, accepts=teleport.Boolean())
 
     def test_args_accepts_compatible_returns_compatible(self):
         def func(a, b=1):

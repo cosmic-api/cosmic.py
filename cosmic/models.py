@@ -1,28 +1,12 @@
-import sys
 import json
-import base64
 
-from cosmic.exceptions import ValidationError, UnicodeDecodeValidationError, SpecError, JSONParseError
-
+from cosmic.exceptions import ValidationError
 
 
-class Model(object):
+class JSONData(object):
 
     def __init__(self, data):
         self.data = data
-
-    @classmethod
-    def normalize(cls, datum):
-        cls.validate(datum)
-        return datum
-
-    @classmethod
-    def get_schema(cls):
-        return cls.schema
-
-
-
-class JSONData(Model):
 
     def __repr__(self):
         contents = json.dumps(self.data)
@@ -40,6 +24,9 @@ class JSONData(Model):
     @classmethod
     def normalize(cls, datum):
         return cls(datum)
+
+    def serialize(self):
+        return self.data
 
     @classmethod
     def to_string(cls, s):

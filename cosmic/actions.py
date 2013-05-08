@@ -84,7 +84,7 @@ class Action(object):
                 raise APIError("Call to %s failed with improper error response")
         try:
             if self.returns:
-                return self.returns.normalize_data(res.json)
+                return self.returns.deserialize(res.json)
             else:
                 return None
         except ValidationError:

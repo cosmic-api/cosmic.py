@@ -97,7 +97,7 @@ class TestAPI(TestCase):
             pass
 
         @self.cookbook.model
-        class Recipe(Model):
+        class Recipe(object):
             schema = normalize_schema({u"type": u"string"})
             @classmethod
             def validate(cls, datum):
@@ -105,7 +105,7 @@ class TestAPI(TestCase):
                     raise ValidationError("Not kosher")
 
         @self.cookbook.model
-        class Cookie(Model):
+        class Cookie(object):
             schema = normalize_schema({u"type": u"boolean"})
 
         self.app = self.cookbook.get_flask_app(debug=True)
@@ -140,7 +140,7 @@ class TestAPI(TestCase):
     def test_model_illegal_schema(self):
         with self.assertRaises(VError):
             @self.cookbook.model
-            class Pizza(Model):
+            class Pizza(object):
                 schema = normalize_schema({"tipe": "struct"})
 
     def test_model_schema_validation(self):

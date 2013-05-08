@@ -182,7 +182,7 @@ class API(object):
         """
         api_model = {
             "name": model_cls.__name__,
-            "schema": model_cls.get_schema()
+            "schema": model_cls.schema
         }
         # Add to data
         self.data['models'].append(api_model)
