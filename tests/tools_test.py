@@ -5,6 +5,9 @@ from cosmic.exceptions import *
 from cosmic.tools import *
 from cosmic.models import *
 
+from teleport import Schema as TSchema
+from teleport import Integer, Float, Struct, required, optional
+
 class TestGetArgSpec(TestCase):
 
     def test_no_args(self):
@@ -13,17 +16,17 @@ class TestGetArgSpec(TestCase):
 
     def test_one_arg(self):
         def f(x): pass
-        self.assertEqual(get_arg_spec(f).serialize(), {
+        self.assertEqual(TSchema().serialize(get_arg_spec(f)), {
             'type': 'json'
         })
         def f(x=1): pass
-        self.assertEqual(get_arg_spec(f).serialize(), {
+        self.assertEqual(TSchema().serialize(get_arg_spec(f)), {
             'type': 'json'
         })
 
     def test_multiple_args(self):
         def f(x, y): pass
-        self.assertEqual(get_arg_spec(f).serialize(), {
+        self.assertEqual(TSchema().serialize(get_arg_spec(f)), {
             'type': "struct",
             "fields": [
                 {
@@ -41,36 +44,36 @@ class TestGetArgSpec(TestCase):
 
     def test_multiple_args_and_kwargs(self):
         def f(x, y=1): pass
-        self.assertEqual(get_arg_spec(f).serialize(), {
-            'type': "struct",
+        self.assertEqual(TSchema().serialize(get_arg_spec(f)), {
+            'type': u"struct",
             "fields": [
                 {
-                    "name": "x",
+                    "name": u"x",
                     "required": True,
-                    "schema": {"type": "json"}
+                    "schema": {"type": u"json"}
                 },
                 {
-                    "name": "y",
+                    "name": u"y",
                     "required": False,
-                    "schema": {"type": "json"}
+                    "schema": {"type": u"json"}
                 }
             ]
         })
 
     def test_multiple_kwargs(self):
         def f(x=0, y=1): pass
-        self.assertEqual(get_arg_spec(f).serialize(), {
-            'type': "struct",
+        self.assertEqual(TSchema().serialize(get_arg_spec(f)), {
+            'type': u"struct",
             "fields": [
                 {
-                    "name": "x",
+                    "name": u"x",
                     "required": False,
-                    "schema": {"type": "json"}
+                    "schema": {"type": u"json"}
                 },
                 {
-                    "name": "y",
+                    "name": u"y",
                     "required": False,
-                    "schema": {"type": "json"}
+                    "schema": {"type": u"json"}
                 }
             ]
         })
@@ -148,137 +151,47 @@ class TestPackActionArguments(TestCase):
 class TestSchemaIsCompatible(TestCase):
 
     def test_base_cases(self):
-        json_schema = JSONDataSchema()
-        assert schema_is_compatible(json_schema, IntegerSchema())
-        assert schema_is_compatible(json_schema, FloatSchema())
+        json_schema = JSON()
+        assert schema_is_compatible(json_schema, Integer())
+        assert schema_is_compatible(json_schema, Float())
 
     def test_object_keys_mismatch(self):
-        g = ObjectSchema({
-            "fields": [
-                {
-                    u"name": u"a",
-                    u"required": False,
-                    u"schema": IntegerSchema()
-                },
-                {
-                    u"name": u"b",
-                    u"required": False,
-                    u"schema": IntegerSchema()
-                }
-            ]
-        })
-        d = ObjectSchema({
-            "fields": [
-                {
-                    u"name": u"a",
-                    u"required": False,
-                    u"schema": IntegerSchema()
-                },
-                {
-                    u"name": u"c",
-                    u"required": False,
-                    u"schema": IntegerSchema()
-                }
-            ]
-        })
-        assert not schema_is_compatible(g, d)
-    def test_object_keys_mismatch(self):
-        g = ObjectSchema({
-            "fields": [
-                {
-                    u"name": u"a",
-                    u"required": False,
-                    u"schema": IntegerSchema()
-                },
-                {
-                    u"name": u"b",
-                    u"required": False,
-                    u"schema": IntegerSchema()
-                }
-            ]
-        })
-        d = ObjectSchema({
-            "fields": [
-                {
-                    u"name": u"a",
-                    u"required": False,
-                    u"schema": IntegerSchema()
-                },
-                {
-                    u"name": u"c",
-                    u"required": False,
-                    u"schema": IntegerSchema()
-                }
-            ]
-        })
+        g = Struct([
+            optional("a", Integer()),
+            optional("b", Integer())
+        ])
+        d = Struct([
+            optional("a", Integer()),
+            optional("c", Integer())
+        ])
         assert not schema_is_compatible(g, d)
 
     def test_object_number_mismatch(self):
-        g = ObjectSchema({
-            "fields": [
-                {
-                    u"name": u"a",
-                    u"required": False,
-                    u"schema": IntegerSchema()
-                }
-            ]
-        })
-        d = ObjectSchema({
-            "fields": [
-                {
-                    u"name": u"a",
-                    u"required": False,
-                    u"schema": IntegerSchema()
-                },
-                {
-                    u"name": u"b",
-                    u"required": False,
-                    u"schema": IntegerSchema()
-                }
-            ]
-        })
+        g = Struct([
+            optional("a", Integer())
+        ])
+        d = Struct([
+            optional("a", Integer()),
+            optional("b", Integer())
+        ])
         assert not schema_is_compatible(g, d)
 
     def test_object_match(self):
-        g = ObjectSchema({
-            "fields": [
-                {
-                    u"name": u"a",
-                    u"required": True,
-                    u"schema": IntegerSchema()
-                }
-            ]
-        })
-        d = ObjectSchema({
-            "fields": [
-                {
-                    u"name": u"a",
-                    u"required": True,
-                    u"schema": IntegerSchema()
-                }
-            ]
-        })
+        g = Struct([
+            required("a", Integer())
+        ])
+        d = Struct([
+            required("a", Integer())
+        ])
         assert schema_is_compatible(g, d)
 
     def test_object_no_match(self):
-        g = ObjectSchema({
-            "fields": [
-                {
-                    u"name": u"a",
-                    u"required": True,
-                    u"schema": IntegerSchema()
-                }
-            ]
-        })
-        d = ObjectSchema({
-            "fields": [
-                {
-                    u"name": u"a",
-                    u"required": False,
-                    u"schema": IntegerSchema()
-                }
-            ]
-        })
+        g = Struct([
+            required("a", Integer())
+        ])
+        d = Struct([
+            optional("a", Integer())
+        ])
         assert not schema_is_compatible(g, d)
 
 
@@ -313,12 +226,12 @@ class TestSchemaHelpers(TestCase):
 
     def setUp(self):
         self.api = {
-            "name": "Foo",
+            "name": u"Foo",
             "actions": [
                 {
-                    "name": "foo",
-                    "accepts": {"type": "string"},
-                    "returns": {"type": "boolean"}
+                    "name": u"foo",
+                    "accepts": {"type": u"string"},
+                    "returns": {"type": u"boolean"}
                 }
             ],
             "models": []
@@ -330,4 +243,4 @@ class TestSchemaHelpers(TestCase):
 
     def test_normalize_schema(self):
         schema = normalize_schema({"type": "cosmic.API"})
-        self.assertEqual(schema.normalize_data(self.api).__class__.__name__, "API")
+        self.assertEqual(schema.deserialize(self.api).__class__.__name__, "API")

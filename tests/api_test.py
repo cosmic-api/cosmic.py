@@ -8,12 +8,13 @@ from mock import patch
 import requests
 
 from cosmic.exceptions import *
-from cosmic.tools import normalize, normalize_schema, fetch_model
-from cosmic.api import API
+from cosmic.tools import normalize, normalize_schema
+from cosmic.api import API, APISerializer
 from cosmic.models import *
 from cosmic import api, context
 
 from teleport import ValidationError as VError
+from teleport import Schema as TSchema
 
 cookbook_spec = {
     u'name': u'cookbook',
@@ -66,21 +67,21 @@ class TestAPI(TestCase):
 
         @self.cookbook.action(
             accepts=normalize_schema({
-                "type": "struct",
+                "type": u"struct",
                 "fields": [
                     {
-                        "name": "spicy",
-                        "schema": {"type": "boolean"},
+                        "name": u"spicy",
+                        "schema": {"type": u"boolean"},
                         "required": True
                     },
                     {
-                        "name": "capitalize",
-                        "schema": {"type": "boolean"},
+                        "name": u"capitalize",
+                        "schema": {"type": u"boolean"},
                         "required": False
                     }
                 ]
             }),
-            returns=normalize_schema({"type": "json"}))
+            returns=normalize_schema({"type": u"json"}))
         def cabbage(spicy, capitalize=False):
             if spicy:
                 c = "kimchi"
@@ -111,7 +112,7 @@ class TestAPI(TestCase):
         self.werkzeug_client = self.app.test_client()
 
     def test_accepts_invalid_schema(self):
-        with self.assertRaisesRegexp(ValidationError, "Missing properties"):
+        with self.assertRaisesRegexp(VError, "Missing fields"):
             @self.cookbook.action(returns=normalize_schema({"type": "struct"}))
             def func(a, b=1):
                 pass
@@ -120,11 +121,11 @@ class TestAPI(TestCase):
         self.assertEqual(normalize({"type": "cookbook.Recipe"}, "turkey").data, "turkey")
 
     def test_model_normalize_bad_api(self):
-        with self.assertRaisesRegexp(ValidationError, "Unknown API"):
+        with self.assertRaisesRegexp(VError, "Unknown type"):
             normalize({"type": "cookingbook.Recipe"}, "turkey")
 
     def test_model_normalize_bad_model(self):
-        with self.assertRaisesRegexp(ValidationError, "Unknown model"):
+        with self.assertRaisesRegexp(VError, "Unknown type"):
             normalize({"type": "cookbook.Schmecipe"}, "turkey")
 
     def test_subclassing_hook(self):
@@ -143,7 +144,7 @@ class TestAPI(TestCase):
                 schema = normalize_schema({"tipe": "struct"})
 
     def test_model_schema_validation(self):
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(VError):
             self.cookbook.models.Recipe.normalize(1.1)
 
     def test_model_custom_validation(self):
@@ -153,7 +154,7 @@ class TestAPI(TestCase):
         self.cookbook.models.Cookie(True)
 
     def test_serialize(self):
-        self.assertEqual(self.cookbook.serialize(), cookbook_spec)
+        self.assertEqual(APISerializer().serialize(self.cookbook), cookbook_spec)
 
     def test_call(self):
         data = '{"spicy": true}'
@@ -165,7 +166,7 @@ class TestAPI(TestCase):
         self.assertEqual(json.loads(res.data), cookbook_spec)
 
     def test_schema(self):
-        normalize({"type": "cosmic.API"}, self.cookbook.serialize())
+        normalize({"type": "cosmic.API"}, APISerializer().serialize(self.cookbook))
 
     def test_load_url(self):
         """Test the API.load function when given a spec URL"""
@@ -173,7 +174,7 @@ class TestAPI(TestCase):
             mock_get.return_value.json = cookbook_spec
             mock_get.return_value.status_code = 200
             cookbook_decentralized = API.load('http://example.com/spec.json')
-            self.assertEqual(cookbook_decentralized.serialize(), cookbook_spec)
+            self.assertEqual(APISerializer().serialize(cookbook_decentralized), cookbook_spec)
             self.assertEqual(sys.modules['cosmic.registry.cookbook'], cookbook_decentralized)
 
     def test_api_module_cache(self):
@@ -220,7 +221,7 @@ class TextContext(TestCase):
 class TestRemoteAPI(TestCase):
 
     def setUp(self):
-        self.cookbook = API.normalize(cookbook_spec)
+        self.cookbook = API.serializer().deserialize(cookbook_spec)
         self.cookbook.url = 'http://localhost:8881/api'
 
     def test_remote_no_return_action(self):
@@ -236,6 +237,6 @@ class TestRemoteAPI(TestCase):
 
     def test_models(self):
         self.assertEqual(self.cookbook.models.__all__, ["Cookie", "Recipe"])
-        self.assertEqual(self.cookbook.models.Recipe.get_schema().serialize(), {"type": "string"})
+        self.assertEqual(TSchema().serialize(self.cookbook.models.Recipe.get_schema()), {"type": "string"})
         self.assertEqual(self.cookbook.models.Recipe.__bases__, (Model,))
 

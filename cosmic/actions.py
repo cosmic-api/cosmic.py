@@ -4,7 +4,7 @@ import json
 
 import requests
 
-from cosmic.tools import get_arg_spec, pack_action_arguments, apply_to_func, schema_is_compatible, normalize, normalize_schema, fetch_model
+from cosmic.tools import get_arg_spec, pack_action_arguments, apply_to_func, schema_is_compatible, normalize, normalize_schema
 from cosmic.http import ALL_METHODS, View, make_view
 from cosmic.exceptions import APIError, SpecError, AuthenticationError, ValidationError
 
@@ -116,5 +116,6 @@ class ActionSerializer(object):
         return Action(**opts)
 
     def serialize(self, datum):
-        self.schema.serialize(datum.data)
+        return self.schema.serialize(datum.data)
         
+Action.serializer = ActionSerializer

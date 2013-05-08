@@ -9,7 +9,7 @@ from cosmic.actions import Action
 from cosmic.exceptions import SpecError, APIError
 from cosmic.http import Request
 from cosmic.models import *
-from cosmic.tools import normalize_schema, fetch_model
+from cosmic.tools import normalize_schema
 
 from teleport import ValidationError as VError
 

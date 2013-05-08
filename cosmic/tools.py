@@ -7,6 +7,9 @@ import sys
 from cosmic.exceptions import SpecError, ValidationError, APIError, AuthenticationError
 from cosmic.models import *
 
+from teleport import Schema as TSchema
+from teleport import JSON, Struct
+
 class Namespace(object):
     """Essentially a sorted dictionary. Allows to reference actions or
     models as attributes and implements __all__ so that a Namespace
@@ -48,7 +51,7 @@ def get_arg_spec(func):
         return None
     # One argument: accepts a single JSON object
     if len(args) == 1:
-        return normalize_schema({"type": "json"})
+        return JSON()
     # Multiple arguments: accepts a JSON object with a property for
     # each argument, each property being of type 'json'
     props = []
@@ -56,7 +59,7 @@ def get_arg_spec(func):
     numargs = len(args) - (len(defaults) if defaults else 0)
     for i, arg in enumerate(args):
         props.append({
-            "name": arg,
+            "name": unicode(arg),
             "schema": {"type": "json"},
             "required": i < numargs
         })
@@ -112,14 +115,14 @@ def schema_is_compatible(general, detailed):
     of JSON schema as returned by tools.get_arg_spec, the special
     schema is an arbitrary JSON schema as passed in by the user.
     """
-    if isinstance(general, JSONDataSchema):
+    if isinstance(general, JSON):
         return True
     # If not "json", general has to be an "struct". Make sure detailed
     # is an object too
-    if not isinstance(detailed, ObjectSchema):
+    if not isinstance(detailed, Struct):
         return False
-    gprops = general.data["fields"]
-    dprops = detailed.data["fields"]
+    gprops = general.fields
+    dprops = detailed.fields
     if len(gprops) != len(dprops):
         return False
     for i in range(len(gprops)):
@@ -132,37 +135,11 @@ def schema_is_compatible(general, detailed):
 
 
 
-def fetch_model(full_name):
-    """When passed into the model system's :meth:`normalize` or :meth:`normalize_data`
-    methods, this function will allow the model system to retrieve models referenced
-    by name. Without it, the model system would be limited to the core models.
-    """
-    if full_name == "cosmic.API":
-        from cosmic.api import API
-        return API
-    if full_name == "cosmic.APIModel":
-        from cosmic.api import APIModel
-        return APIModel
-    if full_name == "cosmic.Action":
-        from cosmic.actions import Action
-        return Action
-    api_name, model_name = full_name.split('.', 1)
-    try:
-        api = sys.modules['cosmic.registry.' + api_name]
-    except KeyError:
-        raise ValidationError("Unknown API", api_name)
-    try:
-        return getattr(api.models, model_name)
-    except SpecError:
-        raise ValidationError("Unknown model for %s API" % api_name, model_name)
-
-
 def normalize_schema(schema):
     """A convenience method for normalizing a JSON schema into a
     :class:`~cosmic.models.Schema` object.
     """
-    schema = Schema.normalize(schema)
-    schema.resolve(fetcher=fetch_model)
+    schema = TSchema().deserialize(schema)
     return schema
 
 
@@ -171,5 +148,5 @@ def normalize(schema, datum):
     the data normalized against the schema.
     """
     normalizer = normalize_schema(schema)
-    return normalizer.normalize_data(datum)
+    return normalizer.deserialize(datum)
 

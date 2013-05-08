@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 import json
 
 from cosmic.exceptions import *
-from cosmic.tools import normalize, normalize_schema, fetch_model
+from cosmic.tools import normalize, normalize_schema
 from cosmic.models import JSONData
 
 # We shouldn't have to do this, but Flask doesn't allow us to route

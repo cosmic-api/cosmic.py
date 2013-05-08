@@ -9,7 +9,7 @@ from flask import request
 
 from cosmic.exceptions import APIError, SpecError, ValidationError
 from cosmic.actions import Action, ActionSerializer
-from cosmic.tools import Namespace, normalize, normalize_schema, fetch_model
+from cosmic.tools import Namespace, normalize, normalize_schema
 from cosmic.models import Model as BaseModel
 from cosmic.models import ClassModel, Schema, SimpleSchema, JSONData
 from cosmic.http import ALL_METHODS, View, UrlRule, Response, CorsPreflightView, make_view
@@ -70,14 +70,15 @@ class APIModelSerializer(object):
         return inst
 
     def serialize(self, datum):
-        self.schema.serialize(datum.data)
+        return self.schema.serialize(datum.data)
+
+APIModel.serializer = APIModelSerializer
 
 
+class API(object):
 
-class API(BaseModel):
-
-    def __init__(self, *args, **kwargs):
-        super(API, self).__init__(*args, **kwargs)
+    def __init__(self, data):
+        self.data = data
         # Create actions and models namespace
         self.actions = Namespace()
         self.models = models = Namespace()
@@ -89,16 +90,6 @@ class API(BaseModel):
             self.models.add(model.name, model.model)
         # Add to registry so we can reference its models
         sys.modules['cosmic.registry.' + self.name] = self
-        # Now that fetch_model has access to the API, resolve the models
-        for model in self.data["models"]:
-            if hasattr(model.schema, "resolve"):
-                model.schema.resolve(fetcher=fetch_model)
-        # Then resolve the actions
-        for action in self.data["actions"]:
-            if action.accepts and hasattr(action.accepts, "resolve"):
-                action.accepts.resolve(fetcher=fetch_model)
-            if action.returns and hasattr(action.returns, "resolve"):
-                action.returns.resolve(fetcher=fetch_model)
 
 
     @classmethod
@@ -132,38 +123,6 @@ class API(BaseModel):
     def name(self):
         return self.data['name']
 
-    schema = normalize_schema({
-        "type": "struct",
-        "fields": [
-            {
-                "name": "name",
-                "schema": {"type": "string"},
-                "required": True
-            },
-            {
-                "name": "homepage",
-                "schema": {"type": "string"},
-                "required": False
-            },
-            {
-                "name": "actions",
-                "required": True,
-                "schema": {
-                    "type": "array",
-                    "items": {"type": "cosmic.Action"}
-                }
-            },
-            {
-                "name": "models",
-                "required": True,
-                "schema": {
-                    "type": "array",
-                    "items": {"type": "cosmic.APIModel"}
-                }
-            }
-        ]
-    })
-
     def get_rules(self, debug=False):
         """Get a list of URL rules necessary for implementing this API The
         *debug* parameter will be passed into the :class:`cosmic.http.View`
@@ -179,7 +138,7 @@ class API(BaseModel):
             rules.append(UrlRule(url, action.name + '_cors', cors))
         @make_view("GET")
         def spec_view(payload):
-            return JSONData(self.serialize())
+            return JSONData(self.serializer().serialize(self))
         rules.append(UrlRule("/spec.json", "spec", spec_view))
         return rules
 
@@ -283,4 +242,6 @@ class APISerializer(object):
         return API(opts)
 
     def serialize(self, datum):
-        self.schema.serialize(datum.data)
+        return self.schema.serialize(datum.data)
+
+API.serializer = APISerializer

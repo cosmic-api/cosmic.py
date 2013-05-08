@@ -45,7 +45,10 @@ class Model(BaseModel):
     def normalize(cls, datum):
         # Normalize against model schema
         schema = cls.get_schema()
-        datum = schema.normalize_data(datum)
+        if hasattr(schema, "deserialize"):
+            datum = schema.deserialize(datum)
+        else:
+            datum = schema.normalize_data(datum)
         cls.validate(datum)
         return cls(datum)
 
@@ -70,6 +73,8 @@ class Schema(Model):
 
 
     def normalize_data(self, datum):
+        if hasattr(self.model_cls, "serializer"):
+            return self.model_cls.serializer().deserialize(datum)
         return self.model_cls.normalize(datum, **self.opts)
 
     def serialize_data(self, datum):
@@ -526,6 +531,9 @@ def serialize_json(schema, datum):
     if datum and not schema:
         raise ValidationError("Expected None, found data")
     if schema and datum:
-        return JSONData(schema.serialize_data(datum))
+        if hasattr(schema, "deserialize"):
+            return JSONData(schema.serialize(datum))
+        else:
+            return JSONData(schema.serialize_data(datum))
     return None
 
