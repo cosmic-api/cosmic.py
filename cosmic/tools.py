@@ -4,10 +4,9 @@ import inspect
 import json
 import sys
 
-from cosmic.exceptions import SpecError, ValidationError, APIError, AuthenticationError
+from cosmic.exceptions import SpecError, APIError, AuthenticationError
 
-from teleport import Schema as TSchema
-from teleport import JSON, Struct, Box
+from teleport import JSON, Struct, Box, Schema, ValidationError
 
 class Namespace(object):
     """Essentially a sorted dictionary. Allows to reference actions or
@@ -138,7 +137,7 @@ def normalize_schema(schema):
     """A convenience method for normalizing a JSON schema into a
     :class:`~cosmic.models.Schema` object.
     """
-    schema = TSchema().deserialize(schema)
+    schema = Schema().deserialize(schema)
     return schema
 
 

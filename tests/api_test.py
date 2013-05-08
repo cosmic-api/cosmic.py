@@ -12,8 +12,7 @@ from cosmic.tools import normalize, normalize_schema
 from cosmic.api import API, APISerializer
 from cosmic import api, context
 
-from teleport import ValidationError as VError
-from teleport import Schema as TSchema
+from teleport import Schema, ValidationError
 
 cookbook_spec = {
     u'name': u'cookbook',
@@ -111,7 +110,7 @@ class TestAPI(TestCase):
         self.werkzeug_client = self.app.test_client()
 
     def test_accepts_invalid_schema(self):
-        with self.assertRaisesRegexp(VError, "Missing fields"):
+        with self.assertRaisesRegexp(ValidationError, "Missing fields"):
             @self.cookbook.action(returns=normalize_schema({"type": "struct"}))
             def func(a, b=1):
                 pass
@@ -120,11 +119,11 @@ class TestAPI(TestCase):
         self.assertEqual(normalize({"type": "cookbook.Recipe"}, "turkey").data, "turkey")
 
     def test_model_normalize_bad_api(self):
-        with self.assertRaisesRegexp(VError, "Unknown type"):
+        with self.assertRaisesRegexp(ValidationError, "Unknown type"):
             normalize({"type": "cookingbook.Recipe"}, "turkey")
 
     def test_model_normalize_bad_model(self):
-        with self.assertRaisesRegexp(VError, "Unknown type"):
+        with self.assertRaisesRegexp(ValidationError, "Unknown type"):
             normalize({"type": "cookbook.Schmecipe"}, "turkey")
 
     def test_subclassing_hook(self):
@@ -137,13 +136,13 @@ class TestAPI(TestCase):
         self.assertEqual(set(self.cookbook.models.__all__), set(["Recipe", "Cookie", "ChocolateCookie"]))
 
     def test_model_illegal_schema(self):
-        with self.assertRaises(VError):
+        with self.assertRaises(ValidationError):
             @self.cookbook.model
             class Pizza(object):
                 schema = normalize_schema({"tipe": "struct"})
 
     def test_model_schema_validation(self):
-        with self.assertRaises(VError):
+        with self.assertRaises(ValidationError):
             self.cookbook.models.Recipe.normalize(1.1)
 
     def test_model_custom_validation(self):
@@ -236,5 +235,5 @@ class TestRemoteAPI(TestCase):
 
     def test_models(self):
         self.assertEqual(self.cookbook.models.__all__, ["Cookie", "Recipe"])
-        self.assertEqual(TSchema().serialize(self.cookbook.models.Recipe.get_schema()), {"type": "string"})
+        self.assertEqual(Schema().serialize(self.cookbook.models.Recipe.get_schema()), {"type": "string"})
 

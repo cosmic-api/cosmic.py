@@ -28,12 +28,6 @@ Exceptions
 .. autoclass:: cosmic.exceptions.JSONParseError
    :members:
 
-.. autoclass:: cosmic.exceptions.ValidationError
-   :members:
-
-.. autoclass:: cosmic.exceptions.UnicodeDecodeValidationError
-   :members:
-
 .. autoclass:: cosmic.exceptions.HttpError
    :members:
 

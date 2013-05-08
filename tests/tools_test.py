@@ -4,8 +4,7 @@ from mock import patch, Mock
 from cosmic.exceptions import *
 from cosmic.tools import *
 
-from teleport import Schema as TSchema
-from teleport import Integer, Float, Struct, required, optional, Box
+from teleport import Integer, Float, Struct, required, optional, Box, Schema
 
 class TestGetArgSpec(TestCase):
 
@@ -15,17 +14,17 @@ class TestGetArgSpec(TestCase):
 
     def test_one_arg(self):
         def f(x): pass
-        self.assertEqual(TSchema().serialize(get_arg_spec(f)), {
+        self.assertEqual(Schema().serialize(get_arg_spec(f)), {
             'type': 'json'
         })
         def f(x=1): pass
-        self.assertEqual(TSchema().serialize(get_arg_spec(f)), {
+        self.assertEqual(Schema().serialize(get_arg_spec(f)), {
             'type': 'json'
         })
 
     def test_multiple_args(self):
         def f(x, y): pass
-        self.assertEqual(TSchema().serialize(get_arg_spec(f)), {
+        self.assertEqual(Schema().serialize(get_arg_spec(f)), {
             'type': "struct",
             "fields": [
                 {
@@ -43,7 +42,7 @@ class TestGetArgSpec(TestCase):
 
     def test_multiple_args_and_kwargs(self):
         def f(x, y=1): pass
-        self.assertEqual(TSchema().serialize(get_arg_spec(f)), {
+        self.assertEqual(Schema().serialize(get_arg_spec(f)), {
             'type': u"struct",
             "fields": [
                 {
@@ -61,7 +60,7 @@ class TestGetArgSpec(TestCase):
 
     def test_multiple_kwargs(self):
         def f(x=0, y=1): pass
-        self.assertEqual(TSchema().serialize(get_arg_spec(f)), {
+        self.assertEqual(Schema().serialize(get_arg_spec(f)), {
             'type': u"struct",
             "fields": [
                 {

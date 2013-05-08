@@ -2,8 +2,6 @@ from __future__ import unicode_literals
 
 import json
 
-from teleport import ValidationError as V
-
 class JSONParseError(Exception):
     """Raised in place of the generic :exc:`ValueError`"""
 
@@ -44,51 +42,3 @@ class AuthenticationError(ClientError):
 class SpecError(Exception):
     pass
 
-class ValidationError(V):
-    """Raised by the model system. Stores the location of the error in the
-    JSON document relative to its root for a more useful stack trace.
-
-    First parameter is the error *message*, second optional parameter is the
-    object that failed validation.
-    """
-
-    def __init__(self, message, *args):
-        super(ValidationError, self).__init__(message)
-        self.stack = []
-        # Just the message or was there also an object passed in?
-        self.has_obj = len(args) > 0
-        if self.has_obj:
-            self.obj = args[0]
-
-    def _print_with_format(self, func):
-        # Returns the full error message with the representation
-        # of its literals determined by the passed in function.
-        ret = ""
-        # If there is a stack, preface the message with a location
-        if self.stack:
-            stack = ""
-            for item in reversed(self.stack):
-                stack += func([item])
-            ret += "Item at %s " % stack
-        # Main message
-        ret += self.message
-        # If an object was passed in, represent it at the end
-        if self.has_obj:
-            ret += ": %s" % func(self.obj)
-        return ret
-
-    def __str__(self):
-        return self._print_with_format(repr)
-
-    def print_json(self):
-        """Print the same message as the one you would find in a
-        console stack trace, but using JSON to output all the language
-        literals. This representation is used for sending error
-        messages over the wire.
-        """
-        return self._print_with_format(json.dumps)
-
-class UnicodeDecodeValidationError(ValidationError):
-    """A subclass of :exc:`~cosmic.exceptions.ValidationError` raised
-    in place of a :exc:`UnicodeDecodeError`.
-    """

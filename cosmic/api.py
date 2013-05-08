@@ -7,7 +7,7 @@ import requests
 # Still necessary for authentication
 from flask import request
 
-from cosmic.exceptions import APIError, SpecError, ValidationError
+from cosmic.exceptions import APIError, SpecError
 from cosmic.actions import Action, ActionSerializer
 from cosmic.tools import Namespace, normalize, normalize_schema
 from cosmic.http import ALL_METHODS, View, UrlRule, Response, CorsPreflightView, make_view

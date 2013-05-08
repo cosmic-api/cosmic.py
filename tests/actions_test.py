@@ -6,11 +6,11 @@ from mock import patch, Mock
 
 from cosmic.api import Namespace, API
 from cosmic.actions import Action, ActionSerializer
-from cosmic.exceptions import SpecError, APIError, ValidationError
+from cosmic.exceptions import SpecError, APIError
 from cosmic.http import Request
 from cosmic.tools import normalize_schema
 
-from teleport import ValidationError as VError
+from teleport import ValidationError
 import teleport
 
 class TestBasicRemoteAction(TestCase):
@@ -71,14 +71,14 @@ class TestBasicRemoteAction(TestCase):
                 self.action(spicy=True)
 
     def test_call_with_bad_args(self):
-        with self.assertRaisesRegexp(VError, "Invalid boolean"):
+        with self.assertRaisesRegexp(ValidationError, "Invalid boolean"):
             self.action(spicy="yes")
 
     def test_call_invalid_response(self):
         with patch.object(requests, 'post') as mock_post:
             mock_post.return_value.status_code = 200
             mock_post.return_value.json = 1
-            with self.assertRaisesRegexp(VError, "Invalid string"):
+            with self.assertRaisesRegexp(ValidationError, "Invalid string"):
                 self.action(spicy=True, capitalize=True)
 
 

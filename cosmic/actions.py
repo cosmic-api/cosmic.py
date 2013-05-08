@@ -6,7 +6,9 @@ import requests
 
 from cosmic.tools import get_arg_spec, pack_action_arguments, apply_to_func, schema_is_compatible, normalize, normalize_schema, normalize_json, serialize_json, json_to_string
 from cosmic.http import ALL_METHODS, View, make_view
-from cosmic.exceptions import APIError, SpecError, AuthenticationError, ValidationError
+from cosmic.exceptions import APIError, SpecError, AuthenticationError
+
+from teleport import ValidationError
 
 import teleport
 

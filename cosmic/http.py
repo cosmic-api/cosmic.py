@@ -5,7 +5,7 @@ import json
 from cosmic.exceptions import *
 from cosmic.tools import normalize, normalize_schema, string_to_json
 
-from teleport import Box
+from teleport import Box, ValidationError
 
 # We shouldn't have to do this, but Flask doesn't allow us to route
 # all methods implicitly. When we don't pass in methods Flask assumes
@@ -106,7 +106,7 @@ class View(object):
             except SpecError as err:
                 raise ClientError(err.args[0])
             except ValidationError as e:
-                raise ClientError(e.print_json())
+                raise ClientError(str(e))
             # Any other exception should be handled gracefully
             except:
                 if debug:

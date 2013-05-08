@@ -4,6 +4,7 @@ from cosmic.tools import *
 from cosmic.http import *
 
 import teleport
+from teleport import ValidationError
 
 
 class TestCorsPreflightView(TestCase):
