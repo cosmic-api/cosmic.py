@@ -12,26 +12,13 @@ from cosmic.models import *
 
 import teleport
 
-class Action(ClassModel):
+class Action(object):
 
-    properties = [
-        {
-            "name": "name",
-            "schema": normalize_schema({"type": "string"}),
-            "required": True
-        },
-        {
-            "name": "accepts",
-            "schema": normalize_schema({"type": "schema"}),
-            "required": False
-        },
-        {
-            "name": "returns",
-            "schema": normalize_schema({"type": "schema"}),
-            "required": False
-        }
-    ]
-
+    def __init__(self, name, accepts=None, returns=None, raw_func=None):
+        self.name = name
+        self.accepts = accepts
+        self.returns = returns
+        self.raw_func = raw_func
 
     @classmethod
     def from_func(cls, func, accepts=None, returns=None):
@@ -76,7 +63,7 @@ class Action(ClassModel):
         """
         packed = pack_action_arguments(*args, **kwargs)
 
-        if hasattr(self, "raw_func"):
+        if self.raw_func != None:
             # It may seem reduntant to pack then unpack arguments, but we need
             # to make sure local actions behave same as remote ones
             return apply_to_func(self.raw_func, packed)
@@ -116,6 +103,9 @@ class ActionSerializer(object):
         return Action(**opts)
 
     def serialize(self, datum):
-        return self.schema.serialize(datum.data)
+        return self.schema.serialize({
+            "name": datum.name,
+            "accepts": datum.accepts,
+            "returns": datum.returns
+        })
         
-Action.serializer = ActionSerializer

@@ -221,7 +221,7 @@ class TextContext(TestCase):
 class TestRemoteAPI(TestCase):
 
     def setUp(self):
-        self.cookbook = API.serializer().deserialize(cookbook_spec)
+        self.cookbook = APISerializer().deserialize(cookbook_spec)
         self.cookbook.url = 'http://localhost:8881/api'
 
     def test_remote_no_return_action(self):

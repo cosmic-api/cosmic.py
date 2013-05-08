@@ -111,7 +111,7 @@ class API(object):
             rules.append(UrlRule(url, action.name + '_cors', cors))
         @make_view("GET")
         def spec_view(payload):
-            return JSONData(self.serializer().serialize(self))
+            return JSONData(APISerializer().serialize(self))
         rules.append(UrlRule("/spec.json", "spec", spec_view))
         return rules
 
@@ -218,4 +218,3 @@ class APISerializer(object):
     def serialize(self, datum):
         return self.schema.serialize(datum.data)
 
-API.serializer = APISerializer

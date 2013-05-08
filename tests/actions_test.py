@@ -5,7 +5,7 @@ from unittest2 import TestCase
 from mock import patch, Mock
 
 from cosmic.api import Namespace, API
-from cosmic.actions import Action
+from cosmic.actions import Action, ActionSerializer
 from cosmic.exceptions import SpecError, APIError
 from cosmic.http import Request
 from cosmic.models import *
@@ -38,7 +38,7 @@ class TestBasicRemoteAction(TestCase):
             }
         }
 
-        self.action = Action.normalize(spec)
+        self.action = ActionSerializer().deserialize(spec)
 
         # Without this, the action won't know its URL
         api = API.create("foodie")

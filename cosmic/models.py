@@ -73,8 +73,6 @@ class Schema(Model):
 
 
     def normalize_data(self, datum):
-        if hasattr(self.model_cls, "serializer"):
-            return self.model_cls.serializer().deserialize(datum)
         return self.model_cls.normalize(datum, **self.opts)
 
     def serialize_data(self, datum):
