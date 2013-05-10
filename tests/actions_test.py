@@ -41,7 +41,7 @@ class TestBasicRemoteAction(TestCase):
         self.action = ActionSerializer().deserialize(spec)
 
         # Without this, the action won't know its URL
-        api = API.create("foodie")
+        api = API("foodie")
         api.url = "http://example.com"
         self.action.api = api
 

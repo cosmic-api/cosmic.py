@@ -61,7 +61,7 @@ class TestAPI(TestCase):
     def setUp(self):
         self.maxDiff = None
 
-        self.cookbook = API.create(u'cookbook')
+        self.cookbook = API(u'cookbook')
 
         @self.cookbook.action(
             accepts=normalize_schema({
@@ -96,7 +96,9 @@ class TestAPI(TestCase):
 
         @self.cookbook.model
         class Recipe(object):
-            schema = normalize_schema({u"type": u"string"})
+            @classmethod
+            def get_schema(cls):
+                return normalize_schema({u"type": u"string"})
             @classmethod
             def validate(cls, datum):
                 if datum == "bacon":
@@ -104,7 +106,9 @@ class TestAPI(TestCase):
 
         @self.cookbook.model
         class Cookie(object):
-            schema = normalize_schema({u"type": u"boolean"})
+            @classmethod
+            def get_schema(cls):
+                return normalize_schema({u"type": u"boolean"})
 
         self.app = self.cookbook.get_flask_app(debug=True)
         self.werkzeug_client = self.app.test_client()
@@ -188,7 +192,7 @@ class TestAPI(TestCase):
 class TextContext(TestCase):
 
     def setUp(self):
-        self.cookbook = API.create(u'authenticator')
+        self.cookbook = API(u'authenticator')
 
         @self.cookbook.action(returns=normalize_schema({"type": "string"}))
         def hello():

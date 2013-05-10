@@ -35,6 +35,7 @@ class Namespace(object):
         except KeyError:
             raise SpecError("%s is not defined" % name)
 
+
 def get_arg_spec(func):
     """Calculate JSON schema spec for action. If function has no
     arguments, returns None.

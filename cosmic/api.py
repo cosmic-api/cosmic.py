@@ -32,49 +32,32 @@ class APIModelSerializer(object):
             def get_schema(cls):
                 return opts["schema"]
         M.__name__ = str(opts["name"])
-        return {
-            "name": opts["name"],
-            "schema": opts["schema"],
-            "model": M
-        }
+        return M
 
     def serialize(self, datum):
         return self.schema.serialize({
-            "name": datum["name"],
-            "schema": datum["schema"]
+            "name": datum.__name__,
+            "schema": datum.get_schema()
         })
 
 
 
 class API(object):
 
-    def __init__(self, data):
-        self.data = data
+    def __init__(self, name, homepage=None, actions=[], models=[]):
+        self.name = name
+        self.homepage = homepage
         # Create actions and models namespace
         self.actions = Namespace()
-        self.models = models = Namespace()
+        self.models = Namespace()
         # Populate them if we have initial data
-        for action in self.data['actions']:
+        for action in actions:
             action.api = self
             self.actions.add(action.name, action)
-        for model in self.data['models']:
-            self.models.add(model["name"], model["model"])
+        for model in models:
+            self.models.add(model.__name__, model)
         # Add to registry so we can reference its models
         sys.modules['cosmic.registry.' + self.name] = self
-
-
-    @classmethod
-    def create(cls, name=None, homepage=None):
-        """Create a new :class:`~cosmic.api.API`. This method is more
-        convenient than the constructor, because it doesn't ask about actions
-        or models.
-        """
-        return cls({
-            "name": name,
-            "homepage": homepage,
-            "actions": [],
-            "models": []
-        })
 
     @staticmethod
     def load(url):
@@ -89,10 +72,6 @@ class API(object):
         # Set the API url to be the spec URL, minus the /spec.json
         api.url = url[:-10]
         return api
-
-    @property
-    def name(self):
-        return self.data['name']
 
     def get_rules(self, debug=False):
         """Get a list of URL rules necessary for implementing this API The
@@ -160,7 +139,6 @@ class API(object):
             action = Action.from_func(func, accepts=accepts, returns=returns)
             action.api = self
             self.actions.add(name, action)
-            self.data['actions'].append(action)
             return func
         return wrapper
 
@@ -179,12 +157,6 @@ class API(object):
             class Word(Model):
                 schema = normalize_schema({"type": "string"})
         """
-        api_model = {
-            "name": model_cls.__name__,
-            "schema": model_cls.schema
-        }
-        # Add to data
-        self.data['models'].append(api_model)
         # Add to namespace
         self.models.add(model_cls.__name__, model_cls)
         return model_cls
@@ -211,8 +183,13 @@ class APISerializer(object):
 
     def deserialize(self, datum):
         opts = self.schema.deserialize(datum)
-        return API(opts)
+        return API(**opts)
 
     def serialize(self, datum):
-        return self.schema.serialize(datum.data)
+        return self.schema.serialize({
+            "name": datum.name,
+            "homepage": datum.homepage,
+            "actions": datum.actions._list,
+            "models": datum.models._list
+        })
 
