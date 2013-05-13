@@ -8,7 +8,7 @@ from cosmic.api import Namespace, API
 from cosmic.actions import Action, ActionSerializer
 from cosmic.exceptions import SpecError, APIError
 from cosmic.http import Request
-from cosmic.tools import normalize_schema
+from cosmic.tools import normalize_schema, CosmicTypeMap
 
 from teleport import ValidationError
 import teleport
@@ -78,7 +78,7 @@ class TestBasicRemoteAction(TestCase):
         with patch.object(requests, 'post') as mock_post:
             mock_post.return_value.status_code = 200
             mock_post.return_value.json = 1
-            with self.assertRaisesRegexp(ValidationError, "Invalid string"):
+            with self.assertRaisesRegexp(APIError, "invalid value"):
                 self.action(spicy=True, capitalize=True)
 
 
@@ -150,7 +150,8 @@ class TestActionWithModelData(TestCase):
             returns=normalize_schema({"type": "cosmic.Action"}))
 
         self.view = self.action.get_view()
-        self.remote_action = ActionSerializer().deserialize(self.spec)
+        with CosmicTypeMap():
+            self.remote_action = ActionSerializer().deserialize(self.spec)
 
     def test_direct_call(self):
         self.assertEqual(self.action(self.action), self.action)
@@ -162,7 +163,8 @@ class TestActionWithModelData(TestCase):
             self.remote_action(self.action)
 
     def test_answer_request(self):
-        res = self.view(Request("POST", json.dumps(self.spec), {"Content-Type": "application/json"}))
+        with CosmicTypeMap():
+            res = self.view(Request("POST", json.dumps(self.spec), {"Content-Type": "application/json"}), debug=True)
         answer = json.loads(res.body)
         self.assertEqual(self.spec, answer)
 
@@ -193,5 +195,4 @@ class TestActionAnnotation(TestCase):
         action = Action.from_func(func, accepts=self.a_schema, returns=self.a_schema)
         self.assertEqual(action.accepts, self.a_schema)
         self.assertEqual(action.returns, self.a_schema)
-
 

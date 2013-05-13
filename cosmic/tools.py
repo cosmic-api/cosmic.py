@@ -7,6 +7,7 @@ import sys
 from cosmic.exceptions import SpecError, APIError, AuthenticationError
 
 from teleport import JSON, Struct, Box, Schema, ValidationError
+from teleport import TypeMap, DEFAULT_TYPES
 
 class Namespace(object):
     """Essentially a sorted dictionary. Allows to reference actions or
@@ -30,10 +31,9 @@ class Namespace(object):
         self._dict[name] = item
 
     def __getattr__(self, name):
-        try:
-            return self._dict[name]
-        except KeyError:
-            raise SpecError("%s is not defined" % name)
+        return self._dict[name]
+
+
 
 
 def get_arg_spec(func):
@@ -134,11 +134,45 @@ def schema_is_compatible(general, detailed):
 
 
 
+class CosmicTypeMap(TypeMap):
+
+    def get(self, name):
+        from api import APISerializer, APIModelSerializer
+        from actions import ActionSerializer
+        if name == "cosmic.API":
+            return APISerializer
+        elif name == "cosmic.APIModel":
+            return APIModelSerializer
+        elif name == "cosmic.Action":
+            return ActionSerializer
+        elif '.' in name:
+            api_name, model_name = name.split('.', 1)
+            # May raise KeyError
+            api = sys.modules['cosmic.registry.' + api_name]
+            model = api.models._dict[model_name]
+
+            class Serializer(object):
+                match_type = name
+
+                def deserialize(self, datum):
+                    datum = model.get_schema().deserialize(datum)
+                    model.validate(datum)
+                    return model(datum)
+
+                def serialize(self, datum):
+                    return datum.serialize_self()
+
+            return Serializer
+        else:
+            return DEFAULT_TYPES[name]
+
+
 def normalize_schema(schema):
     """A convenience method for normalizing a JSON schema into a
     :class:`~cosmic.models.Schema` object.
     """
-    schema = Schema().deserialize(schema)
+    with CosmicTypeMap():
+        schema = Schema().deserialize(schema)
     return schema
 
 
@@ -147,7 +181,8 @@ def normalize(schema, datum):
     the data normalized against the schema.
     """
     normalizer = normalize_schema(schema)
-    return normalizer.deserialize(datum)
+    with CosmicTypeMap():
+        return normalizer.deserialize(datum)
 
 
 def normalize_json(schema, datum):

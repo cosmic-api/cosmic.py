@@ -18,6 +18,7 @@ import teleport
 
 
 class APIModelSerializer(object):
+    match_type = "cosmic.APIModel"
 
     schema = teleport.Struct([
         teleport.required("name", teleport.String()),
@@ -173,6 +174,7 @@ class API(object):
 
 
 class APISerializer(object):
+    match_type = "cosmic.API"
 
     schema = teleport.Struct([
         teleport.required("name", teleport.String()),

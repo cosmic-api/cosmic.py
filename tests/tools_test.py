@@ -216,7 +216,7 @@ class TestNamespace(TestCase):
         self.assertEqual(self.dispatcher.__all__, ['length', 'height'])
 
     def test_undefined_action(self):
-        with self.assertRaisesRegexp(SpecError, "not defined"):
+        with self.assertRaises(KeyError):
             self.dispatcher.width([0, 1, 2])
 
 

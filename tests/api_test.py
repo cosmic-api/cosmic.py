@@ -96,6 +96,10 @@ class TestAPI(TestCase):
 
         @self.cookbook.model
         class Recipe(object):
+            def __init__(self, s):
+                self.s = s
+            def serialize_self(self):
+                return self.s
             @classmethod
             def get_schema(cls):
                 return normalize_schema({u"type": u"string"})
@@ -120,7 +124,7 @@ class TestAPI(TestCase):
                 pass
 
     def test_model_normalize_okay(self):
-        self.assertEqual(normalize({"type": "cookbook.Recipe"}, "turkey").data, "turkey")
+        self.assertEqual(normalize({"type": "cookbook.Recipe"}, "turkey").s, "turkey")
 
     def test_model_normalize_bad_api(self):
         with self.assertRaisesRegexp(ValidationError, "Unknown type"):

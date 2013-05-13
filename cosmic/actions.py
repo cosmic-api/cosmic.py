@@ -90,7 +90,9 @@ class Action(object):
         except ValidationError:
             raise APIError("Call to %s returned an invalid value" % self.name)
 
+
 class ActionSerializer(object):
+    match_type = "cosmic.Action"
 
     schema = teleport.Struct([
         teleport.required("name", teleport.String()),
