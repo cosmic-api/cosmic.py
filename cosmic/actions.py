@@ -4,9 +4,9 @@ import json
 
 import requests
 
-from cosmic.tools import get_arg_spec, pack_action_arguments, apply_to_func, schema_is_compatible, normalize_json, serialize_json, json_to_string
-from cosmic.http import ALL_METHODS, View, make_view
-from cosmic.exceptions import APIError, SpecError, AuthenticationError
+from .tools import get_arg_spec, pack_action_arguments, apply_to_func, schema_is_compatible, normalize_json, serialize_json, json_to_string
+from .http import make_view
+from .exceptions import APIError, SpecError, AuthenticationError
 
 from teleport import ValidationError
 

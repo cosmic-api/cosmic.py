@@ -4,7 +4,7 @@ import inspect
 import json
 import sys
 
-from cosmic.exceptions import SpecError, APIError, AuthenticationError
+from .exceptions import SpecError
 
 from teleport import *
 

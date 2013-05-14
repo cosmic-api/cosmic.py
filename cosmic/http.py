@@ -2,8 +2,8 @@ from __future__ import unicode_literals
 
 import json
 
-from cosmic.exceptions import *
-from cosmic.tools import string_to_json
+from .exceptions import *
+from .tools import string_to_json
 
 from teleport import Box, ValidationError
 

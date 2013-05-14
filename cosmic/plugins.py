@@ -4,8 +4,8 @@ from werkzeug.local import release_local
 from flask import Flask, Blueprint, request, make_response
 
 from cosmic import context
-from cosmic.http import Request
-from cosmic.exceptions import ClientError, AuthenticationError
+from .http import Request
+from .exceptions import ClientError, AuthenticationError
 
 
 class FlaskPlugin(object):
