@@ -153,9 +153,7 @@ class CosmicTypeMap(TypeMap):
                 match_type = name
 
                 def deserialize(self, datum):
-                    datum = model.get_schema().deserialize(datum)
-                    model.validate(datum)
-                    return model(datum)
+                    return model.deserialize_self(datum)
 
                 def serialize(self, datum):
                     return datum.serialize_self()

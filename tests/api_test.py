@@ -98,21 +98,38 @@ class TestAPI(TestCase):
         class Recipe(object):
             def __init__(self, s):
                 self.s = s
+
             def serialize_self(self):
                 return self.s
+
             @classmethod
             def get_schema(cls):
                 return String()
+
             @classmethod
-            def validate(cls, datum):
+            def deserialize_self(cls, datum):
+                datum = cls.get_schema().deserialize(datum)
                 if datum == "bacon":
                     raise ValidationError("Not kosher")
+                return cls(datum)
 
         @self.cookbook.model
         class Cookie(object):
+            def __init__(self, b):
+                self.b = b
+
+            def serialize_self(self):
+                return self.b
+
             @classmethod
             def get_schema(cls):
                 return Boolean()
+
+            @classmethod
+            def deserialize_self(cls, datum):
+                datum = cls.get_schema().deserialize(datum)
+                return cls(datum)
+
 
         self.app = self.cookbook.get_flask_app(debug=True)
         self.werkzeug_client = self.app.test_client()
@@ -155,11 +172,11 @@ class TestAPI(TestCase):
 
     def test_model_schema_validation(self):
         with self.assertRaises(ValidationError):
-            self.cookbook.models.Recipe.deserialize(1.1)
+            self.cookbook.models.Recipe.deserialize_self(1.1)
 
     def test_model_custom_validation(self):
         with self.assertRaisesRegexp(ValidationError, "kosher"):
-            self.cookbook.models.Recipe.deserialize("bacon")
+            self.cookbook.models.Recipe.deserialize_self("bacon")
         # When not overridden, custom validation passes
         self.cookbook.models.Cookie(True)
 
