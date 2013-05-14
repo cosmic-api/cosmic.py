@@ -235,8 +235,8 @@ class TestSchemaHelpers(TestCase):
             "models": []
         }
 
-    def test_normalize_schema(self):
+    def test_deserialize_schema(self):
         with CosmicTypeMap():
-            schema = normalize_schema({"type": "cosmic.API"})
+            schema = Schema().deserialize({"type": "cosmic.API"})
             self.assertEqual(schema.deserialize(self.api).__class__.__name__, "API")
 

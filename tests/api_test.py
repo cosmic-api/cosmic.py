@@ -8,11 +8,11 @@ from mock import patch
 import requests
 
 from cosmic.exceptions import *
-from cosmic.tools import normalize_schema, CosmicTypeMap
+from cosmic.tools import CosmicTypeMap
 from cosmic.api import API, APISerializer
 from cosmic import api, context
 
-from teleport import Schema, ValidationError
+from teleport import *
 
 cookbook_spec = {
     u'name': u'cookbook',
@@ -64,7 +64,7 @@ class TestAPI(TestCase):
         self.cookbook = API(u'cookbook')
 
         @self.cookbook.action(
-            accepts=normalize_schema({
+            accepts=Schema().deserialize({
                 "type": u"struct",
                 "fields": [
                     {
@@ -79,7 +79,7 @@ class TestAPI(TestCase):
                     }
                 ]
             }),
-            returns=normalize_schema({"type": u"json"}))
+            returns=JSON())
         def cabbage(spicy, capitalize=False):
             if spicy:
                 c = "kimchi"
@@ -102,7 +102,7 @@ class TestAPI(TestCase):
                 return self.s
             @classmethod
             def get_schema(cls):
-                return normalize_schema({u"type": u"string"})
+                return String()
             @classmethod
             def validate(cls, datum):
                 if datum == "bacon":
@@ -112,28 +112,28 @@ class TestAPI(TestCase):
         class Cookie(object):
             @classmethod
             def get_schema(cls):
-                return normalize_schema({u"type": u"boolean"})
+                return Boolean()
 
         self.app = self.cookbook.get_flask_app(debug=True)
         self.werkzeug_client = self.app.test_client()
 
     def test_accepts_invalid_schema(self):
         with self.assertRaisesRegexp(ValidationError, "Missing fields"):
-            @self.cookbook.action(returns=normalize_schema({"type": "struct"}))
+            @self.cookbook.action(returns=Schema().deserialize({"type": "struct"}))
             def func(a, b=1):
                 pass
 
-    def test_model_normalize_okay(self):
+    def test_model_deserialize_okay(self):
         with CosmicTypeMap():
             s = Schema().deserialize({"type": "cookbook.Recipe"})
             self.assertEqual(s.deserialize("turkey").s, "turkey")
 
-    def test_model_normalize_bad_api(self):
+    def test_model_deserialize_bad_api(self):
         with CosmicTypeMap():
             with self.assertRaisesRegexp(ValidationError, "Unknown type"):
                 Schema().deserialize({"type": "cookingbook.Recipe"})
 
-    def test_model_normalize_bad_model(self):
+    def test_model_deserialize_bad_model(self):
         with CosmicTypeMap():
             with self.assertRaisesRegexp(ValidationError, "Unknown type"):
                 Schema().deserialize({"type": "cookbook.Rec"})
@@ -151,15 +151,15 @@ class TestAPI(TestCase):
         with self.assertRaises(ValidationError):
             @self.cookbook.model
             class Pizza(object):
-                schema = normalize_schema({"tipe": "struct"})
+                schema = Schema().deserialize({"tipe": "struct"})
 
     def test_model_schema_validation(self):
         with self.assertRaises(ValidationError):
-            self.cookbook.models.Recipe.normalize(1.1)
+            self.cookbook.models.Recipe.deserialize(1.1)
 
     def test_model_custom_validation(self):
         with self.assertRaisesRegexp(ValidationError, "kosher"):
-            self.cookbook.models.Recipe.normalize("bacon")
+            self.cookbook.models.Recipe.deserialize("bacon")
         # When not overridden, custom validation passes
         self.cookbook.models.Cookie(True)
 
@@ -203,7 +203,7 @@ class TextContext(TestCase):
     def setUp(self):
         self.cookbook = API(u'authenticator')
 
-        @self.cookbook.action(returns=normalize_schema({"type": "string"}))
+        @self.cookbook.action(returns=String())
         def hello():
             return context.secret
 

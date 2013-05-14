@@ -6,8 +6,7 @@ import sys
 
 from cosmic.exceptions import SpecError, APIError, AuthenticationError
 
-from teleport import JSON, Struct, Box, Schema, ValidationError
-from teleport import TypeMap, BUILTIN_TYPES
+from teleport import *
 
 class Namespace(object):
     """Essentially a sorted dictionary. Allows to reference actions or
@@ -32,8 +31,6 @@ class Namespace(object):
 
     def __getattr__(self, name):
         return self._dict[name]
-
-
 
 
 def get_arg_spec(func):
@@ -62,7 +59,8 @@ def get_arg_spec(func):
             "schema": {"type": "json"},
             "required": i < numargs
         })
-    return normalize_schema({"type": "struct", "fields": props})
+    return Struct.deserialize_self({"type": "struct", "fields": props})
+
 
 def apply_to_func(func, data):
     """Applies a piece of normalized data to the user-defined action function
@@ -165,14 +163,6 @@ class CosmicTypeMap(TypeMap):
             return Serializer
         else:
             return BUILTIN_TYPES[name]
-
-
-def normalize_schema(schema):
-    """A convenience method for normalizing a JSON schema into a
-    :class:`~cosmic.models.Schema` object.
-    """
-    schema = Schema().deserialize(schema)
-    return schema
 
 
 def normalize_json(schema, datum):

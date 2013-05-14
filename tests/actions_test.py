@@ -8,10 +8,9 @@ from cosmic.api import Namespace, API
 from cosmic.actions import Action, ActionSerializer
 from cosmic.exceptions import SpecError, APIError
 from cosmic.http import Request
-from cosmic.tools import normalize_schema, CosmicTypeMap
+from cosmic.tools import CosmicTypeMap
 
-from teleport import ValidationError
-import teleport
+from teleport import *
 
 class TestBasicRemoteAction(TestCase):
 
@@ -99,7 +98,7 @@ class TestBasicAction(TestCase):
             return "%s pounds of %s" % (12.0 / servings, c)
 
         self.action = Action.from_func(cabbage,
-            accepts=normalize_schema({
+            accepts=Schema().deserialize({
                 "type": "struct",
                 "fields": [
                     {
@@ -114,7 +113,7 @@ class TestBasicAction(TestCase):
                     }
                 ]
             }),
-            returns=normalize_schema({"type": "string"}))
+            returns=String())
         self.view = self.action.get_view()
 
     def test_successful_call(self):
@@ -147,8 +146,8 @@ class TestActionWithModelData(TestCase):
 
         with CosmicTypeMap():
             self.action = Action.from_func(get_some,
-                accepts=normalize_schema({"type": "cosmic.Action"}),
-                returns=normalize_schema({"type": "cosmic.Action"}))
+                accepts=Schema().deserialize({"type": "cosmic.Action"}),
+                returns=Schema().deserialize({"type": "cosmic.Action"}))
 
             self.view = self.action.get_view()
             self.remote_action = ActionSerializer().deserialize(self.spec)
@@ -172,9 +171,9 @@ class TestActionWithModelData(TestCase):
 class TestActionAnnotation(TestCase):
 
     def setUp(self):
-        self.a_schema = teleport.Struct([
-            teleport.required("a", teleport.Integer()),
-            teleport.optional("b", teleport.Integer())
+        self.a_schema = Struct([
+            required("a", Integer()),
+            optional("b", Integer())
         ])
 
     def test_no_args_accepts(self):
@@ -187,7 +186,7 @@ class TestActionAnnotation(TestCase):
         def func(a, b=1):
             pass
         with self.assertRaisesRegexp(SpecError, "incompatible"):
-            action = Action.from_func(func, accepts=teleport.Boolean())
+            action = Action.from_func(func, accepts=Boolean())
 
     def test_args_accepts_compatible_returns_compatible(self):
         def func(a, b=1):
