@@ -9,7 +9,7 @@ from flask import request
 
 from cosmic.exceptions import APIError, SpecError
 from cosmic.actions import Action, ActionSerializer
-from cosmic.tools import Namespace, normalize, normalize_schema, CosmicTypeMap
+from cosmic.tools import Namespace, CosmicTypeMap
 from cosmic.http import ALL_METHODS, View, UrlRule, Response, CorsPreflightView, make_view
 from cosmic.plugins import FlaskPlugin
 

@@ -175,14 +175,6 @@ def normalize_schema(schema):
     return schema
 
 
-def normalize(schema, datum):
-    """Schema is a JSON schema and datum is the JSON form of the data. Returns
-    the data normalized against the schema.
-    """
-    normalizer = normalize_schema(schema)
-    return normalizer.deserialize(datum)
-
-
 def normalize_json(schema, datum):
     if schema and not datum:
         raise ValidationError("Expected Box, found None")

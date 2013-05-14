@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 import json
 
 from cosmic.exceptions import *
-from cosmic.tools import normalize, normalize_schema, string_to_json
+from cosmic.tools import string_to_json
 
 from teleport import Box, ValidationError
 
