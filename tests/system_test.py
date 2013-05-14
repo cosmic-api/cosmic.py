@@ -1,27 +1,16 @@
 def quickstart():
 
     from cosmic.api import API
-    from cosmic.tools import normalize_schema
+    from teleport import Struct, Boolean, String, required, optional
     
-    cookbook = API.create('cookbook')
+    cookbook = API('cookbook')
 
     @cookbook.action(
-        accepts=normalize_schema({
-            'type': "struct",
-            "fields": [
-                {
-                    "name": "spicy",
-                    "required": True,
-                    "schema": {"type": "boolean"}
-                },
-                {
-                    "name": "capitalize",
-                    "required": False,
-                    "schema": {"type": "boolean"}
-                }
-            ]
-        }),
-        returns=normalize_schema({"type": "string"}))
+        accepts=Struct([
+            required("spicy", Boolean()),
+            optional("capitalize", Boolean()),
+        ]),
+        returns=String())
     def cabbage(spicy=False):
         if spicy:
             return "kimchi"
