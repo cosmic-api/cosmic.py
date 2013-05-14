@@ -7,7 +7,7 @@ import sys
 from cosmic.exceptions import SpecError, APIError, AuthenticationError
 
 from teleport import JSON, Struct, Box, Schema, ValidationError
-from teleport import TypeMap, DEFAULT_TYPES
+from teleport import TypeMap, BUILTIN_TYPES
 
 class Namespace(object):
     """Essentially a sorted dictionary. Allows to reference actions or
@@ -136,7 +136,7 @@ def schema_is_compatible(general, detailed):
 
 class CosmicTypeMap(TypeMap):
 
-    def get(self, name):
+    def __getitem__(self, name):
         from api import APISerializer, APIModelSerializer
         from actions import ActionSerializer
         if name == "cosmic.API":
@@ -164,15 +164,14 @@ class CosmicTypeMap(TypeMap):
 
             return Serializer
         else:
-            return DEFAULT_TYPES[name]
+            return BUILTIN_TYPES[name]
 
 
 def normalize_schema(schema):
     """A convenience method for normalizing a JSON schema into a
     :class:`~cosmic.models.Schema` object.
     """
-    with CosmicTypeMap():
-        schema = Schema().deserialize(schema)
+    schema = Schema().deserialize(schema)
     return schema
 
 
@@ -181,8 +180,7 @@ def normalize(schema, datum):
     the data normalized against the schema.
     """
     normalizer = normalize_schema(schema)
-    with CosmicTypeMap():
-        return normalizer.deserialize(datum)
+    return normalizer.deserialize(datum)
 
 
 def normalize_json(schema, datum):

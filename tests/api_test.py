@@ -8,7 +8,7 @@ from mock import patch
 import requests
 
 from cosmic.exceptions import *
-from cosmic.tools import normalize, normalize_schema
+from cosmic.tools import normalize, normalize_schema, CosmicTypeMap
 from cosmic.api import API, APISerializer
 from cosmic import api, context
 
@@ -124,15 +124,18 @@ class TestAPI(TestCase):
                 pass
 
     def test_model_normalize_okay(self):
-        self.assertEqual(normalize({"type": "cookbook.Recipe"}, "turkey").s, "turkey")
+        with CosmicTypeMap():
+            self.assertEqual(normalize({"type": "cookbook.Recipe"}, "turkey").s, "turkey")
 
     def test_model_normalize_bad_api(self):
-        with self.assertRaisesRegexp(ValidationError, "Unknown type"):
-            normalize({"type": "cookingbook.Recipe"}, "turkey")
+        with CosmicTypeMap():
+            with self.assertRaisesRegexp(ValidationError, "Unknown type"):
+                normalize({"type": "cookingbook.Recipe"}, "turkey")
 
     def test_model_normalize_bad_model(self):
-        with self.assertRaisesRegexp(ValidationError, "Unknown type"):
-            normalize({"type": "cookbook.Schmecipe"}, "turkey")
+        with CosmicTypeMap():
+            with self.assertRaisesRegexp(ValidationError, "Unknown type"):
+                normalize({"type": "cookbook.Schmecipe"}, "turkey")
 
     def test_subclassing_hook(self):
         self.assertEqual(set(self.cookbook.models.__all__), set(["Recipe", "Cookie"]))
@@ -172,7 +175,8 @@ class TestAPI(TestCase):
         self.assertEqual(json.loads(res.data), cookbook_spec)
 
     def test_schema(self):
-        normalize({"type": "cosmic.API"}, APISerializer().serialize(self.cookbook))
+        with CosmicTypeMap():
+            normalize({"type": "cosmic.API"}, APISerializer().serialize(self.cookbook))
 
     def test_load_url(self):
         """Test the API.load function when given a spec URL"""

@@ -9,7 +9,7 @@ from flask import request
 
 from cosmic.exceptions import APIError, SpecError
 from cosmic.actions import Action, ActionSerializer
-from cosmic.tools import Namespace, normalize, normalize_schema
+from cosmic.tools import Namespace, normalize, normalize_schema, CosmicTypeMap
 from cosmic.http import ALL_METHODS, View, UrlRule, Response, CorsPreflightView, make_view
 from cosmic.plugins import FlaskPlugin
 
@@ -101,6 +101,8 @@ class API(object):
             setup_func=self.context_func,
             url_prefix=url_prefix,
             debug=debug)
+
+        plugin.app.wsgi_app = CosmicTypeMap.middleware(plugin.app.wsgi_app)
         return plugin.app
 
     def run(self, url_prefix=None, **kwargs): # pragma: no cover

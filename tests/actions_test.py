@@ -145,12 +145,12 @@ class TestActionWithModelData(TestCase):
             "returns": {"type": "cosmic.Action"}
         }
 
-        self.action = Action.from_func(get_some,
-            accepts=normalize_schema({"type": "cosmic.Action"}),
-            returns=normalize_schema({"type": "cosmic.Action"}))
-
-        self.view = self.action.get_view()
         with CosmicTypeMap():
+            self.action = Action.from_func(get_some,
+                accepts=normalize_schema({"type": "cosmic.Action"}),
+                returns=normalize_schema({"type": "cosmic.Action"}))
+
+            self.view = self.action.get_view()
             self.remote_action = ActionSerializer().deserialize(self.spec)
 
     def test_direct_call(self):
