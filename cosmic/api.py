@@ -8,6 +8,7 @@ import requests
 from flask import request
 
 from .actions import Action, ActionSerializer
+from .models import Model
 from .tools import Namespace, CosmicTypeMap
 from .http import UrlRule, CorsPreflightView, make_view
 from .plugins import FlaskPlugin
@@ -27,10 +28,8 @@ class APIModelSerializer(object):
     def deserialize(self, datum):
         opts = self.schema.deserialize(datum)
         # Take a schema and name and turn them into a model class
-        class M(object):
-            @classmethod
-            def get_schema(cls):
-                return opts["schema"]
+        class M(Model):
+            schema = opts["schema"]
         M.__name__ = str(opts["name"])
         return M
 
@@ -55,6 +54,7 @@ class API(object):
             action.api = self
             self.actions.add(action.name, action)
         for model in models:
+            model.api = self
             self.models.add(model.__name__, model)
         # Add to registry so we can reference its models
         sys.modules['cosmic.registry.' + self.name] = self
@@ -65,8 +65,6 @@ class API(object):
         it, returning the :class:`~cosmic.api.API` object.
         """
         res = requests.get(url)
-        spec = res.json
-        name = spec['name']
         #api = API.normalize(res.json)
         api = APISerializer().deserialize(res.json)
         # Set the API url to be the spec URL, minus the /spec.json
@@ -168,6 +166,7 @@ class API(object):
                     datum = cls.schema.deserialize(datum)
                     return cls(datum)
         """
+        model_cls.api = self
         # Add to namespace
         self.models.add(model_cls.__name__, model_cls)
         return model_cls

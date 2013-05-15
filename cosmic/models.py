@@ -30,8 +30,10 @@ class ModelSerializer(object):
         return datum.serialize_self()
 
     def serialize_self(self):
+        api_name = self.model_cls.api.name
+        model_name = self.model_cls.__name__
         return {
-            "type": unicode(self.model_cls.__name__)
+            "type": u"%s.%s" % (api_name, model_name,)
         }
 
 
