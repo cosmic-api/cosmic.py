@@ -130,12 +130,12 @@ def schema_is_compatible(general, detailed):
 
 
 
-
 class CosmicTypeMap(TypeMap):
 
     def __getitem__(self, name):
         from api import APISerializer, APIModelSerializer
         from actions import ActionSerializer
+        from models import ModelSerializer
         if name == "cosmic.API":
             return APISerializer
         elif name == "cosmic.APIModel":
@@ -148,14 +148,10 @@ class CosmicTypeMap(TypeMap):
             api = sys.modules['cosmic.registry.' + api_name]
             model = api.models._dict[model_name]
 
-            class Serializer(object):
-                match_type = name
-
-                def deserialize(self, datum):
-                    return model.deserialize_self(datum)
-
-                def serialize(self, datum):
-                    return datum.serialize_self()
+            class Serializer(ModelSerializer):
+                model_cls = model
+                def __init__(self):
+                    pass
 
             return Serializer
         else:

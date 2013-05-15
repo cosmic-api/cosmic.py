@@ -17,3 +17,21 @@ class Model(object):
     def get_schema(cls):
         return cls.schema
 
+
+class ModelSerializer(object):
+
+    def __init__(self, model_cls):
+        self.model_cls = model_cls
+
+    def deserialize(self, datum):
+        return self.model_cls.deserialize_self(datum)
+
+    def serialize(self, datum):
+        return datum.serialize_self()
+
+    def serialize_self(self):
+        return {
+            "type": unicode(self.model_cls.__name__)
+        }
+
+
