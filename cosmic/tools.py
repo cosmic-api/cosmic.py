@@ -107,10 +107,9 @@ def pack_action_arguments(*args, **kwargs):
     raise SpecError("Action must be called either with one argument or with one or more keyword arguments")
 
 def schema_is_compatible(general, detailed):
-    """Given two JSON Schemas, checks if the detailed schema is
-    compatible with the general schema. The general schema is a subset
-    of JSON schema as returned by tools.get_arg_spec, the special
-    schema is an arbitrary JSON schema as passed in by the user.
+    """Given two Teleport serializers, checks if the detailed one is
+    compatible with the general one. The general schema is a subset as
+    returned by :func:`tools.get_arg_spec`.
     """
     if isinstance(general, JSON):
         return True

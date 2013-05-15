@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 from werkzeug.local import release_local
 from flask import Flask, Blueprint, request, make_response
 
-from cosmic import context
+from . import context
 from .http import Request
 from .exceptions import ClientError, AuthenticationError
 

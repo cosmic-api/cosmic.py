@@ -71,8 +71,9 @@ class Response(object):
 class View(object):
     """An HTTP request handler.
 
-    :param function func: A function that takes a
-        :class:`~teleport.Box` and returns a :class:`~teleport.Box`.
+    :param function func: A function that takes a :class:`~teleport.Box` and
+    returns a :class:`~teleport.Box`.
+    
     :param string method: HTTP method that the view will respond to
     """
     def __init__(self, func, method):

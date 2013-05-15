@@ -11,11 +11,9 @@ Start by creating a new API object::
     import random
 
     from cosmic.api import API
-    from cosmic.tools import normalize_schema
-    from cosmic.models import Model
     from cosmic.exceptions import ValidationError
 
-    horoscope = API.create("horoscope")
+    horoscope = API("horoscope")
 
 To define a model, we subclass :class:`~cosmic.models.Model` or
 :class:`~cosmic.models.ClassModel` and attach it to our API via a decorator.

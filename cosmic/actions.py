@@ -23,9 +23,9 @@ class Action(object):
     @classmethod
     def from_func(cls, func, accepts=None, returns=None):
         """Create an action from a function *func* that expects data as
-        normalized by the *accepts* schema and returns data that will be
+        defined by the *accepts* schema and returns data that will be
         serialized by the *returns* schema. Both *accepts* and *returns* must
-        be :class:`~cosmic.models.Schema` instances.
+        be Teleport serializers.
         """
         name = func.__name__
         arg_spec = get_arg_spec(func)
@@ -44,8 +44,8 @@ class Action(object):
 
 
     def get_view(self, debug=False):
-        """Wraps a user-defined action function to return a Flask view function
-        that handles errors and returns proper HTTP responses"""
+        """Wraps a user-defined action function to return a Flask view
+        function that handles errors and returns proper HTTP responses"""
         @make_view("POST")
         def action_view(payload):
             normalized = normalize_json(self.accepts, payload)

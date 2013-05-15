@@ -61,8 +61,8 @@ class API(object):
 
     @staticmethod
     def load(url):
-        """Given a spec URL, loads it and normalizes, returning the
-        :class:`~cosmic.api.API` object.
+        """Given a spec URL, loads the JSON form of an API and deserializes
+        it, returning the :class:`~cosmic.api.API` object.
         """
         res = requests.get(url)
         spec = res.json
@@ -74,7 +74,7 @@ class API(object):
         return api
 
     def get_rules(self, debug=False):
-        """Get a list of URL rules necessary for implementing this API The
+        """Get a list of URL rules necessary for implementing this API. The
         *debug* parameter will be passed into the :class:`cosmic.http.View`
         constructor of all the views in the API. Returns a list of
         :class:`cosmic.http.UrlRule` objects.
@@ -120,19 +120,18 @@ class API(object):
         """A decorator for creating actions out of functions and registering
         them with the API.
 
-        The *accepts* parameter is a :class:`~cosmic.models.Schema` instance
-        that will normalize the input of the action, *returns* is a
-        :class:`~cosmic.models.Schema` instance that will serialize the input
-        of the action. The name of the function becomes the name of the
-        action. Internally :meth:`~cosmic.actions.Action.from_func` is used.
+        The *accepts* parameter is a schema that will deserialize the input of
+        the action, *returns* is a schema that will serialize the output of
+        the action. The name of the function becomes the name of the action.
+        Internally :meth:`~cosmic.actions.Action.from_func` is used.
 
         .. code:: python
 
-            from cosmic.tools import normalize_schema
+            from teleport import Integer
 
             random = API("random")
 
-            @squeegee.action(returns=normalize_schema({"type": "integer"}))
+            @random.action(returns=Integer())
             def generate():
                 return 9
         """
@@ -150,14 +149,24 @@ class API(object):
 
         .. code:: python
 
-            from cosmic.tools import normalize_schema
-            from cosmic.models import Model
+            from teleport import String
 
             dictionary = API("dictionary")
 
             @dictionary.model
-            class Word(Model):
-                schema = normalize_schema({"type": "string"})
+            class Word(object):
+                schema = String()
+
+                def __init__(self, text):
+                    self.text = text
+
+                def serialize_self(self):
+                    return self.text
+
+                @classmethod
+                def deserialize_self(cls, datum):
+                    datum = cls.schema.deserialize(datum)
+                    return cls(datum)
         """
         # Add to namespace
         self.models.add(model_cls.__name__, model_cls)
@@ -167,8 +176,8 @@ class API(object):
         return {}
 
     def context(self, func):
-        """Registers the given function as an authentication function
-        for the API.
+        """Registers the given function as an authentication function for the
+        API.
         """
         self.context_func = func
         return func
