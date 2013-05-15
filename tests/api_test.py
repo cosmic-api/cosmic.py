@@ -10,6 +10,7 @@ import requests
 from cosmic.exceptions import *
 from cosmic.tools import CosmicTypeMap
 from cosmic.api import API, APISerializer
+from cosmic.models import Model
 from cosmic import api, context
 
 from teleport import *
@@ -95,40 +96,18 @@ class TestAPI(TestCase):
             pass
 
         @self.cookbook.model
-        class Recipe(object):
-            def __init__(self, s):
-                self.s = s
-
-            def serialize_self(self):
-                return self.s
+        class Recipe(Model):
+            schema = String()
 
             @classmethod
-            def get_schema(cls):
-                return String()
-
-            @classmethod
-            def deserialize_self(cls, datum):
-                datum = cls.get_schema().deserialize(datum)
+            def instantiate(cls, datum):
                 if datum == "bacon":
                     raise ValidationError("Not kosher")
                 return cls(datum)
 
         @self.cookbook.model
-        class Cookie(object):
-            def __init__(self, b):
-                self.b = b
-
-            def serialize_self(self):
-                return self.b
-
-            @classmethod
-            def get_schema(cls):
-                return Boolean()
-
-            @classmethod
-            def deserialize_self(cls, datum):
-                datum = cls.get_schema().deserialize(datum)
-                return cls(datum)
+        class Cookie(Model):
+            schema = Boolean()
 
 
         self.app = self.cookbook.get_flask_app(debug=True)
@@ -143,7 +122,7 @@ class TestAPI(TestCase):
     def test_model_deserialize_okay(self):
         with CosmicTypeMap():
             s = Schema().deserialize({"type": "cookbook.Recipe"})
-            self.assertEqual(s.deserialize("turkey").s, "turkey")
+            self.assertEqual(s.deserialize("turkey").data, "turkey")
 
     def test_model_deserialize_bad_api(self):
         with CosmicTypeMap():
