@@ -9,7 +9,7 @@ APIs
 .. autoclass:: cosmic.api.API
    :members: create, load, get_rules, get_flask_app, run, action, model, context
 
-.. autoclass:: cosmic.api.APIModel
+.. autoclass:: cosmic.api.Model
    :members:
 
 Actions

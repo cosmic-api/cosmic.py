@@ -18,8 +18,8 @@ import teleport
 
 
 
-class APIModelSerializer(object):
-    match_type = "cosmic.APIModel"
+class ModelSerializer(object):
+    match_type = "cosmic.Model"
 
     schema = teleport.Struct([
         teleport.required("name", teleport.String()),
@@ -192,7 +192,7 @@ class APISerializer(object):
         teleport.required("name", teleport.String()),
         teleport.optional("homepage", teleport.String()),
         teleport.required("actions", teleport.Array(ActionSerializer())),
-        teleport.required("models", teleport.Array(APIModelSerializer()))
+        teleport.required("models", teleport.Array(ModelSerializer()))
     ])
 
     def deserialize(self, datum):

@@ -100,13 +100,13 @@ class Cosmos(TypeMap):
         super(Cosmos, self).__exit__(*args, **kwargs)
 
     def __getitem__(self, name):
-        from api import APISerializer, APIModelSerializer
+        from api import APISerializer, ModelSerializer
         from actions import ActionSerializer
         from models import ModelSerializer
         if name == "cosmic.API":
             return APISerializer
-        elif name == "cosmic.APIModel":
-            return APIModelSerializer
+        elif name == "cosmic.Model":
+            return ModelSerializer
         elif name == "cosmic.Action":
             return ActionSerializer
         elif '.' in name:
