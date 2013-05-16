@@ -21,6 +21,9 @@ ALL_METHODS = [
     "CONNECT"
 ]
 
+_request_ctx_stack = LocalStack()
+
+
 class Request(object):
     """A simplified representation of an HTTP request.
 
@@ -32,6 +35,15 @@ class Request(object):
         self.method = method
         self.headers = headers
         self.body = body
+
+    def __enter__(self):
+        _request_ctx_stack.push(self)
+        return self
+
+    def __exit__(self, exc_type, exc_value, tb):
+        _request_ctx_stack.pop()
+
+
 
 class JSONRequest(Request):
     """If the passed in :class:`~cosmic.http.Request` *req* validates, the
@@ -189,19 +201,3 @@ class UrlRule(object):
         self.url = url
         self.view = view
 
-
-class RequestContext():
-
-    def __init__(self, request, context):
-        self.request = request
-        self.context = context
-
-    def __enter__(self):
-        _request_ctx_stack.push(self)
-        return self
-
-    def __exit__(self, exc_type, exc_value, tb):
-        _request_ctx_stack.pop()
-
-
-_request_ctx_stack = LocalStack()

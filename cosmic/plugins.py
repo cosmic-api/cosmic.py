@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 from werkzeug.local import release_local
 from flask import Flask, Blueprint, request, make_response
 
-from .http import Request, RequestContext
+from .http import Request
 from .exceptions import ClientError, AuthenticationError
 
 
@@ -29,11 +29,11 @@ class FlaskPlugin(object):
 
             # Authenticate the user, make local context
             try:
-                context = self.setup_func(headers)
+                req.context = self.setup_func(headers)
             except AuthenticationError as e:
                 return self.make_flask_response(e.get_response())
 
-            with RequestContext(req, context):
+            with req:
                 resp = view(req, debug=self.debug)
                 return self.make_flask_response(resp)
 

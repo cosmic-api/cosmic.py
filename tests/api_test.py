@@ -10,7 +10,7 @@ import requests
 from cosmic.exceptions import *
 from cosmic.api import API, APISerializer
 from cosmic.models import Model
-from cosmic import api, context
+from cosmic import api, request
 
 from cosmic import cosmos
 
@@ -194,7 +194,7 @@ class TextContext(TestCase):
 
         @self.cookbook.action(returns=String())
         def hello():
-            return context['secret']
+            return request.context['secret']
 
         @self.cookbook.context
         def setup(headers):

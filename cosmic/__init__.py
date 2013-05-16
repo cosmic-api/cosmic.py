@@ -12,7 +12,6 @@ class FixedLocalProxy(LocalProxy):
     __exit__ = lambda x, *a, **kw: x._get_current_object().__exit__(*a, **kw)
 
 cosmos = FixedLocalProxy(lambda: _ctx_stack.top)
-request = FixedLocalProxy(lambda: _request_ctx_stack.top.request)
-context = FixedLocalProxy(lambda: _request_ctx_stack.top.context)
+request = FixedLocalProxy(lambda: _request_ctx_stack.top)
 
 
