@@ -179,10 +179,6 @@ class TestAPI(TestCase):
             mock_get.return_value.status_code = 200
             cookbook_decentralized = API.load('http://example.com/spec.json')
             self.assertEqual(APISerializer().serialize(cookbook_decentralized), cookbook_spec)
-            self.assertEqual(sys.modules['cosmic.registry.cookbook'], cookbook_decentralized)
-
-    def test_api_module_cache(self):
-        self.assertEqual(sys.modules['cosmic.registry.cookbook'], self.cookbook)
 
     def test_apierror_repr(self):
         """Make sure when APIError gets printed in stack trace we can see the message"""

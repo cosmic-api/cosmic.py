@@ -58,7 +58,7 @@ class API(object):
             model.api = self
             self.models.add(model.__name__, model)
         # Add to registry so we can reference its models
-        sys.modules['cosmic.registry.' + self.name] = self
+        cosmos.apis[self.name] = self
 
     @staticmethod
     def load(url):
@@ -66,12 +66,11 @@ class API(object):
         it, returning the :class:`~cosmic.api.API` object.
         """
         res = requests.get(url)
-        #api = API.normalize(res.json)
         api = APISerializer().deserialize(res.json)
         # Set the API url to be the spec URL, minus the /spec.json
         api.url = url[:-10]
-        # Once the API object has been added to sys.modules, force lazy models
-        # to evaluate.
+        # Once the API has been added to the cosmos, force lazy models to
+        # evaluate.
         cosmos.force()
         return api
 

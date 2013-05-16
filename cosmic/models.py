@@ -48,15 +48,14 @@ class ModelSerializer(object):
 
 
 def get_model_cls(name):
+    from . import cosmos
     api_name, model_name = name.split('.', 1)
     try:
-        # May raise KeyError
-        api = sys.modules['cosmic.registry.' + api_name]
-        # May raise KeyError
-        return api.models._dict[model_name]
+        api = cosmos.apis[api_name]
+        model = api.models._dict[model_name]
+        return model
     except KeyError:
         raise ModelNotFound(name)
-
 
 
 class LazyModelSerializer(ModelSerializer):
@@ -84,13 +83,13 @@ class LazyModelSerializer(ModelSerializer):
 class Cosmos(TypeMap):
 
     def __init__(self):
-        self.serializers = {}
         self.lazy_serializers = []
+        self.apis = {}
 
     def force(self):
         for serializer in self.lazy_serializers:
             serializer.force()
-            self.serializers[serializer._name] = serializer
+        self.lazy_serializers = []
 
     def __enter__(self):
         _ctx_stack.push(self)
@@ -113,8 +112,12 @@ class Cosmos(TypeMap):
         elif '.' in name:
 
             try:
-                return self.serializers[name]
-            except KeyError:
+                class Serializer(ModelSerializer):
+                    model_cls = get_model_cls(name)
+                    def __init__(self):
+                        pass
+                return Serializer
+            except ModelNotFound:
                 class Serializer(LazyModelSerializer):
                     _name = name
 
