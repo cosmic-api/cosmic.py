@@ -1,6 +1,7 @@
 import sys
 
 from teleport import *
+from exceptions import ModelNotFound
 
 
 class Model(object):
@@ -15,6 +16,10 @@ class Model(object):
     def deserialize_self(cls, datum):
         datum = cls.get_schema().deserialize(datum)
         return cls.instantiate(datum)
+
+    @classmethod
+    def instantiate(cls, datum):
+        return cls(datum)
 
     @classmethod
     def get_schema(cls):
@@ -40,7 +45,49 @@ class ModelSerializer(object):
         }
 
 
+def get_model_cls(name):
+    api_name, model_name = name.split('.', 1)
+    try:
+        # May raise KeyError
+        api = sys.modules['cosmic.registry.' + api_name]
+        # May raise KeyError
+        return api.models._dict[model_name]
+    except KeyError:
+        raise ModelNotFound(name)
+
+
+
+class LazyModelSerializer(ModelSerializer):
+
+    def __init__(self):
+        pass
+
+    @classmethod
+    def force(cls):
+        cls.model_cls = get_model_cls(cls._name)
+
+    def deserialize(self, datum):
+        self.force()
+        return super(LazyModelSerializer, self).deserialize(datum)
+
+    def serialize(self, datum):
+        self.force()
+        return super(LazyModelSerializer, self).serialize(datum)
+
+    def serialize_self(self):
+        self.force()
+        return super(LazyModelSerializer, self).serialize_self(datum)
+
 class Cosmos(TypeMap):
+
+    def __init__(self):
+        self.serializers = {}
+        self.lazy_serializers = []
+
+    def force(self):
+        for serializer in self.lazy_serializers:
+            serializer.force()
+            self.serializers[serializer._name] = serializer
 
     def __getitem__(self, name):
         from api import APISerializer, APIModelSerializer
@@ -53,17 +100,15 @@ class Cosmos(TypeMap):
         elif name == "cosmic.Action":
             return ActionSerializer
         elif '.' in name:
-            api_name, model_name = name.split('.', 1)
-            # May raise KeyError
-            api = sys.modules['cosmic.registry.' + api_name]
-            model = api.models._dict[model_name]
 
-            class Serializer(ModelSerializer):
-                model_cls = model
-                def __init__(self):
-                    pass
+            try:
+                return self.serializers[name]
+            except KeyError:
+                class Serializer(LazyModelSerializer):
+                    _name = name
 
-            return Serializer
+                self.lazy_serializers.append(Serializer)
+                return Serializer
         else:
             return BUILTIN_TYPES[name]
 

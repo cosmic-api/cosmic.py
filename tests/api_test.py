@@ -125,15 +125,11 @@ class TestAPI(TestCase):
             s = Schema().deserialize({"type": "cookbook.Recipe"})
             self.assertEqual(s.deserialize("turkey").data, "turkey")
 
-    def test_model_deserialize_bad_api(self):
+    def test_model_deserialize_bad_name(self):
         with cosmos:
-            with self.assertRaisesRegexp(ValidationError, "Unknown type"):
-                Schema().deserialize({"type": "cookingbook.Recipe"})
-
-    def test_model_deserialize_bad_model(self):
-        with cosmos:
-            with self.assertRaisesRegexp(ValidationError, "Unknown type"):
-                Schema().deserialize({"type": "cookbook.Rec"})
+            Schema().deserialize({"type": "cookingbook.Recipe"})
+            with self.assertRaisesRegexp(ModelNotFound, "cookingbook.Recipe"):
+                cosmos.force()
 
     def test_subclassing_hook(self):
         self.assertEqual(set(self.cookbook.models.__all__), set(["Recipe", "Cookie"]))

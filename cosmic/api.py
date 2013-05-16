@@ -70,6 +70,9 @@ class API(object):
         api = APISerializer().deserialize(res.json)
         # Set the API url to be the spec URL, minus the /spec.json
         api.url = url[:-10]
+        # Once the API object has been added to sys.modules, force lazy models
+        # to evaluate.
+        cosmos.force()
         return api
 
     def get_rules(self, debug=False):

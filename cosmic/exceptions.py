@@ -20,6 +20,9 @@ class HttpError(Exception):
         body = json.dumps({"error": self.message})
         return Response(self.http_code, body, {})
 
+class ModelNotFound(Exception):
+    pass
+
 class APIError(HttpError):
     """An :class:`~cosmic.exceptions.HttpError` with default HTTP code 500.
     """

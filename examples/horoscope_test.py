@@ -7,6 +7,7 @@ from unittest2 import TestCase
 from multiprocessing import Process
 
 from cosmic.api import API
+from cosmic import cosmos
 from horoscope import horoscope
 
 def run_horoscope():
@@ -55,9 +56,10 @@ class TestTutorialBuildingAPI(TestCase):
         res = requests.post('http://localhost:9873/actions/predict', data='"tiger"', headers=headers)
         self.assertEqual(res.json, {"error": "Unknown zodiac sign: u'tiger'"})
 
-    def _test_consuming(self):
-        h = API.load('http://localhost:9873/spec.json')
-        pisces = h.models.Sign("pisces")
-        self.assertRegexpMatches(h.actions.predict(pisces), "Stranger yo")
+    def test_consuming(self):
+        with cosmos:
+            h = API.load('http://localhost:9873/spec.json')
+            pisces = h.models.Sign("pisces")
+            self.assertRegexpMatches(h.actions.predict(pisces), "handsome stranger")
 
 
