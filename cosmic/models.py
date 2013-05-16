@@ -1,7 +1,9 @@
 import sys
 
+from werkzeug.local import LocalStack
+
 from teleport import *
-from exceptions import ModelNotFound
+from .exceptions import ModelNotFound
 
 
 class Model(object):
@@ -78,6 +80,7 @@ class LazyModelSerializer(ModelSerializer):
         self.force()
         return super(LazyModelSerializer, self).serialize_self(datum)
 
+
 class Cosmos(TypeMap):
 
     def __init__(self):
@@ -88,6 +91,14 @@ class Cosmos(TypeMap):
         for serializer in self.lazy_serializers:
             serializer.force()
             self.serializers[serializer._name] = serializer
+
+    def __enter__(self):
+        _ctx_stack.push(self)
+        super(Cosmos, self).__enter__()
+
+    def __exit__(self, *args, **kwargs):
+        _ctx_stack.pop()
+        super(Cosmos, self).__exit__(*args, **kwargs)
 
     def __getitem__(self, name):
         from api import APISerializer, APIModelSerializer
@@ -112,5 +123,6 @@ class Cosmos(TypeMap):
         else:
             return BUILTIN_TYPES[name]
 
+_ctx_stack = LocalStack()
+_ctx_stack.push(Cosmos())
 
-cosmos = Cosmos()
