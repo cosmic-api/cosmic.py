@@ -21,7 +21,12 @@ class Model(object):
 
     @classmethod
     def instantiate(cls, datum):
+        cls.validate(datum)
         return cls(datum)
+
+    @classmethod
+    def validate(cls, datum):
+        pass
 
     @classmethod
     def get_schema(cls):
