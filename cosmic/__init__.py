@@ -1,5 +1,6 @@
-from werkzeug.local import Local, LocalProxy
-from .models import Cosmos, _ctx_stack
+from werkzeug.local import LocalProxy, LocalStack
+from .models import _ctx_stack
+from .http import _request_ctx_stack
 
 
 # Fixed by Armin in cbd8ec9b20405b406a8a701b34087a349b656d5d
@@ -11,5 +12,7 @@ class FixedLocalProxy(LocalProxy):
     __exit__ = lambda x, *a, **kw: x._get_current_object().__exit__(*a, **kw)
 
 cosmos = FixedLocalProxy(lambda: _ctx_stack.top)
+request = FixedLocalProxy(lambda: _request_ctx_stack.top.request)
+context = FixedLocalProxy(lambda: _request_ctx_stack.top.context)
 
-context = Local()
+

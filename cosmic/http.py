@@ -1,11 +1,11 @@
 from __future__ import unicode_literals
 
 import json
+from werkzeug.local import LocalProxy, LocalStack
+from teleport import Box, ValidationError
 
 from .exceptions import *
 from .tools import string_to_json
-
-from teleport import Box, ValidationError
 
 # We shouldn't have to do this, but Flask doesn't allow us to route
 # all methods implicitly. When we don't pass in methods Flask assumes
@@ -172,6 +172,7 @@ class CorsPreflightView(object):
             res_headers["Access-Control-Allow-Headers"] = allow_headers
         return Response(200, "", res_headers)
 
+
 class UrlRule(object):
     """Represents the relationship between a URL and a
     :class:`~cosmic.http.View`. Your :class:`~cosmic.api.API` will be represented
@@ -189,3 +190,18 @@ class UrlRule(object):
         self.view = view
 
 
+class RequestContext():
+
+    def __init__(self, request, context):
+        self.request = request
+        self.context = context
+
+    def __enter__(self):
+        _request_ctx_stack.push(self)
+        return self
+
+    def __exit__(self, exc_type, exc_value, tb):
+        _request_ctx_stack.pop()
+
+
+_request_ctx_stack = LocalStack()

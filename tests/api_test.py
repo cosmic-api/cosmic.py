@@ -194,7 +194,7 @@ class TextContext(TestCase):
 
         @self.cookbook.action(returns=String())
         def hello():
-            return context.secret
+            return context['secret']
 
         @self.cookbook.context
         def setup(headers):
