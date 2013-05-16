@@ -9,9 +9,10 @@ from flask import request
 
 from .actions import Action, ActionSerializer
 from .models import Model
-from .tools import Namespace, CosmicTypeMap
+from .tools import Namespace
 from .http import UrlRule, CorsPreflightView, make_view
 from .plugins import FlaskPlugin
+from . import cosmos
 
 import teleport
 
@@ -99,7 +100,7 @@ class API(object):
             url_prefix=url_prefix,
             debug=debug)
 
-        plugin.app.wsgi_app = CosmicTypeMap.middleware(plugin.app.wsgi_app)
+        plugin.app.wsgi_app = cosmos.middleware(plugin.app.wsgi_app)
         return plugin.app
 
     def run(self, url_prefix=None, **kwargs): # pragma: no cover

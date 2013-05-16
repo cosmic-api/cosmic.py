@@ -8,10 +8,11 @@ from mock import patch
 import requests
 
 from cosmic.exceptions import *
-from cosmic.tools import CosmicTypeMap
 from cosmic.api import API, APISerializer
 from cosmic.models import Model
 from cosmic import api, context
+
+from cosmic import cosmos
 
 from teleport import *
 
@@ -120,17 +121,17 @@ class TestAPI(TestCase):
                 pass
 
     def test_model_deserialize_okay(self):
-        with CosmicTypeMap():
+        with cosmos:
             s = Schema().deserialize({"type": "cookbook.Recipe"})
             self.assertEqual(s.deserialize("turkey").data, "turkey")
 
     def test_model_deserialize_bad_api(self):
-        with CosmicTypeMap():
+        with cosmos:
             with self.assertRaisesRegexp(ValidationError, "Unknown type"):
                 Schema().deserialize({"type": "cookingbook.Recipe"})
 
     def test_model_deserialize_bad_model(self):
-        with CosmicTypeMap():
+        with cosmos:
             with self.assertRaisesRegexp(ValidationError, "Unknown type"):
                 Schema().deserialize({"type": "cookbook.Rec"})
 
@@ -172,7 +173,7 @@ class TestAPI(TestCase):
         self.assertEqual(json.loads(res.data), cookbook_spec)
 
     def test_schema(self):
-        with CosmicTypeMap():
+        with cosmos:
             APISerializer().deserialize(APISerializer().serialize(self.cookbook))
 
     def test_load_url(self):

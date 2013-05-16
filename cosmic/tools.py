@@ -2,7 +2,6 @@ from __future__ import unicode_literals
 
 import inspect
 import json
-import sys
 
 from .exceptions import SpecError
 
@@ -128,34 +127,6 @@ def schema_is_compatible(general, detailed):
             return False
     return True
 
-
-
-class CosmicTypeMap(TypeMap):
-
-    def __getitem__(self, name):
-        from api import APISerializer, APIModelSerializer
-        from actions import ActionSerializer
-        from models import ModelSerializer
-        if name == "cosmic.API":
-            return APISerializer
-        elif name == "cosmic.APIModel":
-            return APIModelSerializer
-        elif name == "cosmic.Action":
-            return ActionSerializer
-        elif '.' in name:
-            api_name, model_name = name.split('.', 1)
-            # May raise KeyError
-            api = sys.modules['cosmic.registry.' + api_name]
-            model = api.models._dict[model_name]
-
-            class Serializer(ModelSerializer):
-                model_cls = model
-                def __init__(self):
-                    pass
-
-            return Serializer
-        else:
-            return BUILTIN_TYPES[name]
 
 
 def normalize_json(schema, datum):

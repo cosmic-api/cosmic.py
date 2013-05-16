@@ -8,7 +8,8 @@ from cosmic.api import Namespace, API
 from cosmic.actions import Action, ActionSerializer
 from cosmic.exceptions import SpecError, APIError
 from cosmic.http import Request
-from cosmic.tools import CosmicTypeMap
+
+from cosmic import cosmos
 
 from teleport import *
 
@@ -144,7 +145,7 @@ class TestActionWithModelData(TestCase):
             "returns": {"type": "cosmic.Action"}
         }
 
-        with CosmicTypeMap():
+        with cosmos:
             self.action = Action.from_func(get_some,
                 accepts=Schema().deserialize({"type": "cosmic.Action"}),
                 returns=Schema().deserialize({"type": "cosmic.Action"}))
@@ -162,7 +163,7 @@ class TestActionWithModelData(TestCase):
             self.remote_action(self.action)
 
     def test_answer_request(self):
-        with CosmicTypeMap():
+        with cosmos:
             res = self.view(Request("POST", json.dumps(self.spec), {"Content-Type": "application/json"}), debug=True)
         answer = json.loads(res.body)
         self.assertEqual(self.spec, answer)

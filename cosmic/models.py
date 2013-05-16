@@ -1,4 +1,7 @@
+import sys
+
 from teleport import *
+
 
 class Model(object):
 
@@ -37,3 +40,32 @@ class ModelSerializer(object):
         }
 
 
+class Cosmos(TypeMap):
+
+    def __getitem__(self, name):
+        from api import APISerializer, APIModelSerializer
+        from actions import ActionSerializer
+        from models import ModelSerializer
+        if name == "cosmic.API":
+            return APISerializer
+        elif name == "cosmic.APIModel":
+            return APIModelSerializer
+        elif name == "cosmic.Action":
+            return ActionSerializer
+        elif '.' in name:
+            api_name, model_name = name.split('.', 1)
+            # May raise KeyError
+            api = sys.modules['cosmic.registry.' + api_name]
+            model = api.models._dict[model_name]
+
+            class Serializer(ModelSerializer):
+                model_cls = model
+                def __init__(self):
+                    pass
+
+            return Serializer
+        else:
+            return BUILTIN_TYPES[name]
+
+
+cosmos = Cosmos()

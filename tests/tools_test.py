@@ -3,6 +3,7 @@ from mock import patch, Mock
 
 from cosmic.exceptions import *
 from cosmic.tools import *
+from cosmic import cosmos
 
 from teleport import Integer, Float, Struct, required, optional, Box, Schema
 
@@ -236,7 +237,7 @@ class TestSchemaHelpers(TestCase):
         }
 
     def test_deserialize_schema(self):
-        with CosmicTypeMap():
+        with cosmos:
             schema = Schema().deserialize({"type": "cosmic.API"})
             self.assertEqual(schema.deserialize(self.api).__class__.__name__, "API")
 

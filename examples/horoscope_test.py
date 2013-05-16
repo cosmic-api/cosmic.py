@@ -7,7 +7,6 @@ from unittest2 import TestCase
 from multiprocessing import Process
 
 from cosmic.api import API
-from cosmic.tools import CosmicTypeMap
 from horoscope import horoscope
 
 def run_horoscope():
