@@ -1,5 +1,7 @@
 from __future__ import unicode_literals
 
+from flask import make_response
+
 import json
 
 class JSONParseError(Exception):
@@ -13,12 +15,10 @@ class HttpError(Exception):
         self.message = message
         self.args = [message]
     def get_response(self):
-        """Create a :class:`~cosmic.http.Response` object with the error code
-        and message.
+        """Create a response object with the error code and message.
         """
-        from cosmic.http import Response
         body = json.dumps({"error": self.message})
-        return Response(self.http_code, body, {})
+        return make_response(body, self.http_code, {})
 
 class ModelNotFound(Exception):
     pass

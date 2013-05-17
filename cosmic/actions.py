@@ -5,7 +5,7 @@ import json
 import requests
 
 from .tools import get_arg_spec, pack_action_arguments, apply_to_func, schema_is_compatible, normalize_json, serialize_json, json_to_string
-from .http import JSONRequest, Response
+from .http import JSONRequest
 from .exceptions import APIError, SpecError, AuthenticationError
 
 from teleport import ValidationError
@@ -46,11 +46,6 @@ class Action(object):
         normalized = normalize_json(self.accepts, payload)
         ret = apply_to_func(self.raw_func, normalized)
         return serialize_json(self.returns, ret)
-
-    def view(self, request):
-        jreq = JSONRequest(request)
-        body = json_to_string(self.json_to_json(jreq.payload))
-        return Response(body=body, code=200)
 
     def __call__(self, *args, **kwargs):
         """If action was generated from a function, calls it with the passed

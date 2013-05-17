@@ -9,7 +9,7 @@ from werkzeug.routing import Map, Rule
 from .actions import Action, ActionSerializer
 from .models import Model
 from .tools import Namespace
-from .plugins import FlaskPlugin
+from .http import FlaskPlugin
 from . import cosmos
 
 

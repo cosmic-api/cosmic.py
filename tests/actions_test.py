@@ -82,51 +82,6 @@ class TestBasicRemoteAction(TestCase):
                 self.action(spicy=True, capitalize=True)
 
 
-class TestBasicAction(TestCase):
-    """Action is mostly glue code, the majority of interesting cases
-    are tested in cosmic.http.cosmic_view
-    """
-
-    def setUp(self):
-
-        def cabbage(spicy, servings=1):
-            if servings > 24:
-                raise APIError("Too many servings", http_code=501)
-            if spicy:
-                c = "kimchi"
-            else:
-                c = "sauerkraut"
-            return "%s pounds of %s" % (12.0 / servings, c)
-
-        self.action = Action.from_func(cabbage,
-            accepts=Schema().deserialize({
-                "type": "struct",
-                "fields": [
-                    {
-                        "name": "spicy",
-                        "schema": {"type": "boolean"},
-                        "required": True
-                    },
-                    {
-                        "name": "servings",
-                        "schema": {"type": "integer"},
-                        "required": False
-                    }
-                ]
-            }),
-            returns=String())
-        self.view = self.action.view
-
-    def test_successful_call(self):
-        res = self.view(Request("POST", '{"spicy":true}', {"Content-Type": "application/json"}))
-        self.assertEqual(res.code, 200)
-        self.assertEqual(json.loads(res.body), "12.0 pounds of kimchi")
-
-    def test_call_invalid_args(self):
-        with self.assertRaisesRegexp(ValidationError, "Invalid boolean"):
-            res = self.view(Request("POST", '{"spicy":1}', {"Content-Type": "application/json"}))
-
-
 class TestActionWithModelData(TestCase):
 
     def setUp(self):
@@ -145,7 +100,6 @@ class TestActionWithModelData(TestCase):
                 accepts=Schema().deserialize({"type": "cosmic.Action"}),
                 returns=Schema().deserialize({"type": "cosmic.Action"}))
 
-            self.view = self.action.view
             self.remote_action = ActionSerializer().deserialize(self.spec)
 
     def test_direct_call(self):
@@ -159,9 +113,8 @@ class TestActionWithModelData(TestCase):
 
     def test_answer_request(self):
         with cosmos:
-            res = self.view(Request("POST", json.dumps(self.spec), {"Content-Type": "application/json"}))
-        answer = json.loads(res.body)
-        self.assertEqual(self.spec, answer)
+            answer = self.action.json_to_json(Box(self.spec))
+            self.assertEqual(self.spec, answer.datum)
 
 
 class TestActionAnnotation(TestCase):

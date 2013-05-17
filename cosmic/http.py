@@ -1,11 +1,16 @@
 from __future__ import unicode_literals
 
 import json
-from werkzeug.local import LocalProxy, LocalStack
+
+from werkzeug.local import LocalProxy, LocalStack, release_local
+from werkzeug.wrappers import Request as WerkzeugRequest
+from flask import Flask, Blueprint, make_response
+from flask import request as flask_request
 from teleport import Box, ValidationError
 
+from .tools import json_to_string, string_to_json
 from .exceptions import *
-from .tools import string_to_json
+
 
 # We shouldn't have to do this, but Flask doesn't allow us to route
 # all methods implicitly. When we don't pass in methods Flask assumes
@@ -68,15 +73,66 @@ class JSONRequest(Request):
             raise JSONParseError()
 
 
-class Response(object):
-    """A simplified representation of an HTTP response.
+class FlaskView(object):
 
-    :param int code: HTTP status code
-    :param string body: Response body
-    :param dict headers: HTTP headers
-    """
-    def __init__(self, code, body="", headers={}):
-        self.code = code
-        self.body = body
-        self.headers = headers
+    def __init__(self, view):
+        self.view = view
 
+    def normalize_request(self, req):
+        headers = req.headers
+        method = req.method
+        body = req.data
+        req = Request(method, body, headers)
+        return JSONRequest(req)
+
+    def __call__(self, *args, **kwargs):
+        req = self.normalize_request(flask_request)
+        with req:
+            return self.view(req)
+
+
+
+class FlaskPlugin(object):
+
+    def __init__(self, setup_func, url_prefix="", debug=False, werkzeug_map=None):
+        self.setup_func = setup_func
+        self.app = Flask(__name__, static_folder=None)
+        self.debug = debug
+        for rule in werkzeug_map.iter_rules():
+
+            v = self.make_view(rule.endpoint)
+
+            url = url_prefix + rule.rule
+            self.app.add_url_rule(url,
+                view_func=FlaskView(v),
+                methods=rule.methods,
+                endpoint=rule.endpoint.__name__)
+
+    def make_view(self, func):
+        def view(*args, **kwargs):
+            req = _request_ctx_stack.top
+            # Catch ClientErrors and APIErrors and turn them into responses
+            try:
+                try:
+                    req.context = self.setup_func(req.headers)
+                    data = func(req.payload)
+                    body = ""
+                    if data != None:
+                        body = json.dumps(data.datum)
+                    return make_response(body)
+                except HttpError:
+                    raise
+                except JSONParseError:
+                    raise ClientError("Invalid JSON")
+                except SpecError as err:
+                    raise ClientError(err.args[0])
+                except ValidationError as e:
+                    raise ClientError(str(e))
+                # Any other exception should be handled gracefully
+                except:
+                    if self.debug:
+                        raise
+                    raise APIError("Internal Server Error")
+            except HttpError as err:
+                return err.get_response()
+        return view
