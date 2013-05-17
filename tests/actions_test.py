@@ -115,7 +115,7 @@ class TestBasicAction(TestCase):
                 ]
             }),
             returns=String())
-        self.view = self.action.get_view()
+        self.view = self.action.view
 
     def test_successful_call(self):
         res = self.view(Request("POST", '{"spicy":true}', {"Content-Type": "application/json"}))
@@ -123,13 +123,8 @@ class TestBasicAction(TestCase):
         self.assertEqual(json.loads(res.body), "12.0 pounds of kimchi")
 
     def test_call_invalid_args(self):
-        res = self.view(Request("POST", '{"spicy":1}', {"Content-Type": "application/json"}))
-        self.assertEqual(res.code, 400)
-        self.assertRegexpMatches(json.loads(res.body)["error"], "Invalid boolean")
-
-    def test_unhandled_exception_debug(self):
-        with self.assertRaises(ZeroDivisionError):
-            self.view(Request("POST", '{"spicy":true,"servings":0}', {"Content-Type": "application/json"}), debug=True)
+        with self.assertRaisesRegexp(ValidationError, "Invalid boolean"):
+            res = self.view(Request("POST", '{"spicy":1}', {"Content-Type": "application/json"}))
 
 
 class TestActionWithModelData(TestCase):
@@ -150,7 +145,7 @@ class TestActionWithModelData(TestCase):
                 accepts=Schema().deserialize({"type": "cosmic.Action"}),
                 returns=Schema().deserialize({"type": "cosmic.Action"}))
 
-            self.view = self.action.get_view()
+            self.view = self.action.view
             self.remote_action = ActionSerializer().deserialize(self.spec)
 
     def test_direct_call(self):
@@ -164,7 +159,7 @@ class TestActionWithModelData(TestCase):
 
     def test_answer_request(self):
         with cosmos:
-            res = self.view(Request("POST", json.dumps(self.spec), {"Content-Type": "application/json"}), debug=True)
+            res = self.view(Request("POST", json.dumps(self.spec), {"Content-Type": "application/json"}))
         answer = json.loads(res.body)
         self.assertEqual(self.spec, answer)
 

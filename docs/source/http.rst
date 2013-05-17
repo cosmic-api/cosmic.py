@@ -18,15 +18,3 @@ make it quite easy.
 
 .. autoclass:: Response
    :members:
-
-.. autoclass:: View
-   :members: __call__
-
-.. autofunction:: make_view
-
-.. autoclass:: CorsPreflightView
-   :members:
-
-.. autoclass:: UrlRule
-   :members:
-

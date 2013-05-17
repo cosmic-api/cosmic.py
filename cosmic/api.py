@@ -3,18 +3,15 @@ from __future__ import unicode_literals
 import sys
 import json
 import requests
-
-# Still necessary for authentication
-from flask import request
+import teleport
+from werkzeug.routing import Map, Rule
 
 from .actions import Action, ActionSerializer
 from .models import Model
 from .tools import Namespace
-from .http import UrlRule, CorsPreflightView, make_view
 from .plugins import FlaskPlugin
 from . import cosmos
 
-import teleport
 
 
 
@@ -74,33 +71,26 @@ class API(object):
         cosmos.force()
         return api
 
-    def get_rules(self, debug=False):
-        """Get a list of URL rules necessary for implementing this API. The
-        *debug* parameter will be passed into the :class:`cosmic.http.View`
-        constructor of all the views in the API. Returns a list of
-        :class:`cosmic.http.UrlRule` objects.
-        """
-        rules = []
-        for action in self.actions:
-            view = action.get_view(debug=debug)
-            cors = CorsPreflightView(["POST"])
-            url = "/actions/%s" % action.name
-            rules.append(UrlRule(url, action.name, view))
-            rules.append(UrlRule(url, action.name + '_cors', cors))
-        @make_view("GET")
+    def get_map(self, debug=False):
         def spec_view(payload):
             return teleport.Box(APISerializer().serialize(self))
-        rules.append(UrlRule("/spec.json", "spec", spec_view))
-        return rules
+        m = Map([
+            Rule("/spec.json", methods=["GET"], endpoint=spec_view)
+        ])
+        for action in self.actions:
+            url = "/actions/%s" % action.name
+            m.add(Rule(url, methods=["POST"], endpoint=action.json_to_json))
+
+        return m
 
     def get_flask_app(self, debug=False, url_prefix=None):
         """Returns a Flask application.
         """
-        rules = self.get_rules(debug=debug)
-        plugin = FlaskPlugin(rules,
+        plugin = FlaskPlugin(
             setup_func=self.context_func,
             url_prefix=url_prefix,
-            debug=debug)
+            debug=debug,
+            werkzeug_map=self.get_map(debug=debug))
 
         plugin.app.wsgi_app = cosmos.middleware(plugin.app.wsgi_app)
         return plugin.app

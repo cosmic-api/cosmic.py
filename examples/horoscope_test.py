@@ -11,7 +11,7 @@ from cosmic import cosmos
 from horoscope import horoscope
 
 def run_horoscope():
-    horoscope.run(port=9873)
+    horoscope.run(port=9873, debug=True)
 
 json_spec = {
     "name": "horoscope",
@@ -38,7 +38,7 @@ class TestTutorialBuildingAPI(TestCase):
     def setUpClass(cls):
         cls.p = Process(target=run_horoscope)
         cls.p.start()
-        time.sleep(0.2)
+        time.sleep(0.5)
 
     @classmethod
     def tearDownClass(cls):

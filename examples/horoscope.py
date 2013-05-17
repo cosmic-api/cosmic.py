@@ -26,10 +26,9 @@ class Sign(Model):
     ]
 
     @classmethod
-    def instantiate(cls, datum):
+    def validate(cls, datum):
         if datum not in cls.SIGNS:
             raise ValidationError("Unknown zodiac sign", datum)
-        return cls(datum)
 
 @horoscope.action(
     accepts=ModelSerializer(Sign),
