@@ -8,13 +8,13 @@ from multiprocessing import Process
 
 from cosmic.api import API
 from cosmic import cosmos
-from horoscope import horoscope
+from zodiac import zodiac
 
-def run_horoscope():
-    horoscope.run(port=9873, debug=True)
+def run_zodiac():
+    zodiac.run(port=9873, debug=True)
 
 json_spec = {
-    "name": "horoscope",
+    "name": "zodiac",
     "models": [
         {
             "name": "Sign",
@@ -24,7 +24,7 @@ json_spec = {
     "actions": [
         {
             "name": "predict",
-            "accepts": {"type": "horoscope.Sign"},
+            "accepts": {"type": "zodiac.Sign"},
             "returns": {"type": "string"}
         }
     ]
@@ -36,7 +36,7 @@ class TestTutorialBuildingAPI(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.p = Process(target=run_horoscope)
+        cls.p = Process(target=run_zodiac)
         cls.p.start()
         time.sleep(0.5)
 

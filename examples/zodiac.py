@@ -4,9 +4,9 @@ from cosmic.api import API
 from cosmic.models import Model, ModelSerializer
 from teleport import *
 
-horoscope = API("horoscope")
+zodiac = API("zodiac")
 
-@horoscope.model
+@zodiac.model
 class Sign(Model):
     schema = String()
 
@@ -30,7 +30,7 @@ class Sign(Model):
         if datum not in cls.SIGNS:
             raise ValidationError("Unknown zodiac sign", datum)
 
-@horoscope.action(
+@zodiac.action(
     accepts=ModelSerializer(Sign),
     returns=String())
 def predict(sign):
@@ -50,4 +50,4 @@ def predict(sign):
     return ret
 
 if __name__ == "__main__":
-    horoscope.run()
+    zodiac.run()

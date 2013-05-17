@@ -1,7 +1,7 @@
 Tutorial
 ========
 
-The working code for this example API can be found `here <https://github.com/cosmic-api/cosmic.py/blob/master/examples/horoscope.py>`_.
+The working code for this example API can be found `here <https://github.com/cosmic-api/cosmic.py/blob/master/examples/zodiac.py>`_.
 
 Building an API
 """""""""""""""
@@ -14,7 +14,7 @@ Start by creating a new API object::
     from cosmic.models import Model, ModelSerializer
     from teleport import *
 
-    horoscope = API("horoscope")
+    zodiac = API("zodiac")
 
 To define a model, we subclass :class:`~cosmic.models.Model`.
 
@@ -22,7 +22,7 @@ Models are data type definitions which are helpful for validation and
 generating documentation. Let's create a simple string model responsible for
 the zodiac sign::
 
-    @horoscope.model
+    @zodiac.model
     class Sign(Model):
         schema = String()
 
@@ -50,7 +50,7 @@ the zodiac sign::
 Now we can use this model to create an *action*, a function that may be called
 with a POST request to your API::
 
-    @horoscope.action(
+    @zodiac.action(
         accepts=ModelSerializer(Sign),
         returns=String())
     def predict(sign):
@@ -72,14 +72,14 @@ with a POST request to your API::
 Now you are ready to run the API. The :meth:`~cosmic.api.API.run` method uses
 `Flask <http://flask.pocoo.org/>`_ to serve your API::
 
-    horoscope.run()
+    zodiac.run()
 
 This will create several HTTP endpoints. If you visit ``/spec.json`` you will see:
 
 .. code:: json
 
     {
-        "name": "horoscope",
+        "name": "zodiac",
         "models": [
             {
                 "name": "Sign",
@@ -89,7 +89,7 @@ This will create several HTTP endpoints. If you visit ``/spec.json`` you will se
         "actions": [
             {
                 "name": "predict",
-                "accepts": {"type": "horoscope.Sign"},
+                "accepts": {"type": "zodiac.Sign"},
                 "returns": {"type": "string"}
             }
         ]
@@ -120,9 +120,9 @@ Now that we've launched our API, we can consume it using the same library we use
 .. code:: python
 
     >>> from cosmic.api import API
-    >>> horoscope = API.load("http://localhost:5000/spec.json")
-    >>> pisces = horoscope.models.Sign("pisces")
-    >>> horoscope.actions.predict(pisces)
+    >>> zodiac = API.load("http://localhost:5000/spec.json")
+    >>> pisces = zodiac.models.Sign("pisces")
+    >>> zodiac.actions.predict(pisces)
     "For pisces, now is a good time to mow the lawn. It is not entirely out of the question that you will meet a handsome stranger."
 
 When we instantiate a model from a third-party API, the only validation Cosmic can run is schema
@@ -130,13 +130,13 @@ validation. Thus, this will work without error:
 
 .. code:: python
 
-    >>> pisces = horoscope.models.Sign("pies")
+    >>> pisces = zodiac.models.Sign("pies")
 
 However, when you try to use it in an action, you will receive and error:
 
 .. code:: python
 
-    >>> horoscope.actions.predict(pisces)
+    >>> zodiac.actions.predict(pisces)
     Traceback (most recent call last):
       File "<stdin>", line 1, in <module>
       File "cosmic/actions.py", line 93, in __call__
