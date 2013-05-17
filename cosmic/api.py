@@ -83,7 +83,7 @@ class API(object):
 
         return m
 
-    def get_flask_app(self, debug=False, url_prefix=None):
+    def get_flask_app(self, debug=False, url_prefix=""):
         """Returns a Flask application.
         """
         plugin = FlaskPlugin(
@@ -95,7 +95,7 @@ class API(object):
         plugin.app.wsgi_app = cosmos.middleware(plugin.app.wsgi_app)
         return plugin.app
 
-    def run(self, url_prefix=None, **kwargs): # pragma: no cover
+    def run(self, url_prefix="", **kwargs): # pragma: no cover
         """Runs the API as a Flask app. All keyword arguments except
         *url_prefix* channelled into :meth:`Flask.run`.
         """
