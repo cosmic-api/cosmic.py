@@ -6,6 +6,8 @@ from unittest2 import TestCase
 from mock import patch
 
 import requests
+from teleport import *
+from werkzeug.exceptions import Unauthorized
 
 from cosmic.exceptions import *
 from cosmic.api import API, APISerializer
@@ -14,7 +16,6 @@ from cosmic import api, request
 
 from cosmic import cosmos
 
-from teleport import *
 
 cookbook_spec = {
     u'name': u'cookbook',
@@ -200,7 +201,7 @@ class TextContext(TestCase):
         def setup(headers):
             if "Password" in headers and headers["Password"] == "crimson":
                 return { "secret": "1234" }
-            raise AuthenticationError()
+            raise Unauthorized()
             
         self.app = self.cookbook.get_flask_app(debug=True)
         self.werkzeug_client = self.app.test_client()
@@ -208,7 +209,7 @@ class TextContext(TestCase):
     def test_fail_authentication(self):
         res = self.werkzeug_client.post('/actions/hello', content_type="application/json")
         self.assertEqual(res.status_code, 401)
-        self.assertEqual(json.loads(res.data), {"error": "Authentication failed"})
+        self.assertEqual(json.loads(res.data), {"error": "Unauthorized"})
 
     def test_successful_authentication(self):
         res = self.werkzeug_client.post('/actions/hello',

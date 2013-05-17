@@ -34,12 +34,6 @@ Exceptions
 .. autoclass:: cosmic.exceptions.APIError
    :members:
 
-.. autoclass:: cosmic.exceptions.ClientError
-   :members:
-
-.. autoclass:: cosmic.exceptions.AuthenticationError
-   :members:
-
 Tools and Helpers
 -----------------
 

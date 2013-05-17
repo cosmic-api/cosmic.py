@@ -28,20 +28,6 @@ class APIError(HttpError):
     """
     http_code = 500
 
-class ClientError(HttpError):
-    """An :class:`~cosmic.exceptions.HttpError` with default HTTP code 400.
-    """
-    http_code = 400
-
-class AuthenticationError(ClientError):
-    """A :class:`~cosmic.exceptions.ClientError` with 401 HTTP code and
-    "Authentication failed" message.
-    """
-    http_code = 401
-    message = "Authentication failed"
-    def __init__(self):
-        pass
-
 class SpecError(Exception):
     pass
 

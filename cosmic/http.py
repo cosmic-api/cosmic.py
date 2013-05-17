@@ -3,8 +3,9 @@ from __future__ import unicode_literals
 import json
 
 from werkzeug.local import LocalProxy, LocalStack, release_local
+from werkzeug.exceptions import HTTPException, Unauthorized, BadRequest
 from flask import Flask, Blueprint, make_response
-from flask import request as flask_request
+from flask import request
 from teleport import Box, ValidationError
 
 from .tools import json_to_string, string_to_json
@@ -26,30 +27,24 @@ ALL_METHODS = [
 ]
 
 
-
 class FlaskView(object):
 
     def __init__(self, view):
         self.view = view
 
     def setup_request(self, req):
-        headers = req.headers
-        method = req.method
-        body = req.data
-
         ct = req.headers.get('Content-Type', None)
         if req.method != "GET" and ct != "application/json":
             raise SpecError('Content-Type must be "application/json" got %s instead' % ct)
         try:
-            flask_request.payload = string_to_json(req.data)
+            request.payload = string_to_json(req.data)
         except ValueError:
             # Let's be more specific
             raise JSONParseError()
 
     def __call__(self, *args, **kwargs):
-        self.setup_request(flask_request)
+        self.setup_request(request)
         return self.view()
-
 
 
 class FlaskPlugin(object):
@@ -70,23 +65,25 @@ class FlaskPlugin(object):
 
     def make_view(self, func):
         def view(*args, **kwargs):
-            # Catch ClientErrors and APIErrors and turn them into responses
+            # Catch BadRequest and APIErrors and turn them into responses
             try:
                 try:
-                    flask_request.context = self.setup_func(flask_request.headers)
-                    data = func(flask_request.payload)
+                    request.context = self.setup_func(request.headers)
+                    data = func(request.payload)
                     body = ""
                     if data != None:
                         body = json.dumps(data.datum)
                     return make_response(body)
                 except HttpError:
                     raise
+                except HTTPException:
+                    raise
                 except JSONParseError:
-                    raise ClientError("Invalid JSON")
+                    raise BadRequest("Invalid JSON")
                 except SpecError as err:
-                    raise ClientError(err.args[0])
+                    raise BadRequest(err.args[0])
                 except ValidationError as e:
-                    raise ClientError(str(e))
+                    raise BadRequest(str(e))
                 # Any other exception should be handled gracefully
                 except:
                     if self.debug:
@@ -94,4 +91,11 @@ class FlaskPlugin(object):
                     raise APIError("Internal Server Error")
             except HttpError as err:
                 return err.get_response()
+            except HTTPException as err:
+                if err.description != err.__class__.description:
+                    text = err.description
+                else:
+                    text = err.name
+                body = json.dumps({"error": text})
+                return make_response(body, err.code, {})
         return view
