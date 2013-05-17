@@ -140,6 +140,6 @@ However, when you try to use it in an action, you will receive and error:
     Traceback (most recent call last):
       File "<stdin>", line 1, in <module>
       File "cosmic/actions.py", line 93, in __call__
-        raise APIError(res.json['error'])
-    cosmic.exceptions.APIError: Unknown zodiac sign: u'pies'
+        raise InternalServerError(res.json['error'])
+    werkzeug.exceptions.InternalServerError: Unknown zodiac sign: u'pies'
 

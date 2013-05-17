@@ -28,12 +28,6 @@ Exceptions
 .. autoclass:: cosmic.exceptions.JSONParseError
    :members:
 
-.. autoclass:: cosmic.exceptions.HttpError
-   :members:
-
-.. autoclass:: cosmic.exceptions.APIError
-   :members:
-
 Tools and Helpers
 -----------------
 

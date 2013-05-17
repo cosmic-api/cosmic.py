@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 import json
 
 from werkzeug.local import LocalProxy, LocalStack, release_local
-from werkzeug.exceptions import HTTPException, Unauthorized, BadRequest
+from werkzeug.exceptions import HTTPException, Unauthorized, BadRequest, InternalServerError
 from flask import Flask, Blueprint, make_response
 from flask import request
 from teleport import Box, ValidationError
@@ -65,7 +65,7 @@ class FlaskPlugin(object):
 
     def make_view(self, func):
         def view(*args, **kwargs):
-            # Catch BadRequest and APIErrors and turn them into responses
+            # Catch 400s and 500s and turn them into responses
             try:
                 try:
                     request.context = self.setup_func(request.headers)
@@ -74,8 +74,6 @@ class FlaskPlugin(object):
                     if data != None:
                         body = json.dumps(data.datum)
                     return make_response(body)
-                except HttpError:
-                    raise
                 except HTTPException:
                     raise
                 except JSONParseError:
@@ -88,9 +86,7 @@ class FlaskPlugin(object):
                 except:
                     if self.debug:
                         raise
-                    raise APIError("Internal Server Error")
-            except HttpError as err:
-                return err.get_response()
+                    raise InternalServerError()
             except HTTPException as err:
                 if err.description != err.__class__.description:
                     text = err.description

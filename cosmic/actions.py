@@ -3,11 +3,12 @@ from __future__ import unicode_literals
 import json
 
 import requests
+from werkzeug.exceptions import InternalServerError
+from teleport import ValidationError
 
 from .tools import get_arg_spec, pack_action_arguments, apply_to_func, schema_is_compatible, normalize_json, serialize_json, json_to_string
-from .exceptions import APIError, SpecError
+from .exceptions import SpecError
 
-from teleport import ValidationError
 
 import teleport
 
@@ -71,16 +72,16 @@ class Action(object):
         res = requests.post(url, data=data, headers=headers)
         if res.status_code != requests.codes.ok:
             if res.json and 'error' in res.json:
-                raise APIError(res.json['error'])
+                raise InternalServerError(res.json['error'])
             else:
-                raise APIError("Call to %s failed with improper error response")
+                raise InternalServerError("Call to %s failed with improper error response")
         try:
             if self.returns:
                 return self.returns.deserialize(res.json)
             else:
                 return None
         except ValidationError:
-            raise APIError("Call to %s returned an invalid value" % self.name)
+            raise InternalServerError("Call to %s returned an invalid value" % self.name)
 
 
 class ActionSerializer(object):

@@ -23,11 +23,6 @@ class HttpError(Exception):
 class ModelNotFound(Exception):
     pass
 
-class APIError(HttpError):
-    """An :class:`~cosmic.exceptions.HttpError` with default HTTP code 500.
-    """
-    http_code = 500
-
 class SpecError(Exception):
     pass
 

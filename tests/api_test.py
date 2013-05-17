@@ -181,13 +181,6 @@ class TestAPI(TestCase):
             cookbook_decentralized = API.load('http://example.com/spec.json')
             self.assertEqual(APISerializer().serialize(cookbook_decentralized), cookbook_spec)
 
-    def test_apierror_repr(self):
-        """Make sure when APIError gets printed in stack trace we can see the message"""
-        try:
-            raise APIError("Blah")
-        except APIError as e:
-            self.assertEqual(unicode(e), "Blah")
-
 class TextContext(TestCase):
 
     def setUp(self):

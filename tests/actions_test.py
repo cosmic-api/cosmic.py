@@ -4,13 +4,15 @@ import json
 from unittest2 import TestCase
 from mock import patch, Mock
 
+from teleport import *
+from werkzeug.exceptions import InternalServerError
+
 from cosmic.api import Namespace, API
 from cosmic.actions import Action, ActionSerializer
-from cosmic.exceptions import SpecError, APIError
+from cosmic.exceptions import SpecError
 
 from cosmic import cosmos
 
-from teleport import *
 
 class TestBasicRemoteAction(TestCase):
 
@@ -59,14 +61,14 @@ class TestBasicRemoteAction(TestCase):
         with patch.object(requests, 'post') as mock_post:
             mock_post.return_value.status_code = 500
             mock_post.return_value.json = {'error': 'Cannot capitalize'}
-            with self.assertRaisesRegexp(APIError, "Cannot capitalize"):
+            with self.assertRaisesRegexp(InternalServerError, "Cannot capitalize"):
                 self.action(spicy=True, capitalize=True)
 
     def test_call_failed_bad_response(self):
         with patch.object(requests, 'post') as mock_post:
             mock_post.return_value.status_code = 500
             mock_post.return_value.json = None
-            with self.assertRaisesRegexp(APIError, "improper error response"):
+            with self.assertRaisesRegexp(InternalServerError, "improper error response"):
                 self.action(spicy=True)
 
     def test_call_with_bad_args(self):
@@ -77,7 +79,7 @@ class TestBasicRemoteAction(TestCase):
         with patch.object(requests, 'post') as mock_post:
             mock_post.return_value.status_code = 200
             mock_post.return_value.json = 1
-            with self.assertRaisesRegexp(APIError, "invalid value"):
+            with self.assertRaisesRegexp(InternalServerError, "invalid value"):
                 self.action(spicy=True, capitalize=True)
 
 
