@@ -7,7 +7,6 @@ from mock import patch, Mock
 from cosmic.api import Namespace, API
 from cosmic.actions import Action, ActionSerializer
 from cosmic.exceptions import SpecError, APIError
-from cosmic.http import Request
 
 from cosmic import cosmos
 

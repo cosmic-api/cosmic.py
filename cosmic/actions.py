@@ -5,7 +5,6 @@ import json
 import requests
 
 from .tools import get_arg_spec, pack_action_arguments, apply_to_func, schema_is_compatible, normalize_json, serialize_json, json_to_string
-from .http import JSONRequest
 from .exceptions import APIError, SpecError, AuthenticationError
 
 from teleport import ValidationError
