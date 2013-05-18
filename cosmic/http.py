@@ -12,86 +12,71 @@ from .tools import json_to_string, string_to_json
 from .exceptions import *
 
 
-# We shouldn't have to do this, but Flask doesn't allow us to route
-# all methods implicitly. When we don't pass in methods Flask assumes
-# methods to be ["GET", "HEAD", "OPTIONS"].
-ALL_METHODS = [
-    "OPTIONS",
-    "GET",
-    "HEAD",
-    "POST",
-    "PUT",
-    "DELETE",
-    "TRACE",
-    "CONNECT"
-]
-
-
 class FlaskView(object):
 
-    def __init__(self, view):
+    def __init__(self, view, setup_func, debug):
         self.view = view
+        self.setup_func = setup_func
+        self.debug = debug
 
-    def setup_request(self, req):
-        ct = req.headers.get('Content-Type', None)
-        if req.method != "GET" and ct != "application/json":
-            raise SpecError('Content-Type must be "application/json" got %s instead' % ct)
+    def err_to_response(self, err):
+        if isinstance(err, HTTPException):
+            if err.description != err.__class__.description:
+                text = err.description
+            else:
+                text = err.name
+            body = {"error": text}
+            code = err.code
+        elif isinstance(err, JSONParseError):
+            body = {"error": "Invalid JSON"}
+            code = 400
+        elif isinstance(err, SpecError):
+            body = {"error": err.args[0]}
+            code = 400
+        elif isinstance(err, ValidationError):
+            body = {"error": str(err)}
+            code = 400
+        else:
+            body = {"error": "Internal Server Error"}
+            code = 500
+        return make_response(json.dumps(body), code, {})
+
+    def __call__(self):
         try:
-            request.payload = string_to_json(req.data)
-        except ValueError:
-            # Let's be more specific
-            raise JSONParseError()
+            ct = request.headers.get('Content-Type', None)
+            if request.method != "GET" and ct != "application/json":
+                raise SpecError('Content-Type must be "application/json" got %s instead' % ct)
+            try:
+                request.payload = string_to_json(request.data)
+            except ValueError:
+                # Let's be more specific
+                raise JSONParseError()
+            request.context = self.setup_func(request.headers)
+            data = self.view(request.payload)
+            body = ""
+            if data != None:
+                body = json.dumps(data.datum)
+            return make_response(body)
+        except Exception as err:
+            if self.debug:
+                raise
+            else:
+                return self.err_to_response(err)
 
-    def __call__(self, *args, **kwargs):
-        self.setup_request(request)
-        return self.view()
 
 
 class FlaskPlugin(object):
 
-    def __init__(self, setup_func, url_prefix="", debug=False, werkzeug_map=None):
-        self.setup_func = setup_func
-        self.app = Flask(__name__, static_folder=None)
-        self.debug = debug
+    def __init__(self, setup_func, url_prefix=None, debug=False, werkzeug_map=None):
+
+        self.blueprint = Blueprint('cosmic', __name__)
         for rule in werkzeug_map.iter_rules():
-
-            v = self.make_view(rule.endpoint)
-
-            url = url_prefix + rule.rule
-            self.app.add_url_rule(url,
-                view_func=FlaskView(v),
+            self.blueprint.add_url_rule(rule.rule,
+                view_func=FlaskView(rule.endpoint, setup_func, debug),
                 methods=rule.methods,
                 endpoint=rule.endpoint.__name__)
 
-    def make_view(self, func):
-        def view(*args, **kwargs):
-            # Catch 400s and 500s and turn them into responses
-            try:
-                try:
-                    request.context = self.setup_func(request.headers)
-                    data = func(request.payload)
-                    body = ""
-                    if data != None:
-                        body = json.dumps(data.datum)
-                    return make_response(body)
-                except HTTPException:
-                    raise
-                except JSONParseError:
-                    raise BadRequest("Invalid JSON")
-                except SpecError as err:
-                    raise BadRequest(err.args[0])
-                except ValidationError as e:
-                    raise BadRequest(str(e))
-                # Any other exception should be handled gracefully
-                except:
-                    if self.debug:
-                        raise
-                    raise InternalServerError()
-            except HTTPException as err:
-                if err.description != err.__class__.description:
-                    text = err.description
-                else:
-                    text = err.name
-                body = json.dumps({"error": text})
-                return make_response(body, err.code, {})
-        return view
+        self.app = Flask(__name__, static_folder=None)
+        self.app.debug = debug
+        self.app.register_blueprint(self.blueprint, url_prefix=url_prefix)
+

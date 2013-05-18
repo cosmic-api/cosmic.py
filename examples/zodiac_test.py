@@ -11,7 +11,7 @@ from cosmic import cosmos
 from zodiac import zodiac
 
 def run_zodiac():
-    zodiac.run(port=9873, debug=True)
+    zodiac.run(port=9873)
 
 json_spec = {
     "name": "zodiac",

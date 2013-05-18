@@ -196,7 +196,7 @@ class TextContext(TestCase):
                 return { "secret": "1234" }
             raise Unauthorized()
             
-        self.app = self.cookbook.get_flask_app(debug=True)
+        self.app = self.cookbook.get_flask_app(debug=False)
         self.werkzeug_client = self.app.test_client()
 
     def test_fail_authentication(self):
