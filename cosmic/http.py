@@ -12,59 +12,73 @@ from .exceptions import *
 from .wrappers import Request
 
 
+# We shouldn't have to do this, but Flask doesn't allow us to route
+# all methods implicitly. When we don't pass in methods Flask assumes
+# methods to be ["GET", "HEAD", "OPTIONS"].
+ALL_METHODS = [
+    "OPTIONS",
+    "GET",
+    "HEAD",
+    "POST",
+    "PUT",
+    "DELETE",
+    "TRACE",
+    "CONNECT"
+]
+
+
 class FlaskPlugin(object):
 
-    def __init__(self, setup_func, url_prefix=None, debug=False, werkzeug_map=None):
+    def __init__(self, setup_func, url_prefix="", debug=False, werkzeug_map=None):
         self.setup_func = setup_func
-
-        self.blueprint = Blueprint('cosmic', __name__)
-        self.blueprint.before_request(self.before_request)
-
-        self.blueprint.errorhandler(SpecError)(self.handle_cosmic_error)
-        self.blueprint.errorhandler(ValidationError)(self.handle_validation_error)
-        self.blueprint.errorhandler(401)(self.handle_http_error)
+        self.app = Flask(__name__, static_folder=None)
+        self.app.request_class = Request
+        self.app.before_request(self.before_request)
 
         self.debug = debug
         for rule in werkzeug_map.iter_rules():
 
             v = self.make_view(rule.endpoint)
 
-            self.blueprint.add_url_rule(rule.rule,
+            url = url_prefix + rule.rule
+            self.app.add_url_rule(url,
                 view_func=v,
                 methods=rule.methods,
                 endpoint=rule.endpoint.__name__)
 
-        self.app = Flask(__name__, static_folder=None)
-        self.app.debug = debug
-        self.app.request_class = Request
-        self.app.register_blueprint(self.blueprint, url_prefix=url_prefix)
-
-    def handle_http_error(self, e):
-        if e.description != e.__class__.description:
-            text = e.description
-        else:
-            text = e.name
-        body = json.dumps({"error": text})
-        return make_response(body, e.code, {})
-
-    def handle_cosmic_error(self, e):
-        body = json.dumps({"error": e.args[0]})
-        return make_response(body, e.code, {})
-
-    def handle_validation_error(self, e):
-        body = json.dumps({"error": str(e)})
-        return make_response(body, 400, {})
-
     def before_request(self):
         # Trigger the evaluation of properties, possibly raising exceptions
         request.json_payload
-        request.context = self.setup_func(request.headers)
 
     def make_view(self, func):
         def view(*args, **kwargs):
-            data = func(request.json_payload)
-            body = ""
-            if data != None:
-                body = json.dumps(data.datum)
-            return make_response(body)
+            # Catch 400s and 500s and turn them into responses
+            try:
+                try:
+                    request.context = self.setup_func(request.headers)
+                    data = func(request.json_payload)
+                    body = ""
+                    if data != None:
+                        body = json.dumps(data.datum)
+                    return make_response(body)
+                except HTTPException:
+                    raise
+                except JSONParseError:
+                    raise BadRequest("Invalid JSON")
+                except SpecError as err:
+                    raise BadRequest(err.args[0])
+                except ValidationError as e:
+                    raise BadRequest(str(e))
+                # Any other exception should be handled gracefully
+                except:
+                    if self.debug:
+                        raise
+                    raise InternalServerError()
+            except HTTPException as err:
+                if err.description != err.__class__.description:
+                    text = err.description
+                else:
+                    text = err.name
+                body = json.dumps({"error": text})
+                return make_response(body, err.code, {})
         return view

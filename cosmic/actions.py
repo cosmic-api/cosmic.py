@@ -47,10 +47,6 @@ class Action(object):
         ret = apply_to_func(self.raw_func, normalized)
         return serialize_json(self.returns, ret)
 
-    @property
-    def url(self):
-        return self.api.url + "/actions/" + self.name 
-
     def __call__(self, *args, **kwargs):
         """If action was generated from a function, calls it with the passed
         in data, otherwise serializes the data, makes an HTTP request to the
@@ -71,8 +67,9 @@ class Action(object):
 
         data = json_to_string(serialized)
 
+        url = self.api.url + '/actions/' + self.name
         headers = {'Content-Type': 'application/json'}
-        res = requests.post(self.url, data=data, headers=headers)
+        res = requests.post(url, data=data, headers=headers)
         if res.status_code != requests.codes.ok:
             if res.json and 'error' in res.json:
                 raise InternalServerError(res.json['error'])

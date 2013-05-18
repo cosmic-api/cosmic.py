@@ -1,5 +1,4 @@
 from flask.wrappers import Request as RequestBase
-from werkzeug.exceptions import BadRequest
 from werkzeug.utils import cached_property
 
 from .tools import json_to_string, string_to_json
@@ -13,7 +12,8 @@ class Request(RequestBase):
         try:
             return string_to_json(self.data)
         except ValueError:
-            raise BadRequest("Invalid JSON")
+            # Let's be more specific
+            raise JSONParseError()
 
     @cached_property
     def json_payload(self):
