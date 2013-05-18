@@ -10,6 +10,7 @@ from teleport import Box, ValidationError
 
 from .tools import json_to_string, string_to_json
 from .exceptions import *
+from . import cosmos
 
 
 class FlaskView(object):
@@ -51,32 +52,16 @@ class FlaskView(object):
             except ValueError:
                 # Let's be more specific
                 raise JSONParseError()
-            request.context = self.setup_func(request.headers)
-            data = self.view(request.payload)
-            body = ""
-            if data != None:
-                body = json.dumps(data.datum)
-            return make_response(body)
+            with cosmos:
+                request.context = self.setup_func(request.headers)
+                data = self.view(request.payload)
+                body = ""
+                if data != None:
+                    body = json.dumps(data.datum)
+                return make_response(body)
         except Exception as err:
             if self.debug:
                 raise
             else:
                 return self.err_to_response(err)
-
-
-
-class FlaskPlugin(object):
-
-    def __init__(self, setup_func, url_prefix=None, debug=False, werkzeug_map=None):
-
-        self.blueprint = Blueprint('cosmic', __name__)
-        for rule in werkzeug_map.iter_rules():
-            self.blueprint.add_url_rule(rule.rule,
-                view_func=FlaskView(rule.endpoint, setup_func, debug),
-                methods=rule.methods,
-                endpoint=rule.endpoint.__name__)
-
-        self.app = Flask(__name__, static_folder=None)
-        self.app.debug = debug
-        self.app.register_blueprint(self.blueprint, url_prefix=url_prefix)
 

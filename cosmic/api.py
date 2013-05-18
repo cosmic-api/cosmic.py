@@ -4,12 +4,12 @@ import sys
 import json
 import requests
 import teleport
-from werkzeug.routing import Map, Rule
+from flask import Blueprint, Flask
 
 from .actions import Action, ActionSerializer
 from .models import Model
 from .tools import Namespace
-from .http import FlaskPlugin
+from .http import FlaskView
 from . import cosmos
 
 
@@ -71,29 +71,37 @@ class API(object):
         cosmos.force()
         return api
 
-    def get_map(self, debug=False):
+    def get_blueprint(self, debug=False):
+
         def spec_view(payload):
             return teleport.Box(APISerializer().serialize(self))
-        m = Map([
-            Rule("/spec.json", methods=["GET"], endpoint=spec_view)
-        ])
+
+        blueprint = Blueprint('cosmic', __name__)
+        blueprint.add_url_rule("/spec.json",
+            view_func=FlaskView(spec_view, self.context_func, debug),
+            methods=["GET"],
+            endpoint="spec")
         for action in self.actions:
             url = "/actions/%s" % action.name
-            m.add(Rule(url, methods=["POST"], endpoint=action.json_to_json))
+            endpoint = "action_%s" % action.name
+            view_func = FlaskView(action.json_to_json, self.context_func, debug)
+            blueprint.add_url_rule(url,
+                view_func=view_func,
+                methods=["POST"],
+                endpoint=endpoint)
+        return blueprint
 
-        return m
-
-    def get_flask_app(self, debug=False, url_prefix=""):
+    def get_flask_app(self, debug=False, url_prefix=None):
         """Returns a Flask application.
         """
-        plugin = FlaskPlugin(
-            setup_func=self.context_func,
-            url_prefix=url_prefix,
-            debug=debug,
-            werkzeug_map=self.get_map(debug=debug))
+        blueprint = self.get_blueprint(debug=debug)
 
-        plugin.app.wsgi_app = cosmos.middleware(plugin.app.wsgi_app)
-        return plugin.app
+        app = Flask(__name__, static_folder=None)
+        # When debug is True, PROPAGATE_EXCEPTIONS will be implicitly True
+        app.debug = debug
+        app.register_blueprint(blueprint, url_prefix=url_prefix)
+
+        return app
 
     def run(self, url_prefix=None, **kwargs): # pragma: no cover
         """Runs the API as a Flask app. All keyword arguments except
@@ -101,9 +109,6 @@ class API(object):
         """
         debug = kwargs.get('debug', False)
         app = self.get_flask_app(debug=debug, url_prefix=url_prefix)
-        # Flask will catch exceptions to return a nice HTTP
-        # response in debug mode, we want things to FAIL!
-        app.config['PROPAGATE_EXCEPTIONS'] = debug
         app.run(**kwargs)
 
 
