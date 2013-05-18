@@ -4,12 +4,12 @@ import json
 
 from werkzeug.local import LocalProxy, LocalStack, release_local
 from werkzeug.exceptions import HTTPException, Unauthorized, BadRequest, InternalServerError
-from flask import Flask, Blueprint, make_response, request
+from flask import Flask, Blueprint, make_response
+from flask import request
 from teleport import Box, ValidationError
 
 from .tools import json_to_string, string_to_json
 from .exceptions import *
-from .wrappers import Request
 
 
 # We shouldn't have to do this, but Flask doesn't allow us to route
@@ -27,14 +27,31 @@ ALL_METHODS = [
 ]
 
 
+class FlaskView(object):
+
+    def __init__(self, view):
+        self.view = view
+
+    def setup_request(self, req):
+        ct = req.headers.get('Content-Type', None)
+        if req.method != "GET" and ct != "application/json":
+            raise SpecError('Content-Type must be "application/json" got %s instead' % ct)
+        try:
+            request.payload = string_to_json(req.data)
+        except ValueError:
+            # Let's be more specific
+            raise JSONParseError()
+
+    def __call__(self, *args, **kwargs):
+        self.setup_request(request)
+        return self.view()
+
+
 class FlaskPlugin(object):
 
     def __init__(self, setup_func, url_prefix="", debug=False, werkzeug_map=None):
         self.setup_func = setup_func
         self.app = Flask(__name__, static_folder=None)
-        self.app.request_class = Request
-        self.app.before_request(self.before_request)
-
         self.debug = debug
         for rule in werkzeug_map.iter_rules():
 
@@ -42,13 +59,9 @@ class FlaskPlugin(object):
 
             url = url_prefix + rule.rule
             self.app.add_url_rule(url,
-                view_func=v,
+                view_func=FlaskView(v),
                 methods=rule.methods,
                 endpoint=rule.endpoint.__name__)
-
-    def before_request(self):
-        # Trigger the evaluation of properties, possibly raising exceptions
-        request.json_payload
 
     def make_view(self, func):
         def view(*args, **kwargs):
@@ -56,7 +69,7 @@ class FlaskPlugin(object):
             try:
                 try:
                     request.context = self.setup_func(request.headers)
-                    data = func(request.json_payload)
+                    data = func(request.payload)
                     body = ""
                     if data != None:
                         body = json.dumps(data.datum)
