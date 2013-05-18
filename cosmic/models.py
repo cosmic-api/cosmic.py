@@ -25,7 +25,7 @@ class Model(object):
         return cls(datum)
 
     @classmethod
-    def validate(cls, datum):
+    def validate(cls, datum): # pragma: no cover
         pass
 
     @classmethod
@@ -33,7 +33,7 @@ class Model(object):
         return cls.schema
 
 
-class ModelSerializer(object):
+class S(object):
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
@@ -52,6 +52,7 @@ class ModelSerializer(object):
         }
 
 
+
 def get_model_cls(name):
     from . import cosmos
     api_name, model_name = name.split('.', 1)
@@ -63,7 +64,7 @@ def get_model_cls(name):
         raise ModelNotFound(name)
 
 
-class LazyModelSerializer(ModelSerializer):
+class LazyS(S):
 
     def __init__(self):
         pass
@@ -74,15 +75,15 @@ class LazyModelSerializer(ModelSerializer):
 
     def deserialize(self, datum):
         self.force()
-        return super(LazyModelSerializer, self).deserialize(datum)
+        return super(LazyS, self).deserialize(datum)
 
     def serialize(self, datum):
         self.force()
-        return super(LazyModelSerializer, self).serialize(datum)
+        return super(LazyS, self).serialize(datum)
 
     def serialize_self(self):
         self.force()
-        return super(LazyModelSerializer, self).serialize_self(datum)
+        return super(LazyS, self).serialize_self(datum)
 
 
 class Cosmos(TypeMap):
@@ -107,7 +108,6 @@ class Cosmos(TypeMap):
     def __getitem__(self, name):
         from api import APISerializer, ModelSerializer
         from actions import ActionSerializer
-        from models import ModelSerializer
         if name == "cosmic.API":
             return APISerializer
         elif name == "cosmic.Model":
@@ -117,13 +117,13 @@ class Cosmos(TypeMap):
         elif '.' in name:
 
             try:
-                class Serializer(ModelSerializer):
+                class Serializer(S):
                     model_cls = get_model_cls(name)
                     def __init__(self):
                         pass
                 return Serializer
             except ModelNotFound:
-                class Serializer(LazyModelSerializer):
+                class Serializer(LazyS):
                     _name = name
 
                 self.lazy_serializers.append(Serializer)

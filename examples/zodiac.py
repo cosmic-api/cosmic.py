@@ -1,7 +1,7 @@
 import random
 
 from cosmic.api import API
-from cosmic.models import Model, ModelSerializer
+from cosmic.models import Model, S
 from teleport import *
 
 zodiac = API("zodiac")
@@ -31,7 +31,7 @@ class Sign(Model):
             raise ValidationError("Unknown zodiac sign", datum)
 
 @zodiac.action(
-    accepts=ModelSerializer(Sign),
+    accepts=S(Sign),
     returns=String())
 def predict(sign):
     ret = "For %s, now is a good time to " % sign.data

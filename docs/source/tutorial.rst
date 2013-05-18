@@ -11,7 +11,7 @@ Start by creating a new API object::
     import random
 
     from cosmic.api import API
-    from cosmic.models import Model, ModelSerializer
+    from cosmic.models import Model, S
     from teleport import *
 
     zodiac = API("zodiac")
@@ -51,7 +51,7 @@ Now we can use this model to create an *action*, a function that may be called
 with a POST request to your API::
 
     @zodiac.action(
-        accepts=ModelSerializer(Sign),
+        accepts=S(Sign),
         returns=String())
     def predict(sign):
         ret = "For %s, now is a good time to " % sign.data
