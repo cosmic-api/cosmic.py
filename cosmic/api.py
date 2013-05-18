@@ -8,7 +8,7 @@ from werkzeug.routing import Map, Rule
 
 from .actions import Action, ActionSerializer
 from .models import Model
-from .tools import Namespace
+from .tools import Namespace, NamespaceSerializer
 from .http import FlaskPlugin
 from . import cosmos
 
@@ -41,16 +41,12 @@ class ModelSerializer(object):
 
 class API(object):
 
-    def __init__(self, name, homepage=None, actions=[], models=[]):
+    def __init__(self, name, homepage=None, models=[]):
         self.name = name
         self.homepage = homepage
         # Create actions and models namespace
         self.actions = Namespace()
         self.models = Namespace()
-        # Populate them if we have initial data
-        for action in actions:
-            action.api = self
-            self.actions.add(action.name, action)
         for model in models:
             model.api = self
             self.models.add(model.__name__, model)
@@ -77,7 +73,8 @@ class API(object):
         m = Map([
             Rule("/spec.json", methods=["GET"], endpoint=spec_view)
         ])
-        for action in self.actions:
+        for action_name in self.actions:
+            action = self.actions._dict[action_name]
             url = "/actions/%s" % action.name
             m.add(Rule(url, methods=["POST"], endpoint=action.json_to_json))
 
@@ -181,19 +178,26 @@ class APISerializer(object):
     schema = teleport.Struct([
         teleport.required("name", teleport.String()),
         teleport.optional("homepage", teleport.String()),
-        teleport.required("actions", teleport.Array(ActionSerializer())),
+        teleport.required("actions", NamespaceSerializer(ActionSerializer())),
         teleport.required("models", teleport.Array(ModelSerializer()))
     ])
 
     def deserialize(self, datum):
         opts = self.schema.deserialize(datum)
-        return API(**opts)
+        api = API(
+            name=opts['name'],
+            homepage=opts.get('homepage', None),
+            models=opts['models'])
+        api.actions = opts['actions']
+        for action in api.actions.values():
+            action.api = api
+        return api
 
     def serialize(self, datum):
         return self.schema.serialize({
             "name": datum.name,
             "homepage": datum.homepage,
-            "actions": datum.actions._list,
-            "models": datum.models._list
+            "actions": datum.actions,
+            "models": datum.models.values()
         })
 

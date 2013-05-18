@@ -21,28 +21,32 @@ cookbook_spec = {
     u'name': u'cookbook',
     u'actions': [
         {
-            u'name': u'cabbage',
-            u'accepts': {
-                u'type': u"struct",
-                u"fields": [
-                    {
-                        u"name": u"spicy",
-                        u"required": True,
-                        u"schema": {u"type": u"boolean"}
-                    },
-                    {
-                        u"name": u"capitalize",
-                        u"required": False,
-                        u"schema": {u"type": u"boolean"}
-                    }
-                ]
-            },
-            u'returns': {
-                u'type': u'json'
+            u'cabbage': {
+                u'name': u'cabbage',
+                u'accepts': {
+                    u'type': u"struct",
+                    u"fields": [
+                        {
+                            u"name": u"spicy",
+                            u"required": True,
+                            u"schema": {u"type": u"boolean"}
+                        },
+                        {
+                            u"name": u"capitalize",
+                            u"required": False,
+                            u"schema": {u"type": u"boolean"}
+                        }
+                    ]
+                },
+                u'returns': {
+                    u'type': u'json'
+                }
             }
         },
         {
-            u'name': u'noop'
+            u'noop': {
+                u'name': u'noop'
+            }
         }
     ],
     u"models": [
@@ -230,6 +234,6 @@ class TestRemoteAPI(TestCase):
         self.assertEqual(self.cookbook.url, "http://localhost:8881/api")
 
     def test_models(self):
-        self.assertEqual(self.cookbook.models.__all__, ["Cookie", "Recipe"])
+        self.assertEqual(self.cookbook.models.__all__, ["Recipe", "Cookie"])
         self.assertEqual(Schema().serialize(self.cookbook.models.Recipe.get_schema()), {"type": "string"})
 

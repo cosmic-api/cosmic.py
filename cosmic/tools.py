@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import inspect
 import json
+from collections import OrderedDict
 
 from .exceptions import SpecError
 
@@ -22,14 +23,67 @@ class Namespace(object):
 
     @property
     def __all__(self):
-        return self._dict.keys()
+        return self._list
 
     def add(self, name, item):
-        self._list.append(item)
+        self._list.append(name)
         self._dict[name] = item
+
+    def values(self):
+        return [self._dict[key] for key in self._list]
 
     def __getattr__(self, name):
         return self._dict[name]
+
+
+class NamespaceSerializer(object):
+    match_type = "cosmic.Namespace"
+
+    def __init__(self, items):
+        self.items = items        
+
+    def deserialize(self, datum):
+        err = ValidationError("Invalid namespace", datum)
+        ret = Namespace()
+
+        if type(datum) != list:
+            raise err
+
+        for item in datum:
+            if type(item) != dict or len(item) != 1:
+                raise err
+            key = item.keys()[0]
+            val = item[key]
+            if type(key) not in (unicode, str,):
+                raise err
+            ret.add(key, self.items.deserialize(val))
+
+        return ret
+
+    def serialize(self, datum):
+        ret = []
+        for key in datum._list:
+            d = {}
+            d[key] = self.items.serialize(datum._dict[key])
+            ret.append(d)
+        return ret
+
+    @classmethod
+    def get_params(cls):
+        return Struct([
+            required("type", String()),
+            required("items", Schema())
+        ])
+
+    def serialize_self(self):
+        s = {"type": "cosmic.Namespace"}
+        s.update(NamespaceSerializer.get_params().serialize({"items": self.items}))
+        return s
+
+    @classmethod
+    def deserialize_self(self, datum):
+        opts = NamespaceSerializer.get_params().deserialize(datum)
+        return NamespaceSerializer(opts["items"])
 
 
 def get_arg_spec(func):

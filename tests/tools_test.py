@@ -209,7 +209,7 @@ class TestNamespace(TestCase):
         self.assertEqual(self.dispatcher.length([0, 1, 2]), 3)
 
     def test_iterate(self):
-        l = [action for action in self.dispatcher]
+        l = [self.dispatcher._dict[action_name] for action_name in self.dispatcher]
         self.assertEqual(l[0].spec['name'], 'length')
         self.assertEqual(l[1].spec['name'], 'height')
 
@@ -228,9 +228,11 @@ class TestSchemaHelpers(TestCase):
             "name": u"Foo",
             "actions": [
                 {
-                    "name": u"foo",
-                    "accepts": {"type": u"string"},
-                    "returns": {"type": u"boolean"}
+                    u"foo": {
+                        "name": u"foo",
+                        "accepts": {"type": u"string"},
+                        "returns": {"type": u"boolean"}
+                    }
                 }
             ],
             "models": []

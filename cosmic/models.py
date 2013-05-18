@@ -108,12 +108,15 @@ class Cosmos(TypeMap):
         from api import APISerializer, ModelSerializer
         from actions import ActionSerializer
         from models import ModelSerializer
+        from tools import NamespaceSerializer
         if name == "cosmic.API":
             return APISerializer
         elif name == "cosmic.Model":
             return ModelSerializer
         elif name == "cosmic.Action":
             return ActionSerializer
+        elif name == "cosmic.Namespace":
+            return NamespaceSerializer
         elif '.' in name:
 
             try:
