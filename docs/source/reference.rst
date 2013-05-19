@@ -7,9 +7,9 @@ APIs
 .. module:: cosmic.api
 
 .. autoclass:: cosmic.api.API
-   :members: load, get_flask_app, get_blueprint, run, action, model
+   :members:
 
-.. autoclass:: cosmic.api.Model
+.. autoclass:: cosmic.models.Model
    :members:
 
 Actions

@@ -72,9 +72,27 @@ class API(object):
         return api
 
     def get_blueprint(self, debug=False):
+        """Return a :class:`flask.blueprints.Blueprint` instance containing
+        everything necessary to run your API. You may use this to augment an
+        existing Flask website with an API::
+
+            from flask import Flask
+            from cosmic import API
+
+            hackernews = Flask(__name__)
+            hnapi = API("hackernews")
+
+            hackernews.register_blueprint(
+                hnapi.get_blueprint(),
+                url_prefix="/api")
+        
+        The *debug* parameter will determine whether Cosmic will propagate
+        exceptions, letting them reach the debugger or swallow them up,
+        returning proper HTTP error responses.
+        """
 
         def spec_view(payload):
-            return teleport.Box(APISerializer().serialize(self))
+            return teleport.Box(self.get_json_spec())
 
         blueprint = Blueprint('cosmic', __name__)
         blueprint.add_url_rule("/spec.json",
@@ -92,7 +110,8 @@ class API(object):
         return blueprint
 
     def get_flask_app(self, debug=False, url_prefix=None):
-        """Returns a Flask application.
+        """Returns a Flask application with nothing but the API blueprint
+        registered.
         """
         blueprint = self.get_blueprint(debug=debug)
 
@@ -102,6 +121,9 @@ class API(object):
         app.register_blueprint(blueprint, url_prefix=url_prefix)
 
         return app
+
+    def get_json_spec(self):
+        return APISerializer().serialize(self)
 
     def run(self, url_prefix=None, **kwargs): # pragma: no cover
         """Runs the API as a Flask app. All keyword arguments except
@@ -153,16 +175,6 @@ class API(object):
             class Word(object):
                 schema = String()
 
-                def __init__(self, text):
-                    self.text = text
-
-                def serialize_self(self):
-                    return self.text
-
-                @classmethod
-                def deserialize_self(cls, datum):
-                    datum = cls.schema.deserialize(datum)
-                    return cls(datum)
         """
         model_cls.api = self
         # Add to namespace

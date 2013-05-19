@@ -7,15 +7,29 @@ from .exceptions import ModelNotFound
 
 
 class Model(object):
+    """A data type definition attached to an API."""
 
     def __init__(self, data):
         self.data = data
 
+    @classmethod
+    def get_schema(cls):
+        """Returns the Teleport serializer that describes the structure of the
+        data for this model. By default this method will return the
+        :attr:`schema` attribute of the :class:`Model` subclass. This is the
+        attribute you should override to set the schema.
+        """
+        return cls.schema
+
     def serialize_self(self):
+        "Returns the JSON form of the model"
         return self.get_schema().serialize(self.data)
 
     @classmethod
     def deserialize_self(cls, datum):
+        """Given the JSON form of the model, deserializes it, validates it and
+        instantiates the model.
+        """
         datum = cls.get_schema().deserialize(datum)
         return cls.instantiate(datum)
 
@@ -26,11 +40,10 @@ class Model(object):
 
     @classmethod
     def validate(cls, datum): # pragma: no cover
-        pass
-
-    @classmethod
-    def get_schema(cls):
-        return cls.schema
+        """Given the native data as deserialized by :attr:`schema`, validate
+        it, raising a :exc:`teleport.exceptions.ValidationError` if the data
+        is invalid.
+        """
 
 
 class S(object):
