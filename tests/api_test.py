@@ -11,7 +11,7 @@ from werkzeug.exceptions import Unauthorized
 
 from cosmic.exceptions import *
 from cosmic.api import API, APISerializer
-from cosmic.models import Model
+from cosmic.models import Model, S
 from cosmic import api, request
 
 from cosmic import cosmos
@@ -114,6 +114,13 @@ class TestAPI(TestCase):
 
         self.app = self.cookbook.get_flask_app(debug=True)
         self.werkzeug_client = self.app.test_client()
+
+    def test_S(self):
+        R = self.cookbook.models.Recipe
+        self.assertEqual(S(R).serialize_self(), {"type": "cookbook.Recipe"})
+        pancake = S(R).deserialize("pancake")
+        self.assertEqual(pancake.data, u"pancake")
+        self.assertEqual(S(R).serialize(pancake), u"pancake")
 
     def test_accepts_invalid_schema(self):
         with self.assertRaisesRegexp(ValidationError, "Missing fields"):
