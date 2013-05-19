@@ -38,7 +38,7 @@ class Model(object):
         cls.validate(datum)
         return cls(datum)
 
-    @classmethod
+    @classmethod # pragma: no cover
     def validate(cls, datum): # pragma: no cover
         """Given the native data as deserialized by :attr:`schema`, validate
         it, raising a :exc:`teleport.exceptions.ValidationError` if the data
