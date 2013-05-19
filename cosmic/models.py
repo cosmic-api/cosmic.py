@@ -34,9 +34,14 @@ class Model(object):
 
 
 class S(object):
+    _model_cls = None
 
     def __init__(self, model_cls):
-        self.model_cls = model_cls
+        self._model_cls = model_cls
+
+    @property
+    def model_cls(self):
+        return self._model_cls
 
     def deserialize(self, datum):
         return self.model_cls.deserialize_self(datum)
@@ -45,8 +50,10 @@ class S(object):
         return datum.serialize_self()
 
     def serialize_self(self):
-        api_name = self.model_cls.api.name
-        model_name = self.model_cls.__name__
+        model_cls = self.model_cls
+
+        api_name = model_cls.api.name
+        model_name = model_cls.__name__
         return {
             "type": u"%s.%s" % (api_name, model_name,)
         }
@@ -69,21 +76,11 @@ class LazyS(S):
     def __init__(self):
         pass
 
-    @classmethod
-    def force(cls):
-        cls.model_cls = get_model_cls(cls._name)
-
-    def deserialize(self, datum):
-        self.force()
-        return super(LazyS, self).deserialize(datum)
-
-    def serialize(self, datum):
-        self.force()
-        return super(LazyS, self).serialize(datum)
-
-    def serialize_self(self):
-        self.force()
-        return super(LazyS, self).serialize_self(datum)
+    @property
+    def model_cls(self):
+        if not self._model_cls:
+            self._model_cls = get_model_cls(self._name)
+        return self._model_cls
 
 
 class Cosmos(TypeMap):
@@ -94,7 +91,7 @@ class Cosmos(TypeMap):
 
     def force(self):
         for serializer in self.lazy_serializers:
-            serializer.force()
+            serializer._model_cls = get_model_cls(serializer._name)
         self.lazy_serializers = []
 
     def __enter__(self):
@@ -118,7 +115,7 @@ class Cosmos(TypeMap):
 
             try:
                 class Serializer(S):
-                    model_cls = get_model_cls(name)
+                    _model_cls = get_model_cls(name)
                     def __init__(self):
                         pass
                 return Serializer

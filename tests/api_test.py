@@ -11,7 +11,7 @@ from werkzeug.exceptions import Unauthorized
 
 from cosmic.exceptions import *
 from cosmic.api import API, APISerializer
-from cosmic.models import Model, S
+from cosmic.models import Model, S, LazyS
 from cosmic import api, request
 
 from cosmic import cosmos
@@ -121,6 +121,21 @@ class TestAPI(TestCase):
         pancake = S(R).deserialize("pancake")
         self.assertEqual(pancake.data, u"pancake")
         self.assertEqual(S(R).serialize(pancake), u"pancake")
+
+    def test_LazyS_okay(self):
+        class LS(LazyS):
+            _name = "cookbook.Recipe"
+        ls = LS()
+        self.assertEqual(ls.serialize_self(), {"type": "cookbook.Recipe"})
+        # This time model_cls should be cached
+        self.assertEqual(ls.serialize_self(), {"type": "cookbook.Recipe"})
+
+    def test_LazyS_fail(self):
+        class LS(LazyS):
+            _name = "unknown.Unknown"
+        ls = LS()
+        with self.assertRaises(ModelNotFound):
+            ls.deserialize(1)
 
     def test_accepts_invalid_schema(self):
         with self.assertRaisesRegexp(ValidationError, "Missing fields"):
