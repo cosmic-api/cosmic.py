@@ -6,7 +6,7 @@ The working code for this example API can be found `here <https://github.com/cos
 Building an API
 """""""""""""""
 
-Start by creating a new API object::
+Start by creating a new :class:`~cosmic.api.API` object::
 
     import random
 
@@ -42,10 +42,17 @@ the zodiac sign::
         ]
 
         @classmethod
-        def instantiate(cls, datum):
+        def validate(cls, datum):
             if datum not in cls.SIGNS:
                 raise ValidationError("Unknown zodiac sign", datum)
-            return cls(datum)
+
+Note the :attr:`schema` attribute in the model class. This is a Teleport
+serializer, a special type definition that cosmic uses for serialization,
+validation as well as to automatically generate documentation. You can get
+started with Teleport `here </docs/teleport/python/>`_.
+
+After Cosmic passes raw JSON data through the Teleport schema, it will invoke
+the model's :meth:`validate` function if such exists.
 
 Now we can use this model to create an *action*, a function that may be called
 with a POST request to your API::
@@ -68,6 +75,12 @@ with a POST request to your API::
             "not entirely out of the question"
         ]) + " that you will meet a handsome stranger."
         return ret
+
+The *accepts* and *returns* arguments are both serializers. Notice how we can
+use the model we defined above in a schema simply by wrapping it in an
+:class:`~cosmic.models.S` instance. By providing an *accepts* definition like
+the one above, we are ensuring that the function will only get called with
+deserialized and validated data, in this case a :class:`Sign` instance.
 
 Now you are ready to run the API. The :meth:`~cosmic.api.API.run` method uses
 `Flask <http://flask.pocoo.org/>`_ to serve your API::
