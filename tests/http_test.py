@@ -13,28 +13,25 @@ class TestView(TestCase):
 
     def setUp(self):
 
-        def dummy(headers):
-            pass
-
         def noop(payload):
             pass
-        self.noop = FlaskView(noop, dummy, False)
+        self.noop = FlaskView(noop, False)
 
         def unhandled_error(payload):
             return Box(1 / 0)
-        self.unhandled_error = FlaskView(unhandled_error, dummy, False)
+        self.unhandled_error = FlaskView(unhandled_error, False)
 
         def authentication_error(payload):
             raise Unauthorized()
-        self.authentication_error = FlaskView(authentication_error, dummy, False)
+        self.authentication_error = FlaskView(authentication_error, False)
 
         def bad_request(payload):
             raise BadRequest("BOOM")
-        self.bad_request = FlaskView(bad_request, dummy, False)
+        self.bad_request = FlaskView(bad_request, False)
 
         def validation_error(payload):
             raise ValidationError("Invalid!")
-        self.validation_error = FlaskView(validation_error, dummy, False)
+        self.validation_error = FlaskView(validation_error, False)
 
         self.app = Flask(__name__)
         self.app.debug = True
@@ -68,7 +65,6 @@ class TestView(TestCase):
     def test_unhandled_error_debug(self):
         u = FlaskView(
             view=self.unhandled_error.view,
-            setup_func=self.unhandled_error.setup_func,
             debug=True)
         with self.assertRaises(ZeroDivisionError):
             with self.app.test_request_context('/', method="POST", data="", content_type="application/json"):

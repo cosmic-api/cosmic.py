@@ -17,7 +17,6 @@ Contents:
 
    tutorial
    reference
-   http
 
 Indices and tables
 ==================

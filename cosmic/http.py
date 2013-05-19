@@ -15,9 +15,8 @@ from . import cosmos
 
 class FlaskView(object):
 
-    def __init__(self, view, setup_func, debug):
+    def __init__(self, view, debug):
         self.view = view
-        self.setup_func = setup_func
         self.debug = debug
 
     def err_to_response(self, err):
@@ -48,7 +47,6 @@ class FlaskView(object):
             except ValueError:
                 return self.error_response("Invalid JSON", 400)
             with cosmos:
-                request.context = self.setup_func(request.headers)
                 data = self.view(request.payload)
                 body = ""
                 if data != None:

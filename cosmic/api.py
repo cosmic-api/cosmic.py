@@ -78,13 +78,13 @@ class API(object):
 
         blueprint = Blueprint('cosmic', __name__)
         blueprint.add_url_rule("/spec.json",
-            view_func=FlaskView(spec_view, self.context_func, debug),
+            view_func=FlaskView(spec_view, debug),
             methods=["GET"],
             endpoint="spec")
         for action in self.actions:
             url = "/actions/%s" % action.name
             endpoint = "action_%s" % action.name
-            view_func = FlaskView(action.json_to_json, self.context_func, debug)
+            view_func = FlaskView(action.json_to_json, debug)
             blueprint.add_url_rule(url,
                 view_func=view_func,
                 methods=["POST"],
@@ -168,16 +168,6 @@ class API(object):
         # Add to namespace
         self.models.add(model_cls.__name__, model_cls)
         return model_cls
-
-    def context_func(self, headers):
-        return {}
-
-    def context(self, func):
-        """Registers the given function as an authentication function for the
-        API.
-        """
-        self.context_func = func
-        return func
 
 
 class APISerializer(object):

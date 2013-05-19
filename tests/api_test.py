@@ -203,36 +203,6 @@ class TestAPI(TestCase):
             cookbook_decentralized = API.load('http://example.com/spec.json')
             self.assertEqual(APISerializer().serialize(cookbook_decentralized), cookbook_spec)
 
-class TextContext(TestCase):
-
-    def setUp(self):
-        self.cookbook = API(u'authenticator')
-
-        @self.cookbook.action(returns=String())
-        def hello():
-            return request.context['secret']
-
-        @self.cookbook.context
-        def setup(headers):
-            if "Password" in headers and headers["Password"] == "crimson":
-                return { "secret": "1234" }
-            raise Unauthorized()
-            
-        self.app = self.cookbook.get_flask_app(debug=False)
-        self.werkzeug_client = self.app.test_client()
-
-    def test_fail_authentication(self):
-        res = self.werkzeug_client.post('/actions/hello', content_type="application/json")
-        self.assertEqual(res.status_code, 401)
-        self.assertEqual(json.loads(res.data), {"error": "Unauthorized"})
-
-    def test_successful_authentication(self):
-        res = self.werkzeug_client.post('/actions/hello',
-            content_type="application/json",
-            headers={ 'Password': "crimson" })
-        self.assertEqual(res.status_code, 200)
-        self.assertEqual(json.loads(res.data), '1234')
-
 
 class TestRemoteAPI(TestCase):
 

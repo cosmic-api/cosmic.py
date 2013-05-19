@@ -7,7 +7,7 @@ APIs
 .. module:: cosmic.api
 
 .. autoclass:: cosmic.api.API
-   :members: create, load, get_flask_app, run, action, model, context
+   :members: load, get_flask_app, get_blueprint, run, action, model
 
 .. autoclass:: cosmic.api.Model
    :members:
@@ -18,7 +18,7 @@ Actions
 .. module:: cosmic.actions
 
 .. autoclass:: cosmic.actions.Action
-   :members: from_func, get_view, __call__
+   :members: from_func, __call__
 
 Exceptions
 ----------
