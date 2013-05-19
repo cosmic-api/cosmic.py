@@ -25,7 +25,7 @@ Exceptions
 
 .. module:: cosmic.exceptions
 
-.. autoclass:: cosmic.exceptions.JSONParseError
+.. autoclass:: cosmic.exceptions.ModelNotFound
    :members:
 
 Tools and Helpers

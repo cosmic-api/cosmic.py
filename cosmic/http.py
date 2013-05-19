@@ -26,21 +26,17 @@ class FlaskView(object):
                 text = err.description
             else:
                 text = err.name
-            body = {"error": text}
-            code = err.code
-        elif isinstance(err, JSONParseError):
-            body = {"error": "Invalid JSON"}
-            code = 400
+            return self.error_response(text, err.code)
         elif isinstance(err, SpecError):
-            body = {"error": err.args[0]}
-            code = 400
+            return self.error_response(err.args[0], 400)
         elif isinstance(err, ValidationError):
-            body = {"error": str(err)}
-            code = 400
+            return self.error_response(str(err), 400)
         else:
-            body = {"error": "Internal Server Error"}
-            code = 500
-        return make_response(json.dumps(body), code, {})
+            return self.error_response("Internal Server Error", 500)
+
+    def error_response(self, message, code):
+        body = json.dumps({"error": message})
+        return make_response(body, code, {})
 
     def __call__(self):
         try:
@@ -50,8 +46,7 @@ class FlaskView(object):
             try:
                 request.payload = string_to_json(request.data)
             except ValueError:
-                # Let's be more specific
-                raise JSONParseError()
+                return self.error_response("Invalid JSON", 400)
             with cosmos:
                 request.context = self.setup_func(request.headers)
                 data = self.view(request.payload)
