@@ -1,6 +1,12 @@
 include *.rst
 include tox.ini
 recursive-include tests *
+recursive-exclude tests *.pyc
+recursive-exclude tests *.pyo
 recursive-include examples *
+recursive-exclude examples *.pyc
+recursive-exclude examples *.pyo
 recursive-include docs *
+recursive-exclude docs *.pyc
+recursive-exclude docs *.pyo
 include .coveragerc
