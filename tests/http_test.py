@@ -40,18 +40,21 @@ class TestView(TestCase):
         with self.app.test_request_context('/', method="POST", data="", content_type="application/jason"):
             res = self.noop()
             self.assertEqual(res.status_code, 400)
+            self.assertEqual(res.content_type, "application/json")
             self.assertRegexpMatches(res.data, "Content-Type must be")
 
     def test_invalid_json(self):
         with self.app.test_request_context('/', method="POST", data='{"spicy":farse}', content_type="application/json"):
             res = self.noop()
             self.assertEqual(res.status_code, 400)
+            self.assertEqual(res.content_type, "application/json")
             self.assertRegexpMatches(res.data, "Invalid JSON")
 
     def test_unhandled_error(self):
         with self.app.test_request_context('/', method="POST", data="", content_type="application/json"):
             res = self.unhandled_error()
             self.assertEqual(res.status_code, 500)
+            self.assertEqual(res.content_type, "application/json")
             self.assertEqual(json.loads(res.data), {
                 "error": "Internal Server Error"
             })
@@ -60,6 +63,7 @@ class TestView(TestCase):
         with self.app.test_request_context('/', method="POST", data="", content_type="application/json"):
             res = self.validation_error()
             self.assertEqual(res.status_code, 400)
+            self.assertEqual(res.content_type, "application/json")
             self.assertEqual(json.loads(res.data), {"error": "Invalid!"})
 
     def test_unhandled_error_debug(self):
@@ -74,17 +78,20 @@ class TestView(TestCase):
         with self.app.test_request_context('/', method="POST", data="", content_type="application/json"):
             res = self.authentication_error()
             self.assertEqual(res.status_code, 401)
+            self.assertEqual(res.content_type, "application/json")
             self.assertEqual(json.loads(res.data), {"error": "Unauthorized"})
 
     def test_HTTPException_with_description_handling(self):
         with self.app.test_request_context('/', method="POST", data="", content_type="application/json"):
             res = self.bad_request()
             self.assertEqual(res.status_code, 400)
+            self.assertEqual(res.content_type, "application/json")
             self.assertEqual(json.loads(res.data), {"error": "BOOM"})
 
     def test_action_no_args_no_data(self):
         with self.app.test_request_context('/', method="POST", data="", content_type="application/json"):
             res = self.noop()
             self.assertEqual(res.status_code, 200)
+            self.assertEqual(res.content_type, "application/json")
             self.assertEqual(res.data, "")
 

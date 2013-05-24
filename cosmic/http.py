@@ -35,7 +35,7 @@ class FlaskView(object):
 
     def error_response(self, message, code):
         body = json.dumps({"error": message})
-        return make_response(body, code, {})
+        return make_response(body, code, {"Content-Type": "application/json"})
 
     def __call__(self):
         try:
@@ -51,7 +51,7 @@ class FlaskView(object):
                 body = ""
                 if data != None:
                     body = json.dumps(data.datum)
-                return make_response(body)
+                return make_response(body, 200, {"Content-Type": "application/json"})
         except Exception as err:
             if self.debug:
                 raise

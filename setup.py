@@ -7,7 +7,8 @@ with open("README.rst") as readme:
 
 setup(
     name = 'cosmic',
-    version = "0.0.3",
+    version = "0.0.4-dev",
+    url = "http://www.cosmic-api.com/docs/cosmic/python/",
     packages = ['cosmic'],
     description = 'A high-level web API framework',
     license = "MIT",
