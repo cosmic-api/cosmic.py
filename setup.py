@@ -16,10 +16,8 @@ setup(
     author_email = "alexei.boronine@gmail.com",
     long_description = long_description,
     install_requires = [
-        "teleport>=0.0.7",
+        "teleport==0.0.7",
         "Flask==0.9",
-        "jsonpointer==0.3",
         "requests==0.14.2",
-        "mock==1.0.1"
     ]
 )
