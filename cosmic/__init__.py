@@ -1,7 +1,7 @@
 from werkzeug.local import LocalProxy, LocalStack
 from flask import request
 
-from .models import _ctx_stack
+from .models import _ctx_stack, _global_cosmos
 
 
 # Fixed by Armin in cbd8ec9b20405b406a8a701b34087a349b656d5d
@@ -12,6 +12,10 @@ class FixedLocalProxy(LocalProxy):
     __enter__ = lambda x: x._get_current_object().__enter__()
     __exit__ = lambda x, *a, **kw: x._get_current_object().__exit__(*a, **kw)
 
-cosmos = FixedLocalProxy(lambda: _ctx_stack.top)
+def _get_current_cosmos():
+    if _ctx_stack.top != None:
+        return _ctx_stack.top
+    else:
+        return _global_cosmos
 
-
+cosmos = FixedLocalProxy(_get_current_cosmos)

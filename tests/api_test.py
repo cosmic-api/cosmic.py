@@ -184,8 +184,7 @@ class TestAPI(TestCase):
 
     def test_call(self):
         data = '{"spicy": true}'
-        with self.app.test_request_context('/api/actions/cabbage', data=data, content_type="application/json"):
-            self.assertEqual(self.cookbook.actions.cabbage(spicy=False), "sauerkraut")
+        self.assertEqual(self.cookbook.actions.cabbage(spicy=False), "sauerkraut")
 
     def test_spec_endpoint(self):
         res = self.werkzeug_client.get('/spec.json')

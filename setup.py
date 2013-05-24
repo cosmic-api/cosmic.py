@@ -7,7 +7,7 @@ with open("README.rst") as readme:
 
 setup(
     name = 'cosmic',
-    version = "0.0.3-dev",
+    version = "0.0.3",
     packages = ['cosmic'],
     description = 'A high-level web API framework',
     license = "MIT",
@@ -15,7 +15,7 @@ setup(
     author_email = "alexei.boronine@gmail.com",
     long_description = long_description,
     install_requires = [
-        "teleport>=0.0.6",
+        "teleport>=0.0.7",
         "Flask==0.9",
         "jsonpointer==0.3",
         "requests==0.14.2",
