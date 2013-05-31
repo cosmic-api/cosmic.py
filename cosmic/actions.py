@@ -10,6 +10,29 @@ from .tools import get_arg_spec, pack_action_arguments, apply_to_func, schema_is
 from .exceptions import SpecError
 
 
+class Function(BasicWrapper):
+    type_name = "cosmic.Function"
+
+    schema = Struct([
+        optional("accepts", Schema),
+        optional("returns", Schema)
+    ])
+
+    def __init__(self, accepts=None, returns=None):
+        self.accepts = accepts
+        self.returns = returns
+
+    @staticmethod
+    def inflate(datum):
+        return Function(**datum)
+
+    @staticmethod
+    def deflate(datum):
+        return {
+            "accepts": datum.accepts,
+            "returns": datum.returns
+        }
+
 
 class Action(BasicWrapper):
     type_name = "cosmic.Action"

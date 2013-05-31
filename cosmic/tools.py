@@ -44,11 +44,11 @@ def get_arg_spec(func):
     # No arguments
     if len(args) == 0:
         return None
-    # One argument: accepts a single JSON object
+    # One argument: accepts a single object
     if len(args) == 1:
         return JSON
     # Multiple arguments: accepts a JSON object with a property for
-    # each argument, each property being of type 'json'
+    # each argument
     fields = []
     # Number of non-keyword arguments (required ones)
     numargs = len(args) - (len(defaults) if defaults else 0)
