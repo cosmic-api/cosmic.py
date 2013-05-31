@@ -229,15 +229,15 @@ class TestSchemaHelpers(TestCase):
     def setUp(self):
         self.api = {
             "name": u"Foo",
-            "actions": [
-                {
-                    "name": u"foo",
-                    "function": {
+            "functions": {
+                "map": {
+                    u"foo": {
                         "accepts": {"type": u"String"},
                         "returns": {"type": u"Boolean"}
                     }
-                }
-            ],
+                },
+                "order": [u"foo"]
+            },
             "models": []
         }
 

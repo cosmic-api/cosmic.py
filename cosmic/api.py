@@ -9,10 +9,10 @@ from teleport import *
 
 from flask import Blueprint, Flask
 
-from .actions import Action, Function
+from .actions import Function
 from .models import Model
 from .tools import Namespace, get_arg_spec, schema_is_compatible, GetterNamespace
-from .http import FlaskView
+from .http import FlaskView, Callable
 from . import cosmos
 
 
@@ -49,12 +49,11 @@ class API(BasicWrapper):
     schema = Struct([
         required("name", String),
         optional("homepage", String),
-        required("actions", Array(Action)),
         required("models", Array(ModelSerializer)),
         optional("functions", OrderedMap(Function))
     ])
 
-    def __init__(self, name, homepage=None, actions=[], models=[], functions=None):
+    def __init__(self, name, homepage=None, models=[], functions=None):
         self.name = name
         self.homepage = homepage
 
@@ -62,16 +61,12 @@ class API(BasicWrapper):
             self._functions = functions
         else:
             self._functions = OrderedDict()
-            
+
         self.functions = GetterNamespace(self._get_function_callable)
 
-        # Create actions and models namespace
-        self.actions = Namespace()
+        # Create models namespace
         self.models = Namespace()
-        # Populate them if we have initial data
-        for action in actions:
-            action.api = self
-            self.actions.add(action.name, action)
+        # Populate it if we have initial data
         for model in models:
             model.api = self
             self.models.add(model.__name__, model)
@@ -88,7 +83,6 @@ class API(BasicWrapper):
             "name": datum.name,
             "homepage": datum.homepage,
             "functions": datum._functions if datum._functions else None,
-            "actions": datum.actions._list,
             "models": datum.models._list
         }
 
@@ -134,14 +128,6 @@ class API(BasicWrapper):
             view_func=FlaskView(spec_view, debug),
             methods=["GET"],
             endpoint="spec")
-        for action in self.actions:
-            url = "/actions/%s" % action.name
-            endpoint = "action_%s" % action.name
-            view_func = FlaskView(action.json_to_json, debug)
-            blueprint.add_url_rule(url,
-                view_func=view_func,
-                methods=["POST"],
-                endpoint=endpoint)
         for name, function in self._functions.items():
             url = "/functions/%s" % name
             endpoint = "function_%s" % name
@@ -176,35 +162,22 @@ class API(BasicWrapper):
         app = self.get_flask_app(debug=debug, url_prefix=url_prefix)
         app.run(**kwargs)
 
-
-    def action(self, accepts=None, returns=None):
+    def function(self, accepts=None, returns=None):
         """A decorator for creating actions out of functions and registering
         them with the API.
 
         The *accepts* parameter is a schema that will deserialize the input of
         the action, *returns* is a schema that will serialize the output of
         the action. The name of the function becomes the name of the action.
-        Internally :meth:`~cosmic.actions.Action.from_func` is used.
 
         .. code:: python
 
-            from teleport import Integer
-
             random = API("random")
 
-            @random.action(returns=Integer())
+            @random.function(returns=Integer)
             def generate():
                 return 9
         """
-        def wrapper(func):
-            name = func.__name__
-            action = Action.from_func(func, accepts=accepts, returns=returns)
-            action.api = self
-            self.actions.add(name, action)
-            return func
-        return wrapper
-
-    def function(self, accepts=None, returns=None):
         def wrapper(func):
             name = unicode(func.__name__)
             arg_spec = get_arg_spec(func)
@@ -228,7 +201,8 @@ class API(BasicWrapper):
         if hasattr(function, "func"):
             return function.func
         else:
-            raise NotImplementedError()
+            url = self.url + '/functions/' + name
+            return Callable(function, url)
 
     def model(self, model_cls):
         """A decorator for registering a model with an API. The name of the

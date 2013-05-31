@@ -1,14 +1,16 @@
 from __future__ import unicode_literals
 
 import json
+import requests
 
 from werkzeug.local import LocalProxy, LocalStack, release_local
 from werkzeug.exceptions import HTTPException, Unauthorized, BadRequest, InternalServerError
+
 from flask import Flask, Blueprint, make_response
 from flask import request
 from teleport import Box, ValidationError
 
-from .tools import json_to_string, string_to_json
+from .tools import *
 from .exceptions import *
 from . import cosmos
 
@@ -58,3 +60,33 @@ class FlaskView(object):
             else:
                 return self.err_to_response(err)
 
+
+class Callable(object):
+
+    def __init__(self, function, url):
+        self.function = function
+        self.url = url
+
+    def __call__(self, *args, **kwargs):
+        packed = pack_action_arguments(*args, **kwargs)
+
+        serialized = serialize_json(self.function.accepts, packed)
+        # Try to normalize, just for the sake of validation
+        normalize_json(self.function.accepts, serialized)
+
+        data = json_to_string(serialized)
+
+        headers = {'Content-Type': 'application/json'}
+        res = requests.post(self.url, data=data, headers=headers)
+        if res.status_code != requests.codes.ok:
+            if res.json and 'error' in res.json:
+                raise InternalServerError(res.json['error'])
+            else:
+                raise InternalServerError("Call failed with improper error response")
+        try:
+            if self.function.returns:
+                return self.function.returns.from_json(res.json)
+            else:
+                return None
+        except ValidationError:
+            raise InternalServerError("Call returned an invalid value" % self.name)

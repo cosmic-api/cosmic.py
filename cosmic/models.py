@@ -98,13 +98,11 @@ class Cosmos(TypeMap):
 
     def __getitem__(self, name):
         from api import API, ModelSerializer
-        from actions import Action, Function
+        from actions import Function
         if name == "cosmic.API":
             return (API, None,)
         elif name == "cosmic.Model":
             return (ModelSerializer, None,)
-        elif name == "cosmic.Action":
-            return (Action, None,)
         elif name == "cosmic.Function":
             return (Function, None,)
         elif '.' in name:
