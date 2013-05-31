@@ -49,7 +49,7 @@ class API(BasicWrapper):
         required("name", String),
         optional("homepage", String),
         required("models", Array(ModelSerializer)),
-        optional("actions", OrderedMap(Function))
+        required("actions", OrderedMap(Function))
     ])
 
     def __init__(self, name, homepage=None, models=[], actions=None):
@@ -84,7 +84,7 @@ class API(BasicWrapper):
         return {
             "name": datum.name,
             "homepage": datum.homepage,
-            "actions": datum._actions if datum._actions else None,
+            "actions": datum._actions,
             "models": datum._models.values()
         }
 
