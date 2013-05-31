@@ -11,7 +11,7 @@ Start by creating a new :class:`~cosmic.api.API` object::
     import random
 
     from cosmic.api import API
-    from cosmic.models import Model, S
+    from cosmic.models import Model
     from teleport import *
 
     zodiac = API("zodiac")
@@ -24,7 +24,7 @@ the zodiac sign::
 
     @zodiac.model
     class Sign(Model):
-        schema = String()
+        schema = String
 
         SIGNS = [
             "aries",
@@ -42,9 +42,10 @@ the zodiac sign::
         ]
 
         @classmethod
-        def validate(cls, datum):
+        def inflate(cls, datum):
             if datum not in cls.SIGNS:
                 raise ValidationError("Unknown zodiac sign", datum)
+            return cls(datum)
 
 Note the :attr:`schema` attribute in the model class. This is a Teleport
 serializer, a special type definition that cosmic uses for serialization,
@@ -52,14 +53,15 @@ validation as well as to automatically generate documentation. You can get
 started with Teleport `here </docs/teleport/python/>`_.
 
 After Cosmic passes raw JSON data through the Teleport schema, it will invoke
-the model's :meth:`validate` function if such exists.
+the model's :meth:`inflate` function to perform extra validation (if you
+define it) and to instantiate the model.
 
 Now we can use this model to create an *action*, a function that may be called
 with a POST request to your API::
 
     @zodiac.action(
-        accepts=S(Sign),
-        returns=String())
+        accepts=Sign,
+        returns=String)
     def predict(sign):
         ret = "For %s, now is a good time to " % sign.data
         ret += random.choice([
@@ -76,11 +78,11 @@ with a POST request to your API::
         ]) + " that you will meet a handsome stranger."
         return ret
 
-The *accepts* and *returns* arguments are both serializers. Notice how we can
-use the model we defined above in a schema simply by wrapping it in an
-:class:`~cosmic.models.S` instance. By providing an *accepts* definition like
-the one above, we are ensuring that the function will only get called with
-deserialized and validated data, in this case a :class:`Sign` instance.
+The *accepts* and *returns* arguments are both schemas. Notice how we can use
+the model we defined above as a Teleport schema. By providing an *accepts*
+definition like the one above, we are ensuring that the function will only get
+called with deserialized and validated data, in this case a :class:`Sign`
+instance.
 
 Now you are ready to run the API. The :meth:`~cosmic.api.API.run` method uses
 `Flask <http://flask.pocoo.org/>`_ to serve your API::
@@ -99,13 +101,15 @@ This will create several HTTP endpoints. If you visit ``/spec.json`` you will se
                 "schema": {"type": "string"}
             }
         ],
-        "actions": [
-            {
-                "name": "predict",
-                "accepts": {"type": "zodiac.Sign"},
-                "returns": {"type": "string"}
-            }
-        ]
+        "actions": {
+            "map": {
+                "predict": {
+                    "accepts": {"type": "zodiac.Sign"},
+                    "returns": {"type": "string"}
+                }
+            },
+            "order": ["predict"]
+        }
     }
 
 This endpoint can be used to dynamically build a client for your API.

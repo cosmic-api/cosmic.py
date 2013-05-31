@@ -9,6 +9,23 @@ from teleport import *
 
 
 class GetterNamespace(object):
+    """An object that exposes an arbitrary mapping as a namespace, letting its
+    values be accessible as attributes.
+
+    :param get_item: a function that takes in a string and returns an item
+    :param get_all: a function that returns a list of all keys in the
+                    namespace
+
+    Example::
+
+        >>> d = {"a": 1, "b": 2}
+        >>> n = GetterNamespace(d.__getitem__, d.keys)
+        >>> n.a
+        1
+        >>> n.__all__
+        ["a", "b"]
+        
+    """
 
     def __init__(self, get_item, get_all=None):
         self.get_item = get_item

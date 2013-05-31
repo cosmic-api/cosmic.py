@@ -14,6 +14,7 @@ class Model(BasicWrapper):
 
     @classmethod
     def inflate(cls, datum):
+        cls.validate(datum)
         return cls(datum)
 
     @classmethod
@@ -31,7 +32,7 @@ class LazyWrapper(object):
         return self.model_cls.from_json(datum)
 
     def to_json(self, datum):
-        return self.model_cls.from_json(datum)
+        return self.model_cls.to_json(datum)
 
     @property
     def model_cls(self):

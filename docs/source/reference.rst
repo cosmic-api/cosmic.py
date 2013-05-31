@@ -12,14 +12,6 @@ APIs
 .. autoclass:: cosmic.models.Model
    :members:
 
-Actions
--------
-
-.. module:: cosmic.actions
-
-.. autoclass:: cosmic.actions.Action
-   :members: from_func, __call__
-
 Exceptions
 ----------
 
