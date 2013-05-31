@@ -10,7 +10,7 @@ from flask import Blueprint, Flask
 
 from .actions import Function
 from .models import Model
-from .tools import Namespace, get_arg_spec, schema_is_compatible, GetterNamespace
+from .tools import get_arg_spec, schema_is_compatible, GetterNamespace
 from .http import FlaskView, Callable
 from . import cosmos
 
@@ -61,14 +61,17 @@ class API(BasicWrapper):
         else:
             self._actions = OrderedDict()
 
-        self.actions = GetterNamespace(self._get_function_callable)
-
-        # Create models namespace
-        self.models = Namespace()
+        self._models = OrderedDict()
         # Populate it if we have initial data
         for model in models:
             model.api = self
-            self.models.add(model.__name__, model)
+            self._models[model.__name__] = model
+
+        self.actions = GetterNamespace(self._get_function_callable)
+        self.models = GetterNamespace(
+            get_item=self._models.__getitem__,
+            get_all=self._models.keys)
+
         # Add to registry so we can reference its models
         cosmos.apis[self.name] = self
 
@@ -82,7 +85,7 @@ class API(BasicWrapper):
             "name": datum.name,
             "homepage": datum.homepage,
             "actions": datum._actions if datum._actions else None,
-            "models": datum.models._list
+            "models": datum._models.values()
         }
 
     @staticmethod
@@ -221,7 +224,7 @@ class API(BasicWrapper):
         model_cls.api = self
         model_cls.type_name = "%s.%s" % (self.name, model_cls.__name__,)
         # Add to namespace
-        self.models.add(model_cls.__name__, model_cls)
+        self._models[model_cls.__name__] = model_cls
         return model_cls
 
 

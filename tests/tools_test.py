@@ -197,31 +197,23 @@ class TestSchemaIsCompatible(TestCase):
         assert not schema_is_compatible(g, d)
 
 
-class TestNamespace(TestCase):
+class TestGetterNamespace(TestCase):
 
     def setUp(self):
-        self.dispatcher = Namespace()
-        length = Mock(return_value=3)
-        length.spec = { 'name': 'length' }
-        self.dispatcher.add('length', length)
-        height = Mock()
-        height.spec = { 'name': 'height' }
-        self.dispatcher.add('height', height)
+        self.d = OrderedDict([('a', 1,), ('b', 2,), ('c', 3,)])
+        self.dispatcher = GetterNamespace(
+            get_item=self.d.__getitem__,
+            get_all=self.d.keys)
 
-    def test_call(self):
-        self.assertEqual(self.dispatcher.length([0, 1, 2]), 3)
-
-    def test_iterate(self):
-        l = [action for action in self.dispatcher]
-        self.assertEqual(l[0].spec['name'], 'length')
-        self.assertEqual(l[1].spec['name'], 'height')
+    def test_get_item(self):
+        self.assertEqual(self.dispatcher.a, 1)
+        self.assertEqual(self.dispatcher.b, 2)
+        self.assertEqual(self.dispatcher.c, 3)
+        with self.assertRaises(KeyError):
+            self.dispatcher.d
 
     def test_all(self):
-        self.assertEqual(self.dispatcher.__all__, ['length', 'height'])
-
-    def test_undefined_action(self):
-        with self.assertRaises(KeyError):
-            self.dispatcher.width([0, 1, 2])
+        self.assertEqual(self.dispatcher.__all__, ['a', 'b', 'c'])
 
 
 class TestSchemaHelpers(TestCase):

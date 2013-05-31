@@ -21,33 +21,6 @@ class Model(BasicWrapper):
         return datum.data
 
 
-class S(object):
-    _model_cls = None
-
-    def __init__(self, model_cls):
-        self._model_cls = model_cls
-
-    @property
-    def model_cls(self):
-        return self._model_cls
-
-    def deserialize(self, datum):
-        return self.model_cls.deserialize_self(datum)
-
-    def serialize(self, datum):
-        return datum.serialize_self()
-
-    def serialize_self(self):
-        model_cls = self.model_cls
-
-        api_name = model_cls.api.name
-        model_name = model_cls.__name__
-        return {
-            "type": u"%s.%s" % (api_name, model_name,)
-        }
-
-
-
 class LazyWrapper(object):
     _model_cls = None
 
@@ -83,7 +56,7 @@ class Cosmos(TypeMap):
         api_name, model_name = name.split('.', 1)
         try:
             api = self.apis[api_name]
-            model = api.models._dict[model_name]
+            model = api._models[model_name]
             return model
         except KeyError:
             raise ModelNotFound(name)

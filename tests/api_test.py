@@ -201,6 +201,6 @@ class TestRemoteAPI(TestCase):
         self.assertEqual(self.cookbook.url, "http://localhost:8881/api")
 
     def test_models(self):
-        self.assertEqual(self.cookbook.models.__all__, ["Cookie", "Recipe"])
+        self.assertEqual(self.cookbook.models.__all__, ["Recipe", "Cookie"])
         self.assertEqual(Schema.to_json(self.cookbook.models.Recipe.schema), {"type": "String"})
 

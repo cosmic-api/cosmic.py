@@ -7,38 +7,19 @@ from .exceptions import SpecError
 
 from teleport import *
 
-class Namespace(object):
-    """Essentially a sorted dictionary. Allows to reference actions or
-    models as attributes and implements __all__ so that a Namespace
-    instance can be treated as a module.
-    """
-
-    def __init__(self):
-        self._list = []
-        self._dict = {}
-
-    def __iter__(self):
-        return self._list.__iter__()
-
-    @property
-    def __all__(self):
-        return self._dict.keys()
-
-    def add(self, name, item):
-        self._list.append(item)
-        self._dict[name] = item
-
-    def __getattr__(self, name):
-        return self._dict[name]
-
 
 class GetterNamespace(object):
 
-    def __init__(self, getter):
-        self.getter = getter
+    def __init__(self, get_item, get_all=None):
+        self.get_item = get_item
+        self.get_all = get_all
 
     def __getattr__(self, name):
-        return self.getter(name)
+        return self.get_item(name)
+
+    @property
+    def __all__(self):
+        return self.get_all()
 
 
 def get_arg_spec(func):
