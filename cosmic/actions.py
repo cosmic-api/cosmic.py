@@ -33,6 +33,11 @@ class Function(BasicWrapper):
             "returns": datum.returns
         }
 
+    def json_to_json(self, payload):
+        normalized = normalize_json(self.accepts, payload)
+        ret = self.func(normalized)
+        return serialize_json(self.returns, ret)
+
 
 class Action(BasicWrapper):
     type_name = "cosmic.Action"

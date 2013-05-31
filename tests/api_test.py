@@ -21,28 +21,6 @@ cookbook_spec = {
     u'name': u'cookbook',
     u'actions': [
         {
-            u'name': u'cabbage',
-            u'function': {
-                u'accepts': {
-                    u'type': u"Struct",
-                    u"param": {
-                        "map": {
-                            u"spicy": {
-                                u"required": True,
-                                u"schema": {u"type": u"Boolean"}
-                            },
-                            u"capitalize": {
-                                u"required": False,
-                                u"schema": {u"type": u"Boolean"}
-                            }
-                        },
-                        "order": ["spicy", "capitalize"]
-                    }
-                },
-                u'returns': {u'type': u'JSON'}
-            }
-        },
-        {
             u'name': u'noop',
             u'function': {}
         }
@@ -91,22 +69,6 @@ class TestAPI(TestCase):
         self.maxDiff = None
 
         self.cookbook = API(u'cookbook')
-
-        @self.cookbook.action(
-            accepts=Struct([
-                required(u"spicy", Boolean),
-                optional(u"capitalize", Boolean)
-            ]),
-            returns=JSON)
-        def cabbage(spicy, capitalize=False):
-            if spicy:
-                c = "kimchi"
-            else:
-                c = "sauerkraut"
-            if capitalize:
-                return c.capitalize()
-            else:
-                return c
 
         @self.cookbook.function(
             accepts=Struct([
@@ -207,7 +169,7 @@ class TestAPI(TestCase):
 
     def test_call(self):
         data = '{"spicy": true}'
-        self.assertEqual(self.cookbook.actions.cabbage(spicy=False), "sauerkraut")
+        self.assertEqual(self.cookbook.functions.cabbage(spicy=False), "sauerkraut")
 
     def test_spec_endpoint(self):
         res = self.werkzeug_client.get('/spec.json')

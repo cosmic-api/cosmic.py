@@ -32,6 +32,15 @@ class Namespace(object):
         return self._dict[name]
 
 
+class GetterNamespace(object):
+
+    def __init__(self, getter):
+        self.getter = getter
+
+    def __getattr__(self, name):
+        return self.getter(name)
+
+
 def get_arg_spec(func):
     """Calculate JSON schema spec for action. If function has no
     arguments, returns None.

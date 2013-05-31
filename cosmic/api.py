@@ -11,7 +11,7 @@ from flask import Blueprint, Flask
 
 from .actions import Action, Function
 from .models import Model
-from .tools import Namespace, get_arg_spec, schema_is_compatible
+from .tools import Namespace, get_arg_spec, schema_is_compatible, GetterNamespace
 from .http import FlaskView
 from . import cosmos
 
@@ -57,7 +57,14 @@ class API(BasicWrapper):
     def __init__(self, name, homepage=None, actions=[], models=[], functions=None):
         self.name = name
         self.homepage = homepage
-        self.functions = functions
+
+        if functions:
+            self._functions = functions
+        else:
+            self._functions = OrderedDict()
+            
+        self.functions = GetterNamespace(self._get_function_callable)
+
         # Create actions and models namespace
         self.actions = Namespace()
         self.models = Namespace()
@@ -80,7 +87,7 @@ class API(BasicWrapper):
         return {
             "name": datum.name,
             "homepage": datum.homepage,
-            "functions": datum.functions,
+            "functions": datum._functions if datum._functions else None,
             "actions": datum.actions._list,
             "models": datum.models._list
         }
@@ -131,6 +138,14 @@ class API(BasicWrapper):
             url = "/actions/%s" % action.name
             endpoint = "action_%s" % action.name
             view_func = FlaskView(action.json_to_json, debug)
+            blueprint.add_url_rule(url,
+                view_func=view_func,
+                methods=["POST"],
+                endpoint=endpoint)
+        for name, function in self._functions.items():
+            url = "/functions/%s" % name
+            endpoint = "function_%s" % name
+            view_func = FlaskView(function.json_to_json, debug)
             blueprint.add_url_rule(url,
                 view_func=view_func,
                 methods=["POST"],
@@ -203,13 +218,17 @@ class API(BasicWrapper):
             function = Function(accepts, returns)
             function.func = func
 
-            if not self.functions:
-                self.functions = OrderedDict()
-            self.functions[name] = function
+            self._functions[name] = function
 
             return func
         return wrapper
 
+    def _get_function_callable(self, name):
+        function = self._functions[name]
+        if hasattr(function, "func"):
+            return function.func
+        else:
+            raise NotImplementedError()
 
     def model(self, model_cls):
         """A decorator for registering a model with an API. The name of the
