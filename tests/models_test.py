@@ -17,7 +17,3 @@ class TestCosmos(TestCase):
         self.assertEqual(self.cosmos["cosmic.API"], (API, None,))
         self.assertEqual(self.cosmos["cosmic.Model"], (ModelSerializer, None,))
         self.assertEqual(self.cosmos["cosmic.Function"], (Function, None,))
-
-
-
-

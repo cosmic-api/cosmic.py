@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 
-import sys
 import json
 import requests
 from collections import OrderedDict

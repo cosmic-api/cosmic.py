@@ -5,7 +5,7 @@ from cosmic.exceptions import *
 from cosmic.tools import *
 from cosmic import cosmos
 
-from teleport import Integer, Float, Struct, required, optional, Box, Schema
+from teleport import *
 
 class TestGetArgSpec(TestCase):
 
@@ -225,26 +225,6 @@ class TestNamespace(TestCase):
 
 
 class TestSchemaHelpers(TestCase):
-
-    def setUp(self):
-        self.api = {
-            "name": u"Foo",
-            "functions": {
-                "map": {
-                    u"foo": {
-                        "accepts": {"type": u"String"},
-                        "returns": {"type": u"Boolean"}
-                    }
-                },
-                "order": [u"foo"]
-            },
-            "models": []
-        }
-
-    def test_from_json_schema(self):
-        with cosmos:
-            schema = Schema.from_json({"type": "cosmic.API"})
-            self.assertEqual(schema.from_json(self.api).__class__.__name__, "API")
 
     def test_normalize_json(self):
         with self.assertRaisesRegexp(ValidationError, "Expected Box, found None"):

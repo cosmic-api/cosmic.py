@@ -1,13 +1,8 @@
 from __future__ import unicode_literals
 
-import json
-
-import requests
-from werkzeug.exceptions import InternalServerError
 from teleport import *
 
-from .tools import get_arg_spec, pack_action_arguments, apply_to_func, schema_is_compatible, normalize_json, serialize_json, json_to_string
-from .exceptions import SpecError
+from .tools import normalize_json, serialize_json
 
 
 class Function(BasicWrapper):
