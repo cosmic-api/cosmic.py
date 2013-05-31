@@ -20,8 +20,10 @@ json_spec = {
     "actions": [
         {
             "name": "predict",
-            "accepts": {"type": "zodiac.Sign"},
-            "returns": {"type": "String"}
+            "function": {
+                "accepts": {"type": "zodiac.Sign"},
+                "returns": {"type": "String"}
+            }
         }
     ]
 }

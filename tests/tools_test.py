@@ -232,8 +232,10 @@ class TestSchemaHelpers(TestCase):
             "actions": [
                 {
                     "name": u"foo",
-                    "accepts": {"type": u"String"},
-                    "returns": {"type": u"Boolean"}
+                    "function": {
+                        "accepts": {"type": u"String"},
+                        "returns": {"type": u"Boolean"}
+                    }
                 }
             ],
             "models": []

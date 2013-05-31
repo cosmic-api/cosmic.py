@@ -19,24 +19,26 @@ class TestBasicRemoteAction(TestCase):
     def setUp(self):
         spec = {
             'name': 'cabbage',
-            'accepts': {
-                u'type': u"Struct",
-                u"param": {
-                    "map": {
-                        u"spicy": {
-                            u"required": True,
-                            u"schema": {u"type": u"Boolean"}
+            'function': {
+                'accepts': {
+                    u'type': u"Struct",
+                    u"param": {
+                        "map": {
+                            u"spicy": {
+                                u"required": True,
+                                u"schema": {u"type": u"Boolean"}
+                            },
+                            u"capitalize": {
+                                u"required": False,
+                                u"schema": {u"type": u"Boolean"}
+                            }
                         },
-                        u"capitalize": {
-                            u"required": False,
-                            u"schema": {u"type": u"Boolean"}
-                        }
-                    },
-                    "order": ["spicy", "capitalize"]
+                        "order": ["spicy", "capitalize"]
+                    }
+                },
+                'returns': {
+                    'type': 'String'
                 }
-            },
-            'returns': {
-                'type': 'String'
             }
         }
 
@@ -93,8 +95,10 @@ class TestActionWithModelData(TestCase):
 
         self.spec = {
             "name": "get_some",
-            "accepts": {"type": "cosmic.Action"},
-            "returns": {"type": "cosmic.Action"}
+            "function": {
+                "accepts": {"type": "cosmic.Action"},
+                "returns": {"type": "cosmic.Action"}
+            }
         }
 
         with cosmos:

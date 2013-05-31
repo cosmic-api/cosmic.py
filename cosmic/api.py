@@ -7,7 +7,7 @@ from teleport import *
 
 from flask import Blueprint, Flask
 
-from .actions import Action
+from .actions import Action, Function
 from .models import Model
 from .tools import Namespace
 from .http import FlaskView

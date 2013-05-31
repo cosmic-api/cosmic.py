@@ -22,28 +22,29 @@ cookbook_spec = {
     u'actions': [
         {
             u'name': u'cabbage',
-            u'accepts': {
-                u'type': u"Struct",
-                u"param": {
-                    "map": {
-                        u"spicy": {
-                            u"required": True,
-                            u"schema": {u"type": u"Boolean"}
+            u'function': {
+                u'accepts': {
+                    u'type': u"Struct",
+                    u"param": {
+                        "map": {
+                            u"spicy": {
+                                u"required": True,
+                                u"schema": {u"type": u"Boolean"}
+                            },
+                            u"capitalize": {
+                                u"required": False,
+                                u"schema": {u"type": u"Boolean"}
+                            }
                         },
-                        u"capitalize": {
-                            u"required": False,
-                            u"schema": {u"type": u"Boolean"}
-                        }
-                    },
-                    "order": ["spicy", "capitalize"]
-                }
-            },
-            u'returns': {
-                u'type': u'JSON'
+                        "order": ["spicy", "capitalize"]
+                    }
+                },
+                u'returns': {u'type': u'JSON'}
             }
         },
         {
-            u'name': u'noop'
+            u'name': u'noop',
+            u'function': {}
         }
     ],
     u"models": [

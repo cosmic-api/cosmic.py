@@ -39,14 +39,14 @@ class Action(BasicWrapper):
 
     schema = Struct([
         required("name", String),
-        optional("accepts", Schema),
-        optional("returns", Schema)
+        required("function", Function)
     ])
 
-    def __init__(self, name, accepts=None, returns=None, raw_func=None):
+    def __init__(self, name, function, raw_func=None):
         self.name = name
-        self.accepts = accepts
-        self.returns = returns
+        self.function = function
+        self.accepts = function.accepts
+        self.returns = function.returns
         self.raw_func = raw_func
 
     @staticmethod
@@ -57,8 +57,7 @@ class Action(BasicWrapper):
     def deflate(datum):
         return {
             "name": datum.name,
-            "accepts": datum.accepts,
-            "returns": datum.returns
+            "function": datum.function
         }
 
     @classmethod
@@ -77,10 +76,11 @@ class Action(BasicWrapper):
             if not schema_is_compatible(arg_spec, accepts):
                 raise SpecError("The accepts parameter of '%s' action is incompatible with the function's arguments")
 
+        function = Function(accepts, returns)
+
         return cls(
             name=name,
-            accepts=accepts,
-            returns=returns,
+            function=function,
             raw_func=func)
 
     def json_to_json(self, payload):
