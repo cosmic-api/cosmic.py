@@ -115,7 +115,7 @@ def schema_is_compatible(general, detailed):
     return True
 
 
-def normalize_json(schema, datum):
+def deserialize_json(schema, datum):
     if schema and not datum:
         raise ValidationError("Expected Box, found None")
     if datum and not schema:

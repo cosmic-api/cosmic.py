@@ -218,13 +218,13 @@ class TestGetterNamespace(TestCase):
 
 class TestSchemaHelpers(TestCase):
 
-    def test_normalize_json(self):
+    def test_deserialize_json(self):
         with self.assertRaisesRegexp(ValidationError, "Expected Box, found None"):
-            normalize_json(Integer, None)
+            deserialize_json(Integer, None)
         with self.assertRaisesRegexp(ValidationError, "Expected None, found Box"):
-            normalize_json(None, Box(1))
-        self.assertEqual(normalize_json(None, None), None)
-        self.assertEqual(normalize_json(Integer, Box(1)), 1)
+            deserialize_json(None, Box(1))
+        self.assertEqual(deserialize_json(None, None), None)
+        self.assertEqual(deserialize_json(Integer, Box(1)), 1)
 
     def test_serialize_json(self):
         with self.assertRaisesRegexp(ValidationError, "Expected data, found None"):

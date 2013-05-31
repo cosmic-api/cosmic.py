@@ -72,7 +72,7 @@ class Callable(object):
 
         serialized = serialize_json(self.function.accepts, packed)
         # Try to normalize, just for the sake of validation
-        normalize_json(self.function.accepts, serialized)
+        deserialize_json(self.function.accepts, serialized)
 
         data = json_to_string(serialized)
 
