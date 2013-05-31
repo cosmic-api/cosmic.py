@@ -60,9 +60,9 @@ class Action(BasicWrapper):
             returns=returns,
             raw_func=func)
 
-    def json_to_json(self, payload, debug=False):
+    def json_to_json(self, payload):
         normalized = normalize_json(self.accepts, payload)
-        ret = apply_to_func(self.raw_func, normalized)
+        ret = self(normalized)
         return serialize_json(self.returns, ret)
 
     def __call__(self, *args, **kwargs):
