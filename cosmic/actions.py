@@ -45,8 +45,6 @@ class Action(BasicWrapper):
     def __init__(self, name, function, raw_func=None):
         self.name = name
         self.function = function
-        self.accepts = function.accepts
-        self.returns = function.returns
         self.raw_func = raw_func
 
     @staticmethod
@@ -84,9 +82,9 @@ class Action(BasicWrapper):
             raw_func=func)
 
     def json_to_json(self, payload):
-        normalized = normalize_json(self.accepts, payload)
+        normalized = normalize_json(self.function.accepts, payload)
         ret = self(normalized)
-        return serialize_json(self.returns, ret)
+        return serialize_json(self.function.returns, ret)
 
     def __call__(self, *args, **kwargs):
         """If action was generated from a function, calls it with the passed
@@ -102,9 +100,9 @@ class Action(BasicWrapper):
             # to make sure local actions behave same as remote ones
             return apply_to_func(self.raw_func, packed)
 
-        serialized = serialize_json(self.accepts, packed)
+        serialized = serialize_json(self.function.accepts, packed)
         # Try to normalize, just for the sake of validation
-        normalize_json(self.accepts, serialized)
+        normalize_json(self.function.accepts, serialized)
 
         data = json_to_string(serialized)
 
@@ -117,8 +115,8 @@ class Action(BasicWrapper):
             else:
                 raise InternalServerError("Call to %s failed with improper error response")
         try:
-            if self.returns:
-                return self.returns.from_json(res.json)
+            if self.function.returns:
+                return self.function.returns.from_json(res.json)
             else:
                 return None
         except ValidationError:

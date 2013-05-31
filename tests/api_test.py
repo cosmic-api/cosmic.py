@@ -47,6 +47,30 @@ cookbook_spec = {
             u'function': {}
         }
     ],
+    u'functions': {
+        u'map': {
+            u'cabbage': {
+                u'accepts': {
+                    u'type': u"Struct",
+                    u"param": {
+                        u"map": {
+                            u"spicy": {
+                                u"required": True,
+                                u"schema": {u"type": u"Boolean"}
+                            },
+                            u"capitalize": {
+                                u"required": False,
+                                u"schema": {u"type": u"Boolean"}
+                            }
+                        },
+                        u"order": [u"spicy", u"capitalize"]
+                    }
+                },
+                u'returns': {u'type': u'JSON'}
+            }
+        },
+        u'order': [u'cabbage']
+    },
     u"models": [
         {
             u"name": u"Recipe",
@@ -69,6 +93,22 @@ class TestAPI(TestCase):
         self.cookbook = API(u'cookbook')
 
         @self.cookbook.action(
+            accepts=Struct([
+                required(u"spicy", Boolean),
+                optional(u"capitalize", Boolean)
+            ]),
+            returns=JSON)
+        def cabbage(spicy, capitalize=False):
+            if spicy:
+                c = "kimchi"
+            else:
+                c = "sauerkraut"
+            if capitalize:
+                return c.capitalize()
+            else:
+                return c
+
+        @self.cookbook.function(
             accepts=Struct([
                 required(u"spicy", Boolean),
                 optional(u"capitalize", Boolean)
@@ -151,12 +191,6 @@ class TestAPI(TestCase):
         class ChocolateCookie(self.cookbook.models.Cookie):
             pass
         self.assertEqual(set(self.cookbook.models.__all__), set(["Recipe", "Cookie", "ChocolateCookie"]))
-
-    def test_model_illegal_schema(self):
-        with self.assertRaises(ValidationError):
-            @self.cookbook.model
-            class Pizza(object):
-                schema = Schema.from_json({"tipe": "Struct"})
 
     def test_model_schema_validation(self):
         with self.assertRaises(ValidationError):

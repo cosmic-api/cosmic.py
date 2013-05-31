@@ -3,13 +3,15 @@ from __future__ import unicode_literals
 import sys
 import json
 import requests
+from collections import OrderedDict
+
 from teleport import *
 
 from flask import Blueprint, Flask
 
 from .actions import Action, Function
 from .models import Model
-from .tools import Namespace
+from .tools import Namespace, get_arg_spec, schema_is_compatible
 from .http import FlaskView
 from . import cosmos
 
@@ -48,12 +50,14 @@ class API(BasicWrapper):
         required("name", String),
         optional("homepage", String),
         required("actions", Array(Action)),
-        required("models", Array(ModelSerializer))
+        required("models", Array(ModelSerializer)),
+        optional("functions", OrderedMap(Function))
     ])
 
-    def __init__(self, name, homepage=None, actions=[], models=[]):
+    def __init__(self, name, homepage=None, actions=[], models=[], functions=None):
         self.name = name
         self.homepage = homepage
+        self.functions = functions
         # Create actions and models namespace
         self.actions = Namespace()
         self.models = Namespace()
@@ -76,6 +80,7 @@ class API(BasicWrapper):
         return {
             "name": datum.name,
             "homepage": datum.homepage,
+            "functions": datum.functions,
             "actions": datum.actions._list,
             "models": datum.models._list
         }
@@ -183,6 +188,28 @@ class API(BasicWrapper):
             self.actions.add(name, action)
             return func
         return wrapper
+
+    def function(self, accepts=None, returns=None):
+        def wrapper(func):
+            name = unicode(func.__name__)
+            arg_spec = get_arg_spec(func)
+
+            if accepts:
+                if not arg_spec:
+                    raise SpecError("'%s' is said to take arguments, but doesn't" % name)
+                if not schema_is_compatible(arg_spec, accepts):
+                    raise SpecError("The accepts parameter of '%s' action is incompatible with the function's arguments")
+
+            function = Function(accepts, returns)
+            function.func = func
+
+            if not self.functions:
+                self.functions = OrderedDict()
+            self.functions[name] = function
+
+            return func
+        return wrapper
+
 
     def model(self, model_cls):
         """A decorator for registering a model with an API. The name of the

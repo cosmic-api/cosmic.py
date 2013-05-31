@@ -147,6 +147,6 @@ class TestActionAnnotation(TestCase):
         def func(a, b=1):
             pass
         action = Action.from_func(func, accepts=self.a_schema, returns=self.a_schema)
-        self.assertEqual(action.accepts, self.a_schema)
-        self.assertEqual(action.returns, self.a_schema)
+        self.assertEqual(action.function.accepts, self.a_schema)
+        self.assertEqual(action.function.returns, self.a_schema)
 
