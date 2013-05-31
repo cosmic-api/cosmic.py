@@ -46,19 +46,18 @@ def get_arg_spec(func):
         return None
     # One argument: accepts a single JSON object
     if len(args) == 1:
-        return JSON()
+        return JSON
     # Multiple arguments: accepts a JSON object with a property for
     # each argument, each property being of type 'json'
-    props = []
+    fields = []
     # Number of non-keyword arguments (required ones)
     numargs = len(args) - (len(defaults) if defaults else 0)
     for i, arg in enumerate(args):
-        props.append({
-            "name": unicode(arg),
-            "schema": {"type": "json"},
-            "required": i < numargs
-        })
-    return Struct.deserialize_self({"type": "struct", "fields": props})
+        if i < numargs:
+            fields.append(required(unicode(arg), JSON))
+        else:
+            fields.append(optional(unicode(arg), JSON))
+    return Struct(fields)
 
 
 def apply_to_func(func, data):
@@ -110,23 +109,20 @@ def schema_is_compatible(general, detailed):
     compatible with the general one. The general schema is a subset as
     returned by :func:`tools.get_arg_spec`.
     """
-    if isinstance(general, JSON):
+    if general == JSON:
         return True
     # If not "json", general has to be an "struct". Make sure detailed
     # is an object too
     if not isinstance(detailed, Struct):
         return False
-    gprops = general.fields
-    dprops = detailed.fields
-    if len(gprops) != len(dprops):
+    gfields = general.param
+    dfields = detailed.param
+    if gfields.keys() != dfields.keys():
         return False
-    for i in range(len(gprops)):
-        gp = gprops[i]
-        dp = dprops[i]
-        if gp["name"] != dp["name"] or gp["required"] != dp["required"]:
+    for key in gfields.keys():
+        if gfields[key]["required"] != dfields[key]["required"]:
             return False
     return True
-
 
 
 def normalize_json(schema, datum):
@@ -135,7 +131,7 @@ def normalize_json(schema, datum):
     if datum and not schema:
         raise ValidationError("Expected None, found Box")
     if schema and datum:
-        return schema.deserialize(datum.datum)
+        return schema.from_json(datum.datum)
     return None
 
 def serialize_json(schema, datum):
@@ -144,7 +140,7 @@ def serialize_json(schema, datum):
     if datum and not schema:
         raise ValidationError("Expected None, found data")
     if schema and datum:
-        return Box(schema.serialize(datum))
+        return Box(schema.to_json(datum))
     return None
 
 def string_to_json(s):

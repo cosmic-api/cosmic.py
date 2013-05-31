@@ -10,8 +10,8 @@ from teleport import *
 from werkzeug.exceptions import Unauthorized
 
 from cosmic.exceptions import *
-from cosmic.api import API, APISerializer
-from cosmic.models import Model, S, LazyS
+from cosmic.api import API
+from cosmic.models import Model, LazyWrapper
 from cosmic import api, request
 
 from cosmic import cosmos
@@ -23,22 +23,23 @@ cookbook_spec = {
         {
             u'name': u'cabbage',
             u'accepts': {
-                u'type': u"struct",
-                u"fields": [
-                    {
-                        u"name": u"spicy",
-                        u"required": True,
-                        u"schema": {u"type": u"boolean"}
+                u'type': u"Struct",
+                u"param": {
+                    "map": {
+                        u"spicy": {
+                            u"required": True,
+                            u"schema": {u"type": u"Boolean"}
+                        },
+                        u"capitalize": {
+                            u"required": False,
+                            u"schema": {u"type": u"Boolean"}
+                        }
                     },
-                    {
-                        u"name": u"capitalize",
-                        u"required": False,
-                        u"schema": {u"type": u"boolean"}
-                    }
-                ]
+                    "order": ["spicy", "capitalize"]
+                }
             },
             u'returns': {
-                u'type': u'json'
+                u'type': u'JSON'
             }
         },
         {
@@ -48,11 +49,11 @@ cookbook_spec = {
     u"models": [
         {
             u"name": u"Recipe",
-            u"schema": {u"type": u"string"}
+            u"schema": {u"type": u"String"}
         },
         {
             u"name": u"Cookie",
-            u"schema": {u"type": u"boolean"}
+            u"schema": {u"type": u"Boolean"}
         }
     ]
 }
@@ -67,22 +68,11 @@ class TestAPI(TestCase):
         self.cookbook = API(u'cookbook')
 
         @self.cookbook.action(
-            accepts=Schema().deserialize({
-                "type": u"struct",
-                "fields": [
-                    {
-                        "name": u"spicy",
-                        "schema": {"type": u"boolean"},
-                        "required": True
-                    },
-                    {
-                        "name": u"capitalize",
-                        "schema": {"type": u"boolean"},
-                        "required": False
-                    }
-                ]
-            }),
-            returns=JSON())
+            accepts=Struct([
+                required(u"spicy", Boolean),
+                optional(u"capitalize", Boolean)
+            ]),
+            returns=JSON)
         def cabbage(spicy, capitalize=False):
             if spicy:
                 c = "kimchi"
@@ -99,58 +89,56 @@ class TestAPI(TestCase):
 
         @self.cookbook.model
         class Recipe(Model):
-            schema = String()
+            schema = String
 
             @classmethod
-            def instantiate(cls, datum):
+            def inflate(cls, datum):
                 if datum == "bacon":
                     raise ValidationError("Not kosher")
                 return cls(datum)
 
         @self.cookbook.model
         class Cookie(Model):
-            schema = Boolean()
-
+            schema = Boolean
 
         self.app = self.cookbook.get_flask_app(debug=True)
         self.werkzeug_client = self.app.test_client()
 
-    def test_S(self):
+    def test_model(self):
         R = self.cookbook.models.Recipe
-        self.assertEqual(S(R).serialize_self(), {"type": "cookbook.Recipe"})
-        pancake = S(R).deserialize("pancake")
-        self.assertEqual(pancake.data, u"pancake")
-        self.assertEqual(S(R).serialize(pancake), u"pancake")
+        with cosmos:
+            self.assertEqual(Schema.to_json(R), {"type": "cookbook.Recipe"})
+            pancake = R.from_json("pancake")
+            self.assertEqual(pancake.data, u"pancake")
+            self.assertEqual(R.to_json(pancake), u"pancake")
 
-    def test_LazyS_okay(self):
-        class LS(LazyS):
-            _name = "cookbook.Recipe"
-        ls = LS()
-        self.assertEqual(ls.serialize_self(), {"type": "cookbook.Recipe"})
-        # This time model_cls should be cached
-        self.assertEqual(ls.serialize_self(), {"type": "cookbook.Recipe"})
+    def test_LazyWrapper_okay(self):
+        ls = LazyWrapper("cookbook.Recipe")
+        with cosmos:
+            self.assertEqual(Schema.to_json(ls), {"type": "cookbook.Recipe"})
+            # This time model_cls should be cached
+            self.assertEqual(Schema.to_json(ls), {"type": "cookbook.Recipe"})
 
-    def test_LazyS_fail(self):
-        class LS(LazyS):
-            _name = "unknown.Unknown"
-        ls = LS()
+    def test_LazyWrapper_fail(self):
+        ls = LazyWrapper("unknown.Unknown")
         with self.assertRaises(ModelNotFound):
-            ls.deserialize(1)
+            ls.from_json(1)
 
-    def test_accepts_invalid_schema(self):
+    # TODO: Teleport should raise a ValidationError here
+    def _test_accepts_invalid_schema(self):
         with self.assertRaisesRegexp(ValidationError, "Missing fields"):
-            @self.cookbook.action(returns=Schema().deserialize({"type": "struct"}))
+            @self.cookbook.action(returns=Schema.from_json({"type": "Struct"}))
             def func(a, b=1):
                 pass
 
     def test_model_deserialize_okay(self):
         with cosmos:
-            s = Schema().deserialize({"type": "cookbook.Recipe"})
-            self.assertEqual(s.deserialize("turkey").data, "turkey")
+            s = Schema.from_json({"type": "cookbook.Recipe"})
+            self.assertEqual(s.from_json("turkey").data, "turkey")
 
     def test_model_deserialize_bad_name(self):
         with cosmos:
-            Schema().deserialize({"type": "cookingbook.Recipe"})
+            Schema.from_json({"type": "cookingbook.Recipe"})
             with self.assertRaisesRegexp(ModelNotFound, "cookingbook.Recipe"):
                 cosmos.force()
 
@@ -167,20 +155,20 @@ class TestAPI(TestCase):
         with self.assertRaises(ValidationError):
             @self.cookbook.model
             class Pizza(object):
-                schema = Schema().deserialize({"tipe": "struct"})
+                schema = Schema.from_json({"tipe": "Struct"})
 
     def test_model_schema_validation(self):
         with self.assertRaises(ValidationError):
-            self.cookbook.models.Recipe.deserialize_self(1.1)
+            self.cookbook.models.Recipe.from_json(1.1)
 
     def test_model_custom_validation(self):
         with self.assertRaisesRegexp(ValidationError, "kosher"):
-            self.cookbook.models.Recipe.deserialize_self("bacon")
+            self.cookbook.models.Recipe.from_json("bacon")
         # When not overridden, custom validation passes
         self.cookbook.models.Cookie(True)
 
     def test_serialize(self):
-        self.assertEqual(APISerializer().serialize(self.cookbook), cookbook_spec)
+        self.assertEqual(API.to_json(self.cookbook), cookbook_spec)
 
     def test_call(self):
         data = '{"spicy": true}'
@@ -192,7 +180,7 @@ class TestAPI(TestCase):
 
     def test_schema(self):
         with cosmos:
-            APISerializer().deserialize(APISerializer().serialize(self.cookbook))
+            API.from_json(API.to_json(self.cookbook))
 
     def test_load_url(self):
         """Test the API.load function when given a spec URL"""
@@ -200,13 +188,13 @@ class TestAPI(TestCase):
             mock_get.return_value.json = cookbook_spec
             mock_get.return_value.status_code = 200
             cookbook_decentralized = API.load('http://example.com/spec.json')
-            self.assertEqual(APISerializer().serialize(cookbook_decentralized), cookbook_spec)
+            self.assertEqual(API.to_json(cookbook_decentralized), cookbook_spec)
 
 
 class TestRemoteAPI(TestCase):
 
     def setUp(self):
-        self.cookbook = APISerializer().deserialize(cookbook_spec)
+        self.cookbook = API.from_json(cookbook_spec)
         self.cookbook.url = 'http://localhost:8881/api'
 
     def test_remote_no_return_action(self):
@@ -222,5 +210,5 @@ class TestRemoteAPI(TestCase):
 
     def test_models(self):
         self.assertEqual(self.cookbook.models.__all__, ["Cookie", "Recipe"])
-        self.assertEqual(Schema().serialize(self.cookbook.models.Recipe.get_schema()), {"type": "string"})
+        self.assertEqual(Schema.to_json(self.cookbook.models.Recipe.schema), {"type": "String"})
 

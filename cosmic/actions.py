@@ -4,21 +4,39 @@ import json
 
 import requests
 from werkzeug.exceptions import InternalServerError
-from teleport import ValidationError
+from teleport import *
 
 from .tools import get_arg_spec, pack_action_arguments, apply_to_func, schema_is_compatible, normalize_json, serialize_json, json_to_string
 from .exceptions import SpecError
 
 
-import teleport
 
-class Action(object):
+class Action(BasicWrapper):
+    type_name = "cosmic.Action"
+
+    schema = Struct([
+        required("name", String),
+        optional("accepts", Schema),
+        optional("returns", Schema)
+    ])
 
     def __init__(self, name, accepts=None, returns=None, raw_func=None):
         self.name = name
         self.accepts = accepts
         self.returns = returns
         self.raw_func = raw_func
+
+    @staticmethod
+    def inflate(datum):
+        return Action(**datum)
+
+    @staticmethod
+    def deflate(datum):
+        return {
+            "name": datum.name,
+            "accepts": datum.accepts,
+            "returns": datum.returns
+        }
 
     @classmethod
     def from_func(cls, func, accepts=None, returns=None):
@@ -77,30 +95,9 @@ class Action(object):
                 raise InternalServerError("Call to %s failed with improper error response")
         try:
             if self.returns:
-                return self.returns.deserialize(res.json)
+                return self.returns.from_json(res.json)
             else:
                 return None
         except ValidationError:
             raise InternalServerError("Call to %s returned an invalid value" % self.name)
 
-
-class ActionSerializer(object):
-    match_type = "cosmic.Action"
-
-    schema = teleport.Struct([
-        teleport.required("name", teleport.String()),
-        teleport.optional("accepts", teleport.Schema()),
-        teleport.optional("returns", teleport.Schema())
-    ])
-
-    def deserialize(self, datum):
-        opts = self.schema.deserialize(datum)
-        return Action(**opts)
-
-    def serialize(self, datum):
-        return self.schema.serialize({
-            "name": datum.name,
-            "accepts": datum.accepts,
-            "returns": datum.returns
-        })
-        

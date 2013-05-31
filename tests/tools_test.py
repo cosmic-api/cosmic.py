@@ -15,66 +15,69 @@ class TestGetArgSpec(TestCase):
 
     def test_one_arg(self):
         def f(x): pass
-        self.assertEqual(Schema().serialize(get_arg_spec(f)), {
-            'type': 'json'
+        self.assertEqual(Schema.to_json(get_arg_spec(f)), {
+            'type': 'JSON'
         })
         def f(x=1): pass
-        self.assertEqual(Schema().serialize(get_arg_spec(f)), {
-            'type': 'json'
+        self.assertEqual(Schema.to_json(get_arg_spec(f)), {
+            'type': 'JSON'
         })
 
     def test_multiple_args(self):
         def f(x, y): pass
-        self.assertEqual(Schema().serialize(get_arg_spec(f)), {
-            'type': "struct",
-            "fields": [
-                {
-                    "name": "x",
-                    "required": True,
-                    "schema": {"type": "json"}
+        self.assertEqual(Schema.to_json(get_arg_spec(f)), {
+            'type': "Struct",
+            "param": {
+                "map": {
+                    "x": {
+                        "required": True,
+                        "schema": {"type": "JSON"}
+                    },
+                    "y": {
+                        "required": True,
+                        "schema": {"type": "JSON"}
+                    }
                 },
-                {
-                    "name": "y",
-                    "required": True,
-                    "schema": {"type": "json"}
-                }
-            ]
+                "order": ["x", "y"]
+            }
         })
 
     def test_multiple_args_and_kwargs(self):
         def f(x, y=1): pass
-        self.assertEqual(Schema().serialize(get_arg_spec(f)), {
-            'type': u"struct",
-            "fields": [
-                {
-                    "name": u"x",
-                    "required": True,
-                    "schema": {"type": u"json"}
+        self.assertEqual(Schema.to_json(get_arg_spec(f)), {
+            'type': "Struct",
+            "param": {
+                "map": {
+                    "x": {
+                        "required": True,
+                        "schema": {"type": "JSON"}
+                    },
+                    "y": {
+                        "required": False,
+                        "schema": {"type": "JSON"}
+                    }
                 },
-                {
-                    "name": u"y",
-                    "required": False,
-                    "schema": {"type": u"json"}
-                }
-            ]
+                "order": ["x", "y"]
+            }
         })
 
     def test_multiple_kwargs(self):
         def f(x=0, y=1): pass
-        self.assertEqual(Schema().serialize(get_arg_spec(f)), {
-            'type': u"struct",
-            "fields": [
-                {
-                    "name": u"x",
-                    "required": False,
-                    "schema": {"type": u"json"}
+        self.assertEqual(Schema.to_json(get_arg_spec(f)), {
+            'type': u"Struct",
+            "param": {
+                "map": {
+                    "x": {
+                        "required": False,
+                        "schema": {"type": "JSON"}
+                    },
+                    "y": {
+                        "required": False,
+                        "schema": {"type": "JSON"}
+                    }
                 },
-                {
-                    "name": u"y",
-                    "required": False,
-                    "schema": {"type": u"json"}
-                }
-            ]
+                "order": ["x", "y"]
+            }
         })
 
     def test_splats(self):
@@ -150,46 +153,46 @@ class TestPackActionArguments(TestCase):
 class TestSchemaIsCompatible(TestCase):
 
     def test_base_cases(self):
-        json_schema = JSON()
-        assert schema_is_compatible(json_schema, Integer())
-        assert schema_is_compatible(json_schema, Float())
+        json_schema = JSON
+        assert schema_is_compatible(json_schema, Integer)
+        assert schema_is_compatible(json_schema, Float)
 
     def test_object_keys_mismatch(self):
         g = Struct([
-            optional("a", Integer()),
-            optional("b", Integer())
+            optional("a", Integer),
+            optional("b", Integer)
         ])
         d = Struct([
-            optional("a", Integer()),
-            optional("c", Integer())
+            optional("a", Integer),
+            optional("c", Integer)
         ])
         assert not schema_is_compatible(g, d)
 
     def test_object_number_mismatch(self):
         g = Struct([
-            optional("a", Integer())
+            optional("a", Integer)
         ])
         d = Struct([
-            optional("a", Integer()),
-            optional("b", Integer())
+            optional("a", Integer),
+            optional("b", Integer)
         ])
         assert not schema_is_compatible(g, d)
 
     def test_object_match(self):
         g = Struct([
-            required("a", Integer())
+            required("a", Integer)
         ])
         d = Struct([
-            required("a", Integer())
+            required("a", Integer)
         ])
         assert schema_is_compatible(g, d)
 
     def test_object_no_match(self):
         g = Struct([
-            required("a", Integer())
+            required("a", Integer)
         ])
         d = Struct([
-            optional("a", Integer())
+            optional("a", Integer)
         ])
         assert not schema_is_compatible(g, d)
 
@@ -229,33 +232,33 @@ class TestSchemaHelpers(TestCase):
             "actions": [
                 {
                     "name": u"foo",
-                    "accepts": {"type": u"string"},
-                    "returns": {"type": u"boolean"}
+                    "accepts": {"type": u"String"},
+                    "returns": {"type": u"Boolean"}
                 }
             ],
             "models": []
         }
 
-    def test_deserialize_schema(self):
+    def test_from_json_schema(self):
         with cosmos:
-            schema = Schema().deserialize({"type": "cosmic.API"})
-            self.assertEqual(schema.deserialize(self.api).__class__.__name__, "API")
+            schema = Schema.from_json({"type": "cosmic.API"})
+            self.assertEqual(schema.from_json(self.api).__class__.__name__, "API")
 
     def test_normalize_json(self):
         with self.assertRaisesRegexp(ValidationError, "Expected Box, found None"):
-            normalize_json(Integer(), None)
+            normalize_json(Integer, None)
         with self.assertRaisesRegexp(ValidationError, "Expected None, found Box"):
             normalize_json(None, Box(1))
         self.assertEqual(normalize_json(None, None), None)
-        self.assertEqual(normalize_json(Integer(), Box(1)), 1)
+        self.assertEqual(normalize_json(Integer, Box(1)), 1)
 
     def test_serialize_json(self):
         with self.assertRaisesRegexp(ValidationError, "Expected data, found None"):
-            serialize_json(Integer(), None)
+            serialize_json(Integer, None)
         with self.assertRaisesRegexp(ValidationError, "Expected None, found data"):
             serialize_json(None, 1)
         self.assertEqual(serialize_json(None, None), None)
-        self.assertEqual(serialize_json(Integer(), 1).datum, 1)
+        self.assertEqual(serialize_json(Integer, 1).datum, 1)
 
     def test_string_to_json(self):
         self.assertEqual(string_to_json(""), None)

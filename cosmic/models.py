@@ -6,44 +6,19 @@ from teleport import *
 from .exceptions import ModelNotFound
 
 
-class Model(object):
+class Model(BasicWrapper):
     """A data type definition attached to an API."""
 
     def __init__(self, data):
         self.data = data
 
     @classmethod
-    def get_schema(cls):
-        """Returns the Teleport serializer that describes the structure of the
-        data for this model. By default this method will return the
-        :attr:`schema` attribute of the :class:`Model` subclass. This is the
-        attribute you should override to set the schema.
-        """
-        return cls.schema
-
-    def serialize_self(self):
-        "Returns the JSON form of the model"
-        return self.get_schema().serialize(self.data)
-
-    @classmethod
-    def deserialize_self(cls, datum):
-        """Given the JSON form of the model, deserializes it, validates it and
-        instantiates the model.
-        """
-        datum = cls.get_schema().deserialize(datum)
-        return cls.instantiate(datum)
-
-    @classmethod
-    def instantiate(cls, datum):
-        cls.validate(datum)
+    def inflate(cls, datum):
         return cls(datum)
 
-    @classmethod # pragma: no cover
-    def validate(cls, datum): # pragma: no cover
-        """Given the native data as deserialized by :attr:`schema`, validate
-        it, raising a :exc:`teleport.exceptions.ValidationError` if the data
-        is invalid.
-        """
+    @classmethod
+    def deflate(cls, datum):
+        return datum.data
 
 
 class S(object):
@@ -73,26 +48,23 @@ class S(object):
 
 
 
-def get_model_cls(name):
-    from . import cosmos
-    api_name, model_name = name.split('.', 1)
-    try:
-        api = cosmos.apis[api_name]
-        model = api.models._dict[model_name]
-        return model
-    except KeyError:
-        raise ModelNotFound(name)
+class LazyWrapper(object):
+    _model_cls = None
 
+    def __init__(self, type_name):
+        self.type_name = type_name
 
-class LazyS(S):
+    def from_json(self, datum):
+        return self.model_cls.from_json(datum)
 
-    def __init__(self):
-        pass
+    def to_json(self, datum):
+        return self.model_cls.from_json(datum)
 
     @property
     def model_cls(self):
+        from . import cosmos
         if not self._model_cls:
-            self._model_cls = get_model_cls(self._name)
+            self._model_cls = cosmos.get_model(self.type_name)
         return self._model_cls
 
 
@@ -104,8 +76,17 @@ class Cosmos(TypeMap):
 
     def force(self):
         for serializer in self.lazy_serializers:
-            serializer._model_cls = get_model_cls(serializer._name)
+            serializer._model_cls = self.get_model(serializer.type_name)
         self.lazy_serializers = []
+
+    def get_model(self, name):
+        api_name, model_name = name.split('.', 1)
+        try:
+            api = self.apis[api_name]
+            model = api.models._dict[model_name]
+            return model
+        except KeyError:
+            raise ModelNotFound(name)
 
     def __enter__(self):
         _ctx_stack.push(self)
@@ -116,28 +97,22 @@ class Cosmos(TypeMap):
         super(Cosmos, self).__exit__(*args, **kwargs)
 
     def __getitem__(self, name):
-        from api import APISerializer, ModelSerializer
-        from actions import ActionSerializer
+        from api import API, ModelSerializer
+        from actions import Action
         if name == "cosmic.API":
-            return APISerializer
+            return (API, None,)
         elif name == "cosmic.Model":
-            return ModelSerializer
+            return (ModelSerializer, None,)
         elif name == "cosmic.Action":
-            return ActionSerializer
+            return (Action, None,)
         elif '.' in name:
-
             try:
-                class Serializer(S):
-                    _model_cls = get_model_cls(name)
-                    def __init__(self):
-                        pass
-                return Serializer
+                model_cls = self.get_model(name)
+                return (model_cls, None,)
             except ModelNotFound:
-                class Serializer(LazyS):
-                    _name = name
-
-                self.lazy_serializers.append(Serializer)
-                return Serializer
+                lazy_model = LazyWrapper(name)
+                self.lazy_serializers.append(lazy_model)
+                return (lazy_model, None,)
         else:
             return BUILTIN_TYPES[name]
 

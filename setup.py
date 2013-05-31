@@ -16,7 +16,7 @@ setup(
     author_email = "alexei.boronine@gmail.com",
     long_description = long_description,
     install_requires = [
-        "teleport==0.0.7",
+        "teleport==0.1.0",
         "Flask==0.9",
         "requests==0.14.2",
     ]

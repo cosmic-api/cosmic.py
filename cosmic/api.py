@@ -3,10 +3,11 @@ from __future__ import unicode_literals
 import sys
 import json
 import requests
-import teleport
+from teleport import *
+
 from flask import Blueprint, Flask
 
-from .actions import Action, ActionSerializer
+from .actions import Action
 from .models import Model
 from .tools import Namespace
 from .http import FlaskView
@@ -15,31 +16,40 @@ from . import cosmos
 
 
 
-class ModelSerializer(object):
-    match_type = "cosmic.Model"
+class ModelSerializer(BasicWrapper):
+    type_name = "cosmic.Model"
 
-    schema = teleport.Struct([
-        teleport.required("name", teleport.String()),
-        teleport.optional("schema", teleport.Schema())
+    schema = Struct([
+        required("name", String),
+        optional("schema", Schema)
     ])
 
-    def deserialize(self, datum):
-        opts = self.schema.deserialize(datum)
+    @staticmethod
+    def inflate(datum):
         # Take a schema and name and turn them into a model class
         class M(Model):
-            schema = opts["schema"]
-        M.__name__ = str(opts["name"])
+            schema = datum["schema"]
+        M.__name__ = str(datum["name"])
         return M
 
-    def serialize(self, datum):
-        return self.schema.serialize({
+    @staticmethod
+    def deflate(datum):
+        return {
             "name": datum.__name__,
-            "schema": datum.get_schema()
-        })
+            "schema": datum.schema
+        }
 
 
 
-class API(object):
+class API(BasicWrapper):
+    type_name = "cosmic.API"
+
+    schema = Struct([
+        required("name", String),
+        optional("homepage", String),
+        required("actions", Array(Action)),
+        required("models", Array(ModelSerializer))
+    ])
 
     def __init__(self, name, homepage=None, actions=[], models=[]):
         self.name = name
@@ -58,12 +68,25 @@ class API(object):
         cosmos.apis[self.name] = self
 
     @staticmethod
+    def inflate(datum):
+        return API(**datum)
+
+    @staticmethod
+    def deflate(datum):
+        return {
+            "name": datum.name,
+            "homepage": datum.homepage,
+            "actions": datum.actions._list,
+            "models": datum.models._list
+        }
+
+    @staticmethod
     def load(url):
         """Given a spec URL, loads the JSON form of an API and deserializes
         it, returning the :class:`~cosmic.api.API` object.
         """
         res = requests.get(url)
-        api = APISerializer().deserialize(res.json)
+        api = API.from_json(res.json)
         # Set the API url to be the spec URL, minus the /spec.json
         api.url = url[:-10]
         # Once the API has been added to the cosmos, force lazy models to
@@ -92,7 +115,7 @@ class API(object):
         """
 
         def spec_view(payload):
-            return teleport.Box(self.get_json_spec())
+            return Box(self.get_json_spec())
 
         blueprint = Blueprint('cosmic', __name__)
         blueprint.add_url_rule("/spec.json",
@@ -123,7 +146,7 @@ class API(object):
         return app
 
     def get_json_spec(self):
-        return APISerializer().serialize(self)
+        return API.to_json(self)
 
     def run(self, url_prefix=None, **kwargs): # pragma: no cover
         """Runs the API as a Flask app. All keyword arguments except
@@ -177,30 +200,9 @@ class API(object):
 
         """
         model_cls.api = self
+        model_cls.type_name = "%s.%s" % (self.name, model_cls.__name__,)
         # Add to namespace
         self.models.add(model_cls.__name__, model_cls)
         return model_cls
 
-
-class APISerializer(object):
-    match_type = "cosmic.API"
-
-    schema = teleport.Struct([
-        teleport.required("name", teleport.String()),
-        teleport.optional("homepage", teleport.String()),
-        teleport.required("actions", teleport.Array(ActionSerializer())),
-        teleport.required("models", teleport.Array(ModelSerializer()))
-    ])
-
-    def deserialize(self, datum):
-        opts = self.schema.deserialize(datum)
-        return API(**opts)
-
-    def serialize(self, datum):
-        return self.schema.serialize({
-            "name": datum.name,
-            "homepage": datum.homepage,
-            "actions": datum.actions._list,
-            "models": datum.models._list
-        })
 

@@ -14,14 +14,14 @@ json_spec = {
     "models": [
         {
             "name": "Sign",
-            "schema": {"type": "string"}
+            "schema": {"type": "String"}
         }
     ],
     "actions": [
         {
             "name": "predict",
             "accepts": {"type": "zodiac.Sign"},
-            "returns": {"type": "string"}
+            "returns": {"type": "String"}
         }
     ]
 }

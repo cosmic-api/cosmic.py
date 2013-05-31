@@ -1,14 +1,14 @@
 import random
 
 from cosmic.api import API
-from cosmic.models import Model, S
+from cosmic.models import Model
 from teleport import *
 
 zodiac = API("zodiac")
 
 @zodiac.model
 class Sign(Model):
-    schema = String()
+    schema = String
 
     SIGNS = [
         "aries",
@@ -26,13 +26,14 @@ class Sign(Model):
     ]
 
     @classmethod
-    def validate(cls, datum):
+    def inflate(cls, datum):
         if datum not in cls.SIGNS:
             raise ValidationError("Unknown zodiac sign", datum)
+        return cls(datum)
 
 @zodiac.action(
-    accepts=S(Sign),
-    returns=String())
+    accepts=Sign,
+    returns=String)
 def predict(sign):
     ret = "For %s, now is a good time to " % sign.data
     ret += random.choice([

@@ -8,7 +8,7 @@ from teleport import *
 from werkzeug.exceptions import InternalServerError
 
 from cosmic.api import Namespace, API
-from cosmic.actions import Action, ActionSerializer
+from cosmic.actions import Action
 from cosmic.exceptions import SpecError
 
 from cosmic import cosmos
@@ -20,26 +20,27 @@ class TestBasicRemoteAction(TestCase):
         spec = {
             'name': 'cabbage',
             'accepts': {
-                'type': "struct",
-                "fields": [
-                    {
-                        "name": 'spicy',
-                        "required": True,
-                        "schema": {'type': 'boolean'}
+                u'type': u"Struct",
+                u"param": {
+                    "map": {
+                        u"spicy": {
+                            u"required": True,
+                            u"schema": {u"type": u"Boolean"}
+                        },
+                        u"capitalize": {
+                            u"required": False,
+                            u"schema": {u"type": u"Boolean"}
+                        }
                     },
-                    {
-                        "name": 'capitalize',
-                        "required": False,
-                        "schema": {'type': 'boolean'}
-                    }
-                ]
+                    "order": ["spicy", "capitalize"]
+                }
             },
             'returns': {
-                'type': 'string'
+                'type': 'String'
             }
         }
 
-        self.action = ActionSerializer().deserialize(spec)
+        self.action = Action.from_json(spec)
 
         # Without this, the action won't know its URL
         api = API("foodie")
@@ -72,7 +73,7 @@ class TestBasicRemoteAction(TestCase):
                 self.action(spicy=True)
 
     def test_call_with_bad_args(self):
-        with self.assertRaisesRegexp(ValidationError, "Invalid boolean"):
+        with self.assertRaisesRegexp(ValidationError, "Invalid Boolean"):
             self.action(spicy="yes")
 
     def test_call_invalid_response(self):
@@ -98,10 +99,10 @@ class TestActionWithModelData(TestCase):
 
         with cosmos:
             self.action = Action.from_func(get_some,
-                accepts=Schema().deserialize({"type": "cosmic.Action"}),
-                returns=Schema().deserialize({"type": "cosmic.Action"}))
+                accepts=Action,
+                returns=Action)
 
-            self.remote_action = ActionSerializer().deserialize(self.spec)
+            self.remote_action = Action.from_json(self.spec)
 
     def test_direct_call(self):
         self.assertEqual(self.action(self.action), self.action)
