@@ -31,7 +31,7 @@ class Sign(Model):
             raise ValidationError("Unknown zodiac sign", datum)
         return cls(datum)
 
-@zodiac.function(accepts=Sign, returns=String)
+@zodiac.action(accepts=Sign, returns=String)
 def predict(sign):
     ret = "For %s, now is a good time to " % sign.data
     ret += random.choice([

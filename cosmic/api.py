@@ -49,19 +49,19 @@ class API(BasicWrapper):
         required("name", String),
         optional("homepage", String),
         required("models", Array(ModelSerializer)),
-        optional("functions", OrderedMap(Function))
+        optional("actions", OrderedMap(Function))
     ])
 
-    def __init__(self, name, homepage=None, models=[], functions=None):
+    def __init__(self, name, homepage=None, models=[], actions=None):
         self.name = name
         self.homepage = homepage
 
-        if functions:
-            self._functions = functions
+        if actions:
+            self._actions = actions
         else:
-            self._functions = OrderedDict()
+            self._actions = OrderedDict()
 
-        self.functions = GetterNamespace(self._get_function_callable)
+        self.actions = GetterNamespace(self._get_function_callable)
 
         # Create models namespace
         self.models = Namespace()
@@ -81,7 +81,7 @@ class API(BasicWrapper):
         return {
             "name": datum.name,
             "homepage": datum.homepage,
-            "functions": datum._functions if datum._functions else None,
+            "actions": datum._actions if datum._actions else None,
             "models": datum.models._list
         }
 
@@ -127,8 +127,8 @@ class API(BasicWrapper):
             view_func=FlaskView(spec_view, debug),
             methods=["GET"],
             endpoint="spec")
-        for name, function in self._functions.items():
-            url = "/functions/%s" % name
+        for name, function in self._actions.items():
+            url = "/actions/%s" % name
             endpoint = "function_%s" % name
             view_func = FlaskView(function.json_to_json, debug)
             blueprint.add_url_rule(url,
@@ -161,8 +161,8 @@ class API(BasicWrapper):
         app = self.get_flask_app(debug=debug, url_prefix=url_prefix)
         app.run(**kwargs)
 
-    def function(self, accepts=None, returns=None):
-        """A decorator for creating actions out of functions and registering
+    def action(self, accepts=None, returns=None):
+        """A decorator for creating actions out of actions and registering
         them with the API.
 
         The *accepts* parameter is a schema that will deserialize the input of
@@ -173,7 +173,7 @@ class API(BasicWrapper):
 
             random = API("random")
 
-            @random.function(returns=Integer)
+            @random.action(returns=Integer)
             def generate():
                 return 9
         """
@@ -190,17 +190,17 @@ class API(BasicWrapper):
             function = Function(accepts, returns)
             function.func = func
 
-            self._functions[name] = function
+            self._actions[name] = function
 
             return func
         return wrapper
 
     def _get_function_callable(self, name):
-        function = self._functions[name]
+        function = self._actions[name]
         if hasattr(function, "func"):
             return function.func
         else:
-            url = self.url + '/functions/' + name
+            url = self.url + '/actions/' + name
             return Callable(function, url)
 
     def model(self, model_cls):

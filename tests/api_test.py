@@ -19,7 +19,7 @@ from cosmic import cosmos
 
 cookbook_spec = {
     u'name': u'cookbook',
-    u'functions': {
+    u'actions': {
         u'map': {
             u'cabbage': {
                 u'accepts': {
@@ -65,7 +65,7 @@ class TestAPI(TestCase):
 
         self.cookbook = API(u'cookbook')
 
-        @self.cookbook.function(
+        @self.cookbook.action(
             accepts=Struct([
                 required(u"spicy", Boolean),
                 optional(u"capitalize", Boolean)
@@ -81,7 +81,7 @@ class TestAPI(TestCase):
             else:
                 return c
 
-        @self.cookbook.function(accepts=None, returns=None)
+        @self.cookbook.action(accepts=None, returns=None)
         def noop():
             pass
 
@@ -164,7 +164,7 @@ class TestAPI(TestCase):
 
     def test_call(self):
         data = '{"spicy": true}'
-        self.assertEqual(self.cookbook.functions.cabbage(spicy=False), "sauerkraut")
+        self.assertEqual(self.cookbook.actions.cabbage(spicy=False), "sauerkraut")
 
     def test_spec_endpoint(self):
         res = self.werkzeug_client.get('/spec.json')
@@ -193,8 +193,8 @@ class TestRemoteAPI(TestCase):
         with patch.object(requests, 'post') as mock_post:
             mock_post.return_value.status_code = 200
             mock_post.return_value.json = None
-            self.assertEqual(self.cookbook.functions.noop(), None)
-            mock_post.assert_called_with('http://localhost:8881/api/functions/noop', headers={'Content-Type': 'application/json'}, data="")
+            self.assertEqual(self.cookbook.actions.noop(), None)
+            mock_post.assert_called_with('http://localhost:8881/api/actions/noop', headers={'Content-Type': 'application/json'}, data="")
 
     def test_properties(self):
         self.assertEqual(self.cookbook.name, "cookbook")

@@ -17,7 +17,7 @@ json_spec = {
             "schema": {"type": "String"}
         }
     ],
-    "functions": {
+    "actions": {
         "map": {
             u"predict": {
                 "accepts": {"type": "zodiac.Sign"},
@@ -35,7 +35,7 @@ class TestTutorialBuildingAPI(TestCase):
         self.d = zodiac.get_flask_app(debug=True).test_client()
 
     def test_run(self):
-        res = self.c.post('/functions/predict', data='"leo"', content_type="application/json")
+        res = self.c.post('/actions/predict', data='"leo"', content_type="application/json")
         self.assertRegexpMatches(res.data, "handsome stranger")
 
     def test_spec_endpoint(self):
@@ -43,7 +43,7 @@ class TestTutorialBuildingAPI(TestCase):
         self.assertEqual(json.loads(res.data), json_spec)
 
     def test_wrong_sign(self):
-        res = self.c.post('/functions/predict', data='"tiger"', content_type="application/json")
+        res = self.c.post('/actions/predict', data='"tiger"', content_type="application/json")
         self.assertEqual(json.loads(res.data), {"error": "Unknown zodiac sign: u'tiger'"})
 
     def test_consuming(self):
@@ -57,6 +57,6 @@ class TestTutorialBuildingAPI(TestCase):
                 with patch.object(requests, 'post') as mock_post:
                     mock_post.return_value.json = "Yada yada handsome stranger"
                     mock_post.return_value.status_code = 200
-                    self.assertRegexpMatches(h.functions.predict(pisces), "handsome stranger")
+                    self.assertRegexpMatches(h.actions.predict(pisces), "handsome stranger")
 
 
