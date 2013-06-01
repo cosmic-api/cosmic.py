@@ -40,6 +40,10 @@ class GetterNamespace(object):
 
 
 def get_args(func):
+    """Given a function, returns a tuple (*required*, *optional*), tuples of
+    non-keyword and keyword arguments respectively. If a function contains
+    splats (* or **), a :exc:`~cosmic.exceptions.SpecError` will be raised.
+    """
     args, varargs, keywords, defaults = inspect.getargspec(func)
     if varargs or keywords:
         raise SpecError("Cannot define action with splats (* or **)")
@@ -90,6 +94,12 @@ def pack_action_arguments(*args, **kwargs):
 
 
 def assert_is_compatible(schema, required, optional):
+    """Raises a :exc:`~cosmic.exceptions.SpecError` if function argument spec
+    (as returned by :func:`get_args`) is incompatible with the given schema.
+    By incompatible, it is meant that there exists such a piece of data that
+    is valid according to the schema, but that could not be applied to the
+    function by :func:`apply_to_func`.
+    """
     # No arguments
     if len(required + optional) == 0:
         raise SpecError("Function needs to accept arguments")

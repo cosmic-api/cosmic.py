@@ -15,9 +15,12 @@ APIs
 Exceptions
 ----------
 
-.. module:: cosmic.exceptions
+.. automodule:: cosmic.exceptions
 
 .. autoclass:: cosmic.exceptions.ModelNotFound
+   :members:
+
+.. autoclass:: cosmic.exceptions.SpecError
    :members:
 
 Tools and Helpers
