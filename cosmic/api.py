@@ -10,7 +10,7 @@ from flask import Blueprint, Flask
 
 from .actions import Function
 from .models import Model
-from .tools import get_arg_spec, schema_is_compatible, GetterNamespace
+from .tools import GetterNamespace, get_args, assert_is_compatible
 from .http import FlaskView, Callable
 from . import cosmos
 
@@ -165,12 +165,12 @@ class API(BasicWrapper):
         app.run(**kwargs)
 
     def action(self, accepts=None, returns=None):
-        """A decorator for creating actions out of actions and registering
+        """A decorator for creating actions out of functions and registering
         them with the API.
 
-        The *accepts* parameter is a schema that will deserialize the input of
-        the action, *returns* is a schema that will serialize the output of
-        the action. The name of the function becomes the name of the action.
+        The *accepts* parameter is a schema that describes the input of the
+        function, *returns* is a schema that describes the output of the
+        function. The name of the function becomes the name of the action.
 
         .. code:: python
 
@@ -182,13 +182,10 @@ class API(BasicWrapper):
         """
         def wrapper(func):
             name = unicode(func.__name__)
-            arg_spec = get_arg_spec(func)
+            required, optional = get_args(func)
 
             if accepts:
-                if not arg_spec:
-                    raise SpecError("'%s' is said to take arguments, but doesn't" % name)
-                if not schema_is_compatible(arg_spec, accepts):
-                    raise SpecError("The accepts parameter of '%s' action is incompatible with the function's arguments")
+                assert_is_compatible(accepts, required, optional)
 
             function = Function(accepts, returns)
             function.func = func

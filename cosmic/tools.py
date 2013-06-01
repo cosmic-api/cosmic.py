@@ -12,7 +12,7 @@ class GetterNamespace(object):
     """An object that exposes an arbitrary mapping as a namespace, letting its
     values be accessible as attributes.
 
-    :param get_item: a function that takes in a string and returns an item
+    :param get_item: a function that takes a string and returns an item
     :param get_all: a function that returns a list of all keys in the
                     namespace
 
@@ -24,7 +24,7 @@ class GetterNamespace(object):
         1
         >>> n.__all__
         ["a", "b"]
-        
+
     """
 
     def __init__(self, get_item, get_all=None):
@@ -39,39 +39,25 @@ class GetterNamespace(object):
         return self.get_all()
 
 
-def get_arg_spec(func):
-    """Calculate JSON schema spec for action. If function has no
-    arguments, returns None.
-    """
-    # Based on the passed in function's arguments, there are three
-    # choices:
+def get_args(func):
     args, varargs, keywords, defaults = inspect.getargspec(func)
     if varargs or keywords:
         raise SpecError("Cannot define action with splats (* or **)")
     # No arguments
     if len(args) == 0:
-        return None
-    # One argument: accepts a single object
-    if len(args) == 1:
-        return JSON
-    # Multiple arguments: accepts a JSON object with a property for
-    # each argument
-    fields = []
+        return ((), (),)
     # Number of non-keyword arguments (required ones)
     numargs = len(args) - (len(defaults) if defaults else 0)
-    for i, arg in enumerate(args):
-        if i < numargs:
-            fields.append(required(unicode(arg), JSON))
-        else:
-            fields.append(optional(unicode(arg), JSON))
-    return Struct(fields)
+    required = tuple(args[:numargs])
+    optional = tuple(args[numargs:])
+    return (required, optional,)
 
 
 def apply_to_func(func, data):
     """Applies a piece of normalized data to the user-defined action function
     based on its argument spec. The data is assumed to be normalized by a
     schema compatible with *func*. (see
-    :func:`~cosmic.tools.schema_is_compatible`). Thus, no validation is
+    :func:`~cosmic.tools.assert_is_compatible`). Thus, no validation is
     performed.
 
     If *func* takes a single argument, *data* is passed in as is. If it takes
@@ -82,21 +68,12 @@ def apply_to_func(func, data):
     """
     if data == None:
         return func()
-    args, varargs, keywords, defaults = inspect.getargspec(func)
-    if len(args) == 1:
+    required, optional = get_args(func)
+    # If only one argument, take the whole object
+    if len(required + optional) == 1:
         return func(data)
-    # Number of non-keyword arguments (required ones)
-    numargs = len(args) - (len(defaults) if defaults else 0)
-    apply_args = []
-    apply_kwargs = {}
-    for i, arg in enumerate(args):
-        # args
-        if i < numargs:
-            apply_args.append(data.pop(arg))
-        # kwargs
-        elif arg in data.keys():
-            apply_kwargs[arg] = data.pop(arg)
-    return func(*apply_args, **apply_kwargs)
+    return func(**data)
+
 
 def pack_action_arguments(*args, **kwargs):
     """Takes arbitrary args and kwargs and packs them into a dict if there are
@@ -111,25 +88,29 @@ def pack_action_arguments(*args, **kwargs):
         return None
     raise SpecError("Action must be called either with one argument or with one or more keyword arguments")
 
-def schema_is_compatible(general, detailed):
-    """Given two Teleport serializers, checks if the detailed one is
-    compatible with the general one. The general schema is a subset as
-    returned by :func:`tools.get_arg_spec`.
-    """
-    if general == JSON:
-        return True
-    # If not "json", general has to be an "struct". Make sure detailed
-    # is an object too
-    if not isinstance(detailed, Struct):
-        return False
-    gfields = general.param
-    dfields = detailed.param
-    if gfields.keys() != dfields.keys():
-        return False
-    for key in gfields.keys():
-        if gfields[key]["required"] != dfields[key]["required"]:
-            return False
-    return True
+
+def assert_is_compatible(schema, required, optional):
+    # No arguments
+    if len(required + optional) == 0:
+        raise SpecError("Function needs to accept arguments")
+    # One argument can accept anything
+    if len(required + optional) == 1:
+        return
+    # Multiple arguments means schema must be Struct
+    if not isinstance(schema, Struct):
+        raise SpecError("For a function that takes arguments, accepts schema"
+                        " is expected to be a Struct")
+    # Each non-keyword argument in the function must have a corresponding
+    # required field in the schema
+    for r in required:
+        if r not in schema.param.keys() or not schema.param[r]["required"]:
+            raise SpecError("Function argument '%s' must have a corresponding"
+                            " required field in the accepts schema" % r)
+    # All fields in the schema must have a corresponding function argument
+    for f in schema.param.keys():
+        if f not in set(required + optional):
+            raise SpecError("The '%s' field must have a corresponding"
+                            " function argument" % f)
 
 
 def deserialize_json(schema, datum):

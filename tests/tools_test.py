@@ -7,89 +7,32 @@ from cosmic import cosmos
 
 from teleport import *
 
-class TestGetArgSpec(TestCase):
+
+class TestGetArgs(TestCase):
 
     def test_no_args(self):
         def f(): pass
-        self.assertEqual(get_arg_spec(f), None)
+        self.assertEqual(get_args(f), ((), (),))
 
     def test_one_arg(self):
         def f(x): pass
-        self.assertEqual(Schema.to_json(get_arg_spec(f)), {
-            'type': 'JSON'
-        })
+        self.assertEqual(get_args(f), (("x",), (),))
         def f(x=1): pass
-        self.assertEqual(Schema.to_json(get_arg_spec(f)), {
-            'type': 'JSON'
-        })
+        self.assertEqual(get_args(f), ((), ("x",),))
 
     def test_multiple_args(self):
         def f(x, y): pass
-        self.assertEqual(Schema.to_json(get_arg_spec(f)), {
-            'type': "Struct",
-            "param": {
-                "map": {
-                    "x": {
-                        "required": True,
-                        "schema": {"type": "JSON"}
-                    },
-                    "y": {
-                        "required": True,
-                        "schema": {"type": "JSON"}
-                    }
-                },
-                "order": ["x", "y"]
-            }
-        })
+        self.assertEqual(get_args(f), (("x", "y",), (),))
 
     def test_multiple_args_and_kwargs(self):
         def f(x, y=1): pass
-        self.assertEqual(Schema.to_json(get_arg_spec(f)), {
-            'type': "Struct",
-            "param": {
-                "map": {
-                    "x": {
-                        "required": True,
-                        "schema": {"type": "JSON"}
-                    },
-                    "y": {
-                        "required": False,
-                        "schema": {"type": "JSON"}
-                    }
-                },
-                "order": ["x", "y"]
-            }
-        })
+        self.assertEqual(get_args(f), (("x",), ("y",),))
 
     def test_multiple_kwargs(self):
         def f(x=0, y=1): pass
-        self.assertEqual(Schema.to_json(get_arg_spec(f)), {
-            'type': u"Struct",
-            "param": {
-                "map": {
-                    "x": {
-                        "required": False,
-                        "schema": {"type": "JSON"}
-                    },
-                    "y": {
-                        "required": False,
-                        "schema": {"type": "JSON"}
-                    }
-                },
-                "order": ["x", "y"]
-            }
-        })
+        self.assertEqual(get_args(f), ((), ("x", "y",),))
 
-    def test_splats(self):
-        def f(x=0, *args): pass
-        with self.assertRaises(SpecError):
-            get_arg_spec(f)
-        def f(*args, **kwargs): pass
-        with self.assertRaises(SpecError):
-            get_arg_spec(f)
-        def f(x, y, z=1, **kwargs): pass
-        with self.assertRaises(SpecError):
-            get_arg_spec(f)
+
 
 class TestApplyToFunc(TestCase):
 
@@ -150,51 +93,44 @@ class TestPackActionArguments(TestCase):
         with self.assertRaises(SpecError):
             pack_action_arguments("universe", when="now")
 
-class TestSchemaIsCompatible(TestCase):
+
+class TestAssertIsCompatible(TestCase):
 
     def test_base_cases(self):
-        json_schema = JSON
-        assert schema_is_compatible(json_schema, Integer)
-        assert schema_is_compatible(json_schema, Float)
+        with self.assertRaisesRegexp(SpecError, "needs to accept"):
+            assert_is_compatible(JSON, (), ())
+        assert_is_compatible(JSON, ("a",), ())
+        assert_is_compatible(JSON, (), ("a",))
 
-    def test_object_keys_mismatch(self):
-        g = Struct([
-            optional("a", Integer),
+    def test_not_struct(self):
+        with self.assertRaisesRegexp(SpecError, "be a Struct"):
+            assert_is_compatible(JSON, ("a", "b",), ())
+
+    def test_missing_required_field(self):
+        s = Struct([
+            required("a", Integer),
+        ])
+        with self.assertRaisesRegexp(SpecError, "required field"):
+            assert_is_compatible(s, ("a", "b",), ())
+
+    def test_field_should_be_required(self):
+        s = Struct([
+            required("a", Integer),
             optional("b", Integer)
         ])
-        d = Struct([
-            optional("a", Integer),
+        with self.assertRaisesRegexp(SpecError, "required field"):
+            assert_is_compatible(s, ("a", "b",), ())
+
+    def test_missing_function_argument(self):
+        s = Struct([
+            required("a", Integer),
+            required("b", Integer),
             optional("c", Integer)
         ])
-        assert not schema_is_compatible(g, d)
-
-    def test_object_number_mismatch(self):
-        g = Struct([
-            optional("a", Integer)
-        ])
-        d = Struct([
-            optional("a", Integer),
-            optional("b", Integer)
-        ])
-        assert not schema_is_compatible(g, d)
-
-    def test_object_match(self):
-        g = Struct([
-            required("a", Integer)
-        ])
-        d = Struct([
-            required("a", Integer)
-        ])
-        assert schema_is_compatible(g, d)
-
-    def test_object_no_match(self):
-        g = Struct([
-            required("a", Integer)
-        ])
-        d = Struct([
-            optional("a", Integer)
-        ])
-        assert not schema_is_compatible(g, d)
+        with self.assertRaisesRegexp(SpecError, "function argument"):
+            assert_is_compatible(s, ("a","b",), ())
+        with self.assertRaisesRegexp(SpecError, "function argument"):
+            assert_is_compatible(s, ("a",), ("b",))
 
 
 class TestGetterNamespace(TestCase):
