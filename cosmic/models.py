@@ -18,6 +18,10 @@ class Model(BasicWrapper):
         return cls(datum)
 
     @classmethod
+    def validate(cls, datum):
+        pass
+
+    @classmethod
     def deflate(cls, datum):
         return datum.data
 

@@ -210,12 +210,13 @@ class API(BasicWrapper):
         .. code:: python
 
             from teleport import String
+            from cosmic.models import Model
 
             dictionary = API("dictionary")
 
             @dictionary.model
-            class Word(object):
-                schema = String()
+            class Word(Model):
+                schema = String
 
         """
         model_cls.api = self

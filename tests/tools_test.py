@@ -10,6 +10,11 @@ from teleport import *
 
 class TestGetArgs(TestCase):
 
+    def test_try_splats(self):
+        def f(*arg): pass
+        with self.assertRaisesRegexp(SpecError, "splats"):
+            get_args(f)
+
     def test_no_args(self):
         def f(): pass
         self.assertEqual(get_args(f), ((), (),))

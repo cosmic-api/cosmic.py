@@ -26,10 +26,9 @@ class Sign(Model):
     ]
 
     @classmethod
-    def inflate(cls, datum):
+    def validate(cls, datum):
         if datum not in cls.SIGNS:
             raise ValidationError("Unknown zodiac sign", datum)
-        return cls(datum)
 
 @zodiac.action(accepts=Sign, returns=String)
 def predict(sign):
