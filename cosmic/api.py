@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import json
 import requests
+from multiprocessing import Process
 from collections import OrderedDict
 
 from teleport import *
@@ -156,13 +157,33 @@ class API(BasicWrapper):
     def get_json_spec(self):
         return API.to_json(self)
 
-    def run(self, url_prefix=None, **kwargs): # pragma: no cover
+
+    def run(self, url_prefix=None, api_key=None, registry_url_override=None, **kwargs): # pragma: no cover
         """Runs the API as a Flask app. All keyword arguments except
         *url_prefix* channelled into :meth:`Flask.run`.
         """
         debug = kwargs.get('debug', False)
         app = self.get_flask_app(debug=debug, url_prefix=url_prefix)
+        if api_key:
+            with cosmos:
+                spec = API.to_json(self)
+            url = "https://registry.cosmic-api.com/actions/register_spec"
+            if registry_url_override:
+                url = registry_url_override
+            p = Process(target=self.register_spec, args=(url, api_key, spec,))
+            p.start()
         app.run(**kwargs)
+
+
+    def register_spec(self, url, api_key, spec):
+        import requests
+        headers = {'Content-Type': 'application/json'}
+        data = {
+            "api_key": api_key,
+            "spec": spec
+        }
+        requests.post(url, data=data, headers=headers)
+        
 
     def action(self, accepts=None, returns=None):
         """A decorator for creating actions out of functions and registering

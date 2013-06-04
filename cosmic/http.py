@@ -6,7 +6,7 @@ import requests
 from werkzeug.local import LocalProxy, LocalStack, release_local
 from werkzeug.exceptions import HTTPException, Unauthorized, BadRequest, InternalServerError
 
-from flask import Flask, Blueprint, make_response
+from flask import Flask, make_response
 from flask import request
 from teleport import Box, ValidationError
 
@@ -89,4 +89,4 @@ class Callable(object):
             else:
                 return None
         except ValidationError:
-            raise InternalServerError("Call returned an invalid value" % self.name)
+            raise InternalServerError("Call returned an invalid value")
