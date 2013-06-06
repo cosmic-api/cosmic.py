@@ -185,7 +185,7 @@ class API(BasicWrapper):
         app.run(**kwargs)
 
 
-    def action(self, accepts=None, returns=None):
+    def action(self, accepts=None, returns=None, doc=None):
         """A decorator for creating actions out of functions and registering
         them with the API.
 
@@ -208,7 +208,7 @@ class API(BasicWrapper):
             if accepts:
                 assert_is_compatible(accepts, required, optional)
 
-            function = Function(accepts, returns)
+            function = Function(accepts, returns, doc)
             function.func = func
 
             self._actions[name] = function

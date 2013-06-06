@@ -10,12 +10,14 @@ class Function(BasicWrapper):
 
     schema = Struct([
         optional("accepts", Schema),
-        optional("returns", Schema)
+        optional("returns", Schema),
+        optional("doc", String)
     ])
 
-    def __init__(self, accepts=None, returns=None):
+    def __init__(self, accepts=None, returns=None, doc=None):
         self.accepts = accepts
         self.returns = returns
+        self.doc = doc
 
     @staticmethod
     def assemble(datum):
@@ -25,7 +27,8 @@ class Function(BasicWrapper):
     def disassemble(datum):
         return {
             "accepts": datum.accepts,
-            "returns": datum.returns
+            "returns": datum.returns,
+            "doc": datum.doc
         }
 
     def json_to_json(self, payload):

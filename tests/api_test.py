@@ -38,7 +38,8 @@ cookbook_spec = {
                         u"order": [u"spicy", u"capitalize"]
                     }
                 },
-                u'returns': {u'type': u'JSON'}
+                u'returns': {u'type': u'JSON'},
+                u'doc': "Yay cabbage"
             },
             u'noop': {}
         },
@@ -70,7 +71,8 @@ class TestAPI(TestCase):
                 required(u"spicy", Boolean),
                 optional(u"capitalize", Boolean)
             ]),
-            returns=JSON)
+            returns=JSON,
+            doc=u"Yay cabbage")
         def cabbage(spicy, capitalize=False):
             if spicy:
                 c = "kimchi"
