@@ -1,12 +1,16 @@
 from unittest2 import TestCase
 
-from werkzeug.exceptions import Unauthorized, BadRequest
+import requests
+from mock import patch
+
+from werkzeug.exceptions import Unauthorized, BadRequest, InternalServerError
 from flask import Flask
 
+from cosmic.actions import *
 from cosmic.tools import *
 from cosmic.http import *
 
-from teleport import ValidationError, Box
+from teleport import *
 
 
 class TestView(TestCase):
@@ -95,3 +99,47 @@ class TestView(TestCase):
             self.assertEqual(res.content_type, "application/json")
             self.assertEqual(res.data, "")
 
+
+class TestCallable(TestCase):
+
+    def setUp(self):
+        self.function = Function(Integer, Boolean)
+        self.callable = Callable(self.function, "http://example.com/actions/even")
+
+    def test_call_okay(self):
+        with patch.object(requests, 'post') as mock_post:
+            mock_post.return_value.status_code = 200
+            mock_post.return_value.content = "true"
+            mock_post.return_value.json = True
+            self.assertEqual(self.callable(1), True)
+
+    def test_call_okay_no_response(self):
+        with patch.object(requests, 'post') as mock_post:
+            mock_post.return_value.status_code = 200
+            mock_post.return_value.content = ""
+            mock_post.return_value.json = None
+            self.assertEqual(self.callable(1), None)
+
+    def test_call_server_sent_wrong_type(self):
+        with patch.object(requests, 'post') as mock_post:
+            mock_post.return_value.status_code = 200
+            mock_post.return_value.content = "1"
+            mock_post.return_value.json = 1
+            with self.assertRaisesRegexp(InternalServerError, "invalid value"):
+                self.callable(1)
+
+    def test_call_error_no_message(self):
+        with patch.object(requests, 'post') as mock_post:
+            mock_post.return_value.status_code = 400
+            mock_post.return_value.content = "WTF"
+            mock_post.return_value.json = None
+            with self.assertRaises(BadRequest):
+                self.callable(1)
+
+    def test_call_error_with_message(self):
+        with patch.object(requests, 'post') as mock_post:
+            mock_post.return_value.status_code = 500
+            mock_post.return_value.content = '{"error": "your mama"}'
+            mock_post.return_value.json = {"error": "your mama"}
+            with self.assertRaisesRegexp(InternalServerError, "your mama"):
+                self.callable(1)

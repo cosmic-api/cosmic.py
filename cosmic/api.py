@@ -164,7 +164,17 @@ class API(BasicWrapper):
         """
         debug = kwargs.get('debug', False)
         app = self.get_flask_app(debug=debug, url_prefix=url_prefix)
+
         if api_key:
+            def register_spec(self, url, api_key, spec):
+                import requests
+                headers = {'Content-Type': 'application/json'}
+                data = {
+                    "api_key": api_key,
+                    "spec": spec
+                }
+                requests.post(url, data=data, headers=headers)
+
             with cosmos:
                 spec = API.to_json(self)
             url = "https://registry.cosmic-api.com/actions/register_spec"
@@ -174,16 +184,6 @@ class API(BasicWrapper):
             p.start()
         app.run(**kwargs)
 
-
-    def register_spec(self, url, api_key, spec):
-        import requests
-        headers = {'Content-Type': 'application/json'}
-        data = {
-            "api_key": api_key,
-            "spec": spec
-        }
-        requests.post(url, data=data, headers=headers)
-        
 
     def action(self, accepts=None, returns=None):
         """A decorator for creating actions out of functions and registering

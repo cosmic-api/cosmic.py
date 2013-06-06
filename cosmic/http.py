@@ -3,8 +3,7 @@ from __future__ import unicode_literals
 import json
 import requests
 
-from werkzeug.local import LocalProxy, LocalStack, release_local
-from werkzeug.exceptions import HTTPException, Unauthorized, BadRequest, InternalServerError
+from werkzeug.exceptions import HTTPException, InternalServerError, abort
 
 from flask import Flask, make_response
 from flask import request
@@ -71,20 +70,18 @@ class Callable(object):
         packed = pack_action_arguments(*args, **kwargs)
 
         serialized = serialize_json(self.function.accepts, packed)
-        # Try to normalize, just for the sake of validation
-        deserialize_json(self.function.accepts, serialized)
 
         data = json_to_string(serialized)
 
         headers = {'Content-Type': 'application/json'}
         res = requests.post(self.url, data=data, headers=headers)
         if res.status_code != requests.codes.ok:
+            message = None
             if res.json and 'error' in res.json:
-                raise InternalServerError(res.json['error'])
-            else:
-                raise InternalServerError("Call failed with improper error response")
+                message = res.json['error']
+            abort(res.status_code, message)
         try:
-            if self.function.returns:
+            if self.function.returns and res.content != "":
                 return self.function.returns.from_json(res.json)
             else:
                 return None
