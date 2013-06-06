@@ -13,7 +13,7 @@ class Model(BasicWrapper):
         self.data = data
 
     @classmethod
-    def inflate(cls, datum):
+    def assemble(cls, datum):
         cls.validate(datum)
         return cls(datum)
 
@@ -22,7 +22,7 @@ class Model(BasicWrapper):
         pass
 
     @classmethod
-    def deflate(cls, datum):
+    def disassemble(cls, datum):
         return datum.data
 
 

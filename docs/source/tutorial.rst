@@ -42,7 +42,7 @@ the zodiac sign::
         ]
 
         @classmethod
-        def inflate(cls, datum):
+        def assemble(cls, datum):
             if datum not in cls.SIGNS:
                 raise ValidationError("Unknown zodiac sign", datum)
             return cls(datum)
@@ -53,7 +53,7 @@ validation as well as to automatically generate documentation. You can get
 started with Teleport `here </docs/teleport/python/>`_.
 
 After Cosmic passes raw JSON data through the Teleport schema, it will invoke
-the model's :meth:`inflate` function to perform extra validation (if you
+the model's :meth:`assemble` function to perform extra validation (if you
 define it) and to instantiate the model.
 
 Now we can use this model to create an *action*, a function that may be called

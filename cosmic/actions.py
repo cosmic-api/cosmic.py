@@ -18,11 +18,11 @@ class Function(BasicWrapper):
         self.returns = returns
 
     @staticmethod
-    def inflate(datum):
+    def assemble(datum):
         return Function(**datum)
 
     @staticmethod
-    def deflate(datum):
+    def disassemble(datum):
         return {
             "accepts": datum.accepts,
             "returns": datum.returns

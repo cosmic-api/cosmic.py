@@ -90,7 +90,7 @@ class TestAPI(TestCase):
             schema = String
 
             @classmethod
-            def inflate(cls, datum):
+            def assemble(cls, datum):
                 if datum == "bacon":
                     raise ValidationError("Not kosher")
                 return cls(datum)

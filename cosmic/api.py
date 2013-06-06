@@ -27,7 +27,7 @@ class ModelSerializer(BasicWrapper):
     ])
 
     @staticmethod
-    def inflate(datum):
+    def assemble(datum):
         # Take a schema and name and turn them into a model class
         class M(Model):
             schema = datum["schema"]
@@ -35,7 +35,7 @@ class ModelSerializer(BasicWrapper):
         return M
 
     @staticmethod
-    def deflate(datum):
+    def disassemble(datum):
         return {
             "name": datum.__name__,
             "schema": datum.schema
@@ -77,11 +77,11 @@ class API(BasicWrapper):
         cosmos.apis[self.name] = self
 
     @staticmethod
-    def inflate(datum):
+    def assemble(datum):
         return API(**datum)
 
     @staticmethod
-    def deflate(datum):
+    def disassemble(datum):
         return {
             "name": datum.name,
             "homepage": datum.homepage,
