@@ -99,8 +99,11 @@ class TestAPI(TestCase):
         class Cookie(Model):
             schema = Boolean
 
-        self.app = self.cookbook.get_flask_app(debug=True)
-        self.werkzeug_client = self.app.test_client()
+        self.app_debug = self.cookbook.get_flask_app(debug=True)
+        self.client_debug = self.app_debug.test_client()
+
+        self.app = self.cookbook.get_flask_app()
+        self.client = self.app.test_client()
 
     def test_model(self):
         R = self.cookbook.models.Recipe
@@ -167,8 +170,22 @@ class TestAPI(TestCase):
         self.assertEqual(self.cookbook.actions.cabbage(spicy=False), "sauerkraut")
 
     def test_spec_endpoint(self):
-        res = self.werkzeug_client.get('/spec.json')
+        res = self.client.get('/spec.json')
         self.assertEqual(json.loads(res.data), cookbook_spec)
+
+    def test_spec_wrong_method(self):
+        res = self.client.get('/actions/noop')
+        self.assertEqual(res.status_code, 405)
+        res = self.client.post('/spec.json')
+        self.assertEqual(res.status_code, 405)
+
+    def test_spec_wrong_content_type(self):
+        res = self.client.post('/actions/noop')
+        self.assertEqual(res.status_code, 400)
+        self.assertRegexpMatches(res.data, "Content-Type")
+        res = self.client.post('/actions/noop', content_type="application/xml")
+        self.assertEqual(res.status_code, 400)
+        self.assertRegexpMatches(res.data, "Content-Type")
 
     def test_schema(self):
         with cosmos:
