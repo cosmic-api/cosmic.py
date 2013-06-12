@@ -166,24 +166,29 @@ class API(BasicWrapper):
         app = self.get_flask_app(debug=debug, url_prefix=url_prefix)
 
         if api_key:
-            def register_spec(self, url, api_key, spec):
-                import requests
-                headers = {'Content-Type': 'application/json'}
-                data = {
-                    "api_key": api_key,
-                    "spec": spec
-                }
-                requests.post(url, data=data, headers=headers)
-
-            with cosmos:
-                spec = API.to_json(self)
-            url = "https://registry.cosmic-api.com/actions/register_spec"
-            if registry_url_override:
-                url = registry_url_override
-            p = Process(target=self.register_spec, args=(url, api_key, spec,))
-            p.start()
+            self.submit_spec(api_key, registry_url_override=None)
         app.run(**kwargs)
 
+    def submit_spec(self, api_key, registry_url_override=None):
+
+        def register_spec(url, api_key, spec):
+            import requests
+            headers = {'Content-Type': 'application/json'}
+            data = json.dumps({
+                "api_key": api_key,
+                "spec": spec
+            })
+            requests.post(url, data=data, headers=headers)
+
+        with cosmos:
+            spec = API.to_json(self)
+
+        url = "https://registry.cosmic-api.com/actions/register_spec"
+        if registry_url_override:
+            url = registry_url_override
+        p = Process(target=register_spec, args=(url, api_key, spec,))
+        p.start()
+        return p
 
     def action(self, accepts=None, returns=None, doc=None):
         """A decorator for creating actions out of functions and registering
