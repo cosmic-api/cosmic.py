@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 import json
+import inspect
 import requests
 from multiprocessing import Process
 from collections import OrderedDict
@@ -169,7 +170,7 @@ class API(BasicWrapper):
             self.submit_spec(api_key, registry_url_override=None)
         app.run(**kwargs)
 
-    def submit_spec(self, api_key, registry_url_override=None):
+    def submit_spec(self, api_key, registry_url_override=None): # pragma: no cover
 
         def register_spec(url, api_key, spec):
             import requests
@@ -190,7 +191,7 @@ class API(BasicWrapper):
         p.start()
         return p
 
-    def action(self, accepts=None, returns=None, doc=None):
+    def action(self, accepts=None, returns=None):
         """A decorator for creating actions out of functions and registering
         them with the API.
 
@@ -204,6 +205,7 @@ class API(BasicWrapper):
 
             @random.action(returns=Integer)
             def generate():
+                "Random enough"
                 return 9
         """
         def wrapper(func):
@@ -213,6 +215,7 @@ class API(BasicWrapper):
             if accepts:
                 assert_is_compatible(accepts, required, optional)
 
+            doc = inspect.getdoc(func)
             function = Function(accepts, returns, doc)
             function.func = func
 

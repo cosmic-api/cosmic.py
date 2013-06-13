@@ -63,6 +63,7 @@ with a POST request to your API::
         accepts=Sign,
         returns=String)
     def predict(sign):
+        "Predicts your fate based on a zodiac sign"
         ret = "For %s, now is a good time to " % sign.data
         ret += random.choice([
             "build an API.",
@@ -105,7 +106,8 @@ This will create several HTTP endpoints. If you visit ``/spec.json`` you will se
             "map": {
                 "predict": {
                     "accepts": {"type": "zodiac.Sign"},
-                    "returns": {"type": "string"}
+                    "returns": {"type": "string"},
+                    "doc": "Predicts your fate based on a zodiac sign"
                 }
             },
             "order": ["predict"]

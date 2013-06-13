@@ -39,9 +39,11 @@ cookbook_spec = {
                     }
                 },
                 u'returns': {u'type': u'JSON'},
-                u'doc': "Yay cabbage"
+                u'doc': u"Yay cabbage"
             },
-            u'noop': {}
+            u'noop': {
+                u'doc': u"Does not do anything"
+            }
         },
         u'order': [u'cabbage', u'noop']
     },
@@ -71,9 +73,9 @@ class TestAPI(TestCase):
                 required(u"spicy", Boolean),
                 optional(u"capitalize", Boolean)
             ]),
-            returns=JSON,
-            doc=u"Yay cabbage")
+            returns=JSON)
         def cabbage(spicy, capitalize=False):
+            "Yay cabbage"
             if spicy:
                 c = "kimchi"
             else:
@@ -85,6 +87,7 @@ class TestAPI(TestCase):
 
         @self.cookbook.action(accepts=None, returns=None)
         def noop():
+            "Does not do anything"
             pass
 
         @self.cookbook.model
