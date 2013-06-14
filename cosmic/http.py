@@ -21,7 +21,8 @@ class FlaskView(object):
         self.debug = debug
 
     def err_to_response(self, err):
-        if isinstance(err, HTTPException):
+        is_remote = getattr(err, "remote", False)
+        if isinstance(err, HTTPException) and not is_remote:
             if err.description != err.__class__.description:
                 text = err.description
             else:
@@ -79,11 +80,20 @@ class Callable(object):
             message = None
             if res.json and 'error' in res.json:
                 message = res.json['error']
-            abort(res.status_code, message)
+            try:
+                abort(res.status_code, message)
+            except Exception as e:
+                # Flag the exception to specify that it came from a remote
+                # API. If this exception bubbles up to the web layer, a
+                # generic 500 response will be returned
+                e.remote = True
+                raise
         try:
             if self.function.returns and res.content != "":
                 return self.function.returns.from_json(res.json)
             else:
                 return None
         except ValidationError:
-            raise InternalServerError("Call returned an invalid value")
+            e = InternalServerError("Call returned an invalid value")
+            e.remote = True
+            raise e

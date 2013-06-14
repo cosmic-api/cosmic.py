@@ -17,7 +17,8 @@ setup(
     long_description = long_description,
     install_requires = [
         "teleport==0.1.1",
-        "Flask==0.9",
+        "Flask==0.10",
+        "Werkzeug==0.9",
         "requests==0.14.2",
     ]
 )

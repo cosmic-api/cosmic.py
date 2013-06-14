@@ -33,6 +33,12 @@ class TestView(TestCase):
             raise BadRequest("BOOM")
         self.bad_request = FlaskView(bad_request, False)
 
+        def remote_bad_request(payload):
+            e = BadRequest()
+            e.remote = True
+            raise e
+        self.remote_bad_request = FlaskView(remote_bad_request, False)
+
         def validation_error(payload):
             raise ValidationError("Invalid!")
         self.validation_error = FlaskView(validation_error, False)
@@ -85,6 +91,13 @@ class TestView(TestCase):
             self.assertEqual(res.content_type, "application/json")
             self.assertEqual(json.loads(res.data), {"error": "Unauthorized"})
 
+    def test_remote_HTTPException_handling(self):
+        with self.app.test_request_context('/', method="POST", data="", content_type="application/json"):
+            res = self.remote_bad_request()
+            self.assertEqual(res.status_code, 500)
+            self.assertEqual(res.content_type, "application/json")
+            self.assertEqual(json.loads(res.data), {"error": "Internal Server Error"})
+
     def test_HTTPException_with_description_handling(self):
         with self.app.test_request_context('/', method="POST", data="", content_type="application/json"):
             res = self.bad_request()
@@ -125,8 +138,9 @@ class TestCallable(TestCase):
             mock_post.return_value.status_code = 200
             mock_post.return_value.content = "1"
             mock_post.return_value.json = 1
-            with self.assertRaisesRegexp(InternalServerError, "invalid value"):
+            with self.assertRaises(InternalServerError) as cm:
                 self.callable(1)
+            self.assertRegexpMatches(cm.exception.description, "invalid value")
 
     def test_call_error_no_message(self):
         with patch.object(requests, 'post') as mock_post:
@@ -141,5 +155,6 @@ class TestCallable(TestCase):
             mock_post.return_value.status_code = 500
             mock_post.return_value.content = '{"error": "your mama"}'
             mock_post.return_value.json = {"error": "your mama"}
-            with self.assertRaisesRegexp(InternalServerError, "your mama"):
+            with self.assertRaises(InternalServerError) as cm:
                 self.callable(1)
+            self.assertRegexpMatches(cm.exception.description, "your mama")
