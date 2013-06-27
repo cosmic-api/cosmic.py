@@ -1,9 +1,48 @@
 import sys
 
+from collections import OrderedDict
+
 from werkzeug.local import LocalStack
 
 from teleport import *
 from .exceptions import ModelNotFound
+
+
+class Link(BasicWrapper):
+    type_name = "cosmic.Link"
+
+    schema = Struct([
+        required(u"schema", Schema),
+        required(u"required", Boolean),
+        optional(u"doc", String)
+    ])
+
+
+class ModelSerializer(BasicWrapper):
+    type_name = "cosmic.Model"
+
+    schema = Struct([
+        required("name", String),
+        optional("schema", Schema),
+        required("links", OrderedMap(Link))
+    ])
+
+    @staticmethod
+    def assemble(datum):
+        # Take a schema and name and turn them into a model class
+        class M(Model):
+            schema = datum["schema"]
+            links = datum["links"]
+        M.__name__ = str(datum["name"])
+        return M
+
+    @staticmethod
+    def disassemble(datum):
+        return {
+            "name": datum.__name__,
+            "schema": datum.schema,
+            "links": datum.links if hasattr(datum, "links") else OrderedDict()
+        }
 
 
 class Model(BasicWrapper):
@@ -24,6 +63,7 @@ class Model(BasicWrapper):
     @classmethod
     def disassemble(cls, datum):
         return datum.data
+
 
 
 class LazyWrapper(object):
@@ -75,10 +115,12 @@ class Cosmos(TypeMap):
         super(Cosmos, self).__exit__(*args, **kwargs)
 
     def __getitem__(self, name):
-        from api import API, ModelSerializer
+        from api import API
         from actions import Function
         if name == "cosmic.API":
             return (API, None,)
+        elif name == "cosmic.Link":
+            return (Link, None,)
         elif name == "cosmic.Model":
             return (ModelSerializer, None,)
         elif name == "cosmic.Function":

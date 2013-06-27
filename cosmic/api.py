@@ -11,36 +11,13 @@ from teleport import *
 from flask import Blueprint, Flask
 
 from .actions import Function
-from .models import Model
+from .resources import Document
+from .models import Model, ModelSerializer
 from .tools import GetterNamespace, get_args, assert_is_compatible
 from .http import FlaskView, Callable
 from . import cosmos
 
 
-
-
-class ModelSerializer(BasicWrapper):
-    type_name = "cosmic.Model"
-
-    schema = Struct([
-        required("name", String),
-        optional("schema", Schema)
-    ])
-
-    @staticmethod
-    def assemble(datum):
-        # Take a schema and name and turn them into a model class
-        class M(Model):
-            schema = datum["schema"]
-        M.__name__ = str(datum["name"])
-        return M
-
-    @staticmethod
-    def disassemble(datum):
-        return {
-            "name": datum.__name__,
-            "schema": datum.schema
-        }
 
 
 
@@ -51,7 +28,7 @@ class API(BasicWrapper):
         required("name", String),
         optional("homepage", String),
         required("models", Array(ModelSerializer)),
-        required("actions", OrderedMap(Function))
+        required("actions", OrderedMap(Function)),
     ])
 
     def __init__(self, name, homepage=None, models=[], actions=None):
@@ -64,6 +41,7 @@ class API(BasicWrapper):
             self._actions = OrderedDict()
 
         self._models = OrderedDict()
+        self._documents = OrderedDict()
         # Populate it if we have initial data
         for model in models:
             model.api = self
@@ -140,6 +118,16 @@ class API(BasicWrapper):
                 view_func=view_func,
                 methods=["POST"],
                 endpoint=endpoint)
+        for name, document in self._documents.items():
+            url = "/doc/%s" % name
+            endpoint = "document_%s" % name
+            for method in document.methods:
+                func = getattr(document, "_" + method.lower())
+                view_func = FlaskView(func, debug)
+                blueprint.add_url_rule(url,
+                    view_func=view_func,
+                    methods=[method],
+                    endpoint=endpoint)
         return blueprint
 
     def get_flask_app(self, debug=False, url_prefix=None):

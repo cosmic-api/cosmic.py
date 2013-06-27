@@ -14,7 +14,11 @@ json_spec = {
     "models": [
         {
             "name": "Sign",
-            "schema": {"type": "String"}
+            "schema": {"type": "String"},
+            u"links": {
+                u"map": {},
+                u"order": []
+            }
         }
     ],
     "actions": {

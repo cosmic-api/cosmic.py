@@ -10,6 +10,7 @@ from teleport import *
 from werkzeug.exceptions import Unauthorized
 
 from cosmic.exceptions import *
+from cosmic.resources import *
 from cosmic.api import API
 from cosmic.models import Model, LazyWrapper
 from cosmic import api, request
@@ -50,11 +51,19 @@ cookbook_spec = {
     u"models": [
         {
             u"name": u"Recipe",
-            u"schema": {u"type": u"String"}
+            u"schema": {u"type": u"String"},
+            u"links": {
+                u"map": {},
+                u"order": []
+            }
         },
         {
-            u"name": u"Cookie",
-            u"schema": {u"type": u"Boolean"}
+            u"name": u"Author",
+            u"schema": {u"type": u"Boolean"},
+            u"links": {
+                u"map": {},
+                u"order": []
+            }
         }
     ]
 }
@@ -101,8 +110,16 @@ class TestAPI(TestCase):
                 return cls(datum)
 
         @self.cookbook.model
-        class Cookie(Model):
+        class Author(Model):
             schema = Boolean
+
+        class SoupOfTheDay(Document):
+            methods = ["GET"]
+            schema = Recipe
+            def get(self):
+                return Recipe("onion soup")
+
+        self.cookbook._documents["soup-of-the-day"] = SoupOfTheDay()
 
         self.app_debug = self.cookbook.get_flask_app(debug=True)
         self.client_debug = self.app_debug.test_client()
@@ -149,13 +166,13 @@ class TestAPI(TestCase):
                 cosmos.force()
 
     def test_subclassing_hook(self):
-        self.assertEqual(set(self.cookbook.models.__all__), set(["Recipe", "Cookie"]))
+        self.assertEqual(set(self.cookbook.models.__all__), set(["Recipe", "Author"]))
 
     def test_recursive_subclassing_hook(self):
         @self.cookbook.model
-        class ChocolateCookie(self.cookbook.models.Cookie):
+        class ChocolateAuthor(self.cookbook.models.Author):
             pass
-        self.assertEqual(set(self.cookbook.models.__all__), set(["Recipe", "Cookie", "ChocolateCookie"]))
+        self.assertEqual(set(self.cookbook.models.__all__), set(["Recipe", "Author", "ChocolateAuthor"]))
 
     def test_model_schema_validation(self):
         with self.assertRaises(ValidationError):
@@ -165,7 +182,7 @@ class TestAPI(TestCase):
         with self.assertRaisesRegexp(ValidationError, "kosher"):
             self.cookbook.models.Recipe.from_json("bacon")
         # When not overridden, custom validation passes
-        self.cookbook.models.Cookie(True)
+        self.cookbook.models.Author(True)
 
     def test_serialize(self):
         self.assertEqual(API.to_json(self.cookbook), cookbook_spec)
@@ -204,6 +221,12 @@ class TestAPI(TestCase):
             cookbook_decentralized = API.load('http://example.com/spec.json')
             self.assertEqual(API.to_json(cookbook_decentralized), cookbook_spec)
 
+    def test_document(self):
+        res = self.client_debug.get('/doc/soup-of-the-day')
+        self.assertEqual(res.status_code, 200)
+        self.assertRegexpMatches(res.data, "onion")
+
+
 
 class TestRemoteAPI(TestCase):
 
@@ -223,6 +246,6 @@ class TestRemoteAPI(TestCase):
         self.assertEqual(self.cookbook.url, "http://localhost:8881/api")
 
     def test_models(self):
-        self.assertEqual(self.cookbook.models.__all__, ["Recipe", "Cookie"])
+        self.assertEqual(self.cookbook.models.__all__, ["Recipe", "Author"])
         self.assertEqual(Schema.to_json(self.cookbook.models.Recipe.schema), {"type": "String"})
 
