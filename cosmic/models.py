@@ -45,6 +45,20 @@ class ModelSerializer(BasicWrapper):
         }
 
 
+class HALResource(ParametrizedWrapper):
+
+    def __init__(self, param):
+        self.param = param
+        hal_link = Struct([
+            required("href", String)
+        ])
+        self.schema = Struct([
+            required("_links", Map(hal_link)),
+            required("_data", param)
+        ])
+
+
+
 class Model(BasicWrapper):
     """A data type definition attached to an API."""
 
@@ -52,12 +66,27 @@ class Model(BasicWrapper):
         self.data = data
 
     @classmethod
+    def from_json(cls, datum):
+        datum = HALResource(cls.schema).from_json(datum)
+        return cls.assemble(datum)
+
+    @classmethod
+    def to_json(cls, datum):
+        datum = cls.disassemble(datum)
+        return HALResource(cls.schema).to_json(datum)
+
+    @classmethod
     def assemble(cls, datum):
-        cls.validate(datum)
+        cls.validate(datum["_data"])
+        cls.validate_links(datum["_links"])
         return cls(datum)
 
     @classmethod
     def validate(cls, datum):
+        pass
+
+    @classmethod
+    def validate_links(cls, links):
         pass
 
     @classmethod

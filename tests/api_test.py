@@ -104,22 +104,13 @@ class TestAPI(TestCase):
             schema = String
 
             @classmethod
-            def assemble(cls, datum):
+            def validate(cls, datum):
                 if datum == "bacon":
                     raise ValidationError("Not kosher")
-                return cls(datum)
 
         @self.cookbook.model
         class Author(Model):
             schema = Boolean
-
-        class SoupOfTheDay(Document):
-            methods = ["GET"]
-            schema = Recipe
-            def get(self):
-                return Recipe("onion soup")
-
-        self.cookbook._documents["soup-of-the-day"] = SoupOfTheDay()
 
         self.app_debug = self.cookbook.get_flask_app(debug=True)
         self.client_debug = self.app_debug.test_client()
@@ -129,11 +120,15 @@ class TestAPI(TestCase):
 
     def test_model(self):
         R = self.cookbook.models.Recipe
+        d = {
+            "_links": {},
+            "_data": "pancake"
+        }
         with cosmos:
             self.assertEqual(Schema.to_json(R), {"type": "cookbook.Recipe"})
-            pancake = R.from_json("pancake")
-            self.assertEqual(pancake.data, u"pancake")
-            self.assertEqual(R.to_json(pancake), u"pancake")
+            pancake = R.from_json(d)
+            self.assertEqual(pancake.data, d)
+            self.assertEqual(R.to_json(pancake), d)
 
     def test_LazyWrapper_okay(self):
         ls = LazyWrapper("cookbook.Recipe")
@@ -157,7 +152,11 @@ class TestAPI(TestCase):
     def test_model_deserialize_okay(self):
         with cosmos:
             s = Schema.from_json({"type": "cookbook.Recipe"})
-            self.assertEqual(s.from_json("turkey").data, "turkey")
+            d = {
+                "_links": {},
+                "_data": "turkey"
+            }
+            self.assertEqual(s.from_json(d).data, d)
 
     def test_model_deserialize_bad_name(self):
         with cosmos:
@@ -180,7 +179,10 @@ class TestAPI(TestCase):
 
     def test_model_custom_validation(self):
         with self.assertRaisesRegexp(ValidationError, "kosher"):
-            self.cookbook.models.Recipe.from_json("bacon")
+            self.cookbook.models.Recipe.from_json({
+                "_links": {},
+                "_data": "bacon"
+            })
         # When not overridden, custom validation passes
         self.cookbook.models.Author(True)
 
@@ -220,11 +222,6 @@ class TestAPI(TestCase):
             mock_get.return_value.status_code = 200
             cookbook_decentralized = API.load('http://example.com/spec.json')
             self.assertEqual(API.to_json(cookbook_decentralized), cookbook_spec)
-
-    def test_document(self):
-        res = self.client_debug.get('/doc/soup-of-the-day')
-        self.assertEqual(res.status_code, 200)
-        self.assertRegexpMatches(res.data, "onion")
 
 
 
