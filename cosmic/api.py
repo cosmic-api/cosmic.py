@@ -13,12 +13,20 @@ from flask import Blueprint, Flask
 from .actions import Function
 from .resources import Document
 from .models import Model, ModelSerializer
-from .tools import GetterNamespace, get_args, assert_is_compatible
-from .http import FlaskView, Callable
+from .tools import GetterNamespace, get_args, assert_is_compatible, deserialize_json
+from .http import *
 from . import cosmos
 
 
 
+class Document(object):
+
+    def __init__(self, model_cls):
+        self.model_cls = model_cls
+
+    def get_by_id(self, payload):
+        # Payload should be nothing
+        pass
 
 
 class API(BasicWrapper):
@@ -118,16 +126,18 @@ class API(BasicWrapper):
                 view_func=view_func,
                 methods=["POST"],
                 endpoint=endpoint)
-        for name, document in self._documents.items():
-            url = "/doc/%s" % name
-            endpoint = "document_%s" % name
-            for method in document.methods:
-                func = getattr(document, "_" + method.lower())
-                view_func = FlaskView(func, debug)
-                blueprint.add_url_rule(url,
-                    view_func=view_func,
-                    methods=[method],
-                    endpoint=endpoint)
+        for name, model_cls in self._models.items():
+            if model_cls.collection == None:
+                continue
+            url = "/%s/<id>" % model_cls.collection
+            endpoint = "doc_get_%s" % name
+
+            view_func = FlaskViewModelGetter(model_cls, debug)
+
+            blueprint.add_url_rule(url,
+                view_func=view_func,
+                methods=["GET"],
+                endpoint=endpoint)
         return blueprint
 
     def get_flask_app(self, debug=False, url_prefix=None):

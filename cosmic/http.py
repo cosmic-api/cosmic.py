@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 import json
 import requests
 
-from werkzeug.exceptions import HTTPException, InternalServerError, abort
+from werkzeug.exceptions import HTTPException, InternalServerError, NotFound, abort
 
 from flask import Flask, make_response
 from flask import request
@@ -13,31 +13,31 @@ from .tools import *
 from .exceptions import *
 from . import cosmos
 
+def error_response(message, code):
+    body = json.dumps({"error": message})
+    return make_response(body, code, {"Content-Type": "application/json"})
+
+def err_to_response(err):
+    is_remote = getattr(err, "remote", False)
+    if isinstance(err, HTTPException) and not is_remote:
+        if err.description != err.__class__.description:
+            text = err.description
+        else:
+            text = err.name
+        return error_response(text, err.code)
+    elif isinstance(err, SpecError):
+        return error_response(err.args[0], 400)
+    elif isinstance(err, ValidationError):
+        return error_response(str(err), 400)
+    else:
+        return error_response("Internal Server Error", 500)
+
 
 class FlaskView(object):
 
     def __init__(self, view, debug):
         self.view = view
         self.debug = debug
-
-    def err_to_response(self, err):
-        is_remote = getattr(err, "remote", False)
-        if isinstance(err, HTTPException) and not is_remote:
-            if err.description != err.__class__.description:
-                text = err.description
-            else:
-                text = err.name
-            return self.error_response(text, err.code)
-        elif isinstance(err, SpecError):
-            return self.error_response(err.args[0], 400)
-        elif isinstance(err, ValidationError):
-            return self.error_response(str(err), 400)
-        else:
-            return self.error_response("Internal Server Error", 500)
-
-    def error_response(self, message, code):
-        body = json.dumps({"error": message})
-        return make_response(body, code, {"Content-Type": "application/json"})
 
     def __call__(self):
         try:
@@ -47,7 +47,7 @@ class FlaskView(object):
             try:
                 request.payload = string_to_json(request.data)
             except ValueError:
-                return self.error_response("Invalid JSON", 400)
+                return error_response("Invalid JSON", 400)
             with cosmos:
                 data = self.view(request.payload)
                 body = ""
@@ -58,7 +58,28 @@ class FlaskView(object):
             if self.debug:
                 raise
             else:
-                return self.err_to_response(err)
+                return err_to_response(err)
+
+
+class FlaskViewModelGetter(object):
+
+    def __init__(self, model_cls, debug):
+        self.model_cls = model_cls
+        self.debug = debug
+
+    def __call__(self, id):
+        try:
+            with cosmos:
+                model = self.model_cls.get_by_id(id)
+                if model == None:
+                    raise NotFound
+                body = json.dumps(self.model_cls.to_json(model))
+                return make_response(body, 200, {"Content-Type": "application/json"})
+        except Exception as err:
+            if self.debug:
+                raise
+            else:
+                return err_to_response(err)
 
 
 class Callable(object):

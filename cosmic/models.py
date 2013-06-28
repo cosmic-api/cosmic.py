@@ -61,6 +61,7 @@ class HALResource(ParametrizedWrapper):
 
 class Model(BasicWrapper):
     """A data type definition attached to an API."""
+    collection = None
 
     def __init__(self, data):
         self.data = data
