@@ -37,6 +37,20 @@ words = [
 class Language(Model):
     schema = String
     collection = "languages"
+    query_fields = [
+        optional("code", String)
+    ]
+
+    @classmethod
+    def get_list(cls, query):
+        if query == {}:
+            return map(cls.from_json, languages)
+        elif query['code'] == "en":
+            return [cls.from_json(languages[0])]
+        elif query['code'] == "eo":
+            return [cls.from_json(languages[1])]
+        else:
+            return []
 
     @classmethod
     def get_by_id(cls, id):

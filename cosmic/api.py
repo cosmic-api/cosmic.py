@@ -129,6 +129,17 @@ class API(BasicWrapper):
         for name, model_cls in self._models.items():
             if model_cls.collection == None:
                 continue
+
+            url = "/%s" % model_cls.collection
+            endpoint = "list_get_%s" % name
+
+            view_func = FlaskViewListGetter(model_cls, debug)
+
+            blueprint.add_url_rule(url,
+                view_func=view_func,
+                methods=["GET"],
+                endpoint=endpoint)
+
             url = "/%s/<id>" % model_cls.collection
             endpoint = "doc_get_%s" % name
 

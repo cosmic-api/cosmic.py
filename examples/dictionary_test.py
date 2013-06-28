@@ -7,7 +7,7 @@ from unittest2 import TestCase
 
 from cosmic.api import API
 from cosmic import cosmos
-from dictionary import dictionary
+from dictionary import *
 
 json_spec = {
     u"name": u"dictionary",
@@ -56,6 +56,14 @@ class TestDictionary(TestCase):
     def test_get_language_not_found(self):
         res = self.d.get('/languages/2')
         self.assertEqual(res.status_code, 404)
+
+    def test_get_all_languages(self):
+        res = self.d.get('/languages')
+        self.assertEqual(json.loads(res.data), languages)
+
+    def test_filter_languages(self):
+        res = self.d.get('/languages?code="en"')
+        self.assertEqual(json.loads(res.data), [languages[0]])
 
     def test_spec_endpoint(self):
         res = self.c.get('/spec.json')

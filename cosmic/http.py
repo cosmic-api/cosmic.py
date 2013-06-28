@@ -4,6 +4,7 @@ import json
 import requests
 
 from werkzeug.exceptions import HTTPException, InternalServerError, NotFound, abort
+from werkzeug.urls import url_decode
 
 from flask import Flask, make_response
 from flask import request
@@ -12,6 +13,38 @@ from teleport import Box, ValidationError
 from .tools import *
 from .exceptions import *
 from . import cosmos
+
+
+class URLParams(ParametrizedWrapper):
+    schema = String
+
+    def __init__(self, param):
+        if type(param) == list:
+            param = OrderedDict(param)
+        self.param = param
+
+    def assemble(self, datum):
+        # Use Werkzeug to turn URL params into a dict
+        return self.from_multi_dict(url_decode(datum))
+
+    def from_multi_dict(self, md):
+        # Where only a single param was
+        md = md.to_dict(flat=False)
+        ret = {}
+        for name, field in self.param.items():
+            if name in md.keys():
+                if not isinstance(field['schema'], Array) and len(md[name]) == 1:
+                    ret[name] = json.loads(md[name][0])
+                else:
+                    ret[name] = []
+                    for val in md[name]:
+                        ret[name].append(json.loads(val))
+        return Struct(self.param).from_json(ret)
+
+    def disassemble(self, datum):
+        raise NotImplementedError()
+
+
 
 def error_response(message, code):
     body = json.dumps({"error": message})
@@ -74,6 +107,30 @@ class FlaskViewModelGetter(object):
                 if model == None:
                     raise NotFound
                 body = json.dumps(self.model_cls.to_json(model))
+                return make_response(body, 200, {"Content-Type": "application/json"})
+        except Exception as err:
+            if self.debug:
+                raise
+            else:
+                return err_to_response(err)
+
+
+class FlaskViewListGetter(object):
+
+    def __init__(self, model_cls, debug):
+        self.model_cls = model_cls
+        self.debug = debug
+
+    def __call__(self):
+        try:
+            with cosmos:
+                query = None
+                if self.model_cls.query_fields != None:
+                    query_schema = URLParams(self.model_cls.query_fields)
+                    query = query_schema.from_multi_dict(request.args)
+
+                l = self.model_cls.get_list(query)
+                body = json.dumps(map(self.model_cls.to_json, l))
                 return make_response(body, 200, {"Content-Type": "application/json"})
         except Exception as err:
             if self.debug:
