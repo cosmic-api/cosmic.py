@@ -50,29 +50,29 @@ class TestView(TestCase):
 
         def noop(payload):
             pass
-        self.noop = FlaskView(noop, False)
+        self.noop = FlaskViewAction(noop, False)
 
         def unhandled_error(payload):
             return Box(1 / 0)
-        self.unhandled_error = FlaskView(unhandled_error, False)
+        self.unhandled_error = FlaskViewAction(unhandled_error, False)
 
         def authentication_error(payload):
             raise Unauthorized()
-        self.authentication_error = FlaskView(authentication_error, False)
+        self.authentication_error = FlaskViewAction(authentication_error, False)
 
         def bad_request(payload):
             raise BadRequest("BOOM")
-        self.bad_request = FlaskView(bad_request, False)
+        self.bad_request = FlaskViewAction(bad_request, False)
 
         def remote_bad_request(payload):
             e = BadRequest()
             e.remote = True
             raise e
-        self.remote_bad_request = FlaskView(remote_bad_request, False)
+        self.remote_bad_request = FlaskViewAction(remote_bad_request, False)
 
         def validation_error(payload):
             raise ValidationError("Invalid!")
-        self.validation_error = FlaskView(validation_error, False)
+        self.validation_error = FlaskViewAction(validation_error, False)
 
         self.app = Flask(__name__)
         self.app.debug = True
@@ -108,7 +108,7 @@ class TestView(TestCase):
             self.assertEqual(json.loads(res.data), {"error": "Invalid!"})
 
     def test_unhandled_error_debug(self):
-        u = FlaskView(
+        u = FlaskViewAction(
             view=self.unhandled_error.view,
             debug=True)
         with self.assertRaises(ZeroDivisionError):

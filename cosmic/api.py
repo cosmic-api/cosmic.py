@@ -115,13 +115,13 @@ class API(BasicWrapper):
 
         blueprint = Blueprint('cosmic', __name__)
         blueprint.add_url_rule("/spec.json",
-            view_func=FlaskView(spec_view, debug),
+            view_func=FlaskViewAction(spec_view, debug),
             methods=["GET"],
             endpoint="spec")
         for name, function in self._actions.items():
             url = "/actions/%s" % name
             endpoint = "function_%s" % name
-            view_func = FlaskView(function.json_to_json, debug)
+            view_func = FlaskViewAction(function.json_to_json, debug)
             blueprint.add_url_rule(url,
                 view_func=view_func,
                 methods=["POST"],

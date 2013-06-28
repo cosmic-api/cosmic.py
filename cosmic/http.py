@@ -68,75 +68,69 @@ def err_to_response(err):
 
 class FlaskView(object):
 
+    def __call__(self, *args, **kwargs):
+        try:
+            return self.handler(*args, **kwargs)
+        except Exception as err:
+            if self.debug:
+                raise
+            else:
+                return err_to_response(err)
+
+
+class FlaskViewAction(FlaskView):
+
     def __init__(self, view, debug):
         self.view = view
         self.debug = debug
 
-    def __call__(self):
+    def handler(self):
+        ct = request.headers.get('Content-Type', None)
+        if request.method != "GET" and ct != "application/json":
+            raise SpecError('Content-Type must be "application/json" got %s instead' % ct)
         try:
-            ct = request.headers.get('Content-Type', None)
-            if request.method != "GET" and ct != "application/json":
-                raise SpecError('Content-Type must be "application/json" got %s instead' % ct)
-            try:
-                request.payload = string_to_json(request.data)
-            except ValueError:
-                return error_response("Invalid JSON", 400)
-            with cosmos:
-                data = self.view(request.payload)
-                body = ""
-                if data != None:
-                    body = json.dumps(data.datum)
-                return make_response(body, 200, {"Content-Type": "application/json"})
-        except Exception as err:
-            if self.debug:
-                raise
-            else:
-                return err_to_response(err)
+            request.payload = string_to_json(request.data)
+        except ValueError:
+            return error_response("Invalid JSON", 400)
+        with cosmos:
+            data = self.view(request.payload)
+            body = ""
+            if data != None:
+                body = json.dumps(data.datum)
+            return make_response(body, 200, {"Content-Type": "application/json"})
 
 
-class FlaskViewModelGetter(object):
+class FlaskViewModelGetter(FlaskView):
 
     def __init__(self, model_cls, debug):
         self.model_cls = model_cls
         self.debug = debug
 
-    def __call__(self, id):
-        try:
-            with cosmos:
-                model = self.model_cls.get_by_id(id)
-                if model == None:
-                    raise NotFound
-                body = json.dumps(self.model_cls.to_json(model))
-                return make_response(body, 200, {"Content-Type": "application/json"})
-        except Exception as err:
-            if self.debug:
-                raise
-            else:
-                return err_to_response(err)
+    def handler(self, id):
+        with cosmos:
+            model = self.model_cls.get_by_id(id)
+            if model == None:
+                raise NotFound
+            body = json.dumps(self.model_cls.to_json(model))
+            return make_response(body, 200, {"Content-Type": "application/json"})
 
 
-class FlaskViewListGetter(object):
+class FlaskViewListGetter(FlaskView):
 
     def __init__(self, model_cls, debug):
         self.model_cls = model_cls
         self.debug = debug
 
-    def __call__(self):
-        try:
-            with cosmos:
-                query = None
-                if self.model_cls.query_fields != None:
-                    query_schema = URLParams(self.model_cls.query_fields)
-                    query = query_schema.from_multi_dict(request.args)
+    def handler(self):
+        with cosmos:
+            query = None
+            if self.model_cls.query_fields != None:
+                query_schema = URLParams(self.model_cls.query_fields)
+                query = query_schema.from_multi_dict(request.args)
 
-                l = self.model_cls.get_list(query)
-                body = json.dumps(map(self.model_cls.to_json, l))
-                return make_response(body, 200, {"Content-Type": "application/json"})
-        except Exception as err:
-            if self.debug:
-                raise
-            else:
-                return err_to_response(err)
+            l = self.model_cls.get_list(query)
+            body = json.dumps(map(self.model_cls.to_json, l))
+            return make_response(body, 200, {"Content-Type": "application/json"})
 
 
 class Callable(object):
