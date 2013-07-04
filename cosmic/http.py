@@ -133,7 +133,7 @@ class FlaskViewListGetter(FlaskView):
             return make_response(body, 200, {"Content-Type": "application/json"})
 
 
-class Callable(object):
+class ActionCallable(object):
 
     def __init__(self, function, url):
         self.function = function
@@ -169,3 +169,38 @@ class Callable(object):
             e = InternalServerError("Call returned an invalid value")
             e.remote = True
             raise e
+
+
+class ModelGetterCallable(object):
+
+    def __init__(self, model_cls):
+        self.model_cls = model_cls
+
+    def __call__(self, id):
+        url = "%s/%s/%s" % (self.model_cls.api.url, self.model_cls.__name__, id)
+        res = requests.get(url)
+        if res.status_code == 404:
+            return None
+        if res.status_code == 200:
+            e = InternalServerError("Call returned an invalid value")
+            e.remote = True
+            if res.content == "":
+                raise e
+            try:
+                return self.model_cls.from_json(json.loads(res.content))
+            except ValidationError:
+                raise e
+            except ValueError:
+                raise e
+        else:
+            message = None
+            if res.json and 'error' in res.json:
+                message = res.json['error']
+            try:
+                abort(res.status_code, message)
+            except Exception as e:
+                # Flag the exception to specify that it came from a remote
+                # API. If this exception bubbles up to the web layer, a
+                # generic 500 response will be returned
+                e.remote = True
+                raise

@@ -95,6 +95,14 @@ class Model(BasicWrapper):
     def disassemble(cls, datum):
         return datum.data
 
+    @classmethod
+    def get_list(cls, **kwargs):
+        raise NotImplementedError()
+
+    @classmethod
+    def get_by_id(cls, id):
+        from .http import ModelGetterCallable
+        return ModelGetterCallable(cls)(id)
 
 
 class LazyWrapper(object):

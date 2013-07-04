@@ -128,7 +128,7 @@ class API(BasicWrapper):
                 endpoint=endpoint)
         for name, model_cls in self._models.items():
 
-            url = "/%s" % model_cls.__name__
+            url = "/%s" % name
             endpoint = "list_get_%s" % name
 
             view_func = FlaskViewListGetter(model_cls, debug)
@@ -138,7 +138,7 @@ class API(BasicWrapper):
                 methods=["GET"],
                 endpoint=endpoint)
 
-            url = "/%s/<id>" % model_cls.__name__
+            url = "/%s/<id>" % name
             endpoint = "doc_get_%s" % name
 
             view_func = FlaskViewModelGetter(model_cls, debug)
@@ -237,7 +237,7 @@ class API(BasicWrapper):
             return function.func
         else:
             url = self.url + '/actions/' + name
-            return Callable(function, url)
+            return ActionCallable(function, url)
 
     def model(self, model_cls):
         """A decorator for registering a model with an API. The name of the

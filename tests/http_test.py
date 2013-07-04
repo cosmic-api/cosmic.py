@@ -144,11 +144,11 @@ class TestView(TestCase):
             self.assertEqual(res.data, "")
 
 
-class TestCallable(TestCase):
+class TestActionCallable(TestCase):
 
     def setUp(self):
         self.function = Function(Integer, Boolean)
-        self.callable = Callable(self.function, "http://example.com/actions/even")
+        self.callable = ActionCallable(self.function, "http://example.com/actions/even")
 
     def test_call_okay(self):
         with patch.object(requests, 'post') as mock_post:

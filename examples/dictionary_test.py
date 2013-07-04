@@ -69,3 +69,23 @@ class TestDictionary(TestCase):
         res = self.c.get('/spec.json')
         self.assertEqual(json.loads(res.data), json_spec)
 
+
+class TestRemoteDictionary(TestCase):
+
+    def test_consuming(self):
+
+        with patch.object(requests, 'get') as mock_get:
+            mock_get.return_value.json = json_spec
+            mock_get.return_value.status_code = 200
+
+            with cosmos:
+                d = API.load('http://example.com/spec.json')
+                with patch.object(requests, 'get') as mock_get:
+                    mock_get.return_value.content = json.dumps(languages[0])
+                    mock_get.return_value.status_code = 200
+
+                    en = d.models.Language.get_by_id(0)
+                    self.assertEqual(en.data, languages[0])
+
+
+
