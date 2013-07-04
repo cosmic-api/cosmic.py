@@ -42,12 +42,12 @@ class Language(Model):
     ]
 
     @classmethod
-    def get_list(cls, query):
-        if query == {}:
+    def get_list(cls, code=None):
+        if code == None:
             return map(cls.from_json, languages)
-        elif query['code'] == "en":
+        elif code == "en":
             return [cls.from_json(languages[0])]
-        elif query['code'] == "eo":
+        elif code == "eo":
             return [cls.from_json(languages[1])]
         else:
             return []

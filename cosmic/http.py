@@ -128,7 +128,7 @@ class FlaskViewListGetter(FlaskView):
                 query_schema = URLParams(self.model_cls.query_fields)
                 query = query_schema.from_multi_dict(request.args)
 
-            l = self.model_cls.get_list(query)
+            l = self.model_cls.get_list(**query)
             body = json.dumps(map(self.model_cls.to_json, l))
             return make_response(body, 200, {"Content-Type": "application/json"})
 
