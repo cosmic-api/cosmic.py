@@ -47,22 +47,22 @@ class TestDictionary(TestCase):
         self.d = dictionary.get_flask_app(debug=True).test_client()
 
     def test_get_language(self):
-        res = self.d.get('/languages/0')
+        res = self.d.get('/Language/0')
         self.assertEqual(json.loads(res.data), {
             "_links": {},
             "_data": "en"
         })
 
     def test_get_language_not_found(self):
-        res = self.d.get('/languages/2')
+        res = self.d.get('/Language/2')
         self.assertEqual(res.status_code, 404)
 
     def test_get_all_languages(self):
-        res = self.d.get('/languages')
+        res = self.d.get('/Language')
         self.assertEqual(json.loads(res.data), languages)
 
     def test_filter_languages(self):
-        res = self.d.get('/languages?code="en"')
+        res = self.d.get('/Language?code="en"')
         self.assertEqual(json.loads(res.data), [languages[0]])
 
     def test_spec_endpoint(self):

@@ -127,10 +127,8 @@ class API(BasicWrapper):
                 methods=["POST"],
                 endpoint=endpoint)
         for name, model_cls in self._models.items():
-            if model_cls.collection == None:
-                continue
 
-            url = "/%s" % model_cls.collection
+            url = "/%s" % model_cls.__name__
             endpoint = "list_get_%s" % name
 
             view_func = FlaskViewListGetter(model_cls, debug)
@@ -140,7 +138,7 @@ class API(BasicWrapper):
                 methods=["GET"],
                 endpoint=endpoint)
 
-            url = "/%s/<id>" % model_cls.collection
+            url = "/%s/<id>" % model_cls.__name__
             endpoint = "doc_get_%s" % name
 
             view_func = FlaskViewModelGetter(model_cls, debug)
