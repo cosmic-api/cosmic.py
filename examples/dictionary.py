@@ -35,7 +35,7 @@ words = [
 
 @dictionary.model
 class Language(Model):
-    schema = String
+    data_schema = String
     query_fields = [
         optional("code", String)
     ]
@@ -60,8 +60,7 @@ class Language(Model):
 
 @dictionary.model
 class Word(Model):
-    schema = String
-
+    data_schema = String
     links = OrderedDict([
         required("language", Language)
     ])

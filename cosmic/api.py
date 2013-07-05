@@ -12,7 +12,7 @@ from flask import Blueprint, Flask
 
 from .actions import Function
 from .resources import Document
-from .models import Model, ModelSerializer
+from .models import Model, ModelSerializer, prep_model
 from .tools import GetterNamespace, get_args, assert_is_compatible, deserialize_json
 from .http import *
 from . import cosmos
@@ -252,13 +252,14 @@ class API(BasicWrapper):
 
             @dictionary.model
             class Word(Model):
-                schema = String
+                data_schema = String
 
         """
         model_cls.api = self
         model_cls.type_name = "%s.%s" % (self.name, model_cls.__name__,)
         # Add to namespace
         self._models[model_cls.__name__] = model_cls
+        prep_model(model_cls)
         return model_cls
 
 

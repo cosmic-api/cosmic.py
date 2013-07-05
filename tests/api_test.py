@@ -51,7 +51,7 @@ cookbook_spec = {
     u"models": [
         {
             u"name": u"Recipe",
-            u"schema": {u"type": u"String"},
+            u"data_schema": {u"type": u"String"},
             u"links": {
                 u"map": {},
                 u"order": []
@@ -59,7 +59,7 @@ cookbook_spec = {
         },
         {
             u"name": u"Author",
-            u"schema": {u"type": u"Boolean"},
+            u"data_schema": {u"type": u"Boolean"},
             u"links": {
                 u"map": {},
                 u"order": []
@@ -101,7 +101,7 @@ class TestAPI(TestCase):
 
         @self.cookbook.model
         class Recipe(Model):
-            schema = String
+            data_schema = String
 
             @classmethod
             def validate(cls, datum):
@@ -110,7 +110,7 @@ class TestAPI(TestCase):
 
         @self.cookbook.model
         class Author(Model):
-            schema = Boolean
+            data_schema = Boolean
 
         self.app_debug = self.cookbook.get_flask_app(debug=True)
         self.client_debug = self.app_debug.test_client()
@@ -244,5 +244,5 @@ class TestRemoteAPI(TestCase):
 
     def test_models(self):
         self.assertEqual(self.cookbook.models.__all__, ["Recipe", "Author"])
-        self.assertEqual(Schema.to_json(self.cookbook.models.Recipe.schema), {"type": "String"})
+        self.assertEqual(Schema.to_json(self.cookbook.models.Recipe.data_schema), {"type": "String"})
 

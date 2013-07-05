@@ -26,7 +26,7 @@ class TestLazyWrapper(TestCase):
 
         @awesome.model
         class Yay(Model):
-            schema = String
+            data_schema = String
 
         self.Yay = Yay
         self.cosmos = Cosmos()

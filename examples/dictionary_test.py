@@ -14,7 +14,7 @@ json_spec = {
     u"models": [
         {
             u"name": u"Language",
-            u"schema": {u"type": u"String"},
+            u"data_schema": {u"type": u"String"},
             u"links": {
                 u"map": {},
                 u"order": []
@@ -22,7 +22,7 @@ json_spec = {
         },
         {
             u"name": u"Word",
-            u"schema": {u"type": u"String"},
+            u"data_schema": {u"type": u"String"},
             u"links": {
                 u"map": {
                     u"language": {

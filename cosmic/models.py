@@ -15,7 +15,7 @@ class ModelSerializer(BasicWrapper):
 
     schema = Struct([
         required("name", String),
-        optional("schema", Schema),
+        optional("data_schema", Schema),
         required("links", OrderedMap(Struct([
             required(u"schema", Schema),
             required(u"required", Boolean),
@@ -27,50 +27,43 @@ class ModelSerializer(BasicWrapper):
     def assemble(datum):
         # Take a schema and name and turn them into a model class
         class M(Model):
-            schema = datum["schema"]
+            data_schema = datum["data_schema"]
             links = datum["links"]
         M.__name__ = str(datum["name"])
+        prep_model(M)
         return M
 
     @staticmethod
     def disassemble(datum):
         return {
             "name": datum.__name__,
-            "schema": datum.schema,
+            "data_schema": datum.data_schema,
             "links": datum.links if hasattr(datum, "links") else OrderedDict()
         }
 
 
-class HALResource(ParametrizedWrapper):
-
-    def __init__(self, param):
-        self.param = param
-        self.schema = Struct([
-            required("_links", Map(Struct([
+def prep_model(model_cls):
+    links = []
+    for name, link in model_cls.links.items():
+        links.append((name, {
+            "required": link["required"],
+            "schema": Struct([
                 required("href", String)
-            ]))),
-            required("_data", param)
-        ])
-
+            ])
+        }))
+    model_cls.schema = Struct([
+        required("_links", Struct(links)),
+        required("_data", model_cls.data_schema)
+    ])
 
 
 class Model(BasicWrapper):
     """A data type definition attached to an API."""
-    collection = None
     query_fields = None
+    links = OrderedDict()
 
     def __init__(self, data):
         self.data = data
-
-    @classmethod
-    def from_json(cls, datum):
-        datum = HALResource(cls.schema).from_json(datum)
-        return cls.assemble(datum)
-
-    @classmethod
-    def to_json(cls, datum):
-        datum = cls.disassemble(datum)
-        return HALResource(cls.schema).to_json(datum)
 
     @classmethod
     def assemble(cls, datum):
@@ -79,8 +72,6 @@ class Model(BasicWrapper):
         inst.__lazy_links = {}
         for name, link in datum["_links"].items():
             url = link["href"]
-            if name not in cls.links.keys():
-                raise ValidationError("Unexpected link: %s" % name)
             model_cls = cls.links[name]["schema"]
             parts = url.split('/')
             if parts[-2] != model_cls.__name__:
