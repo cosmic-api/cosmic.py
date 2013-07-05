@@ -121,7 +121,9 @@ class TestAPI(TestCase):
     def test_model(self):
         R = self.cookbook.models.Recipe
         d = {
-            "_links": {},
+            "_links": {
+                "self": {"href": "/Recipe/24"}
+            },
             "_data": "pancake"
         }
         with cosmos:
@@ -153,7 +155,9 @@ class TestAPI(TestCase):
         with cosmos:
             s = Schema.from_json({"type": "cookbook.Recipe"})
             d = {
-                "_links": {},
+                "_links": {
+                    "self": {"href": "/Recipe/14"}
+                },
                 "_data": "turkey"
             }
             self.assertEqual(s.from_json(d).data, d)
@@ -180,7 +184,9 @@ class TestAPI(TestCase):
     def test_model_custom_validation(self):
         with self.assertRaisesRegexp(ValidationError, "kosher"):
             self.cookbook.models.Recipe.from_json({
-                "_links": {},
+                "_links": {
+                    "self": {"href": "/Recipe/123"}
+                },
                 "_data": "bacon"
             })
         # When not overridden, custom validation passes

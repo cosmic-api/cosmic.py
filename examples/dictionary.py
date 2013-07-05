@@ -10,24 +10,30 @@ dictionary = API("dictionary")
 
 languages = [
     {
-        u"_links": {},
-        u"_data": u"en"
+        u"_data": u"en",
+        u"_links": {
+            u"self": {u"href": u"/Language/0"},
+        }
     },
     {
-        u"_links": {},
-        u"_data": u"eo"
+        u"_data": u"eo",
+        u"_links": {
+            u"self": {u"href": u"/Language/1"},
+        }
     }
 ]
 words = [
     {
         u"_data": u"dog",
         u"_links": {
+            u"self": {u"href": u"/Word/0"},
             u"language": {u"href": u"/Language/0"}
         }
     },
     {
         u"_data": u"hundo",
         u"_links": {
+            u"self": {u"href": u"/Word/1"},
             u"language": {u"href": u"/Language/1"}
         }
     }

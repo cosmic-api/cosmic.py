@@ -37,7 +37,9 @@ class TestLazyWrapper(TestCase):
         lazy = LazyWrapper("awesome.Yay")
         self.assertEqual(lazy._model_cls, None)
         d = {
-            "_links": {},
+            "_links": {
+                "self": {"href": "/Yay/123"}
+            },
             "_data": "Bam"
         }
         with self.cosmos:
@@ -50,7 +52,9 @@ class TestLazyWrapper(TestCase):
 
         lazy = LazyWrapper("awesome.Yay")
         d = {
-            "_links": {},
+            "_links": {
+                "self": {"href": "/Yay/123"}
+            },
             "_data": "Bam"
         }
         with self.cosmos:

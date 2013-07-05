@@ -43,13 +43,19 @@ class ModelSerializer(BasicWrapper):
 
 
 def prep_model(model_cls):
-    links = []
+    link_schema = Struct([
+        required("href", String)
+    ])
+    links = [
+        ("self", {
+            "required": True,
+            "schema": link_schema
+        })
+    ]
     for name, link in model_cls.links.items():
         links.append((name, {
             "required": link["required"],
-            "schema": Struct([
-                required("href", String)
-            ])
+            "schema": link_schema
         }))
     model_cls.schema = Struct([
         required("_links", Struct(links)),
@@ -71,6 +77,8 @@ class Model(BasicWrapper):
         inst = cls(datum)
         inst.__lazy_links = {}
         for name, link in datum["_links"].items():
+            if name == "self":
+                continue
             url = link["href"]
             model_cls = cls.links[name]["schema"]
             parts = url.split('/')

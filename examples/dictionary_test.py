@@ -52,10 +52,7 @@ class TestDictionary(TestCase):
 
     def test_get_language(self):
         res = self.d.get('/Language/0')
-        self.assertEqual(json.loads(res.data), {
-            "_links": {},
-            "_data": "en"
-        })
+        self.assertEqual(json.loads(res.data), languages[0])
 
     def test_get_language_not_found(self):
         res = self.d.get('/Language/2')
