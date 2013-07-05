@@ -77,15 +77,23 @@ class Model(BasicWrapper):
         inst = cls(datum)
         inst.__lazy_links = {}
         for name, link in datum["_links"].items():
-            if name == "self":
-                continue
             url = link["href"]
-            model_cls = cls.links[name]["schema"]
             parts = url.split('/')
+            id = parts[-1]
+
+            if name == "self":
+                model_cls = cls
+            else:
+                model_cls = cls.links[name]["schema"]
+
             if parts[-2] != model_cls.__name__:
                 raise ValidationError("Invalid url for %s link: %s" % (model_cls.__name__, url))
-            id = parts[-1]
-            inst.__lazy_links[name] = lambda: model_cls.get_by_id(int(id))
+
+            if name == "self":
+                inst.id = id
+            else:
+                inst.__lazy_links[name] = lambda: model_cls.get_by_id(int(id))
+
         return inst
 
     def __getattr__(self, name):

@@ -49,6 +49,8 @@ class TestDictionary(TestCase):
     def test_local_links(self):
         hundo = Word.from_json(words[1])
         self.assertEqual(hundo.language.data, languages[1])
+        self.assertEqual(hundo.id, "1")
+        self.assertEqual(hundo.language.id, "1")
 
     def test_get_language(self):
         res = self.d.get('/Language/0')
