@@ -46,6 +46,10 @@ class TestDictionary(TestCase):
         self.c = dictionary.get_flask_app().test_client()
         self.d = dictionary.get_flask_app(debug=True).test_client()
 
+    def test_local_links(self):
+        hundo = Word.from_json(words[1])
+        self.assertEqual(hundo.language.data, languages[1])
+
     def test_get_language(self):
         res = self.d.get('/Language/0')
         self.assertEqual(json.loads(res.data), {

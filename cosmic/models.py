@@ -6,16 +6,8 @@ from werkzeug.local import LocalStack
 
 from teleport import *
 from .exceptions import ModelNotFound
+from .tools import GetterNamespace
 
-
-class Link(BasicWrapper):
-    type_name = "cosmic.Link"
-
-    schema = Struct([
-        required(u"schema", Schema),
-        required(u"required", Boolean),
-        optional(u"doc", String)
-    ])
 
 
 class ModelSerializer(BasicWrapper):
@@ -24,7 +16,11 @@ class ModelSerializer(BasicWrapper):
     schema = Struct([
         required("name", String),
         optional("schema", Schema),
-        required("links", OrderedMap(Link))
+        required("links", OrderedMap(Struct([
+            required(u"schema", Schema),
+            required(u"required", Boolean),
+            optional(u"doc", String)
+        ])))
     ])
 
     @staticmethod
@@ -49,11 +45,10 @@ class HALResource(ParametrizedWrapper):
 
     def __init__(self, param):
         self.param = param
-        hal_link = Struct([
-            required("href", String)
-        ])
         self.schema = Struct([
-            required("_links", Map(hal_link)),
+            required("_links", Map(Struct([
+                required("href", String)
+            ]))),
             required("_data", param)
         ])
 
@@ -80,15 +75,28 @@ class Model(BasicWrapper):
     @classmethod
     def assemble(cls, datum):
         cls.validate(datum["_data"])
-        cls.validate_links(datum["_links"])
-        return cls(datum)
+        inst = cls(datum)
+        inst.__lazy_links = {}
+        for name, link in datum["_links"].items():
+            url = link["href"]
+            if name not in cls.links.keys():
+                raise ValidationError("Unexpected link: %s" % name)
+            model_cls = cls.links[name]["schema"]
+            parts = url.split('/')
+            if parts[-2] != model_cls.__name__:
+                raise ValidationError("Invalid url for %s link: %s" % (model_cls.__name__, url))
+            id = parts[-1]
+            inst.__lazy_links[name] = lambda: model_cls.get_by_id(int(id))
+        return inst
+
+    def __getattr__(self, name):
+        if name in self.__lazy_links.keys():
+            value = self.__lazy_links[name]()
+            setattr(self, name, value)
+            return value
 
     @classmethod
     def validate(cls, datum):
-        pass
-
-    @classmethod
-    def validate_links(cls, links):
         pass
 
     @classmethod
@@ -158,8 +166,6 @@ class Cosmos(TypeMap):
         from actions import Function
         if name == "cosmic.API":
             return (API, None,)
-        elif name == "cosmic.Link":
-            return (Link, None,)
         elif name == "cosmic.Model":
             return (ModelSerializer, None,)
         elif name == "cosmic.Function":

@@ -22,13 +22,13 @@ words = [
     {
         u"_data": u"dog",
         u"_links": {
-            u"language": {u"href": u"/languages/0"}
+            u"language": {u"href": u"/Language/0"}
         }
     },
     {
         u"_data": u"hundo",
         u"_links": {
-            u"language": {u"href": u"/languages/1"}
+            u"language": {u"href": u"/Language/1"}
         }
     }
 ]
