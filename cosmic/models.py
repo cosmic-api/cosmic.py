@@ -27,7 +27,7 @@ class ModelSerializer(BasicWrapper):
     def assemble(datum):
         # Take a schema and name and turn them into a model class
         class M(Model):
-            data_schema = datum["data_schema"]
+            properties = datum["data_schema"].param.items()
             links = datum["links"]
         M.__name__ = str(datum["name"])
         prep_model(M)
@@ -37,7 +37,7 @@ class ModelSerializer(BasicWrapper):
     def disassemble(datum):
         return {
             "name": datum.__name__,
-            "data_schema": datum.data_schema,
+            "data_schema": Struct(datum.properties),
             "links": datum.links if hasattr(datum, "links") else OrderedDict()
         }
 
@@ -59,7 +59,7 @@ def prep_model(model_cls):
         }))
     model_cls.schema = Struct([
         required("_links", Struct(links)),
-        required("_data", model_cls.data_schema)
+        required("_data", Struct(model_cls.properties))
     ])
 
 

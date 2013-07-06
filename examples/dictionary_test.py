@@ -14,7 +14,18 @@ json_spec = {
     u"models": [
         {
             u"name": u"Language",
-            u"data_schema": {u"type": u"String"},
+            u"data_schema": {
+                u'type': u"Struct",
+                u"param": {
+                    u"map": {
+                        u"code": {
+                            u"required": True,
+                            u"schema": {u"type": u"String"}
+                        },
+                    },
+                    u"order": [u"code"]
+                }
+            },
             u"links": {
                 u"map": {},
                 u"order": []
@@ -22,7 +33,18 @@ json_spec = {
         },
         {
             u"name": u"Word",
-            u"data_schema": {u"type": u"String"},
+            u"data_schema": {
+                u'type': u"Struct",
+                u"param": {
+                    u"map": {
+                        u"text": {
+                            u"required": True,
+                            u"schema": {u"type": u"String"}
+                        },
+                    },
+                    u"order": [u"text"]
+                }
+            },
             u"links": {
                 u"map": {
                     u"language": {
@@ -48,7 +70,7 @@ class TestDictionary(TestCase):
 
     def test_local_links(self):
         hundo = Word.from_json(words[1])
-        self.assertEqual(hundo.language.data, "eo")
+        self.assertEqual(hundo.language.data["code"], "eo")
         self.assertEqual(hundo.id, "1")
         self.assertEqual(hundo.language.id, "1")
 
@@ -88,7 +110,7 @@ class TestRemoteDictionary(TestCase):
                     mock_get.return_value.status_code = 200
 
                     en = d.models.Language.get_by_id(0)
-                    self.assertEqual(en.data, "en")
+                    self.assertEqual(en.data["code"], "en")
 
 
 

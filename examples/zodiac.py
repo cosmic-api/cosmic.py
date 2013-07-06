@@ -8,7 +8,7 @@ zodiac = API("zodiac")
 
 @zodiac.model
 class Sign(Model):
-    schema = String
+    data_schema = String
 
     SIGNS = [
         "aries",

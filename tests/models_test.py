@@ -26,7 +26,9 @@ class TestLazyWrapper(TestCase):
 
         @awesome.model
         class Yay(Model):
-            data_schema = String
+            properties = [
+                required("what", String)
+            ]
 
         self.Yay = Yay
         self.cosmos = Cosmos()
@@ -40,7 +42,7 @@ class TestLazyWrapper(TestCase):
             "_links": {
                 "self": {"href": "/Yay/123"}
             },
-            "_data": "Bam"
+            "_data": {"what": "Bam"}
         }
         with self.cosmos:
             self.assertEqual(lazy.from_json(d).data, d["_data"])
@@ -55,7 +57,7 @@ class TestLazyWrapper(TestCase):
             "_links": {
                 "self": {"href": "/Yay/123"}
             },
-            "_data": "Bam"
+            "_data": {"what": "Bam"}
         }
         with self.cosmos:
             self.assertEqual(lazy.to_json(self.Yay.from_json(d)), d)

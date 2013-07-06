@@ -13,8 +13,8 @@ json_spec = {
     "name": "zodiac",
     "models": [
         {
-            "name": "Sign",
-            "schema": {"type": "String"},
+            u"name": "Sign",
+            u"data_schema": {"type": "String"},
             u"links": {
                 u"map": {},
                 u"order": []

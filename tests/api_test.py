@@ -51,7 +51,18 @@ cookbook_spec = {
     u"models": [
         {
             u"name": u"Recipe",
-            u"data_schema": {u"type": u"String"},
+            u"data_schema": {
+                u'type': u"Struct",
+                u"param": {
+                    u"map": {
+                        u"name": {
+                            u"required": True,
+                            u"schema": {u"type": u"String"}
+                        },
+                    },
+                    u"order": [u"name"]
+                }
+            },
             u"links": {
                 u"map": {},
                 u"order": []
@@ -59,7 +70,18 @@ cookbook_spec = {
         },
         {
             u"name": u"Author",
-            u"data_schema": {u"type": u"Boolean"},
+            u"data_schema": {
+                u'type': u"Struct",
+                u"param": {
+                    u"map": {
+                        u"is_gordon_ramsay": {
+                            u"required": True,
+                            u"schema": {u"type": u"Boolean"}
+                        },
+                    },
+                    u"order": [u"is_gordon_ramsay"]
+                }
+            },
             u"links": {
                 u"map": {},
                 u"order": []
@@ -101,16 +123,20 @@ class TestAPI(TestCase):
 
         @self.cookbook.model
         class Recipe(Model):
-            data_schema = String
+            properties = [
+                required(u"name", String)
+            ]
 
             @classmethod
             def validate(cls, datum):
-                if datum == "bacon":
+                if datum["name"] == "bacon":
                     raise ValidationError("Not kosher")
 
         @self.cookbook.model
         class Author(Model):
-            data_schema = Boolean
+            properties = [
+                required(u"is_gordon_ramsay", Boolean)
+            ]
 
         self.app_debug = self.cookbook.get_flask_app(debug=True)
         self.client_debug = self.app_debug.test_client()
@@ -124,7 +150,7 @@ class TestAPI(TestCase):
             "_links": {
                 "self": {"href": "/Recipe/24"}
             },
-            "_data": "pancake"
+            "_data": {"name": "pancake"}
         }
         with cosmos:
             self.assertEqual(Schema.to_json(R), {"type": "cookbook.Recipe"})
@@ -158,7 +184,7 @@ class TestAPI(TestCase):
                 "_links": {
                     "self": {"href": "/Recipe/14"}
                 },
-                "_data": "turkey"
+                "_data": {"name": "turkey"}
             }
             self.assertEqual(s.from_json(d).data, d["_data"])
 
@@ -187,7 +213,7 @@ class TestAPI(TestCase):
                 "_links": {
                     "self": {"href": "/Recipe/123"}
                 },
-                "_data": "bacon"
+                "_data": {"name": "bacon"}
             })
         # When not overridden, custom validation passes
         self.cookbook.models.Author(True)
@@ -250,5 +276,4 @@ class TestRemoteAPI(TestCase):
 
     def test_models(self):
         self.assertEqual(self.cookbook.models.__all__, ["Recipe", "Author"])
-        self.assertEqual(Schema.to_json(self.cookbook.models.Recipe.data_schema), {"type": "String"})
 

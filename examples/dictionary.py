@@ -10,13 +10,13 @@ dictionary = API("dictionary")
 
 languages = [
     {
-        u"_data": u"en",
+        u"_data": {"code": u"en"},
         u"_links": {
             u"self": {u"href": u"/Language/0"},
         }
     },
     {
-        u"_data": u"eo",
+        u"_data": {"code": u"eo"},
         u"_links": {
             u"self": {u"href": u"/Language/1"},
         }
@@ -24,14 +24,14 @@ languages = [
 ]
 words = [
     {
-        u"_data": u"dog",
+        u"_data": {"text": u"dog"},
         u"_links": {
             u"self": {u"href": u"/Word/0"},
             u"language": {u"href": u"/Language/0"}
         }
     },
     {
-        u"_data": u"hundo",
+        u"_data": {"text": u"hundo"},
         u"_links": {
             u"self": {u"href": u"/Word/1"},
             u"language": {u"href": u"/Language/1"}
@@ -41,7 +41,9 @@ words = [
 
 @dictionary.model
 class Language(Model):
-    data_schema = String
+    properties = [
+        required("code", String)
+    ]
     query_fields = [
         optional("code", String)
     ]
@@ -66,7 +68,9 @@ class Language(Model):
 
 @dictionary.model
 class Word(Model):
-    data_schema = String
+    properties = [
+        required("text", String)
+    ]
     links = OrderedDict([
         required("language", Language)
     ])
