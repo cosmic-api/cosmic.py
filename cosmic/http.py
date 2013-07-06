@@ -228,3 +228,43 @@ class ModelGetterCallable(object):
                 # generic 500 response will be returned
                 e.remote = True
                 raise
+
+
+class ListGetterCallable(object):
+
+    def __init__(self, model_cls):
+        self.model_cls = model_cls
+
+    def __call__(self, **query):
+
+        url = "%s/%s" % (self.model_cls.api.url, self.model_cls.__name__)
+
+        if self.model_cls.query_fields != None:
+            query_schema = URLParams(self.model_cls.query_fields)
+            query_string = query_schema.to_json(query)
+            if query_string:
+                url += "?%s" % query_string
+
+        res = requests.get(url)
+        if res.status_code == 200:
+            e = InternalServerError("Call returned an invalid value")
+            e.remote = True
+            if res.content == "":
+                raise e
+            try:
+                j = json.loads(res.content)
+                return map(self.model_cls.from_json, j["_embedded"][self.model_cls.__name__])
+            except (ValidationError, ValueError, KeyError):
+                raise e
+        else:
+            message = None
+            if res.json and 'error' in res.json:
+                message = res.json['error']
+            try:
+                abort(res.status_code, message)
+            except Exception as e:
+                # Flag the exception to specify that it came from a remote
+                # API. If this exception bubbles up to the web layer, a
+                # generic 500 response will be returned
+                e.remote = True
+                raise

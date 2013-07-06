@@ -114,20 +114,39 @@ class TestDictionary(TestCase):
 
 class TestRemoteDictionary(TestCase):
 
-    def test_consuming(self):
-
+    def setUp(self):
         with patch.object(requests, 'get') as mock_get:
             mock_get.return_value.json = json_spec
             mock_get.return_value.status_code = 200
 
             with cosmos:
-                d = API.load('http://example.com/spec.json')
-                with patch.object(requests, 'get') as mock_get:
-                    mock_get.return_value.content = json.dumps(languages[0])
-                    mock_get.return_value.status_code = 200
+                self.dictionary = API.load('http://example.com/spec.json')
 
-                    en = d.models.Language.get_by_id(0)
-                    self.assertEqual(en.data["code"], "en")
 
+    def test_get_by_id(self):
+
+        with patch.object(requests, 'get') as mock_get:
+            mock_get.return_value.content = json.dumps(languages[0])
+            mock_get.return_value.status_code = 200
+
+            en = self.dictionary.models.Language.get_by_id(0)
+            self.assertEqual(en.data["code"], "en")
+
+    def test_get_list(self):
+
+        with patch.object(requests, 'get') as mock_get:
+            url = '/Language?code=%22en%22'
+            mock_get.return_value.content = json.dumps({
+                "_links": {
+                    "self": {"href": url}
+                },
+                "_embedded": {
+                    "Language": [languages[0]]
+                }
+            })
+            mock_get.return_value.status_code = 200
+
+            en = self.dictionary.models.Language.get_list(code="en")[0]
+            self.assertEqual(en.data["code"], "en")
 
 

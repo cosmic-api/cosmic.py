@@ -132,8 +132,9 @@ class Model(BasicWrapper):
         pass
 
     @classmethod
-    def get_list(cls, **kwargs):
-        raise NotImplementedError()
+    def get_list(cls, **query):
+        from .http import ListGetterCallable
+        return ListGetterCallable(cls)(**query)
 
     @classmethod
     def get_by_id(cls, id):
