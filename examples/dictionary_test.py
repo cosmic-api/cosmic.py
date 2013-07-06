@@ -48,7 +48,7 @@ class TestDictionary(TestCase):
 
     def test_local_links(self):
         hundo = Word.from_json(words[1])
-        self.assertEqual(hundo.language.data, languages[1])
+        self.assertEqual(hundo.language.data, "eo")
         self.assertEqual(hundo.id, "1")
         self.assertEqual(hundo.language.id, "1")
 
@@ -88,7 +88,7 @@ class TestRemoteDictionary(TestCase):
                     mock_get.return_value.status_code = 200
 
                     en = d.models.Language.get_by_id(0)
-                    self.assertEqual(en.data, languages[0])
+                    self.assertEqual(en.data, "en")
 
 
 

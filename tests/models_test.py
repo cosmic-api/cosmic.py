@@ -43,10 +43,10 @@ class TestLazyWrapper(TestCase):
             "_data": "Bam"
         }
         with self.cosmos:
-            self.assertEqual(lazy.from_json(d).data, d)
+            self.assertEqual(lazy.from_json(d).data, d["_data"])
             self.assertEqual(lazy._model_cls, self.Yay)
             # By now, _model_cls is set
-            self.assertEqual(lazy.from_json(d).data, d)
+            self.assertEqual(lazy.from_json(d).data, d["_data"])
 
     def test_to_json(self):
 
@@ -58,7 +58,7 @@ class TestLazyWrapper(TestCase):
             "_data": "Bam"
         }
         with self.cosmos:
-            self.assertEqual(lazy.to_json(self.Yay(d)), d)
+            self.assertEqual(lazy.to_json(self.Yay.from_json(d)), d)
 
 
 

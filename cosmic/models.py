@@ -71,10 +71,14 @@ class Model(BasicWrapper):
     def __init__(self, data):
         self.data = data
 
+    @property
+    def href(self):
+        return "/%s/%s" % (self.__class__.__name__, self.id)
+
     @classmethod
     def assemble(cls, datum):
         cls.validate(datum["_data"])
-        inst = cls(datum)
+        inst = cls(datum["_data"])
         inst.__lazy_links = {}
         for name, link in datum["_links"].items():
             url = link["href"]
@@ -83,32 +87,43 @@ class Model(BasicWrapper):
 
             if name == "self":
                 model_cls = cls
+                inst.id = id
             else:
                 model_cls = cls.links[name]["schema"]
+                inst.__lazy_links[name] = lambda: model_cls.get_by_id(int(id))
 
             if parts[-2] != model_cls.__name__:
                 raise ValidationError("Invalid url for %s link: %s" % (model_cls.__name__, url))
 
-            if name == "self":
-                inst.id = id
-            else:
-                inst.__lazy_links[name] = lambda: model_cls.get_by_id(int(id))
-
         return inst
 
+    @classmethod
+    def disassemble(cls, datum):
+        links = OrderedDict()
+        links["self"] = {"href": datum.href}
+        for name, link in cls.links.items():
+            value = getattr(datum, name)
+            if value != None:
+                links[name] = {"href": value.href}
+        return {
+            "_data": datum.data,
+            "_links": links
+        }
+
     def __getattr__(self, name):
+        if name not in self.links.keys():
+            raise AttributeError()
         if name in self.__lazy_links.keys():
             value = self.__lazy_links[name]()
             setattr(self, name, value)
             return value
+        else:
+            return None
+
 
     @classmethod
     def validate(cls, datum):
         pass
-
-    @classmethod
-    def disassemble(cls, datum):
-        return datum.data
 
     @classmethod
     def get_list(cls, **kwargs):
