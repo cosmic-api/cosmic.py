@@ -67,6 +67,7 @@ class TestDictionary(TestCase):
     def setUp(self):
         self.c = dictionary.get_flask_app().test_client()
         self.d = dictionary.get_flask_app(debug=True).test_client()
+        self.maxDiff = 2000
 
     def test_local_links(self):
         hundo = Word.from_json(words[1])
@@ -83,12 +84,28 @@ class TestDictionary(TestCase):
         self.assertEqual(res.status_code, 404)
 
     def test_get_all_languages(self):
-        res = self.d.get('/Language')
-        self.assertEqual(json.loads(res.data), languages)
+        url = '/Language'
+        res = self.d.get(url)
+        self.assertEqual(json.loads(res.data), {
+            "_links": {
+                "self": {"href": url}
+            },
+            "_embedded": {
+                "Language": languages
+            }
+        })
 
     def test_filter_languages(self):
-        res = self.d.get('/Language?code="en"')
-        self.assertEqual(json.loads(res.data), [languages[0]])
+        url = '/Language?code=%22en%22'
+        res = self.d.get(url)
+        self.assertEqual(json.loads(res.data), {
+            "_links": {
+                "self": {"href": url}
+            },
+            "_embedded": {
+                "Language": [languages[0]]
+            }
+        })
 
     def test_spec_endpoint(self):
         res = self.c.get('/spec.json')

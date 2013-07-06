@@ -4,7 +4,8 @@ import json
 import requests
 
 from werkzeug.exceptions import HTTPException, InternalServerError, NotFound, abort
-from werkzeug.urls import url_decode
+from werkzeug.urls import url_decode, url_encode
+from werkzeug.datastructures import MultiDict
 
 from flask import Flask, make_response
 from flask import request
@@ -27,6 +28,9 @@ class URLParams(ParametrizedWrapper):
         # Use Werkzeug to turn URL params into a dict
         return self.from_multi_dict(url_decode(datum))
 
+    def disassemble(self, datum):
+        return url_encode(self.to_multi_dict(datum))
+
     def from_multi_dict(self, md):
         # Where only a single param was
         md = md.to_dict(flat=False)
@@ -41,8 +45,18 @@ class URLParams(ParametrizedWrapper):
                         ret[name].append(json.loads(val))
         return Struct(self.param).from_json(ret)
 
-    def disassemble(self, datum):
-        raise NotImplementedError()
+    def to_multi_dict(self, datum):
+        d = Struct(self.param).to_json(datum)
+        md = MultiDict()
+        for name, field in self.param.items():
+            if name in d.keys():
+                md[name] = []
+                if isinstance(field['schema'], Array):
+                    md[name] = map(json.dumps, d[name])
+                else:
+                    md[name] = json.dumps(d[name])
+        return md
+
 
 
 
@@ -124,13 +138,23 @@ class FlaskViewListGetter(FlaskView):
     def handler(self):
         with cosmos:
             query = None
+            self_link = "/%s" % self.model_cls.__name__
+
             if self.model_cls.query_fields != None:
                 query_schema = URLParams(self.model_cls.query_fields)
                 query = query_schema.from_multi_dict(request.args)
+                if query:
+                    self_link += "?" + query_schema.to_json(query)
 
             l = self.model_cls.get_list(**query)
-            body = json.dumps(map(self.model_cls.to_json, l))
-            return make_response(body, 200, {"Content-Type": "application/json"})
+            body = {
+                "_links": {
+                    "self": {"href": self_link}
+                },
+                "_embedded": {}
+            }
+            body["_embedded"][self.model_cls.__name__] = map(self.model_cls.to_json, l)
+            return make_response(json.dumps(body), 200, {"Content-Type": "application/json"})
 
 
 class ActionCallable(object):

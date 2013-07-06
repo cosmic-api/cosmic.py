@@ -11,22 +11,12 @@ from teleport import *
 from flask import Blueprint, Flask
 
 from .actions import Function
-from .resources import Document
 from .models import Model, ModelSerializer, prep_model
 from .tools import GetterNamespace, get_args, assert_is_compatible, deserialize_json
 from .http import *
 from . import cosmos
 
 
-
-class Document(object):
-
-    def __init__(self, model_cls):
-        self.model_cls = model_cls
-
-    def get_by_id(self, payload):
-        # Payload should be nothing
-        pass
 
 
 class API(BasicWrapper):

@@ -10,7 +10,6 @@ from teleport import *
 from werkzeug.exceptions import Unauthorized
 
 from cosmic.exceptions import *
-from cosmic.resources import *
 from cosmic.api import API
 from cosmic.models import Model, LazyWrapper
 from cosmic import api, request
