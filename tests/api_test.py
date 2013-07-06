@@ -150,12 +150,12 @@ class TestAPI(TestCase):
             "_links": {
                 "self": {"href": "/Recipe/24"}
             },
-            "_data": {"name": "pancake"}
+            "name": "pancake"
         }
         with cosmos:
             self.assertEqual(Schema.to_json(R), {"type": "cookbook.Recipe"})
             pancake = R.from_json(d)
-            self.assertEqual(pancake.data, d["_data"])
+            self.assertEqual(pancake.data["name"], "pancake")
             self.assertEqual(R.to_json(pancake), d)
 
     def test_LazyWrapper_okay(self):
@@ -184,9 +184,9 @@ class TestAPI(TestCase):
                 "_links": {
                     "self": {"href": "/Recipe/14"}
                 },
-                "_data": {"name": "turkey"}
+                "name": "turkey"
             }
-            self.assertEqual(s.from_json(d).data, d["_data"])
+            self.assertEqual(s.from_json(d).data["name"], "turkey")
 
     def test_model_deserialize_bad_name(self):
         with cosmos:
@@ -213,7 +213,7 @@ class TestAPI(TestCase):
                 "_links": {
                     "self": {"href": "/Recipe/123"}
                 },
-                "_data": {"name": "bacon"}
+                "name": "bacon"
             })
         # When not overridden, custom validation passes
         self.cookbook.models.Author(True)

@@ -57,10 +57,14 @@ def prep_model(model_cls):
             "required": link["required"],
             "schema": link_schema
         }))
-    model_cls.schema = Struct([
+    props = [
         required("_links", Struct(links)),
-        required("_data", Struct(model_cls.properties))
-    ])
+    ]
+    for prop in model_cls.properties:
+        if prop[0] in ("_links", "_embedded"):
+            raise ValidationError("%s is a reserved keyword" % reserved)
+        props.append(prop)
+    model_cls.schema = Struct(props)
 
 
 class Model(BasicWrapper):
@@ -77,10 +81,11 @@ class Model(BasicWrapper):
 
     @classmethod
     def assemble(cls, datum):
-        cls.validate(datum["_data"])
-        inst = cls(datum["_data"])
+        links = datum.pop("_links")
+        cls.validate(datum)
+        inst = cls(datum)
         inst.__lazy_links = {}
-        for name, link in datum["_links"].items():
+        for name, link in links.items():
             url = link["href"]
             parts = url.split('/')
             id = parts[-1]
@@ -105,10 +110,11 @@ class Model(BasicWrapper):
             value = getattr(datum, name)
             if value != None:
                 links[name] = {"href": value.href}
-        return {
-            "_data": datum.data,
+        d = {
             "_links": links
         }
+        d.update(datum.data)
+        return d
 
     def __getattr__(self, name):
         if name not in self.links.keys():
