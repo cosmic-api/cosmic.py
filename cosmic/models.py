@@ -38,7 +38,7 @@ class ModelSerializer(BasicWrapper):
         return {
             "name": datum.__name__,
             "data_schema": Struct(datum.properties),
-            "links": datum.links if hasattr(datum, "links") else OrderedDict()
+            "links": OrderedDict(datum.links if hasattr(datum, "links") else [])
         }
 
 
@@ -52,7 +52,7 @@ def prep_model(model_cls):
             "schema": link_schema
         })
     ]
-    for name, link in model_cls.links.items():
+    for name, link in OrderedDict(model_cls.links).items():
         links.append((name, {
             "required": link["required"],
             "schema": link_schema
@@ -70,7 +70,7 @@ def prep_model(model_cls):
 class Model(BasicWrapper):
     """A data type definition attached to an API."""
     query_fields = None
-    links = OrderedDict()
+    links = []
 
     def __init__(self, data):
         self.data = data
@@ -94,7 +94,7 @@ class Model(BasicWrapper):
                 model_cls = cls
                 inst.id = id
             else:
-                model_cls = cls.links[name]["schema"]
+                model_cls = OrderedDict(cls.links)[name]["schema"]
                 inst.__lazy_links[name] = lambda: model_cls.get_by_id(int(id))
 
             if parts[-2] != model_cls.__name__:
@@ -106,7 +106,7 @@ class Model(BasicWrapper):
     def disassemble(cls, datum):
         links = OrderedDict()
         links["self"] = {"href": datum.href}
-        for name, link in cls.links.items():
+        for name, link in OrderedDict(cls.links).items():
             value = getattr(datum, name)
             if value != None:
                 links[name] = {"href": value.href}
@@ -117,7 +117,7 @@ class Model(BasicWrapper):
         return d
 
     def __getattr__(self, name):
-        if name not in self.links.keys():
+        if name not in OrderedDict(self.links).keys():
             raise AttributeError()
         if name in self.__lazy_links.keys():
             value = self.__lazy_links[name]()

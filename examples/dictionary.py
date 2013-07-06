@@ -71,9 +71,9 @@ class Word(Model):
     properties = [
         required("text", String)
     ]
-    links = OrderedDict([
+    links = [
         required("language", Language)
-    ])
+    ]
 
     @classmethod
     def get_by_id(cls, id):
