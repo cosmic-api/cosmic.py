@@ -242,6 +242,12 @@ class TestAPI(TestCase):
         self.assertEqual(res.status_code, 400)
         self.assertRegexpMatches(res.data, "Content-Type")
 
+    def test_action_okay(self):
+        data = json.dumps({"spicy": True})
+        res = self.client_debug.post('/actions/cabbage', data=data, content_type="application/json")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data, '"kimchi"')
+
     def test_schema(self):
         with cosmos:
             API.from_json(API.to_json(self.cookbook))
