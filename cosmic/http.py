@@ -111,6 +111,8 @@ class FlaskViewAction(FlaskView):
             if data == None:
                 return ("", 204, {})
             else:
+                if isinstance(data.datum, Box):
+                    raise Exception(self.view)
                 body = json.dumps(data.datum)
                 return (body, 200, {"Content-Type": "application/json"})
 

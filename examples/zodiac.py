@@ -8,7 +8,9 @@ zodiac = API("zodiac")
 
 @zodiac.model
 class Sign(Model):
-    data_schema = String
+    properties = [
+        required("name", String)
+    ]
 
     SIGNS = [
         "aries",
@@ -27,12 +29,12 @@ class Sign(Model):
 
     @classmethod
     def validate(cls, datum):
-        if datum not in cls.SIGNS:
-            raise ValidationError("Unknown zodiac sign", datum)
+        if datum["name"] not in cls.SIGNS:
+            raise ValidationError("Unknown zodiac sign", datum["name"])
 
 @zodiac.action(accepts=Sign, returns=String)
 def predict(sign):
-    ret = "For %s, now is a good time to " % sign.data
+    ret = "For %s, now is a good time to " % sign.data["name"]
     ret += random.choice([
         "build an API.",
         "mow the lawn.",

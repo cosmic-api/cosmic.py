@@ -34,4 +34,4 @@ class Function(BasicWrapper):
     def json_to_json(self, payload):
         normalized = deserialize_json(self.accepts, payload)
         ret = self.func(normalized)
-        return serialize_json(self.returns, Box(ret))
+        return serialize_json(self.returns, ret)

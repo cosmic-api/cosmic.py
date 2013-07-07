@@ -58,7 +58,7 @@ def prep_model(model_cls):
             "schema": link_schema
         }))
     props = [
-        required("_links", Struct(links)),
+        optional("_links", Struct(links)),
     ]
     for prop in model_cls.properties:
         if prop[0] in ("_links", "_embedded"):
@@ -81,7 +81,7 @@ class Model(BasicWrapper):
 
     @classmethod
     def assemble(cls, datum):
-        links = datum.pop("_links")
+        links = datum.pop("_links", {})
         cls.validate(datum)
         inst = cls(datum)
         inst.__lazy_links = {}
@@ -105,14 +105,15 @@ class Model(BasicWrapper):
     @classmethod
     def disassemble(cls, datum):
         links = OrderedDict()
-        links["self"] = {"href": datum.href}
+        if hasattr(datum, "id"):
+            links["self"] = {"href": datum.href}
         for name, link in OrderedDict(cls.links).items():
             value = getattr(datum, name)
             if value != None:
                 links[name] = {"href": value.href}
-        d = {
-            "_links": links
-        }
+        d = {}
+        if links:
+            d["_links"] = links
         d.update(datum.data)
         return d
 

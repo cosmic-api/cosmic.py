@@ -14,7 +14,18 @@ json_spec = {
     "models": [
         {
             u"name": "Sign",
-            u"data_schema": {"type": "String"},
+            u"data_schema": {
+                u'type': u"Struct",
+                u"param": {
+                    u"map": {
+                        u"name": {
+                            u"required": True,
+                            u"schema": {u"type": u"String"}
+                        },
+                    },
+                    u"order": [u"name"]
+                }
+            },
             u"links": {
                 u"map": {},
                 u"order": []
@@ -39,7 +50,7 @@ class TestTutorialBuildingAPI(TestCase):
         self.d = zodiac.get_flask_app(debug=True).test_client()
 
     def test_run(self):
-        res = self.c.post('/actions/predict', data='"leo"', content_type="application/json")
+        res = self.d.post('/actions/predict', data='{"name":"leo"}', content_type="application/json")
         self.assertRegexpMatches(res.data, "handsome stranger")
 
     def test_spec_endpoint(self):
@@ -47,7 +58,7 @@ class TestTutorialBuildingAPI(TestCase):
         self.assertEqual(json.loads(res.data), json_spec)
 
     def test_wrong_sign(self):
-        res = self.c.post('/actions/predict', data='"tiger"', content_type="application/json")
+        res = self.c.post('/actions/predict', data='{"name":"tiger"}', content_type="application/json")
         self.assertEqual(json.loads(res.data), {"error": "Unknown zodiac sign: u'tiger'"})
 
     def test_consuming(self):
@@ -57,7 +68,7 @@ class TestTutorialBuildingAPI(TestCase):
 
             with cosmos:
                 h = API.load('http://example.com/spec.json')
-                pisces = h.models.Sign("pisces")
+                pisces = h.models.Sign({"name": "pisces"})
                 with patch.object(requests, 'post') as mock_post:
                     mock_post.return_value.json = "Yada yada handsome stranger"
                     mock_post.return_value.status_code = 200
