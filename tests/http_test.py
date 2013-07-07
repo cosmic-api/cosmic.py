@@ -139,8 +139,7 @@ class TestView(TestCase):
     def test_action_no_args_no_data(self):
         with self.app.test_request_context('/', method="POST", data="", content_type="application/json"):
             res = self.noop()
-            self.assertEqual(res.status_code, 200)
-            self.assertEqual(res.content_type, "application/json")
+            self.assertEqual(res.status_code, 204)
             self.assertEqual(res.data, "")
 
 

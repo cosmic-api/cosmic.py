@@ -84,7 +84,7 @@ class FlaskView(object):
 
     def __call__(self, *args, **kwargs):
         try:
-            return self.handler(*args, **kwargs)
+            return make_response(self.handler(*args, **kwargs))
         except Exception as err:
             if self.debug:
                 raise
@@ -108,10 +108,11 @@ class FlaskViewAction(FlaskView):
             return error_response("Invalid JSON", 400)
         with cosmos:
             data = self.view(request.payload)
-            body = ""
-            if data != None:
+            if data == None:
+                return ("", 204, {})
+            else:
                 body = json.dumps(data.datum)
-            return make_response(body, 200, {"Content-Type": "application/json"})
+                return (body, 200, {"Content-Type": "application/json"})
 
 
 class FlaskViewModelGetter(FlaskView):
