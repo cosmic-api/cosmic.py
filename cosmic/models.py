@@ -6,7 +6,7 @@ from werkzeug.local import LocalStack
 
 from teleport import *
 from .exceptions import ModelNotFound
-from .tools import GetterNamespace
+from .tools import GetterNamespace, validate_underscore_identifier
 
 
 
@@ -53,6 +53,7 @@ def prep_model(model_cls):
         })
     ]
     for name, link in OrderedDict(model_cls.links).items():
+        validate_underscore_identifier(name)
         links.append((name, {
             "required": link["required"],
             "schema": link_schema
@@ -61,8 +62,7 @@ def prep_model(model_cls):
         optional("_links", Struct(links)),
     ]
     for prop in model_cls.properties:
-        if prop[0] in ("_links", "_embedded"):
-            raise ValidationError("%s is a reserved keyword" % reserved)
+        validate_underscore_identifier(prop[0])
         props.append(prop)
     model_cls.schema = Struct(props)
 

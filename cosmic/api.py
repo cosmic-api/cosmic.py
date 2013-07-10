@@ -12,7 +12,7 @@ from flask import Blueprint, Flask
 
 from .actions import Function
 from .models import Model, ModelSerializer, prep_model
-from .tools import GetterNamespace, get_args, assert_is_compatible, deserialize_json
+from .tools import GetterNamespace, get_args, assert_is_compatible, deserialize_json, validate_underscore_identifier
 from .http import *
 from . import cosmos
 
@@ -207,6 +207,7 @@ class API(BasicWrapper):
         """
         def wrapper(func):
             name = unicode(func.__name__)
+            validate_underscore_identifier(name)
             required, optional = get_args(func)
 
             if accepts:

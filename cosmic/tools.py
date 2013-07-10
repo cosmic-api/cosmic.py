@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+import re
 import inspect
 import json
 
@@ -151,3 +152,12 @@ def json_to_string(box):
     if box == None:
         return ""
     return json.dumps(box.datum)
+
+
+def validate_underscore_identifier(id):
+    if re.match('^[a-zA-Z0-9_]*$', id) is None:
+        raise SpecError("Identifier must consist of [a-zA-Z0-9_] characters only: %s" % id)
+    if id.startswith('_') or id.endswith('_'):
+        raise SpecError("Identifier cannot start or end with an underscore: %s" % id)
+    if '__' in id:
+        raise SpecError("Identifier cannot have consecutive underscores: %s" % id)

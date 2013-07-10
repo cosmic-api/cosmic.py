@@ -182,3 +182,35 @@ class TestSchemaHelpers(TestCase):
     def test_json_to_string(self):
         self.assertEqual(json_to_string(None), "")
         self.assertEqual(json_to_string(Box(1)), "1")
+
+
+class TestUnderscoreIdentifier(TestCase):
+
+    def test_okay(self):
+        validate_underscore_identifier('hello_world')
+
+    def test_bad_character(self):
+        # For some strange reason, assertRaisesRegext tries to decode
+        # error string as ASCII, causing UnicodeDecodeError. WTF.
+        e = None
+        try:
+            validate_underscore_identifier(u'hello_\ufffdorld')
+        except SpecError as err:
+            e = err
+        if not e:
+            raise Exception("Must raise SpecError")
+
+    def test_start_end_with_underscore(self):
+        with self.assertRaisesRegexp(SpecError, "cannot start or end"):
+            validate_underscore_identifier(u'_private')
+        with self.assertRaisesRegexp(SpecError, "cannot start or end"):
+            validate_underscore_identifier(u'weird_')
+
+    def test_two_underscores(self):
+        with self.assertRaisesRegexp(SpecError, "consecutive underscores"):
+            validate_underscore_identifier(u'what__what')
+
+
+
+
+
