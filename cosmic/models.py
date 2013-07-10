@@ -79,6 +79,7 @@ class Model(BasicWrapper):
     links = []
     _remote_representation_data = None
     _remote_representation_links = None
+    id = None
 
     def __init__(self, data=None):
         if data:
@@ -106,7 +107,10 @@ class Model(BasicWrapper):
 
             if name == "self":
                 model_cls = self.__class__
-                self.id = id
+                if self.id == None:
+                    self.id = id
+                elif self.id != id:
+                    raise ValidationError("Expected id: %s, actual: %s" % (self.id, id))
             else:
                 model_cls = OrderedDict(self.links)[name]["schema"]
                 self._remote_representation_links[name] = (model_cls, id)
@@ -136,7 +140,7 @@ class Model(BasicWrapper):
                 self.force()
             if name in self._remote_representation_links.keys():
                 model_cls, id = self._remote_representation_links[name]
-                value = model_cls.get_by_id(int(id))
+                value = model_cls.get_by_id(id)
                 setattr(self, name, value)
                 return value
             else:

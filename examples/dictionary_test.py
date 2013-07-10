@@ -129,7 +129,7 @@ class TestRemoteDictionary(TestCase):
             mock_get.return_value.content = json.dumps(languages[0])
             mock_get.return_value.status_code = 200
 
-            en = self.dictionary.models.Language.get_by_id(0)
+            en = self.dictionary.models.Language.get_by_id("0")
             self.assertEqual(en.code, "en")
 
     def test_get_list(self):
