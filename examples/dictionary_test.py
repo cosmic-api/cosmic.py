@@ -71,7 +71,7 @@ class TestDictionary(TestCase):
 
     def test_local_links(self):
         hundo = Word.from_json(words[1])
-        self.assertEqual(hundo.language.data["code"], "eo")
+        self.assertEqual(hundo.language.code, "eo")
         self.assertEqual(hundo.id, "1")
         self.assertEqual(hundo.language.id, "1")
 
@@ -130,7 +130,7 @@ class TestRemoteDictionary(TestCase):
             mock_get.return_value.status_code = 200
 
             en = self.dictionary.models.Language.get_by_id(0)
-            self.assertEqual(en.data["code"], "en")
+            self.assertEqual(en.code, "en")
 
     def test_get_list(self):
 
@@ -147,6 +147,6 @@ class TestRemoteDictionary(TestCase):
             mock_get.return_value.status_code = 200
 
             en = self.dictionary.models.Language.get_list(code="en")[0]
-            self.assertEqual(en.data["code"], "en")
+            self.assertEqual(en.code, "en")
 
 

@@ -52,8 +52,11 @@ def prep_model(model_cls):
             "schema": link_schema
         })
     ]
+    link_names = set()
+    field_names = set()
     for name, link in OrderedDict(model_cls.links).items():
         validate_underscore_identifier(name)
+        link_names.add(name)
         links.append((name, {
             "required": link["required"],
             "schema": link_schema
@@ -61,9 +64,12 @@ def prep_model(model_cls):
     props = [
         optional("_links", Struct(links)),
     ]
-    for prop in model_cls.properties:
-        validate_underscore_identifier(prop[0])
-        props.append(prop)
+    for name, field in OrderedDict(model_cls.properties).items():
+        validate_underscore_identifier(name)
+        field_names.add(name)
+        props.append((name, field))
+    if link_names & field_names:
+        raise SpecError("Model cannot contain a field and link with the same name: %s" % model_cls.__name__)
     model_cls.schema = Struct(props)
 
 
@@ -73,7 +79,7 @@ class Model(BasicWrapper):
     links = []
 
     def __init__(self, data):
-        self.data = data
+        self._data = data
 
     @property
     def href(self):
@@ -114,18 +120,27 @@ class Model(BasicWrapper):
         d = {}
         if links:
             d["_links"] = links
-        d.update(datum.data)
+        d.update(datum._data)
         return d
 
     def __getattr__(self, name):
-        if name not in OrderedDict(self.links).keys():
-            raise AttributeError()
-        if name in self.__lazy_links.keys():
-            value = self.__lazy_links[name]()
-            setattr(self, name, value)
-            return value
+        if name in OrderedDict(self.links).keys():
+            if name in self.__lazy_links.keys():
+                value = self.__lazy_links[name]()
+                setattr(self, name, value)
+                return value
+            else:
+                return None
+        elif name in OrderedDict(self.properties).keys():
+            return self._data.get(name, None)
         else:
-            return None
+            raise AttributeError()
+
+    def __setattr__(self, name, value):
+        if name in OrderedDict(self.properties).keys():
+            self._data[name] = value
+        else:
+            super(Model, self).__setattr__(name, value)
 
 
     @classmethod

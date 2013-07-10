@@ -154,7 +154,7 @@ class TestAPI(TestCase):
         with cosmos:
             self.assertEqual(Schema.to_json(R), {"type": "cookbook.Recipe"})
             pancake = R.from_json(d)
-            self.assertEqual(pancake.data["name"], "pancake")
+            self.assertEqual(pancake.name, "pancake")
             self.assertEqual(R.to_json(pancake), d)
 
     def test_LazyWrapper_okay(self):
@@ -185,7 +185,7 @@ class TestAPI(TestCase):
                 },
                 "name": "turkey"
             }
-            self.assertEqual(s.from_json(d).data["name"], "turkey")
+            self.assertEqual(s.from_json(d).name, "turkey")
 
     def test_model_deserialize_bad_name(self):
         with cosmos:

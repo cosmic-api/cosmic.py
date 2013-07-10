@@ -34,7 +34,7 @@ class Sign(Model):
 
 @zodiac.action(accepts=Sign, returns=String)
 def predict(sign):
-    ret = "For %s, now is a good time to " % sign.data["name"]
+    ret = "For %s, now is a good time to " % sign.name
     ret += random.choice([
         "build an API.",
         "mow the lawn.",
