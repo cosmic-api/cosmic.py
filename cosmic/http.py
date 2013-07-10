@@ -214,7 +214,7 @@ class ModelGetterCallable(object):
             if res.content == "":
                 raise e
             try:
-                return self.model_cls.from_json(json.loads(res.content))
+                return self.model_cls.schema.from_json(json.loads(res.content))
             except ValidationError:
                 raise e
             except ValueError:

@@ -77,9 +77,12 @@ class Model(BasicWrapper):
     """A data type definition attached to an API."""
     query_fields = None
     links = []
+    _remote_representation_data = None
+    _remote_representation_links = None
 
-    def __init__(self, data):
-        self._data = data
+    def __init__(self, data=None):
+        if data:
+            self._remote_representation_data = data
 
     @property
     def href(self):
@@ -87,26 +90,30 @@ class Model(BasicWrapper):
 
     @classmethod
     def assemble(cls, datum):
+        inst = cls()
+        inst.fill_out(datum)
+        return inst
+
+    def fill_out(self, datum):
         links = datum.pop("_links", {})
-        cls.validate(datum)
-        inst = cls(datum)
-        inst.__lazy_links = {}
+        self.validate(datum)
+        self._remote_representation_data = datum
+        self._remote_representation_links = {}
         for name, link in links.items():
             url = link["href"]
             parts = url.split('/')
             id = parts[-1]
 
             if name == "self":
-                model_cls = cls
-                inst.id = id
+                model_cls = self.__class__
+                self.id = id
             else:
-                model_cls = OrderedDict(cls.links)[name]["schema"]
-                inst.__lazy_links[name] = lambda: model_cls.get_by_id(int(id))
+                model_cls = OrderedDict(self.links)[name]["schema"]
+                self._remote_representation_links[name] = (model_cls, id)
 
             if parts[-2] != model_cls.__name__:
                 raise ValidationError("Invalid url for %s link: %s" % (model_cls.__name__, url))
 
-        return inst
 
     @classmethod
     def disassemble(cls, datum):
@@ -120,28 +127,32 @@ class Model(BasicWrapper):
         d = {}
         if links:
             d["_links"] = links
-        d.update(datum._data)
+        d.update(datum._remote_representation_data)
         return d
 
     def __getattr__(self, name):
         if name in OrderedDict(self.links).keys():
-            if name in self.__lazy_links.keys():
-                value = self.__lazy_links[name]()
+            if self._remote_representation_links == None:
+                self.force()
+            if name in self._remote_representation_links.keys():
+                model_cls, id = self._remote_representation_links[name]
+                value = model_cls.get_by_id(int(id))
                 setattr(self, name, value)
                 return value
             else:
                 return None
         elif name in OrderedDict(self.properties).keys():
-            return self._data.get(name, None)
+            if self._remote_representation_data == None:
+                self.force()
+            return self._remote_representation_data.get(name, None)
         else:
             raise AttributeError()
 
     def __setattr__(self, name, value):
         if name in OrderedDict(self.properties).keys():
-            self._data[name] = value
+            self._remote_representation_data[name] = value
         else:
             super(Model, self).__setattr__(name, value)
-
 
     @classmethod
     def validate(cls, datum):
@@ -154,8 +165,14 @@ class Model(BasicWrapper):
 
     @classmethod
     def get_by_id(cls, id):
+        inst = cls()
+        inst.id = id
+        return inst
+
+    def force(self):
         from .http import ModelGetterCallable
-        return ModelGetterCallable(cls)(id)
+        self.fill_out(ModelGetterCallable(self.__class__)(id))
+
 
 
 class LazyWrapper(object):
