@@ -92,31 +92,41 @@ class Model(BasicWrapper):
     @classmethod
     def assemble(cls, datum):
         inst = cls()
-        inst.fill_out(datum)
+        inst._fill_out(datum)
         return inst
 
-    def fill_out(self, datum):
+    @staticmethod
+    def id_from_url(url, model_cls):
+        parts = url.split('/')
+        if parts[-2] != model_cls.__name__:
+            raise ValidationError("Invalid url for %s link: %s" % (model_cls.__name__, url))
+        return parts[-1]
+
+    def _fill_out(self, datum):
         links = datum.pop("_links", {})
         self.validate(datum)
-        self._representation_data = datum
+        # Fill ou
         self._representation_links = {}
-        for name, link in links.items():
-            url = link["href"]
-            parts = url.split('/')
-            id = parts[-1]
-
-            if name == "self":
-                model_cls = self.__class__
-                if self.id == None:
-                    self.id = id
-                elif self.id != id:
-                    raise ValidationError("Expected id: %s, actual: %s" % (self.id, id))
-            else:
+        for name in OrderedDict(self.links).keys():
+            if name in links:
+                url = links[name]["href"]
                 model_cls = OrderedDict(self.links)[name]["schema"]
-                self._representation_links[name] = model_cls.get_by_id(id)
-
-            if parts[-2] != model_cls.__name__:
-                raise ValidationError("Invalid url for %s link: %s" % (model_cls.__name__, url))
+                id = Model.id_from_url(url, model_cls)
+                self._set_link(name, model_cls.get_by_id(id))
+            else:
+                self._set_link(name, None)
+        self._representation_data = {}
+        for name in OrderedDict(self.properties).keys():
+            if name in datum:
+                self._set_data(name, datum[name])
+            else:
+                self._set_data(name, None)
+        if "self" in links:
+            id = Model.id_from_url(links["self"]["href"], self.__class__)
+            if self.id == None:
+                self.id = id
+            elif self.id != id:
+                raise ValidationError("Expected id: %s, actual: %s" % (self.id, id))
 
 
     @classmethod
@@ -136,13 +146,27 @@ class Model(BasicWrapper):
 
     def _get_data(self, name):
         if self._representation_data == None:
-            self.force()
+            self._force()
         return self._representation_data.get(name, None)
 
     def _get_link(self, name):
         if self._representation_links == None:
-            self.force()
+            self._force()
         return self._representation_links.get(name, None)
+
+    def _set_data(self, name, value):
+        if self._representation_data == None:
+            self._representation_data = {}
+        if value == None and name in self._representation_data:
+            del self._representation_data[name]
+        self._representation_data[name] = value
+
+    def _set_link(self, name, value):
+        if self._representation_links == None:
+            self._representation_links = {}
+        if value == None and name in self._representation_links:
+            del self._representation_links[name]
+        self._representation_links[name] = value
 
     def __getattr__(self, name):
         if name in OrderedDict(self.links).keys():
@@ -153,10 +177,13 @@ class Model(BasicWrapper):
             raise AttributeError()
 
     def __setattr__(self, name, value):
-        if name in OrderedDict(self.properties).keys():
-            self._representation_data[name] = value
+        if name in OrderedDict(self.links).keys():
+            return self._set_link(name, value)
+        elif name in OrderedDict(self.properties).keys():
+            return self._set_data(name, value)
         else:
             super(Model, self).__setattr__(name, value)
+            
 
     @classmethod
     def validate(cls, datum):
@@ -173,9 +200,9 @@ class Model(BasicWrapper):
         inst.id = id
         return inst
 
-    def force(self):
+    def _force(self):
         from .http import ModelGetterCallable
-        self.fill_out(ModelGetterCallable(self.__class__)(id))
+        self._fill_out(ModelGetterCallable(self.__class__)(id))
 
 
 
