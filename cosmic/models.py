@@ -77,13 +77,13 @@ class Model(BasicWrapper):
     """A data type definition attached to an API."""
     query_fields = None
     links = []
-    _remote_representation_data = None
-    _remote_representation_links = None
+    _representation_data = None
+    _representation_links = None
     id = None
 
     def __init__(self, data=None):
         if data:
-            self._remote_representation_data = data
+            self._representation_data = data
 
     @property
     def href(self):
@@ -98,8 +98,8 @@ class Model(BasicWrapper):
     def fill_out(self, datum):
         links = datum.pop("_links", {})
         self.validate(datum)
-        self._remote_representation_data = datum
-        self._remote_representation_links = {}
+        self._representation_data = datum
+        self._representation_links = {}
         for name, link in links.items():
             url = link["href"]
             parts = url.split('/')
@@ -113,7 +113,7 @@ class Model(BasicWrapper):
                     raise ValidationError("Expected id: %s, actual: %s" % (self.id, id))
             else:
                 model_cls = OrderedDict(self.links)[name]["schema"]
-                self._remote_representation_links[name] = (model_cls, id)
+                self._representation_links[name] = model_cls.get_by_id(id)
 
             if parts[-2] != model_cls.__name__:
                 raise ValidationError("Invalid url for %s link: %s" % (model_cls.__name__, url))
@@ -125,36 +125,36 @@ class Model(BasicWrapper):
         if hasattr(datum, "id"):
             links["self"] = {"href": datum.href}
         for name, link in OrderedDict(cls.links).items():
-            value = getattr(datum, name)
+            value = self._get_link(name)
             if value != None:
                 links[name] = {"href": value.href}
         d = {}
         if links:
             d["_links"] = links
-        d.update(datum._remote_representation_data)
+        d.update(datum._representation_data)
         return d
+
+    def _get_data(self, name):
+        if self._representation_data == None:
+            self.force()
+        return self._representation_data.get(name, None)
+
+    def _get_link(self, name):
+        if self._representation_links == None:
+            self.force()
+        return self._representation_links.get(name, None)
 
     def __getattr__(self, name):
         if name in OrderedDict(self.links).keys():
-            if self._remote_representation_links == None:
-                self.force()
-            if name in self._remote_representation_links.keys():
-                model_cls, id = self._remote_representation_links[name]
-                value = model_cls.get_by_id(id)
-                setattr(self, name, value)
-                return value
-            else:
-                return None
+            return self._get_link(name)
         elif name in OrderedDict(self.properties).keys():
-            if self._remote_representation_data == None:
-                self.force()
-            return self._remote_representation_data.get(name, None)
+            return self._get_data(name)
         else:
             raise AttributeError()
 
     def __setattr__(self, name, value):
         if name in OrderedDict(self.properties).keys():
-            self._remote_representation_data[name] = value
+            self._representation_data[name] = value
         else:
             super(Model, self).__setattr__(name, value)
 
