@@ -1,12 +1,15 @@
 import json
 import time
+import copy
 import requests
+
 from mock import patch
 
 from unittest2 import TestCase
 
 from cosmic.api import API
 from cosmic import cosmos
+from cosmic.testing import DBContext
 from dictionary import *
 
 json_spec = {
@@ -70,42 +73,55 @@ class TestDictionary(TestCase):
         self.maxDiff = 2000
 
     def test_local_links(self):
-        hundo = Word.from_json(words[1])
-        self.assertEqual(hundo.language.code, "eo")
-        self.assertEqual(hundo.id, "1")
-        self.assertEqual(hundo.language.id, "1")
+        with DBContext(langdb):
+            hundo = Word.from_json(langdb["words"][1])
+            self.assertEqual(hundo.language.code, "eo")
+            self.assertEqual(hundo.id, "1")
+            self.assertEqual(hundo.language.id, "1")
 
     def test_get_language(self):
-        res = self.d.get('/Language/0')
-        self.assertEqual(json.loads(res.data), languages[0])
+        with DBContext(langdb):
+            res = self.d.get('/Language/0')
+            self.assertEqual(json.loads(res.data), langdb["languages"][0])
+
+    def test_put_language(self):
+        c = copy.deepcopy(langdb)
+        english = copy.deepcopy(c["languages"][0])
+        english["code"] = "english"
+        with DBContext(c):
+            res = self.d.put('/Language/0', data=json.dumps(english), content_type="application/json")
+            self.assertEqual(c["languages"][0]["code"], "english")
 
     def test_get_language_not_found(self):
-        res = self.d.get('/Language/2')
-        self.assertEqual(res.status_code, 404)
+        with DBContext(langdb):
+            res = self.d.get('/Language/2')
+            self.assertEqual(res.status_code, 404)
 
     def test_get_all_languages(self):
-        url = '/Language'
-        res = self.d.get(url)
-        self.assertEqual(json.loads(res.data), {
-            "_links": {
-                "self": {"href": url}
-            },
-            "_embedded": {
-                "Language": languages
-            }
-        })
+        with DBContext(langdb):
+            url = '/Language'
+            res = self.d.get(url)
+            self.assertEqual(json.loads(res.data), {
+                "_links": {
+                    "self": {"href": url}
+                },
+                "_embedded": {
+                    "Language": langdb["languages"]
+                }
+            })
 
     def test_filter_languages(self):
-        url = '/Language?code=%22en%22'
-        res = self.d.get(url)
-        self.assertEqual(json.loads(res.data), {
-            "_links": {
-                "self": {"href": url}
-            },
-            "_embedded": {
-                "Language": [languages[0]]
-            }
-        })
+        with DBContext(langdb):
+            url = '/Language?code=%22en%22'
+            res = self.d.get(url)
+            self.assertEqual(json.loads(res.data), {
+                "_links": {
+                    "self": {"href": url}
+                },
+                "_embedded": {
+                    "Language": [langdb["languages"][0]]
+                }
+            })
 
     def test_spec_endpoint(self):
         res = self.c.get('/spec.json')
@@ -126,7 +142,7 @@ class TestRemoteDictionary(TestCase):
     def test_get_by_id(self):
 
         with patch.object(requests, 'get') as mock_get:
-            mock_get.return_value.content = json.dumps(languages[0])
+            mock_get.return_value.content = json.dumps(langdb["languages"][0])
             mock_get.return_value.status_code = 200
 
             en = self.dictionary.models.Language.get_by_id("0")
@@ -141,7 +157,7 @@ class TestRemoteDictionary(TestCase):
                     "self": {"href": url}
                 },
                 "_embedded": {
-                    "Language": [languages[0]]
+                    "Language": [langdb["languages"][0]]
                 }
             })
             mock_get.return_value.status_code = 200

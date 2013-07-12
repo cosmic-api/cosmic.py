@@ -132,6 +132,27 @@ class FlaskViewModelGetter(FlaskView):
             return make_response(body, 200, {"Content-Type": "application/json"})
 
 
+
+class FlaskViewModelPutter(FlaskView):
+
+    def __init__(self, model_cls, debug):
+        self.model_cls = model_cls
+        self.debug = debug
+
+    def handler(self, id):
+        with cosmos:
+            model = self.model_cls.get_by_id(id)
+            if model == None:
+                raise NotFound
+            try:
+                request.payload = string_to_json(request.data)
+            except ValueError:
+                return error_response("Invalid JSON", 400)
+            model = self.model_cls.from_json(request.payload.datum)
+            model.save()
+            return make_response("", 200, {"Content-Type": "application/json"})
+
+
 class FlaskViewListGetter(FlaskView):
 
     def __init__(self, model_cls, debug):
