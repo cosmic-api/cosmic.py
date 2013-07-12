@@ -39,8 +39,41 @@ words = [
     }
 ]
 
+class DBModel(Model):
+
+    @classmethod
+    def get_by_id(cls, id):
+        try:
+            return cls.from_json(cls.db_table[int(id)])
+        except IndexError:
+            return None
+
+    @classmethod
+    def get_list(cls, **kwargs):
+        if not kwargs:
+            return map(cls.from_json, cls.db_table)
+        ret = []
+        for row in cls.db_table:
+            if row != None:
+                keep = True
+                for key, val in kwargs.items():
+                    if row[key] != val:
+                        keep = False
+                        break
+                if keep:
+                    ret.append(cls.from_json(row))
+        return ret
+
+    def save(self):
+        cls.db_table[int(self.id)] = cls.to_json(self)
+
+    def delete(self):
+        cls.db_table[int(self.id)] = None
+
+
 @dictionary.model
-class Language(Model):
+class Language(DBModel):
+    db_table = languages
     properties = [
         required("code", String)
     ]
@@ -48,26 +81,10 @@ class Language(Model):
         optional("code", String)
     ]
 
-    @classmethod
-    def get_list(cls, code=None):
-        if code == None:
-            return map(cls.from_json, languages)
-        elif code == "en":
-            return [cls.from_json(languages[0])]
-        elif code == "eo":
-            return [cls.from_json(languages[1])]
-        else:
-            return []
-
-    @classmethod
-    def get_by_id(cls, id):
-        try:
-            return cls.from_json(languages[int(id)])
-        except IndexError:
-            return None
 
 @dictionary.model
-class Word(Model):
+class Word(DBModel):
+    db_table = words
     properties = [
         required("text", String)
     ]
@@ -75,12 +92,6 @@ class Word(Model):
         required("language", Language)
     ]
 
-    @classmethod
-    def get_by_id(cls, id):
-        try:
-            return cls.from_json(words[int(id)])
-        except IndexError:
-            return None
 
 if __name__ == "__main__":
     dictionary.run()

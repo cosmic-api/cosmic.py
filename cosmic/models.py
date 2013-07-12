@@ -105,7 +105,6 @@ class Model(BasicWrapper):
     def _fill_out(self, datum):
         links = datum.pop("_links", {})
         self.validate(datum)
-        # Fill ou
         self._representation_links = {}
         for name in OrderedDict(self.links).keys():
             if name in links:
@@ -127,7 +126,6 @@ class Model(BasicWrapper):
                 self.id = id
             elif self.id != id:
                 raise ValidationError("Expected id: %s, actual: %s" % (self.id, id))
-
 
     @classmethod
     def disassemble(cls, datum):
@@ -183,7 +181,12 @@ class Model(BasicWrapper):
             return self._set_data(name, value)
         else:
             super(Model, self).__setattr__(name, value)
-            
+
+    def save(self):
+        raise NotImplementedError()
+
+    def delete(self):
+        raise NotImplementedError()
 
     @classmethod
     def validate(cls, datum):
