@@ -254,6 +254,33 @@ class ModelGetterCallable(object):
                 raise
 
 
+
+class ModelPutterCallable(object):
+
+    def __init__(self, model_cls):
+        self.model_cls = model_cls
+
+    def __call__(self, inst):
+        url = "%s/%s/%s" % (self.model_cls.api.url, self.model_cls.__name__, inst.id)
+        body = self.model_cls.to_json(inst)
+        res = requests.put(url, body=body, content_type="application/json")
+        if res.status_code == 200:
+            return
+        else:
+            message = None
+            if res.json and 'error' in res.json:
+                message = res.json['error']
+            try:
+                abort(res.status_code, message)
+            except Exception as e:
+                # Flag the exception to specify that it came from a remote
+                # API. If this exception bubbles up to the web layer, a
+                # generic 500 response will be returned
+                e.remote = True
+                raise
+
+
+
 class ListGetterCallable(object):
 
     def __init__(self, model_cls):

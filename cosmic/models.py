@@ -183,7 +183,8 @@ class Model(BasicWrapper):
             super(Model, self).__setattr__(name, value)
 
     def save(self):
-        raise NotImplementedError()
+        from .http import ModelPutterCallable
+        return ModelPutterCallable(cls)(self)
 
     def delete(self):
         raise NotImplementedError()

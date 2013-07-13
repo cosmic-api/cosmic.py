@@ -148,6 +148,7 @@ class TestRemoteDictionary(TestCase):
             en = self.dictionary.models.Language.get_by_id("0")
             self.assertEqual(en.code, "en")
 
+
     def test_get_list(self):
 
         with patch.object(requests, 'get') as mock_get:
