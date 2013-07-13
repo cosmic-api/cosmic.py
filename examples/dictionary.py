@@ -6,7 +6,6 @@ from cosmic.api import API
 from cosmic.testing import DBModel
 from teleport import *
 
-dictionary = API("dictionary")
 
 langdb = {
     "languages": [
@@ -41,6 +40,8 @@ langdb = {
     ]
 }
 
+
+dictionary = API("dictionary")
 
 @dictionary.model
 class Language(DBModel):

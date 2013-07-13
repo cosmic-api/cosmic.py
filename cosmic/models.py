@@ -20,6 +20,11 @@ class ModelSerializer(BasicWrapper):
             required(u"schema", Schema),
             required(u"required", Boolean),
             optional(u"doc", String)
+        ]))),
+        required("query_fields", OrderedMap(Struct([
+            required(u"schema", Schema),
+            required(u"required", Boolean),
+            optional(u"doc", String)
         ])))
     ])
 
@@ -28,6 +33,7 @@ class ModelSerializer(BasicWrapper):
         # Take a schema and name and turn them into a model class
         class M(Model):
             properties = datum["data_schema"].param.items()
+            query_fields = datum["query_fields"]
             links = datum["links"]
         M.__name__ = str(datum["name"])
         prep_model(M)
@@ -38,7 +44,8 @@ class ModelSerializer(BasicWrapper):
         return {
             "name": datum.__name__,
             "data_schema": Struct(datum.properties),
-            "links": OrderedDict(datum.links if hasattr(datum, "links") else [])
+            "links": OrderedDict(datum.links if hasattr(datum, "links") else []),
+            "query_fields": OrderedDict(datum.query_fields if hasattr(datum, "query_fields") else [])
         }
 
 
@@ -75,7 +82,7 @@ def prep_model(model_cls):
 
 class Model(BasicWrapper):
     """A data type definition attached to an API."""
-    query_fields = None
+    query_fields = []
     links = []
     _representation_data = None
     _representation_links = None
@@ -133,7 +140,7 @@ class Model(BasicWrapper):
         if hasattr(datum, "id"):
             links["self"] = {"href": datum.href}
         for name, link in OrderedDict(cls.links).items():
-            value = self._get_link(name)
+            value = datum._get_link(name)
             if value != None:
                 links[name] = {"href": value.href}
         d = {}

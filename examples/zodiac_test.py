@@ -29,6 +29,10 @@ json_spec = {
             u"links": {
                 u"map": {},
                 u"order": []
+            },
+            u"query_fields": {
+                u"map": {},
+                u"order": []
             }
         }
     ],

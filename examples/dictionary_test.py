@@ -33,6 +33,15 @@ json_spec = {
             u"links": {
                 u"map": {},
                 u"order": []
+            },
+            u"query_fields": {
+                u"map": {
+                    u"code": {
+                        u"required": False,
+                        u"schema": {u"type": u"String"}
+                    }
+                },
+                u"order": [u"code"]
             }
         },
         {
@@ -57,6 +66,10 @@ json_spec = {
                     }
                 },
                 u"order": [u"language"]
+            },
+            u"query_fields": {
+                u"map": {},
+                u"order": []
             }
         }
     ],
@@ -71,14 +84,42 @@ class TestDictionary(TestCase):
     def setUp(self):
         self.c = dictionary.get_flask_app().test_client()
         self.d = dictionary.get_flask_app(debug=True).test_client()
+
+        with patch.object(requests, 'get') as mock_get:
+            mock_get.return_value.json = json_spec
+            mock_get.return_value.status_code = 200
+
+            with cosmos:
+                self.remote_dictionary = API.load('http://example.com/spec.json')
+                # Use the local API's HTTP client to simulate the remote API's calls
+                self.remote_dictionary._request = WerkzeugTestClientPlugin(self.d)
+
         self.maxDiff = 2000
 
-    def test_local_links(self):
+    def _test_links(self, word_model):
         with DBContext(langdb):
-            hundo = Word.from_json(langdb["words"][1])
+            hundo = word_model.get_by_id("1")
             self.assertEqual(hundo.language.code, "eo")
             self.assertEqual(hundo.id, "1")
             self.assertEqual(hundo.language.id, "1")
+
+    def test_local_follow_links(self):
+        self._test_links(Word)
+
+    def test_remote_follow_links(self):
+        self._test_links(self.remote_dictionary.models.Word)
+
+    def _test_get_list(self, language_model):
+        with DBContext(langdb):
+            res = language_model.get_list(code="en")
+            self.assertEqual(len(res), 1)
+            self.assertEqual(res[0].code, "en")
+
+    def test_local_get_list(self):
+        self._test_get_list(Language)
+
+    def test_remote_get_list(self):
+        self._test_get_list(self.remote_dictionary.models.Language)
 
     def test_get_language(self):
         with DBContext(langdb):
@@ -128,29 +169,5 @@ class TestDictionary(TestCase):
         res = self.c.get('/spec.json')
         self.assertEqual(json.loads(res.data), json_spec)
 
-
-class TestRemoteDictionary(TestCase):
-
-    def setUp(self):
-        client = dictionary.get_flask_app(debug=True).test_client()
-
-        with patch.object(requests, 'get') as mock_get:
-            mock_get.return_value.json = json_spec
-            mock_get.return_value.status_code = 200
-
-            with cosmos:
-                self.dictionary = API.load('http://example.com/spec.json')
-                self.dictionary._request = WerkzeugTestClientPlugin(client)
-
-    def test_get_by_id(self):
-        with DBContext(langdb):
-            en = self.dictionary.models.Language.get_by_id("0")
-            self.assertEqual(en.code, "en")
-
-
-    def test_get_list(self):
-        with DBContext(langdb):
-            en = self.dictionary.models.Language.get_list(code="en")[0]
-            self.assertEqual(en.code, "en")
 
 
