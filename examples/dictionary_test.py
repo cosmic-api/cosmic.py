@@ -8,6 +8,7 @@ from mock import patch
 from unittest2 import TestCase
 
 from cosmic.api import API
+from cosmic.http import WerkzeugTestClientPlugin
 from cosmic import cosmos
 from cosmic.testing import DBContext
 from dictionary import *
@@ -131,38 +132,24 @@ class TestDictionary(TestCase):
 class TestRemoteDictionary(TestCase):
 
     def setUp(self):
+        client = dictionary.get_flask_app(debug=True).test_client()
+
         with patch.object(requests, 'get') as mock_get:
             mock_get.return_value.json = json_spec
             mock_get.return_value.status_code = 200
 
             with cosmos:
                 self.dictionary = API.load('http://example.com/spec.json')
-
+                self.dictionary._request = WerkzeugTestClientPlugin(client)
 
     def test_get_by_id(self):
-
-        with patch.object(requests, 'get') as mock_get:
-            mock_get.return_value.content = json.dumps(langdb["languages"][0])
-            mock_get.return_value.status_code = 200
-
+        with DBContext(langdb):
             en = self.dictionary.models.Language.get_by_id("0")
             self.assertEqual(en.code, "en")
 
 
     def test_get_list(self):
-
-        with patch.object(requests, 'get') as mock_get:
-            url = '/Language?code=%22en%22'
-            mock_get.return_value.content = json.dumps({
-                "_links": {
-                    "self": {"href": url}
-                },
-                "_embedded": {
-                    "Language": [langdb["languages"][0]]
-                }
-            })
-            mock_get.return_value.status_code = 200
-
+        with DBContext(langdb):
             en = self.dictionary.models.Language.get_list(code="en")[0]
             self.assertEqual(en.code, "en")
 

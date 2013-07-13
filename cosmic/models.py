@@ -206,7 +206,7 @@ class Model(BasicWrapper):
 
     def _force(self):
         from .http import ModelGetterCallable
-        self._fill_out(ModelGetterCallable(self.__class__)(id))
+        self._fill_out(ModelGetterCallable(self.__class__)(self.id))
 
 
 

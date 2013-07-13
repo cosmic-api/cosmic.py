@@ -75,6 +75,7 @@ class API(BasicWrapper):
         api = API.from_json(res.json)
         # Set the API url to be the spec URL, minus the /spec.json
         api.url = url[:-10]
+        api._request = RequestsPlugin(api.url)
         # Once the API has been added to the cosmos, force lazy models to
         # evaluate.
         cosmos.force()

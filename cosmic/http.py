@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import json
 import requests
+from requests.structures import CaseInsensitiveDict
 
 from werkzeug.exceptions import HTTPException, InternalServerError, NotFound, abort
 from werkzeug.urls import url_decode, url_encode
@@ -14,6 +15,28 @@ from teleport import Box, ValidationError
 from .tools import *
 from .exceptions import *
 from . import cosmos
+
+
+class RequestsPlugin(object):
+
+    def __init__(self, base_url):
+        self.base_url = base_url
+
+    def __call__(self, url, **kwargs):
+        return requests.request(url=self.base_url + url, **kwargs)
+
+class WerkzeugTestClientPlugin(object):
+
+    def __init__(self, client):
+        self.client = client
+
+    def __call__(self, url, **kwargs):
+        r = self.client.open(path=url, **kwargs)
+        resp = requests.Response()
+        resp._content = r.data
+        resp.headers = CaseInsensitiveDict(r.headers)
+        resp.status_code = r.status_code
+        return resp
 
 
 class URLParams(ParametrizedWrapper):
@@ -225,8 +248,8 @@ class ModelGetterCallable(object):
         self.model_cls = model_cls
 
     def __call__(self, id):
-        url = "%s/%s/%s" % (self.model_cls.api.url, self.model_cls.__name__, id)
-        res = requests.get(url)
+        url = "/%s/%s" % (self.model_cls.__name__, id)
+        res = self.model_cls.api._request(url, method="GET", headers={"Content-Type": "application/json"})
         if res.status_code == 404:
             return None
         if res.status_code == 200:
@@ -261,9 +284,9 @@ class ModelPutterCallable(object):
         self.model_cls = model_cls
 
     def __call__(self, inst):
-        url = "%s/%s/%s" % (self.model_cls.api.url, self.model_cls.__name__, inst.id)
+        url = "/%s/%s" % (self.model_cls.__name__, inst.id)
         body = self.model_cls.to_json(inst)
-        res = requests.put(url, body=body, content_type="application/json")
+        res = self.model_cls.api._request(url, body=body, headers={"Content-Type": "application/json"})
         if res.status_code == 200:
             return
         else:
@@ -288,7 +311,7 @@ class ListGetterCallable(object):
 
     def __call__(self, **query):
 
-        url = "%s/%s" % (self.model_cls.api.url, self.model_cls.__name__)
+        url = "/%s" % self.model_cls.__name__
 
         if self.model_cls.query_fields != None:
             query_schema = URLParams(self.model_cls.query_fields)
@@ -296,7 +319,7 @@ class ListGetterCallable(object):
             if query_string:
                 url += "?%s" % query_string
 
-        res = requests.get(url)
+        res = self.model_cls.api._request(url=url, method="GET")
         if res.status_code == 200:
             e = InternalServerError("Call returned an invalid value")
             e.remote = True
