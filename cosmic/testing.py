@@ -13,6 +13,7 @@ class DBContext(object):
 
     def __enter__(self):
         _db_ctx_stack.push(self.db)
+        return self.db
 
     def __exit__(self, *args, **kwargs):
         _db_ctx_stack.pop()

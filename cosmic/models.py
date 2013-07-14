@@ -146,29 +146,44 @@ class Model(BasicWrapper):
         d = {}
         if links:
             d["_links"] = links
-        d.update(datum._representation_data)
+        for name in OrderedDict(cls.properties).keys():
+            value = datum._get_data(name)
+            if value != None:
+                d[name] = value
         return d
 
     def _get_data(self, name):
         if self._representation_data == None:
-            self._force()
+            if self.id:
+                self._force()
+            else:
+                self._fill_out({})
         return self._representation_data.get(name, None)
 
     def _get_link(self, name):
         if self._representation_links == None:
-            self._force()
+            if self.id:
+                self._force()
+            else:
+                self._fill_out({})
         return self._representation_links.get(name, None)
 
     def _set_data(self, name, value):
         if self._representation_data == None:
-            self._representation_data = {}
+            if self.id:
+                self._force()
+            else:
+                self._fill_out({})
         if value == None and name in self._representation_data:
             del self._representation_data[name]
         self._representation_data[name] = value
 
     def _set_link(self, name, value):
         if self._representation_links == None:
-            self._representation_links = {}
+            if self.id:
+                self._force()
+            else:
+                self._fill_out({})
         if value == None and name in self._representation_links:
             del self._representation_links[name]
         self._representation_links[name] = value
@@ -191,7 +206,7 @@ class Model(BasicWrapper):
 
     def save(self):
         from .http import ModelPutterCallable
-        return ModelPutterCallable(cls)(self)
+        return ModelPutterCallable(self.__class__)(self)
 
     def delete(self):
         raise NotImplementedError()

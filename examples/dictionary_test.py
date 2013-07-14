@@ -96,7 +96,8 @@ class TestDictionary(TestCase):
 
         self.maxDiff = 2000
 
-    def _test_links(self, word_model):
+
+    def _test_follow_links(self, word_model):
         with DBContext(langdb):
             hundo = word_model.get_by_id("1")
             self.assertEqual(hundo.language.code, "eo")
@@ -104,22 +105,49 @@ class TestDictionary(TestCase):
             self.assertEqual(hundo.language.id, "1")
 
     def test_local_follow_links(self):
-        self._test_links(Word)
+        self._test_follow_links(Word)
 
     def test_remote_follow_links(self):
-        self._test_links(self.remote_dictionary.models.Word)
+        self._test_follow_links(self.remote_dictionary.models.Word)
+
 
     def _test_get_list(self, language_model):
         with DBContext(langdb):
             res = language_model.get_list(code="en")
             self.assertEqual(len(res), 1)
             self.assertEqual(res[0].code, "en")
+            res = language_model.get_list(code="eo")
+            self.assertEqual(len(res), 1)
+            self.assertEqual(res[0].code, "eo")
+            res = language_model.get_list()
+            self.assertEqual(len(res), 2)
+            self.assertEqual(res[0].code, "en")
+            self.assertEqual(res[1].code, "eo")
+            res = language_model.get_list(code="blah")
+            self.assertEqual(len(res), 0)
 
     def test_local_get_list(self):
         self._test_get_list(Language)
 
     def test_remote_get_list(self):
         self._test_get_list(self.remote_dictionary.models.Language)
+
+
+    def _test_save_data(self, word_model):
+        c = copy.deepcopy(langdb)
+        with DBContext(c) as dbctx:
+            hundo = word_model.get_by_id("1")
+            hundo.text = "Hundo"
+            self.assertEqual(hundo.text, "Hundo")
+            hundo.save()
+            self.assertEqual(c["words"][1]["text"], "Hundo")
+
+    def test_local_save_data(self):
+        self._test_save_data(Word)
+
+    def test_remote_save_data(self):
+        self._test_save_data(self.remote_dictionary.models.Word)
+
 
     def test_get_language(self):
         with DBContext(langdb):

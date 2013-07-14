@@ -285,8 +285,8 @@ class ModelPutterCallable(object):
 
     def __call__(self, inst):
         url = "/%s/%s" % (self.model_cls.__name__, inst.id)
-        body = self.model_cls.to_json(inst)
-        res = self.model_cls.api._request(url, body=body, headers={"Content-Type": "application/json"})
+        body = json.dumps(self.model_cls.to_json(inst))
+        res = self.model_cls.api._request(url, method="PUT", data=body, headers={"Content-Type": "application/json"})
         if res.status_code == 200:
             return
         else:

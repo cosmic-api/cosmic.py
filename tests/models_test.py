@@ -34,6 +34,12 @@ class TestLazyWrapper(TestCase):
         self.cosmos = Cosmos()
         self.cosmos.apis["awesome"] = awesome
 
+    def test_get_set_data(self):
+        y = self.Yay()
+        self.assertEqual(y.what, None)
+        y.what = "Bam"
+        self.assertEqual(y.what, "Bam")
+
     def test_from_json(self):
 
         lazy = LazyWrapper("awesome.Yay")
