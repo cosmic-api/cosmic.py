@@ -149,6 +149,20 @@ class TestDictionary(TestCase):
         self._test_save_data(self.remote_dictionary.models.Word)
 
 
+    def _test_delete(self, word_model):
+        c = copy.deepcopy(langdb)
+        with DBContext(c) as dbctx:
+            hundo = word_model.get_by_id("1")
+            hundo.delete()
+            self.assertEqual(c["words"][1], None)
+
+    def test_local_delete(self):
+        self._test_delete(Word)
+
+    def test_remote_delete(self):
+        self._test_delete(self.remote_dictionary.models.Word)
+
+
     def test_get_language(self):
         with DBContext(langdb):
             res = self.d.get('/Language/0')
@@ -161,6 +175,12 @@ class TestDictionary(TestCase):
         with DBContext(c):
             res = self.d.put('/Language/0', data=json.dumps(english), content_type="application/json")
             self.assertEqual(c["languages"][0]["code"], "english")
+
+    def test_delete_language(self):
+        c = copy.deepcopy(langdb)
+        with DBContext(c):
+            res = self.d.delete('/Language/0', content_type="application/json")
+            self.assertEqual(c["languages"][0], None)
 
     def test_get_language_not_found(self):
         with DBContext(langdb):

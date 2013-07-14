@@ -209,7 +209,8 @@ class Model(BasicWrapper):
         return ModelPutterCallable(self.__class__)(self)
 
     def delete(self):
-        raise NotImplementedError()
+        from .http import ModelDeleterCallable
+        return ModelDeleterCallable(self.__class__)(self)
 
     @classmethod
     def validate(cls, datum):

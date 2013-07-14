@@ -176,6 +176,23 @@ class FlaskViewModelPutter(FlaskView):
             return make_response("", 200, {"Content-Type": "application/json"})
 
 
+
+class FlaskViewModelDeleter(FlaskView):
+
+    def __init__(self, model_cls, debug):
+        self.model_cls = model_cls
+        self.debug = debug
+
+    def handler(self, id):
+        with cosmos:
+            model = self.model_cls.get_by_id(id)
+            if model == None:
+                raise NotFound
+            model.delete()
+            return make_response("", 200, {"Content-Type": "application/json"})
+
+
+
 class FlaskViewListGetter(FlaskView):
 
     def __init__(self, model_cls, debug):
@@ -287,6 +304,31 @@ class ModelPutterCallable(object):
         url = "/%s/%s" % (self.model_cls.__name__, inst.id)
         body = json.dumps(self.model_cls.to_json(inst))
         res = self.model_cls.api._request(url, method="PUT", data=body, headers={"Content-Type": "application/json"})
+        if res.status_code == 200:
+            return
+        else:
+            message = None
+            if res.json and 'error' in res.json:
+                message = res.json['error']
+            try:
+                abort(res.status_code, message)
+            except Exception as e:
+                # Flag the exception to specify that it came from a remote
+                # API. If this exception bubbles up to the web layer, a
+                # generic 500 response will be returned
+                e.remote = True
+                raise
+
+
+
+class ModelDeleterCallable(object):
+
+    def __init__(self, model_cls):
+        self.model_cls = model_cls
+
+    def __call__(self, inst):
+        url = "/%s/%s" % (self.model_cls.__name__, inst.id)
+        res = self.model_cls.api._request(url, method="DELETE", headers={"Content-Type": "application/json"})
         if res.status_code == 200:
             return
         else:

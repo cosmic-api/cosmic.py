@@ -144,6 +144,14 @@ class API(BasicWrapper):
                 view_func=view_func,
                 methods=["PUT"],
                 endpoint=endpoint)
+
+            endpoint = "doc_delete_%s" % name
+
+            view_func = FlaskViewModelDeleter(model_cls, debug)
+            blueprint.add_url_rule(url,
+                view_func=view_func,
+                methods=["DELETE"],
+                endpoint=endpoint)
         return blueprint
 
     def get_flask_app(self, debug=False, url_prefix=None):
