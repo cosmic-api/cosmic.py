@@ -102,6 +102,24 @@ def err_to_response(err):
     else:
         return error_response("Internal Server Error", 500)
 
+def get_payload_from_request(req):
+    bytes = req.get_data()
+    if not bytes:
+        return None
+    if req.mimetype != "application/json":
+        raise SpecError('Content-Type must be "application/json" got %s instead' % req.mimetype)
+    charset = req.mimetype_params.get("charset", "utf-8")
+    if charset.lower() != "utf-8":
+        raise SpecError('Content-Type charset must be "utf-8" got %s instead' % charset)
+    try:
+        data = bytes.decode('utf-8')
+    except UnicodeDecodeError as e:
+        raise SpecError("Unicode Decode Error")
+    try:
+        return string_to_json(data)
+    except ValueError:
+        raise SpecError("Invalid JSON")
+
 
 class FlaskView(object):
     json_request = False
@@ -109,24 +127,10 @@ class FlaskView(object):
     def __call__(self, *args, **kwargs):
         try:
             if self.json_request:
-                bytes = request.get_data()
-                if bytes:
-                    if request.mimetype != "application/json":
-                        raise SpecError('Content-Type must be "application/json" got %s instead' % request.mimetype)
-                    charset = request.mimetype_params.get("charset", "utf-8")
-                    if charset.lower() != "utf-8":
-                        raise SpecError('Content-Type charset must be "utf-8" got %s instead' % charset)
-                    try:
-                        data = bytes.decode('utf-8')
-                    except UnicodeDecodeError as e:
-                        raise SpecError("Unicode Decode Error")
-                    try:
-                        request.payload = string_to_json(data)
-                    except ValueError:
-                        raise SpecError("Invalid JSON")
-                else:
-                    request.payload = None
-            return make_response(self.handler(*args, **kwargs))
+                request.payload = get_payload_from_request(request)
+            # Make sure the current TypeMap is on the Teleport context stack
+            with cosmos:
+                return make_response(self.handler(*args, **kwargs))
         except Exception as err:
             if self.debug:
                 raise
@@ -142,15 +146,12 @@ class FlaskViewAction(FlaskView):
         self.debug = debug
 
     def handler(self):
-        with cosmos:
-            data = self.view(request.payload)
-            if data == None:
-                return ("", 204, {})
-            else:
-                if isinstance(data.datum, Box):
-                    raise Exception(self.view)
-                body = json.dumps(data.datum)
-                return (body, 200, {"Content-Type": "application/json"})
+        data = self.view(request.payload)
+        if data == None:
+            return ("", 204, {})
+        else:
+            body = json.dumps(data.datum)
+            return (body, 200, {"Content-Type": "application/json"})
 
 
 class FlaskViewModelGetter(FlaskView):
@@ -160,12 +161,11 @@ class FlaskViewModelGetter(FlaskView):
         self.debug = debug
 
     def handler(self, id):
-        with cosmos:
-            model = self.model_cls.get_by_id(id)
-            if model == None:
-                raise NotFound
-            body = json.dumps(self.model_cls.to_json(model))
-            return make_response(body, 200, {"Content-Type": "application/json"})
+        model = self.model_cls.get_by_id(id)
+        if model == None:
+            raise NotFound
+        body = json.dumps(self.model_cls.to_json(model))
+        return (body, 200, {"Content-Type": "application/json"})
 
 
 
@@ -176,17 +176,16 @@ class FlaskViewModelPutter(FlaskView):
         self.debug = debug
 
     def handler(self, id):
-        with cosmos:
-            model = self.model_cls.get_by_id(id)
-            if model == None:
-                raise NotFound
-            try:
-                request.payload = string_to_json(request.data)
-            except ValueError:
-                return error_response("Invalid JSON", 400)
-            model = self.model_cls.from_json(request.payload.datum)
-            model.save()
-            return make_response("", 200, {"Content-Type": "application/json"})
+        model = self.model_cls.get_by_id(id)
+        if model == None:
+            raise NotFound
+        try:
+            request.payload = string_to_json(request.data)
+        except ValueError:
+            return error_response("Invalid JSON", 400)
+        model = self.model_cls.from_json(request.payload.datum)
+        model.save()
+        return ("", 200, {"Content-Type": "application/json"})
 
 
 
@@ -197,12 +196,11 @@ class FlaskViewModelDeleter(FlaskView):
         self.debug = debug
 
     def handler(self, id):
-        with cosmos:
-            model = self.model_cls.get_by_id(id)
-            if model == None:
-                raise NotFound
-            model.delete()
-            return make_response("", 200, {"Content-Type": "application/json"})
+        model = self.model_cls.get_by_id(id)
+        if model == None:
+            raise NotFound
+        model.delete()
+        return ("", 200, {"Content-Type": "application/json"})
 
 
 
@@ -213,25 +211,24 @@ class FlaskViewListGetter(FlaskView):
         self.debug = debug
 
     def handler(self):
-        with cosmos:
-            query = None
-            self_link = "/%s" % self.model_cls.__name__
+        query = None
+        self_link = "/%s" % self.model_cls.__name__
 
-            if self.model_cls.query_fields != None:
-                query_schema = URLParams(self.model_cls.query_fields)
-                query = query_schema.from_multi_dict(request.args)
-                if query:
-                    self_link += "?" + query_schema.to_json(query)
+        if self.model_cls.query_fields != None:
+            query_schema = URLParams(self.model_cls.query_fields)
+            query = query_schema.from_multi_dict(request.args)
+            if query:
+                self_link += "?" + query_schema.to_json(query)
 
-            l = self.model_cls.get_list(**query)
-            body = {
-                "_links": {
-                    "self": {"href": self_link}
-                },
-                "_embedded": {}
-            }
-            body["_embedded"][self.model_cls.__name__] = map(self.model_cls.to_json, l)
-            return make_response(json.dumps(body), 200, {"Content-Type": "application/json"})
+        l = self.model_cls.get_list(**query)
+        body = {
+            "_links": {
+                "self": {"href": self_link}
+            },
+            "_embedded": {}
+        }
+        body["_embedded"][self.model_cls.__name__] = map(self.model_cls.to_json, l)
+        return (json.dumps(body), 200, {"Content-Type": "application/json"})
 
 
 class ActionCallable(object):
