@@ -104,9 +104,28 @@ def err_to_response(err):
 
 
 class FlaskView(object):
+    json_request = False
 
     def __call__(self, *args, **kwargs):
         try:
+            if self.json_request:
+                bytes = request.get_data()
+                if bytes:
+                    if request.mimetype != "application/json":
+                        raise SpecError('Content-Type must be "application/json" got %s instead' % request.mimetype)
+                    charset = request.mimetype_params.get("charset", "utf-8")
+                    if charset.lower() != "utf-8":
+                        raise SpecError('Content-Type charset must be "utf-8" got %s instead' % charset)
+                    try:
+                        data = bytes.decode('utf-8')
+                    except UnicodeDecodeError as e:
+                        raise SpecError("Unicode Decode Error")
+                    try:
+                        request.payload = string_to_json(data)
+                    except ValueError:
+                        raise SpecError("Invalid JSON")
+                else:
+                    request.payload = None
             return make_response(self.handler(*args, **kwargs))
         except Exception as err:
             if self.debug:
@@ -116,19 +135,13 @@ class FlaskView(object):
 
 
 class FlaskViewAction(FlaskView):
+    json_request = True
 
     def __init__(self, view, debug):
         self.view = view
         self.debug = debug
 
     def handler(self):
-        ct = request.headers.get('Content-Type', None)
-        if request.method != "GET" and ct != "application/json":
-            raise SpecError('Content-Type must be "application/json" got %s instead' % ct)
-        try:
-            request.payload = string_to_json(request.data)
-        except ValueError:
-            return error_response("Invalid JSON", 400)
         with cosmos:
             data = self.view(request.payload)
             if data == None:

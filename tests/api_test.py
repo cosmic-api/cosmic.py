@@ -243,10 +243,7 @@ class TestAPI(TestCase):
         self.assertEqual(res.status_code, 405)
 
     def test_spec_wrong_content_type(self):
-        res = self.client.post('/actions/noop')
-        self.assertEqual(res.status_code, 400)
-        self.assertRegexpMatches(res.data, "Content-Type")
-        res = self.client.post('/actions/noop', content_type="application/xml")
+        res = self.client.post('/actions/cabbage', data="1", content_type="application/xml")
         self.assertEqual(res.status_code, 400)
         self.assertRegexpMatches(res.data, "Content-Type")
 

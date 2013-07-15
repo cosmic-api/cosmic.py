@@ -78,8 +78,8 @@ class TestView(TestCase):
         self.app.debug = True
 
     def test_wrong_content_type(self):
-        with self.app.test_request_context('/', method="POST", data="", content_type="application/jason"):
-            res = self.noop()
+        with self.app.test_request_context('/', method="POST", data="1", content_type="application/jason"):
+            res = self.unhandled_error()
             self.assertEqual(res.status_code, 400)
             self.assertEqual(res.content_type, "application/json")
             self.assertRegexpMatches(res.data, "Content-Type must be")
