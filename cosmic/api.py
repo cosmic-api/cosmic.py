@@ -101,20 +101,21 @@ class API(BasicWrapper):
         returning proper HTTP error responses.
         """
 
-        def spec_view(payload):
-            return Box(self.get_json_spec())
+        spec_view = Function(returns=API)
+        spec_view.func = lambda payload: self
 
         blueprint = Blueprint('cosmic', __name__)
         blueprint.add_url_rule("/spec.json",
-            view_func=FlaskViewAction(spec_view, debug),
+            view_func=FlaskViewAction(spec_view, debug).view,
             methods=["GET"],
             endpoint="spec")
+        
         for name, function in self._actions.items():
             url = "/actions/%s" % name
             endpoint = "function_%s" % name
-            view_func = FlaskViewAction(function.json_to_json, debug)
+            view_func = FlaskViewAction(function, debug)
             blueprint.add_url_rule(url,
-                view_func=view_func,
+                view_func=view_func.view,
                 methods=["POST"],
                 endpoint=endpoint)
         for name, model_cls in self._models.items():
@@ -124,7 +125,7 @@ class API(BasicWrapper):
 
             view_func = FlaskViewListGetter(model_cls, debug)
             blueprint.add_url_rule(url,
-                view_func=view_func,
+                view_func=view_func.view,
                 methods=["GET"],
                 endpoint=endpoint)
 
@@ -133,7 +134,7 @@ class API(BasicWrapper):
 
             view_func = FlaskViewModelGetter(model_cls, debug)
             blueprint.add_url_rule(url,
-                view_func=view_func,
+                view_func=view_func.view,
                 methods=["GET"],
                 endpoint=endpoint)
 
@@ -141,7 +142,7 @@ class API(BasicWrapper):
 
             view_func = FlaskViewModelPutter(model_cls, debug)
             blueprint.add_url_rule(url,
-                view_func=view_func,
+                view_func=view_func.view,
                 methods=["PUT"],
                 endpoint=endpoint)
 
@@ -149,7 +150,7 @@ class API(BasicWrapper):
 
             view_func = FlaskViewModelDeleter(model_cls, debug)
             blueprint.add_url_rule(url,
-                view_func=view_func,
+                view_func=view_func.view,
                 methods=["DELETE"],
                 endpoint=endpoint)
         return blueprint

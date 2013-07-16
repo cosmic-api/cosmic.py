@@ -87,7 +87,7 @@ def error_response(message, code):
     body = json.dumps({"error": message})
     return make_response(body, code, {"Content-Type": "application/json"})
 
-def err_to_response(err):
+def error_to_response(err):
     is_remote = getattr(err, "remote", False)
     if isinstance(err, HTTPException) and not is_remote:
         if err.description != err.__class__.description:
@@ -101,6 +101,19 @@ def err_to_response(err):
         return error_response(str(err), 400)
     else:
         return error_response("Internal Server Error", 500)
+
+def response_to_error(res):
+    message = None
+    if res.json and 'error' in res.json:
+        message = res.json['error']
+    # Flag the exception to specify that it came from a remote
+    # API. If this exception bubbles up to the web layer, a
+    # generic 500 response will be returned
+    try:
+        abort(res.status_code, message)
+    except Exception as e:
+        e.remote = True
+        return e
 
 def get_payload_from_request(req):
     bytes = req.get_data()
@@ -124,7 +137,7 @@ def get_payload_from_request(req):
 class FlaskView(object):
     json_request = False
 
-    def __call__(self, *args, **kwargs):
+    def view(self, *args, **kwargs):
         try:
             if self.json_request:
                 request.payload = get_payload_from_request(request)
@@ -135,101 +148,23 @@ class FlaskView(object):
             if self.debug:
                 raise
             else:
-                return err_to_response(err)
+                return error_to_response(err)
 
 
 class FlaskViewAction(FlaskView):
     json_request = True
 
-    def __init__(self, view, debug):
-        self.view = view
+    def __init__(self, function, debug):
+        self.function = function
         self.debug = debug
 
     def handler(self):
-        data = self.view(request.payload)
+        data = self.function.json_to_json(request.payload)
         if data == None:
             return ("", 204, {})
         else:
             body = json.dumps(data.datum)
             return (body, 200, {"Content-Type": "application/json"})
-
-
-class FlaskViewModelGetter(FlaskView):
-
-    def __init__(self, model_cls, debug):
-        self.model_cls = model_cls
-        self.debug = debug
-
-    def handler(self, id):
-        model = self.model_cls.get_by_id(id)
-        if model == None:
-            raise NotFound
-        body = json.dumps(self.model_cls.to_json(model))
-        return (body, 200, {"Content-Type": "application/json"})
-
-
-
-class FlaskViewModelPutter(FlaskView):
-
-    def __init__(self, model_cls, debug):
-        self.model_cls = model_cls
-        self.debug = debug
-
-    def handler(self, id):
-        model = self.model_cls.get_by_id(id)
-        if model == None:
-            raise NotFound
-        try:
-            request.payload = string_to_json(request.data)
-        except ValueError:
-            return error_response("Invalid JSON", 400)
-        model = self.model_cls.from_json(request.payload.datum)
-        model.save()
-        return ("", 200, {"Content-Type": "application/json"})
-
-
-
-class FlaskViewModelDeleter(FlaskView):
-
-    def __init__(self, model_cls, debug):
-        self.model_cls = model_cls
-        self.debug = debug
-
-    def handler(self, id):
-        model = self.model_cls.get_by_id(id)
-        if model == None:
-            raise NotFound
-        model.delete()
-        return ("", 200, {"Content-Type": "application/json"})
-
-
-
-class FlaskViewListGetter(FlaskView):
-
-    def __init__(self, model_cls, debug):
-        self.model_cls = model_cls
-        self.debug = debug
-
-    def handler(self):
-        query = None
-        self_link = "/%s" % self.model_cls.__name__
-
-        if self.model_cls.query_fields != None:
-            query_schema = URLParams(self.model_cls.query_fields)
-            query = query_schema.from_multi_dict(request.args)
-            if query:
-                self_link += "?" + query_schema.to_json(query)
-
-        l = self.model_cls.get_list(**query)
-        body = {
-            "_links": {
-                "self": {"href": self_link}
-            },
-            "_embedded": {}
-        }
-        body["_embedded"][self.model_cls.__name__] = map(self.model_cls.to_json, l)
-        return (json.dumps(body), 200, {"Content-Type": "application/json"})
-
 
 class ActionCallable(object):
 
@@ -269,6 +204,21 @@ class ActionCallable(object):
             raise e
 
 
+
+
+class FlaskViewModelGetter(FlaskView):
+
+    def __init__(self, model_cls, debug):
+        self.model_cls = model_cls
+        self.debug = debug
+
+    def handler(self, id):
+        model = self.model_cls.get_by_id(id)
+        if model == None:
+            raise NotFound
+        body = json.dumps(self.model_cls.to_json(model))
+        return (body, 200, {"Content-Type": "application/json"})
+
 class ModelGetterCallable(object):
 
     def __init__(self, model_cls):
@@ -305,6 +255,25 @@ class ModelGetterCallable(object):
 
 
 
+
+class FlaskViewModelPutter(FlaskView):
+
+    def __init__(self, model_cls, debug):
+        self.model_cls = model_cls
+        self.debug = debug
+
+    def handler(self, id):
+        model = self.model_cls.get_by_id(id)
+        if model == None:
+            raise NotFound
+        try:
+            request.payload = string_to_json(request.data)
+        except ValueError:
+            return error_response("Invalid JSON", 400)
+        model = self.model_cls.from_json(request.payload.datum)
+        model.save()
+        return ("", 204, {})
+
 class ModelPutterCallable(object):
 
     def __init__(self, model_cls):
@@ -314,22 +283,25 @@ class ModelPutterCallable(object):
         url = "/%s/%s" % (self.model_cls.__name__, inst.id)
         body = json.dumps(self.model_cls.to_json(inst))
         res = self.model_cls.api._request(url, method="PUT", data=body, headers={"Content-Type": "application/json"})
-        if res.status_code == 200:
+        if res.status_code == 204:
             return
         else:
-            message = None
-            if res.json and 'error' in res.json:
-                message = res.json['error']
-            try:
-                abort(res.status_code, message)
-            except Exception as e:
-                # Flag the exception to specify that it came from a remote
-                # API. If this exception bubbles up to the web layer, a
-                # generic 500 response will be returned
-                e.remote = True
-                raise
+            raise response_to_error(res)
 
 
+
+class FlaskViewModelDeleter(FlaskView):
+
+    def __init__(self, model_cls, debug):
+        self.model_cls = model_cls
+        self.debug = debug
+
+    def handler(self, id):
+        model = self.model_cls.get_by_id(id)
+        if model == None:
+            raise NotFound
+        model.delete()
+        return ("", 204, {})
 
 class ModelDeleterCallable(object):
 
@@ -339,22 +311,38 @@ class ModelDeleterCallable(object):
     def __call__(self, inst):
         url = "/%s/%s" % (self.model_cls.__name__, inst.id)
         res = self.model_cls.api._request(url, method="DELETE", headers={"Content-Type": "application/json"})
-        if res.status_code == 200:
+        if res.status_code == 204:
             return
         else:
-            message = None
-            if res.json and 'error' in res.json:
-                message = res.json['error']
-            try:
-                abort(res.status_code, message)
-            except Exception as e:
-                # Flag the exception to specify that it came from a remote
-                # API. If this exception bubbles up to the web layer, a
-                # generic 500 response will be returned
-                e.remote = True
-                raise
+            raise response_to_error(res)
 
 
+
+class FlaskViewListGetter(FlaskView):
+
+    def __init__(self, model_cls, debug):
+        self.model_cls = model_cls
+        self.debug = debug
+
+    def handler(self):
+        query = None
+        self_link = "/%s" % self.model_cls.__name__
+
+        if self.model_cls.query_fields != None:
+            query_schema = URLParams(self.model_cls.query_fields)
+            query = query_schema.from_multi_dict(request.args)
+            if query:
+                self_link += "?" + query_schema.to_json(query)
+
+        l = self.model_cls.get_list(**query)
+        body = {
+            "_links": {
+                "self": {"href": self_link}
+            },
+            "_embedded": {}
+        }
+        body["_embedded"][self.model_cls.__name__] = map(self.model_cls.to_json, l)
+        return (json.dumps(body), 200, {"Content-Type": "application/json"})
 
 class ListGetterCallable(object):
 
@@ -383,14 +371,4 @@ class ListGetterCallable(object):
             except (ValidationError, ValueError, KeyError):
                 raise e
         else:
-            message = None
-            if res.json and 'error' in res.json:
-                message = res.json['error']
-            try:
-                abort(res.status_code, message)
-            except Exception as e:
-                # Flag the exception to specify that it came from a remote
-                # API. If this exception bubbles up to the web layer, a
-                # generic 500 response will be returned
-                e.remote = True
-                raise
+            raise response_to_error(res)
