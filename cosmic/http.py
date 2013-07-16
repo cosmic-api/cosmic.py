@@ -150,6 +150,15 @@ class FlaskView(object):
             else:
                 return error_to_response(err)
 
+class Callable(object):
+
+    def __call__(self, *args, **kwargs):
+        req = self.make_request(*args, **kwargs)
+        res = self._request(**req)
+        return self.parse_response(res)
+
+
+
 
 class FlaskViewAction(FlaskView):
     json_request = True
@@ -166,21 +175,26 @@ class FlaskViewAction(FlaskView):
             body = json.dumps(data.datum)
             return (body, 200, {"Content-Type": "application/json"})
 
-class ActionCallable(object):
+class ActionCallable(Callable):
 
-    def __init__(self, function, url):
+    def __init__(self, function, url, api):
         self.function = function
         self.url = url
+        self._request = api._request
 
-    def __call__(self, *args, **kwargs):
+    def make_request(self, *args, **kwargs):
         packed = pack_action_arguments(*args, **kwargs)
 
         serialized = serialize_json(self.function.accepts, packed)
 
-        data = json_to_string(serialized)
+        return {
+            "url": self.url,
+            "data": json_to_string(serialized),
+            "method": "POST",
+            "headers": {'Content-Type': 'application/json'}
+        }
 
-        headers = {'Content-Type': 'application/json'}
-        res = requests.post(self.url, data=data, headers=headers)
+    def parse_response(self, res):
         if res.status_code != requests.codes.ok:
             message = None
             if res.json and 'error' in res.json:
@@ -219,14 +233,20 @@ class FlaskViewModelGetter(FlaskView):
         body = json.dumps(self.model_cls.to_json(model))
         return (body, 200, {"Content-Type": "application/json"})
 
-class ModelGetterCallable(object):
+class ModelGetterCallable(Callable):
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
+        self._request = model_cls.api._request
 
-    def __call__(self, id):
-        url = "/%s/%s" % (self.model_cls.__name__, id)
-        res = self.model_cls.api._request(url, method="GET", headers={"Content-Type": "application/json"})
+    def make_request(self, id):
+        return {
+            "url": "/%s/%s" % (self.model_cls.__name__, id),
+            "method": "GET",
+            "headers": {"Content-Type": "application/json"}
+        }
+
+    def parse_response(self, res):
         if res.status_code == 404:
             return None
         if res.status_code == 200:
@@ -255,7 +275,6 @@ class ModelGetterCallable(object):
 
 
 
-
 class FlaskViewModelPutter(FlaskView):
 
     def __init__(self, model_cls, debug):
@@ -274,15 +293,21 @@ class FlaskViewModelPutter(FlaskView):
         model.save()
         return ("", 204, {})
 
-class ModelPutterCallable(object):
+class ModelPutterCallable(Callable):
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
+        self._request = model_cls.api._request
 
-    def __call__(self, inst):
-        url = "/%s/%s" % (self.model_cls.__name__, inst.id)
-        body = json.dumps(self.model_cls.to_json(inst))
-        res = self.model_cls.api._request(url, method="PUT", data=body, headers={"Content-Type": "application/json"})
+    def make_request(self, inst):
+        return {
+            "url": "/%s/%s" % (self.model_cls.__name__, inst.id),
+            "data": json.dumps(self.model_cls.to_json(inst)),
+            "method": "PUT",
+            "headers": {"Content-Type": "application/json"}
+        }
+
+    def parse_response(self, res):
         if res.status_code == 204:
             return
         else:
@@ -303,14 +328,20 @@ class FlaskViewModelDeleter(FlaskView):
         model.delete()
         return ("", 204, {})
 
-class ModelDeleterCallable(object):
+class ModelDeleterCallable(Callable):
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
+        self._request = model_cls.api._request
 
-    def __call__(self, inst):
-        url = "/%s/%s" % (self.model_cls.__name__, inst.id)
-        res = self.model_cls.api._request(url, method="DELETE", headers={"Content-Type": "application/json"})
+    def make_request(self, inst):
+        return {
+            "url": "/%s/%s" % (self.model_cls.__name__, inst.id),
+            "method": "DELETE",
+            "headers": {"Content-Type": "application/json"}
+        }
+
+    def parse_response(self, res):
         if res.status_code == 204:
             return
         else:
@@ -344,13 +375,13 @@ class FlaskViewListGetter(FlaskView):
         body["_embedded"][self.model_cls.__name__] = map(self.model_cls.to_json, l)
         return (json.dumps(body), 200, {"Content-Type": "application/json"})
 
-class ListGetterCallable(object):
+class ListGetterCallable(Callable):
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
+        self._request = model_cls.api._request
 
-    def __call__(self, **query):
-
+    def make_request(self, **query):
         url = "/%s" % self.model_cls.__name__
 
         if self.model_cls.query_fields != None:
@@ -359,7 +390,12 @@ class ListGetterCallable(object):
             if query_string:
                 url += "?%s" % query_string
 
-        res = self.model_cls.api._request(url=url, method="GET")
+        return {
+            "url": url,
+            "method": "GET"
+        }
+
+    def parse_response(self, res):
         if res.status_code == 200:
             e = InternalServerError("Call returned an invalid value")
             e.remote = True

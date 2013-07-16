@@ -73,7 +73,7 @@ class TestTutorialBuildingAPI(TestCase):
             with cosmos:
                 h = API.load('http://example.com/spec.json')
                 pisces = h.models.Sign({"name": "pisces"})
-                with patch.object(requests, 'post') as mock_post:
+                with patch.object(requests, 'request') as mock_post:
                     mock_post.return_value.json = "Yada yada handsome stranger"
                     mock_post.return_value.status_code = 200
                     self.assertRegexpMatches(h.actions.predict(pisces), "handsome stranger")

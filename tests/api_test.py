@@ -270,15 +270,21 @@ class TestAPI(TestCase):
 class TestRemoteAPI(TestCase):
 
     def setUp(self):
+        from cosmic.http import RequestsPlugin
         self.cookbook = API.from_json(cookbook_spec)
         self.cookbook.url = 'http://localhost:8881/api'
+        self.cookbook._request = RequestsPlugin('http://localhost:8881')
 
     def test_remote_no_return_action(self):
-        with patch.object(requests, 'post') as mock_post:
+        with patch.object(requests, 'request') as mock_post:
             mock_post.return_value.status_code = 200
             mock_post.return_value.json = None
             self.assertEqual(self.cookbook.actions.noop(), None)
-            mock_post.assert_called_with('http://localhost:8881/api/actions/noop', headers={'Content-Type': 'application/json'}, data="")
+            mock_post.assert_called_with(
+                url='http://localhost:8881/actions/noop',
+                headers={'Content-Type': 'application/json'},
+                method="POST",
+                data="")
 
     def test_properties(self):
         self.assertEqual(self.cookbook.name, "cookbook")

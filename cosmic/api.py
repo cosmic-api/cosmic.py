@@ -243,8 +243,7 @@ class API(BasicWrapper):
         if hasattr(function, "func"):
             return function.func
         else:
-            url = self.url + '/actions/' + name
-            return ActionCallable(function, url)
+            return ActionCallable(function, '/actions/' + name, self)
 
     def model(self, model_cls):
         """A decorator for registering a model with an API. The name of the
