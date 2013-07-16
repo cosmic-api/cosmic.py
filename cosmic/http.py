@@ -7,6 +7,8 @@ from requests.structures import CaseInsensitiveDict
 from werkzeug.exceptions import HTTPException, InternalServerError, NotFound, abort
 from werkzeug.urls import url_decode, url_encode
 from werkzeug.datastructures import MultiDict
+from werkzeug.routing import Rule
+from werkzeug.routing import Map as RuleMap
 
 from flask import Flask, make_response, current_app
 from flask import request
@@ -133,6 +135,15 @@ def get_payload_from_request(req):
     except ValueError:
         raise SpecError("Invalid JSON")
 
+def reverse_werkzeug_url(url, values):
+    rule = Rule(url)
+    # Rule needs to be bound before building
+    m = RuleMap([rule])
+    # Note: this seems to be changing in Werkzeug master
+    domain_part, url = rule.build(values)
+    return url
+
+
 
 class FlaskView(object):
     json_request = False
@@ -161,6 +172,7 @@ class Callable(object):
 
 
 class FlaskViewAction(FlaskView):
+    method = "POST"
     json_request = True
 
     def __init__(self, function):
@@ -220,6 +232,7 @@ class ActionCallable(Callable):
 
 
 class FlaskViewModelGetter(FlaskView):
+    method = "GET"
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
@@ -235,11 +248,12 @@ class ModelGetterCallable(Callable):
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
+        self.url = "/%s/<id>" % self.model_cls.__name__
         self._request = model_cls.api._request
 
     def make_request(self, id):
         return {
-            "url": "/%s/%s" % (self.model_cls.__name__, id),
+            "url": reverse_werkzeug_url(self.url, {'id': id}),
             "method": "GET",
             "headers": {"Content-Type": "application/json"}
         }
@@ -274,6 +288,7 @@ class ModelGetterCallable(Callable):
 
 
 class FlaskViewModelPutter(FlaskView):
+    method = "PUT"
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
@@ -294,11 +309,12 @@ class ModelPutterCallable(Callable):
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
+        self.url = "/%s/<id>" % self.model_cls.__name__
         self._request = model_cls.api._request
 
     def make_request(self, inst):
         return {
-            "url": "/%s/%s" % (self.model_cls.__name__, inst.id),
+            "url": reverse_werkzeug_url(self.url, {'id': inst.id}),
             "data": json.dumps(self.model_cls.to_json(inst)),
             "method": "PUT",
             "headers": {"Content-Type": "application/json"}
@@ -313,6 +329,7 @@ class ModelPutterCallable(Callable):
 
 
 class FlaskViewModelDeleter(FlaskView):
+    method = "DELETE"
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
@@ -328,11 +345,12 @@ class ModelDeleterCallable(Callable):
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
+        self.url = "/%s/<id>" % self.model_cls.__name__
         self._request = model_cls.api._request
 
     def make_request(self, inst):
         return {
-            "url": "/%s/%s" % (self.model_cls.__name__, inst.id),
+            "url": reverse_werkzeug_url(self.url, {'id': inst.id}),
             "method": "DELETE",
             "headers": {"Content-Type": "application/json"}
         }
@@ -346,6 +364,7 @@ class ModelDeleterCallable(Callable):
 
 
 class FlaskViewListGetter(FlaskView):
+    method = "GET"
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
@@ -374,10 +393,11 @@ class ListGetterCallable(Callable):
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
+        self.url = "/%s" % self.model_cls.__name__
         self._request = model_cls.api._request
 
     def make_request(self, **query):
-        url = "/%s" % self.model_cls.__name__
+        url = self.url
 
         if self.model_cls.query_fields != None:
             query_schema = URLParams(self.model_cls.query_fields)

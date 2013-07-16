@@ -104,10 +104,13 @@ class API(BasicWrapper):
         spec_view = Function(returns=API)
         spec_view.func = lambda payload: self
 
+        view_func = FlaskViewAction(spec_view)
+        view_func.method = "GET"
+
         blueprint = Blueprint('cosmic', __name__)
         blueprint.add_url_rule("/spec.json",
-            view_func=FlaskViewAction(spec_view).view,
-            methods=["GET"],
+            view_func=view_func.view,
+            methods=[view_func.method],
             endpoint="spec")
         
         for name, function in self._actions.items():
@@ -116,7 +119,7 @@ class API(BasicWrapper):
             view_func = FlaskViewAction(function)
             blueprint.add_url_rule(url,
                 view_func=view_func.view,
-                methods=["POST"],
+                methods=[view_func.method],
                 endpoint=endpoint)
         for name, model_cls in self._models.items():
 
@@ -126,7 +129,7 @@ class API(BasicWrapper):
             view_func = FlaskViewListGetter(model_cls)
             blueprint.add_url_rule(url,
                 view_func=view_func.view,
-                methods=["GET"],
+                methods=[view_func.method],
                 endpoint=endpoint)
 
             url = "/%s/<id>" % name
@@ -135,7 +138,7 @@ class API(BasicWrapper):
             view_func = FlaskViewModelGetter(model_cls)
             blueprint.add_url_rule(url,
                 view_func=view_func.view,
-                methods=["GET"],
+                methods=[view_func.method],
                 endpoint=endpoint)
 
             endpoint = "doc_put_%s" % name
@@ -143,7 +146,7 @@ class API(BasicWrapper):
             view_func = FlaskViewModelPutter(model_cls)
             blueprint.add_url_rule(url,
                 view_func=view_func.view,
-                methods=["PUT"],
+                methods=[view_func.method],
                 endpoint=endpoint)
 
             endpoint = "doc_delete_%s" % name
@@ -151,7 +154,7 @@ class API(BasicWrapper):
             view_func = FlaskViewModelDeleter(model_cls)
             blueprint.add_url_rule(url,
                 view_func=view_func.view,
-                methods=["DELETE"],
+                methods=[view_func.method],
                 endpoint=endpoint)
         return blueprint
 
