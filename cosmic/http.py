@@ -8,7 +8,7 @@ from werkzeug.exceptions import HTTPException, InternalServerError, NotFound, ab
 from werkzeug.urls import url_decode, url_encode
 from werkzeug.datastructures import MultiDict
 
-from flask import Flask, make_response
+from flask import Flask, make_response, current_app
 from flask import request
 from teleport import Box, ValidationError
 
@@ -145,7 +145,7 @@ class FlaskView(object):
             with cosmos:
                 return make_response(self.handler(*args, **kwargs))
         except Exception as err:
-            if self.debug:
+            if current_app.debug:
                 raise
             else:
                 return error_to_response(err)
@@ -163,9 +163,8 @@ class Callable(object):
 class FlaskViewAction(FlaskView):
     json_request = True
 
-    def __init__(self, function, debug):
+    def __init__(self, function):
         self.function = function
-        self.debug = debug
 
     def handler(self):
         data = self.function.json_to_json(request.payload)
@@ -222,9 +221,8 @@ class ActionCallable(Callable):
 
 class FlaskViewModelGetter(FlaskView):
 
-    def __init__(self, model_cls, debug):
+    def __init__(self, model_cls):
         self.model_cls = model_cls
-        self.debug = debug
 
     def handler(self, id):
         model = self.model_cls.get_by_id(id)
@@ -277,9 +275,8 @@ class ModelGetterCallable(Callable):
 
 class FlaskViewModelPutter(FlaskView):
 
-    def __init__(self, model_cls, debug):
+    def __init__(self, model_cls):
         self.model_cls = model_cls
-        self.debug = debug
 
     def handler(self, id):
         model = self.model_cls.get_by_id(id)
@@ -317,9 +314,8 @@ class ModelPutterCallable(Callable):
 
 class FlaskViewModelDeleter(FlaskView):
 
-    def __init__(self, model_cls, debug):
+    def __init__(self, model_cls):
         self.model_cls = model_cls
-        self.debug = debug
 
     def handler(self, id):
         model = self.model_cls.get_by_id(id)
@@ -351,9 +347,8 @@ class ModelDeleterCallable(Callable):
 
 class FlaskViewListGetter(FlaskView):
 
-    def __init__(self, model_cls, debug):
+    def __init__(self, model_cls):
         self.model_cls = model_cls
-        self.debug = debug
 
     def handler(self):
         query = None

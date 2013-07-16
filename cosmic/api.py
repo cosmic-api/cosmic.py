@@ -106,14 +106,14 @@ class API(BasicWrapper):
 
         blueprint = Blueprint('cosmic', __name__)
         blueprint.add_url_rule("/spec.json",
-            view_func=FlaskViewAction(spec_view, debug).view,
+            view_func=FlaskViewAction(spec_view).view,
             methods=["GET"],
             endpoint="spec")
         
         for name, function in self._actions.items():
             url = "/actions/%s" % name
             endpoint = "function_%s" % name
-            view_func = FlaskViewAction(function, debug)
+            view_func = FlaskViewAction(function)
             blueprint.add_url_rule(url,
                 view_func=view_func.view,
                 methods=["POST"],
@@ -123,7 +123,7 @@ class API(BasicWrapper):
             url = "/%s" % name
             endpoint = "list_get_%s" % name
 
-            view_func = FlaskViewListGetter(model_cls, debug)
+            view_func = FlaskViewListGetter(model_cls)
             blueprint.add_url_rule(url,
                 view_func=view_func.view,
                 methods=["GET"],
@@ -132,7 +132,7 @@ class API(BasicWrapper):
             url = "/%s/<id>" % name
             endpoint = "doc_get_%s" % name
 
-            view_func = FlaskViewModelGetter(model_cls, debug)
+            view_func = FlaskViewModelGetter(model_cls)
             blueprint.add_url_rule(url,
                 view_func=view_func.view,
                 methods=["GET"],
@@ -140,7 +140,7 @@ class API(BasicWrapper):
 
             endpoint = "doc_put_%s" % name
 
-            view_func = FlaskViewModelPutter(model_cls, debug)
+            view_func = FlaskViewModelPutter(model_cls)
             blueprint.add_url_rule(url,
                 view_func=view_func.view,
                 methods=["PUT"],
@@ -148,7 +148,7 @@ class API(BasicWrapper):
 
             endpoint = "doc_delete_%s" % name
 
-            view_func = FlaskViewModelDeleter(model_cls, debug)
+            view_func = FlaskViewModelDeleter(model_cls)
             blueprint.add_url_rule(url,
                 view_func=view_func.view,
                 methods=["DELETE"],
