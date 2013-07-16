@@ -205,12 +205,12 @@ class Model(BasicWrapper):
             super(Model, self).__setattr__(name, value)
 
     def save(self):
-        from .http import ModelPutterCallable
-        return ModelPutterCallable(self.__class__)(self)
+        from .http import FlaskViewModelPutter
+        return FlaskViewModelPutter(self.__class__)(self)
 
     def delete(self):
-        from .http import ModelDeleterCallable
-        return ModelDeleterCallable(self.__class__)(self)
+        from .http import FlaskViewModelDeleter
+        return FlaskViewModelDeleter(self.__class__)(self)
 
     @classmethod
     def validate(cls, datum):
@@ -218,8 +218,8 @@ class Model(BasicWrapper):
 
     @classmethod
     def get_list(cls, **query):
-        from .http import ListGetterCallable
-        return ListGetterCallable(cls)(**query)
+        from .http import FlaskViewListGetter
+        return FlaskViewListGetter(cls)(**query)
 
     @classmethod
     def get_by_id(cls, id):
@@ -228,8 +228,8 @@ class Model(BasicWrapper):
         return inst
 
     def _force(self):
-        from .http import ModelGetterCallable
-        self._fill_out(ModelGetterCallable(self.__class__)(self.id))
+        from .http import FlaskViewModelGetter
+        self._fill_out(FlaskViewModelGetter(self.__class__)(self.id))
 
 
 

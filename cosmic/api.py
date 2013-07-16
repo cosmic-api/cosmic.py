@@ -123,39 +123,29 @@ class API(BasicWrapper):
                 endpoint=endpoint)
         for name, model_cls in self._models.items():
 
-            url = "/%s" % name
-            endpoint = "list_get_%s" % name
-
             view_func = FlaskViewListGetter(model_cls)
-            blueprint.add_url_rule(url,
+            blueprint.add_url_rule(view_func.url,
                 view_func=view_func.view,
                 methods=[view_func.method],
-                endpoint=endpoint)
-
-            url = "/%s/<id>" % name
-            endpoint = "doc_get_%s" % name
+                endpoint=view_func.endpoint)
 
             view_func = FlaskViewModelGetter(model_cls)
-            blueprint.add_url_rule(url,
+            blueprint.add_url_rule(view_func.url,
                 view_func=view_func.view,
                 methods=[view_func.method],
-                endpoint=endpoint)
-
-            endpoint = "doc_put_%s" % name
+                endpoint=view_func.endpoint)
 
             view_func = FlaskViewModelPutter(model_cls)
-            blueprint.add_url_rule(url,
+            blueprint.add_url_rule(view_func.url,
                 view_func=view_func.view,
                 methods=[view_func.method],
-                endpoint=endpoint)
-
-            endpoint = "doc_delete_%s" % name
+                endpoint=view_func.endpoint)
 
             view_func = FlaskViewModelDeleter(model_cls)
-            blueprint.add_url_rule(url,
+            blueprint.add_url_rule(view_func.url,
                 view_func=view_func.view,
                 methods=[view_func.method],
-                endpoint=endpoint)
+                endpoint=view_func.endpoint)
         return blueprint
 
     def get_flask_app(self, debug=False, url_prefix=None):

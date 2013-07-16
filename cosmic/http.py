@@ -161,8 +161,6 @@ class FlaskView(object):
             else:
                 return error_to_response(err)
 
-class Callable(object):
-
     def __call__(self, *args, **kwargs):
         req = self.make_request(*args, **kwargs)
         res = self._request(**req)
@@ -186,7 +184,7 @@ class FlaskViewAction(FlaskView):
             body = json.dumps(data.datum)
             return (body, 200, {"Content-Type": "application/json"})
 
-class ActionCallable(Callable):
+class ActionCallable(FlaskView):
 
     def __init__(self, function, url, api):
         self.function = function
@@ -236,6 +234,10 @@ class FlaskViewModelGetter(FlaskView):
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
+        self.url = "/%s/<id>" % self.model_cls.__name__
+        self.endpoint = "doc_get_%s" % self.model_cls.__name__
+        if hasattr(model_cls.api, "_request"):
+            self._request = model_cls.api._request
 
     def handler(self, id):
         model = self.model_cls.get_by_id(id)
@@ -244,17 +246,10 @@ class FlaskViewModelGetter(FlaskView):
         body = json.dumps(self.model_cls.to_json(model))
         return (body, 200, {"Content-Type": "application/json"})
 
-class ModelGetterCallable(Callable):
-
-    def __init__(self, model_cls):
-        self.model_cls = model_cls
-        self.url = "/%s/<id>" % self.model_cls.__name__
-        self._request = model_cls.api._request
-
     def make_request(self, id):
         return {
             "url": reverse_werkzeug_url(self.url, {'id': id}),
-            "method": "GET",
+            "method": self.method,
             "headers": {"Content-Type": "application/json"}
         }
 
@@ -287,11 +282,16 @@ class ModelGetterCallable(Callable):
 
 
 
+
 class FlaskViewModelPutter(FlaskView):
     method = "PUT"
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
+        self.url = "/%s/<id>" % self.model_cls.__name__
+        self.endpoint = "doc_put_%s" % self.model_cls.__name__
+        if hasattr(model_cls.api, "_request"):
+            self._request = model_cls.api._request
 
     def handler(self, id):
         model = self.model_cls.get_by_id(id)
@@ -305,18 +305,11 @@ class FlaskViewModelPutter(FlaskView):
         model.save()
         return ("", 204, {})
 
-class ModelPutterCallable(Callable):
-
-    def __init__(self, model_cls):
-        self.model_cls = model_cls
-        self.url = "/%s/<id>" % self.model_cls.__name__
-        self._request = model_cls.api._request
-
     def make_request(self, inst):
         return {
             "url": reverse_werkzeug_url(self.url, {'id': inst.id}),
             "data": json.dumps(self.model_cls.to_json(inst)),
-            "method": "PUT",
+            "method": self.method,
             "headers": {"Content-Type": "application/json"}
         }
 
@@ -333,6 +326,10 @@ class FlaskViewModelDeleter(FlaskView):
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
+        self.url = "/%s/<id>" % self.model_cls.__name__
+        self.endpoint = "doc_delete_%s" % self.model_cls.__name__
+        if hasattr(model_cls.api, "_request"):
+            self._request = model_cls.api._request
 
     def handler(self, id):
         model = self.model_cls.get_by_id(id)
@@ -341,17 +338,10 @@ class FlaskViewModelDeleter(FlaskView):
         model.delete()
         return ("", 204, {})
 
-class ModelDeleterCallable(Callable):
-
-    def __init__(self, model_cls):
-        self.model_cls = model_cls
-        self.url = "/%s/<id>" % self.model_cls.__name__
-        self._request = model_cls.api._request
-
     def make_request(self, inst):
         return {
             "url": reverse_werkzeug_url(self.url, {'id': inst.id}),
-            "method": "DELETE",
+            "method": self.method,
             "headers": {"Content-Type": "application/json"}
         }
 
@@ -368,6 +358,10 @@ class FlaskViewListGetter(FlaskView):
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
+        self.url = "/%s" % self.model_cls.__name__
+        self.endpoint = "list_get_%s" % self.model_cls.__name__
+        if hasattr(model_cls.api, "_request"):
+            self._request = model_cls.api._request
 
     def handler(self):
         query = None
@@ -389,13 +383,6 @@ class FlaskViewListGetter(FlaskView):
         body["_embedded"][self.model_cls.__name__] = map(self.model_cls.to_json, l)
         return (json.dumps(body), 200, {"Content-Type": "application/json"})
 
-class ListGetterCallable(Callable):
-
-    def __init__(self, model_cls):
-        self.model_cls = model_cls
-        self.url = "/%s" % self.model_cls.__name__
-        self._request = model_cls.api._request
-
     def make_request(self, **query):
         url = self.url
 
@@ -407,7 +394,7 @@ class ListGetterCallable(Callable):
 
         return {
             "url": url,
-            "method": "GET"
+            "method": self.method
         }
 
     def parse_response(self, res):
@@ -423,3 +410,4 @@ class ListGetterCallable(Callable):
                 raise e
         else:
             raise response_to_error(res)
+
