@@ -104,11 +104,11 @@ class API(BasicWrapper):
         spec_view = Function(returns=API)
         spec_view.func = lambda payload: self
 
-        view_func = FlaskViewAction(spec_view)
+        view_func = FlaskViewAction(spec_view, "/spec.json", self)
         view_func.method = "GET"
 
         blueprint = Blueprint('cosmic', __name__)
-        blueprint.add_url_rule("/spec.json",
+        blueprint.add_url_rule(view_func.url,
             view_func=view_func.view,
             methods=[view_func.method],
             endpoint="spec")
@@ -116,7 +116,7 @@ class API(BasicWrapper):
         for name, function in self._actions.items():
             url = "/actions/%s" % name
             endpoint = "function_%s" % name
-            view_func = FlaskViewAction(function)
+            view_func = FlaskViewAction(function, url, self)
             blueprint.add_url_rule(url,
                 view_func=view_func.view,
                 methods=[view_func.method],
@@ -236,7 +236,7 @@ class API(BasicWrapper):
         if hasattr(function, "func"):
             return function.func
         else:
-            return ActionCallable(function, '/actions/' + name, self)
+            return FlaskViewAction(function, '/actions/' + name, self)
 
     def model(self, model_cls):
         """A decorator for registering a model with an API. The name of the

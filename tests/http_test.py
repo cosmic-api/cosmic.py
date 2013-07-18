@@ -153,7 +153,7 @@ class TestActionCallable(TestCase):
         a = API('a')
         a._request = RequestsPlugin("http://example.com")
         self.function = Function(Integer, Boolean)
-        self.callable = ActionCallable(self.function, "/actions/even", a)
+        self.callable = FlaskViewAction(self.function, "/actions/even", a)
 
     def test_call_okay(self):
         with patch.object(requests, 'request') as mock_post:

@@ -173,8 +173,11 @@ class FlaskViewAction(FlaskView):
     method = "POST"
     json_request = True
 
-    def __init__(self, function):
+    def __init__(self, function, url, api):
         self.function = function
+        self.url = url
+        if hasattr(api, '_request'):
+            self._request = api._request
 
     def handler(self):
         data = self.function.json_to_json(request.payload)
@@ -183,13 +186,6 @@ class FlaskViewAction(FlaskView):
         else:
             body = json.dumps(data.datum)
             return (body, 200, {"Content-Type": "application/json"})
-
-class ActionCallable(FlaskView):
-
-    def __init__(self, function, url, api):
-        self.function = function
-        self.url = url
-        self._request = api._request
 
     def make_request(self, *args, **kwargs):
         packed = pack_action_arguments(*args, **kwargs)
