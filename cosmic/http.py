@@ -163,10 +163,17 @@ class FlaskView(object):
 
     def __call__(self, *args, **kwargs):
         req = self.make_request(*args, **kwargs)
-        res = self._request(**req)
+        if hasattr(self, "_request"):
+            res = self._request(**req)
+        else:
+            res = self.model_cls.api._request(**req)
         return self.parse_response(res)
 
-
+    def add_to_blueprint(self, blueprint):
+        blueprint.add_url_rule(self.url,
+            view_func=self.view,
+            methods=[self.method],
+            endpoint=self.endpoint)
 
 
 class FlaskViewAction(FlaskView):
@@ -225,15 +232,13 @@ class FlaskViewAction(FlaskView):
 
 
 
-class FlaskViewModelGetter(FlaskView):
+class ModelGetter(FlaskView):
     method = "GET"
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
         self.url = "/%s/<id>" % self.model_cls.__name__
         self.endpoint = "doc_get_%s" % self.model_cls.__name__
-        if hasattr(model_cls.api, "_request"):
-            self._request = model_cls.api._request
 
     def handler(self, id):
         model = self.model_cls.get_by_id(id)
@@ -279,15 +284,13 @@ class FlaskViewModelGetter(FlaskView):
 
 
 
-class FlaskViewModelPutter(FlaskView):
+class ModelPutter(FlaskView):
     method = "PUT"
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
         self.url = "/%s/<id>" % self.model_cls.__name__
         self.endpoint = "doc_put_%s" % self.model_cls.__name__
-        if hasattr(model_cls.api, "_request"):
-            self._request = model_cls.api._request
 
     def handler(self, id):
         model = self.model_cls.get_by_id(id)
@@ -317,15 +320,13 @@ class FlaskViewModelPutter(FlaskView):
 
 
 
-class FlaskViewModelPoster(FlaskView):
+class ListPoster(FlaskView):
     method = "POST"
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
         self.url = "/%s" % self.model_cls.__name__
         self.endpoint = "list_post_%s" % self.model_cls.__name__
-        if hasattr(model_cls.api, "_request"):
-            self._request = model_cls.api._request
 
     def handler(self):
         try:
@@ -355,15 +356,13 @@ class FlaskViewModelPoster(FlaskView):
 
 
 
-class FlaskViewModelDeleter(FlaskView):
+class ModelDeleter(FlaskView):
     method = "DELETE"
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
         self.url = "/%s/<id>" % self.model_cls.__name__
         self.endpoint = "doc_delete_%s" % self.model_cls.__name__
-        if hasattr(model_cls.api, "_request"):
-            self._request = model_cls.api._request
 
     def handler(self, id):
         model = self.model_cls.get_by_id(id)
@@ -387,15 +386,13 @@ class FlaskViewModelDeleter(FlaskView):
 
 
 
-class FlaskViewListGetter(FlaskView):
+class ListGetter(FlaskView):
     method = "GET"
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
         self.url = "/%s" % self.model_cls.__name__
         self.endpoint = "list_get_%s" % self.model_cls.__name__
-        if hasattr(model_cls.api, "_request"):
-            self._request = model_cls.api._request
 
     def handler(self):
         query = None

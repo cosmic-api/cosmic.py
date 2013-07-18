@@ -50,6 +50,8 @@ class ModelSerializer(BasicWrapper):
 
 
 def prep_model(model_cls):
+    from .http import ListPoster, ListGetter, ModelGetter, ModelPutter, ModelDeleter
+
     link_schema = Struct([
         required("href", String)
     ])
@@ -77,6 +79,13 @@ def prep_model(model_cls):
         props.append((name, field))
     if link_names & field_names:
         raise SpecError("Model cannot contain a field and link with the same name: %s" % model_cls.__name__)
+
+    model_cls._list_poster = ListPoster(model_cls)
+    model_cls._list_getter = ListGetter(model_cls)
+    model_cls._model_getter = ModelGetter(model_cls)
+    model_cls._model_putter = ModelPutter(model_cls)
+    model_cls._model_deleter = ModelDeleter(model_cls)
+
     model_cls.schema = Struct(props)
 
 
@@ -99,7 +108,6 @@ class Model(BasicWrapper):
     @classmethod
     def assemble(cls, datum):
         inst = cls()
-        cls.validate(datum)
         inst.id, inst._representation = cls._fill_out(datum)
         return inst
 
@@ -131,6 +139,7 @@ class Model(BasicWrapper):
             id = cls.id_from_url(links["self"]["href"])
         else:
             id = None
+        cls.validate(rep)
         return (id, rep)
 
     @classmethod
@@ -180,15 +189,13 @@ class Model(BasicWrapper):
             super(Model, self).__setattr__(name, value)
 
     def save(self):
-        from .http import FlaskViewModelPutter, FlaskViewModelPoster
         if self.id:
-            return FlaskViewModelPutter(self.__class__)(self)
+            return self.__class__._model_putter(self)
         else:
-            self.id = FlaskViewModelPoster(self.__class__)(self)
+            self.id = self.__class__._list_poster(self)
 
     def delete(self):
-        from .http import FlaskViewModelDeleter
-        return FlaskViewModelDeleter(self.__class__)(self)
+        return self.__class__._model_deleter(self)
 
     @classmethod
     def validate(cls, datum):
@@ -196,8 +203,7 @@ class Model(BasicWrapper):
 
     @classmethod
     def get_list(cls, **query):
-        from .http import FlaskViewListGetter
-        return FlaskViewListGetter(cls)(**query)
+        return cls._list_getter(**query)
 
     @classmethod
     def get_by_id(cls, id):
@@ -206,8 +212,7 @@ class Model(BasicWrapper):
         return inst
 
     def _force(self):
-        from .http import FlaskViewModelGetter
-        m = FlaskViewModelGetter(self.__class__)(self.id)
+        m = self.__class__._model_getter(self.id)
         self.__class__.validate(m)
         id, self._representation = self.__class__._fill_out(m)
         if self.id != id:
