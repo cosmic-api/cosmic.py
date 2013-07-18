@@ -88,7 +88,7 @@ class Model(BasicWrapper):
     def __init__(self, data=None):
         self.id = None
         if data:
-            self._representation = self._fill_out(data)
+            _, self._representation = self.__class__._fill_out(data)
         else:
             self._representation = None
 
@@ -100,7 +100,7 @@ class Model(BasicWrapper):
     def assemble(cls, datum):
         inst = cls()
         cls.validate(datum)
-        inst._representation = inst._fill_out(datum)
+        inst.id, inst._representation = cls._fill_out(datum)
         return inst
 
     @classmethod
@@ -110,29 +110,28 @@ class Model(BasicWrapper):
             raise ValidationError("Invalid url for %s link: %s" % (cls.__name__, url))
         return parts[-1]
 
-    def _fill_out(self, datum):
+    @classmethod
+    def _fill_out(cls, datum):
         rep = {}
         links = datum.pop("_links", {})
-        for name in OrderedDict(self.links).keys():
+        for name in OrderedDict(cls.links).keys():
             if name in links:
                 url = links[name]["href"]
-                model_cls = OrderedDict(self.links)[name]["schema"]
+                model_cls = OrderedDict(cls.links)[name]["schema"]
                 id = model_cls.id_from_url(url)
                 rep[name] = model_cls.get_by_id(id)
             else:
                 rep[name] = None
-        for name in OrderedDict(self.properties).keys():
+        for name in OrderedDict(cls.properties).keys():
             if name in datum:
                 rep[name] = datum[name]
             else:
                 rep[name] = None
         if "self" in links:
-            id = self.__class__.id_from_url(links["self"]["href"])
-            if self.id == None:
-                self.id = id
-            elif self.id != id:
-                raise ValidationError("Expected id: %s, actual: %s" % (self.id, id))
-        return rep
+            id = cls.id_from_url(links["self"]["href"])
+        else:
+            id = None
+        return (id, rep)
 
     @classmethod
     def disassemble(cls, datum):
@@ -157,7 +156,7 @@ class Model(BasicWrapper):
             if self.id:
                 self._force()
             else:
-                self._representation = self._fill_out({})
+                self.id, self._representation = self.__class__._fill_out({})
         return self._representation.get(name, None)
 
     def _set_item(self, name, value):
@@ -165,7 +164,7 @@ class Model(BasicWrapper):
             if self.id:
                 self._force()
             else:
-                self._representation = self._fill_out({})
+                self.id, self._representation = self.__class__._fill_out({})
         self._representation[name] = value
 
     def __getattr__(self, name):
@@ -210,7 +209,9 @@ class Model(BasicWrapper):
         from .http import FlaskViewModelGetter
         m = FlaskViewModelGetter(self.__class__)(self.id)
         self.__class__.validate(m)
-        self._representation = self._fill_out(m)
+        id, self._representation = self.__class__._fill_out(m)
+        if self.id != id:
+            raise ValidationError("Expected id: %s, actual: %s" % (self.id, id))
 
 
 
