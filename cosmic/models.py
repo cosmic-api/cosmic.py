@@ -34,7 +34,7 @@ class ModelSerializer(BasicWrapper):
         class M(Model):
             properties = datum["data_schema"].param.items()
             query_fields = datum["query_fields"]
-            links = datum["links"]
+            links = datum["links"].items()
         M.__name__ = str(datum["name"])
         prep_model(M)
         return M
@@ -84,13 +84,13 @@ class Model(BasicWrapper):
     """A data type definition attached to an API."""
     query_fields = []
     links = []
-    _representation_data = None
-    _representation_links = None
-    id = None
 
     def __init__(self, data=None):
+        self.id = None
         if data:
-            self._representation_data = data
+            self._representation = self._fill_out(data)
+        else:
+            self._representation = None
 
     @property
     def href(self):
@@ -99,7 +99,8 @@ class Model(BasicWrapper):
     @classmethod
     def assemble(cls, datum):
         inst = cls()
-        inst._fill_out(datum)
+        cls.validate(datum)
+        inst._representation = inst._fill_out(datum)
         return inst
 
     @staticmethod
@@ -110,29 +111,28 @@ class Model(BasicWrapper):
         return parts[-1]
 
     def _fill_out(self, datum):
+        rep = {}
         links = datum.pop("_links", {})
-        self.validate(datum)
-        self._representation_links = {}
         for name in OrderedDict(self.links).keys():
             if name in links:
                 url = links[name]["href"]
                 model_cls = OrderedDict(self.links)[name]["schema"]
                 id = Model.id_from_url(url, model_cls)
-                self._set_link(name, model_cls.get_by_id(id))
+                rep[name] = model_cls.get_by_id(id)
             else:
-                self._set_link(name, None)
-        self._representation_data = {}
+                rep[name] = None
         for name in OrderedDict(self.properties).keys():
             if name in datum:
-                self._set_data(name, datum[name])
+                rep[name] = datum[name]
             else:
-                self._set_data(name, None)
+                rep[name] = None
         if "self" in links:
             id = Model.id_from_url(links["self"]["href"], self.__class__)
             if self.id == None:
                 self.id = id
             elif self.id != id:
                 raise ValidationError("Expected id: %s, actual: %s" % (self.id, id))
+        return rep
 
     @classmethod
     def disassemble(cls, datum):
@@ -140,67 +140,43 @@ class Model(BasicWrapper):
         if hasattr(datum, "id"):
             links["self"] = {"href": datum.href}
         for name, link in OrderedDict(cls.links).items():
-            value = datum._get_link(name)
+            value = datum._get_item(name)
             if value != None:
                 links[name] = {"href": value.href}
         d = {}
         if links:
             d["_links"] = links
         for name in OrderedDict(cls.properties).keys():
-            value = datum._get_data(name)
+            value = datum._get_item(name)
             if value != None:
                 d[name] = value
         return d
 
-    def _get_data(self, name):
-        if self._representation_data == None:
+    def _get_item(self, name):
+        if self._representation == None:
             if self.id:
                 self._force()
             else:
-                self._fill_out({})
-        return self._representation_data.get(name, None)
+                self._representation = self._fill_out({})
+        return self._representation.get(name, None)
 
-    def _get_link(self, name):
-        if self._representation_links == None:
+    def _set_item(self, name, value):
+        if self._representation == None:
             if self.id:
                 self._force()
             else:
-                self._fill_out({})
-        return self._representation_links.get(name, None)
-
-    def _set_data(self, name, value):
-        if self._representation_data == None:
-            if self.id:
-                self._force()
-            else:
-                self._fill_out({})
-        if value == None and name in self._representation_data:
-            del self._representation_data[name]
-        self._representation_data[name] = value
-
-    def _set_link(self, name, value):
-        if self._representation_links == None:
-            if self.id:
-                self._force()
-            else:
-                self._fill_out({})
-        if value == None and name in self._representation_links:
-            del self._representation_links[name]
-        self._representation_links[name] = value
+                self._representation = self._fill_out({})
+        self._representation[name] = value
 
     def __getattr__(self, name):
-        if name in OrderedDict(self.links).keys():
-            return self._get_link(name)
-        elif name in OrderedDict(self.properties).keys():
-            return self._get_data(name)
+        if name in OrderedDict(self.properties + self.links).keys():
+            return self._get_item(name)
         else:
             raise AttributeError()
 
     def __setattr__(self, name, value):
-        if name in OrderedDict(self.links).keys():
-            return self._set_link(name, value)
-        elif name in OrderedDict(self.properties).keys():
-            return self._set_data(name, value)
+        if name in OrderedDict(self.properties + self.links).keys():
+            return self._set_item(name, value)
         else:
             super(Model, self).__setattr__(name, value)
 
@@ -229,7 +205,9 @@ class Model(BasicWrapper):
 
     def _force(self):
         from .http import FlaskViewModelGetter
-        self._fill_out(FlaskViewModelGetter(self.__class__)(self.id))
+        m = FlaskViewModelGetter(self.__class__)(self.id)
+        self.__class__.validate(m)
+        self._representation = self._fill_out(m)
 
 
 
