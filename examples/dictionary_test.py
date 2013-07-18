@@ -149,6 +149,21 @@ class TestDictionary(TestCase):
         self._test_save_data(self.remote_dictionary.models.Word)
 
 
+    def _test_create_model(self, word_model):
+        c = copy.deepcopy(langdb)
+        with DBContext(c) as dbctx:
+            birdo = word_model({"text": "birdo"})
+            self.assertEqual(birdo.id, None)
+            birdo.save()
+            self.assertEqual(birdo.id, "2")
+
+    def test_local_create_model(self):
+        self._test_create_model(Word)
+
+    def test_remote_create_model(self):
+        self._test_create_model(self.remote_dictionary.models.Word)
+
+
     def _test_delete(self, word_model):
         c = copy.deepcopy(langdb)
         with DBContext(c) as dbctx:

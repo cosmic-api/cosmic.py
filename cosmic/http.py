@@ -195,7 +195,7 @@ class FlaskViewAction(FlaskView):
         return {
             "url": self.url,
             "data": json_to_string(serialized),
-            "method": "POST",
+            "method": self.method,
             "headers": {'Content-Type': 'application/json'}
         }
 
@@ -312,6 +312,44 @@ class FlaskViewModelPutter(FlaskView):
     def parse_response(self, res):
         if res.status_code == 204:
             return
+        else:
+            raise response_to_error(res)
+
+
+
+class FlaskViewModelPoster(FlaskView):
+    method = "POST"
+
+    def __init__(self, model_cls):
+        self.model_cls = model_cls
+        self.url = "/%s" % self.model_cls.__name__
+        self.endpoint = "list_post_%s" % self.model_cls.__name__
+        if hasattr(model_cls.api, "_request"):
+            self._request = model_cls.api._request
+
+    def handler(self):
+        try:
+            request.payload = string_to_json(request.data)
+        except ValueError:
+            return error_response("Invalid JSON", 400)
+        model = self.model_cls.from_json(request.payload.datum)
+        model.save()
+        return ("", 201, {
+            "Location": model.href
+        })
+
+    def make_request(self, inst):
+        return {
+            "url": self.url,
+            "data": json.dumps(self.model_cls.to_json(inst)),
+            "method": self.method,
+            "headers": {"Content-Type": "application/json"}
+        }
+
+    def parse_response(self, res):
+        from cosmic.models import Model
+        if res.status_code == 201:
+            return self.model_cls.id_from_url(res.headers["Location"])
         else:
             raise response_to_error(res)
 

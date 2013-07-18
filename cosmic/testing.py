@@ -45,7 +45,13 @@ class DBModel(Model):
         return ret
 
     def save(self):
-        db[self.__class__.db_table][int(self.id)] = self.__class__.to_json(self)
+        table = db[self.__class__.db_table]
+        representation = self.__class__.to_json(self)
+        if not self.id:
+            self.id = str(len(table))
+            table.append(representation)
+        else:
+            table[int(self.id)] = representation
 
     def delete(self):
         db[self.__class__.db_table][int(self.id)] = None

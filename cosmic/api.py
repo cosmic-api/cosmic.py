@@ -123,6 +123,12 @@ class API(BasicWrapper):
                 endpoint=endpoint)
         for name, model_cls in self._models.items():
 
+            view_func = FlaskViewModelPoster(model_cls)
+            blueprint.add_url_rule(view_func.url,
+                view_func=view_func.view,
+                methods=[view_func.method],
+                endpoint=view_func.endpoint)
+
             view_func = FlaskViewListGetter(model_cls)
             blueprint.add_url_rule(view_func.url,
                 view_func=view_func.view,

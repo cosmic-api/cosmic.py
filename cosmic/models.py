@@ -103,11 +103,11 @@ class Model(BasicWrapper):
         inst._representation = inst._fill_out(datum)
         return inst
 
-    @staticmethod
-    def id_from_url(url, model_cls):
+    @classmethod
+    def id_from_url(cls, url):
         parts = url.split('/')
-        if parts[-2] != model_cls.__name__:
-            raise ValidationError("Invalid url for %s link: %s" % (model_cls.__name__, url))
+        if parts[-2] != cls.__name__:
+            raise ValidationError("Invalid url for %s link: %s" % (cls.__name__, url))
         return parts[-1]
 
     def _fill_out(self, datum):
@@ -117,7 +117,7 @@ class Model(BasicWrapper):
             if name in links:
                 url = links[name]["href"]
                 model_cls = OrderedDict(self.links)[name]["schema"]
-                id = Model.id_from_url(url, model_cls)
+                id = model_cls.id_from_url(url)
                 rep[name] = model_cls.get_by_id(id)
             else:
                 rep[name] = None
@@ -127,7 +127,7 @@ class Model(BasicWrapper):
             else:
                 rep[name] = None
         if "self" in links:
-            id = Model.id_from_url(links["self"]["href"], self.__class__)
+            id = self.__class__.id_from_url(links["self"]["href"])
             if self.id == None:
                 self.id = id
             elif self.id != id:
@@ -137,7 +137,7 @@ class Model(BasicWrapper):
     @classmethod
     def disassemble(cls, datum):
         links = OrderedDict()
-        if hasattr(datum, "id"):
+        if datum.id:
             links["self"] = {"href": datum.href}
         for name, link in OrderedDict(cls.links).items():
             value = datum._get_item(name)
@@ -181,8 +181,11 @@ class Model(BasicWrapper):
             super(Model, self).__setattr__(name, value)
 
     def save(self):
-        from .http import FlaskViewModelPutter
-        return FlaskViewModelPutter(self.__class__)(self)
+        from .http import FlaskViewModelPutter, FlaskViewModelPoster
+        if self.id:
+            return FlaskViewModelPutter(self.__class__)(self)
+        else:
+            self.id = FlaskViewModelPoster(self.__class__)(self)
 
     def delete(self):
         from .http import FlaskViewModelDeleter
