@@ -169,7 +169,10 @@ class FlaskView(object):
 
             # Make sure the current TypeMap is on the Teleport context stack
             with cosmos:
-                return make_response(self.handler(req))
+                if hasattr(self, "parse_request"):
+                    return make_response(self.handler(**self.parse_request(req)))
+                else:
+                    return make_response(self.handler(req))
         except Exception as err:
             if current_app.debug:
                 raise
@@ -177,7 +180,7 @@ class FlaskView(object):
                 return error_to_response(err)
 
     def __call__(self, *args, **kwargs):
-        r = self.make_request(*args, **kwargs)
+        r = self.build_request(*args, **kwargs)
 
         if self.json_request:
             data = json_to_string(r.get('json', None))
@@ -236,7 +239,7 @@ class FlaskViewAction(FlaskView):
             body = json.dumps(data.datum)
             return (body, 200, {"Content-Type": "application/json"})
 
-    def make_request(self, *args, **kwargs):
+    def build_request(self, *args, **kwargs):
         packed = pack_action_arguments(*args, **kwargs)
         return {
             "json": serialize_json(self.function.accepts, packed)
@@ -276,15 +279,18 @@ class ModelGetter(FlaskView):
         self.url = "/%s/<id>" % self.model_cls.__name__
         self.endpoint = "doc_get_%s" % self.model_cls.__name__
 
-    def handler(self, req):
-        model = self.model_cls.get_by_id(req['url_args']['id'])
+    def handler(self, id):
+        model = self.model_cls.get_by_id(id)
         if model == None:
             raise NotFound
         body = json.dumps(self.model_cls.to_json(model))
         return (body, 200, {"Content-Type": "application/json"})
 
-    def make_request(self, id):
+    def build_request(self, id):
         return {'url_args': {'id': id}}
+
+    def parse_request(self, req):
+        return {'id': req['url_args']['id']}
 
     def parse_response(self, res):
         if res.status_code == 404:
@@ -325,18 +331,23 @@ class ModelPutter(FlaskView):
         self.url = "/%s/<id>" % self.model_cls.__name__
         self.endpoint = "doc_put_%s" % self.model_cls.__name__
 
-    def handler(self, req):
-        model = self.model_cls.get_by_id(req['url_args']['id'])
-        if model == None:
+    def handler(self, id, inst):
+        if self.model_cls.get_by_id(id) == None:
             raise NotFound
-        model = self.model_cls.from_json(req['json'].datum)
-        model.save()
+        assert inst.id == id
+        inst.save()
         return ("", 204, {})
 
-    def make_request(self, inst):
+    def build_request(self, id, inst):
         return {
             'json': Box(self.model_cls.to_json(inst)),
-            'url_args': {'id': inst.id}
+            'url_args': {'id': id}
+        }
+
+    def parse_request(self, req):
+        return {
+            'id': req['url_args']['id'],
+            'inst': self.model_cls.from_json(req['json'].datum)
         }
 
     def parse_response(self, res):
@@ -356,15 +367,17 @@ class ListPoster(FlaskView):
         self.url = "/%s" % self.model_cls.__name__
         self.endpoint = "list_post_%s" % self.model_cls.__name__
 
-    def handler(self, req):
-        model = self.model_cls.from_json(req['json'].datum)
-        model.save()
+    def handler(self, inst):
+        inst.save()
         return ("", 201, {
-            "Location": model.href
+            "Location": inst.href
         })
 
-    def make_request(self, inst):
+    def build_request(self, inst):
         return {'json': Box(self.model_cls.to_json(inst))}
+
+    def parse_request(self, req):
+        return {'inst': self.model_cls.from_json(req['json'].datum)}
 
     def parse_response(self, res):
         if res.status_code == 201:
@@ -382,15 +395,17 @@ class ModelDeleter(FlaskView):
         self.url = "/%s/<id>" % self.model_cls.__name__
         self.endpoint = "doc_delete_%s" % self.model_cls.__name__
 
-    def handler(self, req):
-        model = self.model_cls.get_by_id(req['url_args']['id'])
-        if model == None:
+    def handler(self, inst):
+        if inst == None:
             raise NotFound
-        model.delete()
+        inst.delete()
         return ("", 204, {})
 
-    def make_request(self, inst):
+    def build_request(self, inst):
         return {'url_args': {'id': inst.id}}
+
+    def parse_request(self, req):
+        return {'inst': self.model_cls.get_by_id(req['url_args']['id'])}
 
     def parse_response(self, res):
         if res.status_code == 204:
@@ -410,8 +425,7 @@ class ListGetter(FlaskView):
         self.url = "/%s" % self.model_cls.__name__
         self.endpoint = "list_get_%s" % self.model_cls.__name__
 
-    def handler(self, req):
-        query = req.get('query', None)
+    def handler(self, **query):
         self_link = self.url
 
         if self.query_schema != None and query:
@@ -427,8 +441,11 @@ class ListGetter(FlaskView):
         body["_embedded"][self.model_cls.__name__] = map(self.model_cls.to_json, l)
         return (json.dumps(body), 200, {"Content-Type": "application/json"})
 
-    def make_request(self, **query):
+    def build_request(self, **query):
         return {"query": query}
+
+    def parse_request(self, req):
+        return req.get('query', {})
 
     def parse_response(self, res):
         if res.status_code == 200:

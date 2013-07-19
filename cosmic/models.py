@@ -190,7 +190,7 @@ class Model(BasicWrapper):
 
     def save(self):
         if self.id:
-            return self.__class__._model_putter(self)
+            return self.__class__._model_putter(self.id, self)
         else:
             self.id = self.__class__._list_poster(self)
 
