@@ -139,6 +139,7 @@ class TestDictionary(TestCase):
             hundo = word_model.get_by_id("1")
             hundo.text = "Hundo"
             self.assertEqual(hundo.text, "Hundo")
+            self.assertEqual(hundo.id, "1")
             hundo.save()
             self.assertEqual(c["words"][1]["text"], "Hundo")
 

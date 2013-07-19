@@ -33,6 +33,10 @@ class WerkzeugTestClientPlugin(object):
         self.client = client
 
     def __call__(self, url, **kwargs):
+        # Content-Type header seems to be ignored, content_type as kwarg
+        # works. Possibly a bug in Flask/Werkzeug.
+        if 'headers' in kwargs and 'Content-Type' in kwargs['headers']:
+            kwargs['content_type'] = kwargs['headers'].pop('Content-Type')
         r = self.client.open(path=url, **kwargs)
         resp = requests.Response()
         resp._content = r.data
@@ -122,7 +126,7 @@ def get_payload_from_request(req):
     if not bytes:
         return None
     if req.mimetype != "application/json":
-        raise SpecError('Content-Type must be "application/json" got %s instead' % req.mimetype)
+        raise SpecError('Content-Type must be "application/json" got "%s" instead' % req.mimetype)
     charset = req.mimetype_params.get("charset", "utf-8")
     if charset.lower() != "utf-8":
         raise SpecError('Content-Type charset must be "utf-8" got %s instead' % charset)
@@ -147,6 +151,7 @@ def reverse_werkzeug_url(url, values):
 
 class FlaskView(object):
     json_request = False
+    query_schema = None
 
     def view(self, *args, **kwargs):
         try:
@@ -162,7 +167,30 @@ class FlaskView(object):
                 return error_to_response(err)
 
     def __call__(self, *args, **kwargs):
-        req = self.make_request(*args, **kwargs)
+        r = self.make_request(*args, **kwargs)
+        if self.json_request:
+            data = json_to_string(r.get('json', None))
+        else:
+            data = r.get('data', "")
+        url_args = r.get('url_args', {})
+        headers = r.get('headers', {})
+        query = r.get('query', {})
+        url = reverse_werkzeug_url(self.url, url_args)
+
+        if self.json_request and data:
+            headers["Content-Type"] = "application/json"
+
+        if self.query_schema != None and query:
+            query_string = self.query_schema.to_json(query)
+            if query_string:
+                url += "?%s" % query_string
+
+        req = {
+            "url": url,
+            "method": self.method,
+            "data": data,
+            "headers": headers
+        }
         if hasattr(self, "_request"):
             res = self._request(**req)
         else:
@@ -196,14 +224,8 @@ class FlaskViewAction(FlaskView):
 
     def make_request(self, *args, **kwargs):
         packed = pack_action_arguments(*args, **kwargs)
-
-        serialized = serialize_json(self.function.accepts, packed)
-
         return {
-            "url": self.url,
-            "data": json_to_string(serialized),
-            "method": self.method,
-            "headers": {'Content-Type': 'application/json'}
+            "json": serialize_json(self.function.accepts, packed)
         }
 
     def parse_response(self, res):
@@ -248,11 +270,7 @@ class ModelGetter(FlaskView):
         return (body, 200, {"Content-Type": "application/json"})
 
     def make_request(self, id):
-        return {
-            "url": reverse_werkzeug_url(self.url, {'id': id}),
-            "method": self.method,
-            "headers": {"Content-Type": "application/json"}
-        }
+        return {'url_args': {'id': id}}
 
     def parse_response(self, res):
         if res.status_code == 404:
@@ -286,6 +304,7 @@ class ModelGetter(FlaskView):
 
 class ModelPutter(FlaskView):
     method = "PUT"
+    json_request = True
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
@@ -296,20 +315,14 @@ class ModelPutter(FlaskView):
         model = self.model_cls.get_by_id(id)
         if model == None:
             raise NotFound
-        try:
-            request.payload = string_to_json(request.data)
-        except ValueError:
-            return error_response("Invalid JSON", 400)
         model = self.model_cls.from_json(request.payload.datum)
         model.save()
         return ("", 204, {})
 
     def make_request(self, inst):
         return {
-            "url": reverse_werkzeug_url(self.url, {'id': inst.id}),
-            "data": json.dumps(self.model_cls.to_json(inst)),
-            "method": self.method,
-            "headers": {"Content-Type": "application/json"}
+            'json': Box(self.model_cls.to_json(inst)),
+            'url_args': {'id': inst.id}
         }
 
     def parse_response(self, res):
@@ -322,6 +335,7 @@ class ModelPutter(FlaskView):
 
 class ListPoster(FlaskView):
     method = "POST"
+    json_request = True
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
@@ -329,10 +343,6 @@ class ListPoster(FlaskView):
         self.endpoint = "list_post_%s" % self.model_cls.__name__
 
     def handler(self):
-        try:
-            request.payload = string_to_json(request.data)
-        except ValueError:
-            return error_response("Invalid JSON", 400)
         model = self.model_cls.from_json(request.payload.datum)
         model.save()
         return ("", 201, {
@@ -340,15 +350,9 @@ class ListPoster(FlaskView):
         })
 
     def make_request(self, inst):
-        return {
-            "url": self.url,
-            "data": json.dumps(self.model_cls.to_json(inst)),
-            "method": self.method,
-            "headers": {"Content-Type": "application/json"}
-        }
+        return {'json': Box(self.model_cls.to_json(inst))}
 
     def parse_response(self, res):
-        from cosmic.models import Model
         if res.status_code == 201:
             return self.model_cls.id_from_url(res.headers["Location"])
         else:
@@ -372,11 +376,7 @@ class ModelDeleter(FlaskView):
         return ("", 204, {})
 
     def make_request(self, inst):
-        return {
-            "url": reverse_werkzeug_url(self.url, {'id': inst.id}),
-            "method": self.method,
-            "headers": {"Content-Type": "application/json"}
-        }
+        return {'url_args': {'id': inst.id}}
 
     def parse_response(self, res):
         if res.status_code == 204:
@@ -391,6 +391,8 @@ class ListGetter(FlaskView):
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
+        if self.model_cls.query_fields != None:
+            self.query_schema = URLParams(self.model_cls.query_fields)
         self.url = "/%s" % self.model_cls.__name__
         self.endpoint = "list_get_%s" % self.model_cls.__name__
 
@@ -415,18 +417,7 @@ class ListGetter(FlaskView):
         return (json.dumps(body), 200, {"Content-Type": "application/json"})
 
     def make_request(self, **query):
-        url = self.url
-
-        if self.model_cls.query_fields != None:
-            query_schema = URLParams(self.model_cls.query_fields)
-            query_string = query_schema.to_json(query)
-            if query_string:
-                url += "?%s" % query_string
-
-        return {
-            "url": url,
-            "method": self.method
-        }
+        return {"query": query}
 
     def parse_response(self, res):
         if res.status_code == 200:

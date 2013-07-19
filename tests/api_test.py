@@ -282,7 +282,8 @@ class TestRemoteAPI(TestCase):
             self.assertEqual(self.cookbook.actions.noop(), None)
             mock_post.assert_called_with(
                 url='http://localhost:8881/actions/noop',
-                headers={'Content-Type': 'application/json'},
+                # Content-Type not added when data is empty
+                headers={},
                 method="POST",
                 data="")
 
