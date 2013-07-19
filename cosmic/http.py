@@ -153,13 +153,23 @@ class FlaskView(object):
     json_request = False
     query_schema = None
 
-    def view(self, *args, **kwargs):
+    def view(self, **url_args):
         try:
+            req = {
+                'url_args': url_args,
+                'headers': request.headers
+            }
             if self.json_request:
-                request.payload = get_payload_from_request(request)
+                req['json'] = get_payload_from_request(request)
+            else:
+                req['data'] = request.get_data()
+
+            if self.query_schema != None:
+                req['query'] = self.query_schema.from_multi_dict(request.args)
+
             # Make sure the current TypeMap is on the Teleport context stack
             with cosmos:
-                return make_response(self.handler(*args, **kwargs))
+                return make_response(self.handler(req))
         except Exception as err:
             if current_app.debug:
                 raise
@@ -168,10 +178,12 @@ class FlaskView(object):
 
     def __call__(self, *args, **kwargs):
         r = self.make_request(*args, **kwargs)
+
         if self.json_request:
             data = json_to_string(r.get('json', None))
         else:
             data = r.get('data', "")
+
         url_args = r.get('url_args', {})
         headers = r.get('headers', {})
         query = r.get('query', {})
@@ -191,10 +203,12 @@ class FlaskView(object):
             "data": data,
             "headers": headers
         }
+
         if hasattr(self, "_request"):
             res = self._request(**req)
         else:
             res = self.model_cls.api._request(**req)
+
         return self.parse_response(res)
 
     def add_to_blueprint(self, blueprint):
@@ -214,8 +228,8 @@ class FlaskViewAction(FlaskView):
         if hasattr(api, '_request'):
             self._request = api._request
 
-    def handler(self):
-        data = self.function.json_to_json(request.payload)
+    def handler(self, req):
+        data = self.function.json_to_json(req['json'])
         if data == None:
             return ("", 204, {})
         else:
@@ -262,8 +276,8 @@ class ModelGetter(FlaskView):
         self.url = "/%s/<id>" % self.model_cls.__name__
         self.endpoint = "doc_get_%s" % self.model_cls.__name__
 
-    def handler(self, id):
-        model = self.model_cls.get_by_id(id)
+    def handler(self, req):
+        model = self.model_cls.get_by_id(req['url_args']['id'])
         if model == None:
             raise NotFound
         body = json.dumps(self.model_cls.to_json(model))
@@ -311,11 +325,11 @@ class ModelPutter(FlaskView):
         self.url = "/%s/<id>" % self.model_cls.__name__
         self.endpoint = "doc_put_%s" % self.model_cls.__name__
 
-    def handler(self, id):
-        model = self.model_cls.get_by_id(id)
+    def handler(self, req):
+        model = self.model_cls.get_by_id(req['url_args']['id'])
         if model == None:
             raise NotFound
-        model = self.model_cls.from_json(request.payload.datum)
+        model = self.model_cls.from_json(req['json'].datum)
         model.save()
         return ("", 204, {})
 
@@ -342,8 +356,8 @@ class ListPoster(FlaskView):
         self.url = "/%s" % self.model_cls.__name__
         self.endpoint = "list_post_%s" % self.model_cls.__name__
 
-    def handler(self):
-        model = self.model_cls.from_json(request.payload.datum)
+    def handler(self, req):
+        model = self.model_cls.from_json(req['json'].datum)
         model.save()
         return ("", 201, {
             "Location": model.href
@@ -368,8 +382,8 @@ class ModelDeleter(FlaskView):
         self.url = "/%s/<id>" % self.model_cls.__name__
         self.endpoint = "doc_delete_%s" % self.model_cls.__name__
 
-    def handler(self, id):
-        model = self.model_cls.get_by_id(id)
+    def handler(self, req):
+        model = self.model_cls.get_by_id(req['url_args']['id'])
         if model == None:
             raise NotFound
         model.delete()
@@ -396,15 +410,12 @@ class ListGetter(FlaskView):
         self.url = "/%s" % self.model_cls.__name__
         self.endpoint = "list_get_%s" % self.model_cls.__name__
 
-    def handler(self):
-        query = None
-        self_link = "/%s" % self.model_cls.__name__
+    def handler(self, req):
+        query = req.get('query', None)
+        self_link = self.url
 
-        if self.model_cls.query_fields != None:
-            query_schema = URLParams(self.model_cls.query_fields)
-            query = query_schema.from_multi_dict(request.args)
-            if query:
-                self_link += "?" + query_schema.to_json(query)
+        if self.query_schema != None and query:
+            self_link += "?" + self.query_schema.to_json(query)
 
         l = self.model_cls.get_list(**query)
         body = {
