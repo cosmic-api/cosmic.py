@@ -87,6 +87,47 @@ class URLParams(ParametrizedWrapper):
         return md
 
 
+class CosmicRequest(object):
+
+    def __init__(self, data="", url_args={}, query=None, headers={}):
+        self.data = data
+        self.url_args = url_args
+        self.query = query
+        self.headers = headers
+
+    @classmethod
+    def from_flask_request(cls, req, url_args={}):
+        req = {
+            'url_args': url_args,
+            'headers': req.headers,
+            'data': req.get_data(),
+        }
+        if cls.query_schema != None:
+            req['query'] = cls.query_schema.from_multi_dict(req.args)
+        return cls(**req)
+
+class CosmicJSONRequest(CosmicRequest):
+
+    def __init__(self, json=None, url_args={}, query=None, headers={}):
+        if json:
+            headers["Content-Type"] = "application/json"
+        self.json = json
+        super(CosmicJSONRequest, self).__init__(
+            data=json_to_string(json),
+            url_args=url_args,
+            query=query,
+            headers=headers)
+
+    @classmethod
+    def from_flask_request(cls, req, url_args={}):
+        req = {
+            'url_args': url_args,
+            'headers': req.headers,
+            'json': get_payload_from_request(req)
+        }
+        if cls.query_schema != None:
+            req['query'] = cls.query_schema.from_multi_dict(req.args)
+        return cls(**req)
 
 
 def error_response(message, code):
@@ -150,23 +191,11 @@ def reverse_werkzeug_url(url, values):
 
 
 class FlaskView(object):
-    json_request = False
     query_schema = None
 
     def view(self, **url_args):
         try:
-            req = {
-                'url_args': url_args,
-                'headers': request.headers
-            }
-            if self.json_request:
-                req['json'] = get_payload_from_request(request)
-            else:
-                req['data'] = request.get_data()
-
-            if self.query_schema != None:
-                req['query'] = self.query_schema.from_multi_dict(request.args)
-
+            req = self.request_cls.from_flask_request(request, url_args)
             # Make sure the current TypeMap is on the Teleport context stack
             with cosmos:
                 return make_response(self.handler(req))
@@ -179,29 +208,18 @@ class FlaskView(object):
     def __call__(self, *args, **kwargs):
         r = self.make_request(*args, **kwargs)
 
-        if self.json_request:
-            data = json_to_string(r.get('json', None))
-        else:
-            data = r.get('data', "")
+        url = reverse_werkzeug_url(self.url, r.url_args)
 
-        url_args = r.get('url_args', {})
-        headers = r.get('headers', {})
-        query = r.get('query', {})
-        url = reverse_werkzeug_url(self.url, url_args)
-
-        if self.json_request and data:
-            headers["Content-Type"] = "application/json"
-
-        if self.query_schema != None and query:
-            query_string = self.query_schema.to_json(query)
+        if self.query_schema != None and r.query:
+            query_string = self.query_schema.to_json(r.query)
             if query_string:
                 url += "?%s" % query_string
 
         req = {
             "url": url,
             "method": self.method,
-            "data": data,
-            "headers": headers
+            "data": r.data,
+            "headers": r.headers
         }
 
         if hasattr(self, "_request"):
@@ -218,9 +236,10 @@ class FlaskView(object):
             endpoint=self.endpoint)
 
 
+
 class FlaskViewAction(FlaskView):
     method = "POST"
-    json_request = True
+    request_cls = CosmicJSONRequest
 
     def __init__(self, function, url, api):
         self.function = function
@@ -238,9 +257,8 @@ class FlaskViewAction(FlaskView):
 
     def make_request(self, *args, **kwargs):
         packed = pack_action_arguments(*args, **kwargs)
-        return {
-            "json": serialize_json(self.function.accepts, packed)
-        }
+        json = serialize_json(self.function.accepts, packed)
+        return CosmicJSONRequest(json=json)
 
     def parse_response(self, res):
         if res.status_code != requests.codes.ok:
@@ -284,7 +302,7 @@ class ModelGetter(FlaskView):
         return (body, 200, {"Content-Type": "application/json"})
 
     def make_request(self, id):
-        return {'url_args': {'id': id}}
+        return CosmicRequest(url_args={'id': id})
 
     def parse_response(self, res):
         if res.status_code == 404:
@@ -318,7 +336,7 @@ class ModelGetter(FlaskView):
 
 class ModelPutter(FlaskView):
     method = "PUT"
-    json_request = True
+    request_cls = CosmicJSONRequest
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
@@ -334,10 +352,9 @@ class ModelPutter(FlaskView):
         return ("", 204, {})
 
     def make_request(self, inst):
-        return {
-            'json': Box(self.model_cls.to_json(inst)),
-            'url_args': {'id': inst.id}
-        }
+        json = Box(self.model_cls.to_json(inst))
+        url_args = {'id': inst.id}
+        return CosmicJSONRequest(json=json, url_args=url_args)
 
     def parse_response(self, res):
         if res.status_code == 204:
@@ -349,7 +366,7 @@ class ModelPutter(FlaskView):
 
 class ListPoster(FlaskView):
     method = "POST"
-    json_request = True
+    request_cls = CosmicJSONRequest
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
@@ -364,7 +381,8 @@ class ListPoster(FlaskView):
         })
 
     def make_request(self, inst):
-        return {'json': Box(self.model_cls.to_json(inst))}
+        json = Box(self.model_cls.to_json(inst))
+        return CosmicJSONRequest(json=json)
 
     def parse_response(self, res):
         if res.status_code == 201:
@@ -390,7 +408,7 @@ class ModelDeleter(FlaskView):
         return ("", 204, {})
 
     def make_request(self, inst):
-        return {'url_args': {'id': inst.id}}
+        return CosmicRequest(url_args={'id': inst.id})
 
     def parse_response(self, res):
         if res.status_code == 204:
@@ -402,11 +420,15 @@ class ModelDeleter(FlaskView):
 
 class ListGetter(FlaskView):
     method = "GET"
+    request_cls = CosmicRequest
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
         if self.model_cls.query_fields != None:
             self.query_schema = URLParams(self.model_cls.query_fields)
+            class request(CosmicRequest):
+                query_schema = self.query_schema
+            self.request_cls = request
         self.url = "/%s" % self.model_cls.__name__
         self.endpoint = "list_get_%s" % self.model_cls.__name__
 
@@ -428,7 +450,7 @@ class ListGetter(FlaskView):
         return (json.dumps(body), 200, {"Content-Type": "application/json"})
 
     def make_request(self, **query):
-        return {"query": query}
+        return CosmicRequest(query=query)
 
     def parse_response(self, res):
         if res.status_code == 200:
