@@ -121,7 +121,7 @@ def response_to_error(res):
         e.remote = True
         return e
 
-def get_payload_from_request(req):
+def get_payload_from_http_message(req):
     bytes = req.get_data()
     if not bytes:
         return None
@@ -151,6 +151,7 @@ def reverse_werkzeug_url(url, values):
 
 class FlaskView(object):
     json_request = False
+    json_response = False
     query_schema = None
 
     def view(self, **url_args):
@@ -160,7 +161,7 @@ class FlaskView(object):
                 'headers': request.headers
             }
             if self.json_request:
-                req['json'] = get_payload_from_request(request)
+                req['json'] = get_payload_from_http_message(request)
             else:
                 req['data'] = request.get_data()
 
@@ -200,19 +201,33 @@ class FlaskView(object):
             if query_string:
                 url += "?%s" % query_string
 
-        req = {
-            "url": url,
-            "method": self.method,
-            "data": data,
-            "headers": headers
+        if hasattr(self, "_request"):
+            req_func = self._request
+        else:
+            req_func = self.model_cls.api._request
+
+        res = req_func(
+            url=url,
+            method=self.method,
+            data=data,
+            headers=headers)
+
+        r = {
+            'code': res.status_code,
+            'headers': res.headers
         }
 
-        if hasattr(self, "_request"):
-            res = self._request(**req)
+        if self.json_response:
+            try:
+                r['json'] = string_to_json(res.text)
+            except ValueError:
+                e = InternalServerError("Call returned an invalid value")
+                e.remote = True
+                raise e
         else:
-            res = self.model_cls.api._request(**req)
+            r['data'] = res.text
 
-        return self.parse_response(res)
+        return self.parse_response(r)
 
     def add_to_blueprint(self, blueprint):
         blueprint.add_url_rule(self.url,
@@ -224,6 +239,7 @@ class FlaskView(object):
 class FlaskViewAction(FlaskView):
     method = "POST"
     json_request = True
+    json_response = True
 
     def __init__(self, function, url, api):
         self.function = function
@@ -246,12 +262,12 @@ class FlaskViewAction(FlaskView):
         }
 
     def parse_response(self, res):
-        if res.status_code != requests.codes.ok:
+        if res['code'] != requests.codes.ok:
             message = None
-            if res.json and 'error' in res.json:
-                message = res.json['error']
+            if res['json'] and 'error' in res['json'].datum:
+                message = res['json'].datum['error']
             try:
-                abort(res.status_code, message)
+                abort(res['code'], message)
             except Exception as e:
                 # Flag the exception to specify that it came from a remote
                 # API. If this exception bubbles up to the web layer, a
@@ -259,8 +275,8 @@ class FlaskViewAction(FlaskView):
                 e.remote = True
                 raise
         try:
-            if self.function.returns and res.content != "":
-                return self.function.returns.from_json(res.json)
+            if self.function.returns and res['json']:
+                return self.function.returns.from_json(res['json'].datum)
             else:
                 return None
         except ValidationError:
@@ -273,6 +289,7 @@ class FlaskViewAction(FlaskView):
 
 class ModelGetter(FlaskView):
     method = "GET"
+    json_response = True
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
@@ -293,25 +310,25 @@ class ModelGetter(FlaskView):
         return {'id': req['url_args']['id']}
 
     def parse_response(self, res):
-        if res.status_code == 404:
+        if res['code'] == 404:
             return None
-        if res.status_code == 200:
+        if res['code'] == 200:
             e = InternalServerError("Call returned an invalid value")
             e.remote = True
-            if res.content == "":
+            if not res['json']:
                 raise e
             try:
-                return self.model_cls.schema.from_json(json.loads(res.content))
+                return self.model_cls.schema.from_json(res['json'].datum)
             except ValidationError:
                 raise e
             except ValueError:
                 raise e
         else:
             message = None
-            if res.json and 'error' in res.json:
+            if res['json'] and 'error' in res['json']:
                 message = res.json['error']
             try:
-                abort(res.status_code, message)
+                abort(res['code'], message)
             except Exception as e:
                 # Flag the exception to specify that it came from a remote
                 # API. If this exception bubbles up to the web layer, a
@@ -351,7 +368,7 @@ class ModelPutter(FlaskView):
         }
 
     def parse_response(self, res):
-        if res.status_code == 204:
+        if res['code'] == 204:
             return
         else:
             raise response_to_error(res)
@@ -380,8 +397,8 @@ class ListPoster(FlaskView):
         return {'inst': self.model_cls.from_json(req['json'].datum)}
 
     def parse_response(self, res):
-        if res.status_code == 201:
-            return self.model_cls.id_from_url(res.headers["Location"])
+        if res['code'] == 201:
+            return self.model_cls.id_from_url(res['headers']["Location"])
         else:
             raise response_to_error(res)
 
@@ -408,7 +425,7 @@ class ModelDeleter(FlaskView):
         return {'inst': self.model_cls.get_by_id(req['url_args']['id'])}
 
     def parse_response(self, res):
-        if res.status_code == 204:
+        if res['code'] == 204:
             return
         else:
             raise response_to_error(res)
@@ -417,6 +434,7 @@ class ModelDeleter(FlaskView):
 
 class ListGetter(FlaskView):
     method = "GET"
+    json_response = True
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
@@ -448,13 +466,13 @@ class ListGetter(FlaskView):
         return req.get('query', {})
 
     def parse_response(self, res):
-        if res.status_code == 200:
+        if res['code'] == 200:
             e = InternalServerError("Call returned an invalid value")
             e.remote = True
-            if res.content == "":
+            if not res['json']:
                 raise e
             try:
-                j = json.loads(res.content)
+                j = res['json'].datum
                 return map(self.model_cls.from_json, j["_embedded"][self.model_cls.__name__])
             except (ValidationError, ValueError, KeyError):
                 raise e

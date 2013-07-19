@@ -278,7 +278,7 @@ class TestRemoteAPI(TestCase):
     def test_remote_no_return_action(self):
         with patch.object(requests, 'request') as mock_post:
             mock_post.return_value.status_code = 200
-            mock_post.return_value.json = None
+            mock_post.return_value.text = ""
             self.assertEqual(self.cookbook.actions.noop(), None)
             mock_post.assert_called_with(
                 url='http://localhost:8881/actions/noop',

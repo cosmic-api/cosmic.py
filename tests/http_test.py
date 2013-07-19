@@ -158,21 +158,21 @@ class TestActionCallable(TestCase):
     def test_call_okay(self):
         with patch.object(requests, 'request') as mock_post:
             mock_post.return_value.status_code = 200
-            mock_post.return_value.content = "true"
+            mock_post.return_value.text = "true"
             mock_post.return_value.json = True
             self.assertEqual(self.callable(1), True)
 
     def test_call_okay_no_response(self):
         with patch.object(requests, 'request') as mock_post:
             mock_post.return_value.status_code = 200
-            mock_post.return_value.content = ""
+            mock_post.return_value.text = ""
             mock_post.return_value.json = None
             self.assertEqual(self.callable(1), None)
 
     def test_call_server_sent_wrong_type(self):
         with patch.object(requests, 'request') as mock_post:
             mock_post.return_value.status_code = 200
-            mock_post.return_value.content = "1"
+            mock_post.return_value.text = "1"
             mock_post.return_value.json = 1
             with self.assertRaises(InternalServerError) as cm:
                 self.callable(1)
@@ -181,15 +181,15 @@ class TestActionCallable(TestCase):
     def test_call_error_no_message(self):
         with patch.object(requests, 'request') as mock_post:
             mock_post.return_value.status_code = 400
-            mock_post.return_value.content = "WTF"
+            mock_post.return_value.text = "WTF"
             mock_post.return_value.json = None
-            with self.assertRaises(BadRequest):
+            with self.assertRaises(InternalServerError):
                 self.callable(1)
 
     def test_call_error_with_message(self):
         with patch.object(requests, 'request') as mock_post:
             mock_post.return_value.status_code = 500
-            mock_post.return_value.content = '{"error": "your mama"}'
+            mock_post.return_value.text = '{"error": "your mama"}'
             mock_post.return_value.json = {"error": "your mama"}
             with self.assertRaises(InternalServerError) as cm:
                 self.callable(1)
