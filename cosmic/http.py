@@ -108,18 +108,6 @@ def error_to_response(err):
     else:
         return error_response("Internal Server Error", 500)
 
-def response_to_error(res):
-    message = None
-    if res.json and 'error' in res.json:
-        message = res.json['error']
-    # Flag the exception to specify that it came from a remote
-    # API. If this exception bubbles up to the web layer, a
-    # generic 500 response will be returned
-    try:
-        abort(res.status_code, message)
-    except Exception as e:
-        e.remote = True
-        return e
 
 def get_payload_from_http_message(req):
     bytes = req.get_data()
@@ -152,6 +140,10 @@ def reverse_werkzeug_url(url, values):
 class FlaskView(object):
     json_request = False
     json_response = False
+
+    response_can_be_empty = True
+    response_must_be_empty = None
+
     query_schema = None
 
     def view(self, **url_args):
@@ -212,6 +204,14 @@ class FlaskView(object):
             data=data,
             headers=headers)
 
+        e = InternalServerError("Call returned an invalid value")
+        e.remote = True
+
+        is_empty = res.text == ""
+        if ((self.response_must_be_empty == True and not is_empty) or
+            (is_empty and self.response_can_be_empty == False)):
+            raise e
+
         r = {
             'code': res.status_code,
             'headers': res.headers
@@ -221,13 +221,27 @@ class FlaskView(object):
             try:
                 r['json'] = string_to_json(res.text)
             except ValueError:
-                e = InternalServerError("Call returned an invalid value")
-                e.remote = True
                 raise e
         else:
             r['data'] = res.text
 
-        return self.parse_response(r)
+        if r['code'] not in self.acceptable_response_codes:
+            message = None
+            if 'json' in r and r['json'] and type(r['json'].datum) == dict and 'error' in r['json'].datum:
+                message = r['json'].datum['error']
+            try:
+                abort(r['code'], message)
+            except Exception as e:
+                # Flag the exception to specify that it came from a remote
+                # API. If this exception bubbles up to the web layer, a
+                # generic 500 response will be returned
+                e.remote = True
+                raise
+
+        try:
+            return self.parse_response(r)
+        except ValidationError:
+            raise e
 
     def add_to_blueprint(self, blueprint):
         blueprint.add_url_rule(self.url,
@@ -240,6 +254,7 @@ class FlaskViewAction(FlaskView):
     method = "POST"
     json_request = True
     json_response = True
+    acceptable_response_codes = [200, 204]
 
     def __init__(self, function, url, api):
         self.function = function
@@ -262,27 +277,10 @@ class FlaskViewAction(FlaskView):
         }
 
     def parse_response(self, res):
-        if res['code'] != requests.codes.ok:
-            message = None
-            if res['json'] and 'error' in res['json'].datum:
-                message = res['json'].datum['error']
-            try:
-                abort(res['code'], message)
-            except Exception as e:
-                # Flag the exception to specify that it came from a remote
-                # API. If this exception bubbles up to the web layer, a
-                # generic 500 response will be returned
-                e.remote = True
-                raise
-        try:
-            if self.function.returns and res['json']:
-                return self.function.returns.from_json(res['json'].datum)
-            else:
-                return None
-        except ValidationError:
-            e = InternalServerError("Call returned an invalid value")
-            e.remote = True
-            raise e
+        if self.function.returns and res['json']:
+            return self.function.returns.from_json(res['json'].datum)
+        else:
+            return None
 
 
 
@@ -290,6 +288,8 @@ class FlaskViewAction(FlaskView):
 class ModelGetter(FlaskView):
     method = "GET"
     json_response = True
+    acceptable_response_codes = [404, 200]
+    response_can_be_empty = False
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
@@ -299,7 +299,7 @@ class ModelGetter(FlaskView):
     def handler(self, id):
         model = self.model_cls.get_by_id(id)
         if model == None:
-            raise NotFound
+            return ("", 404, {})
         body = json.dumps(self.model_cls.to_json(model))
         return (body, 200, {"Content-Type": "application/json"})
 
@@ -313,35 +313,14 @@ class ModelGetter(FlaskView):
         if res['code'] == 404:
             return None
         if res['code'] == 200:
-            e = InternalServerError("Call returned an invalid value")
-            e.remote = True
-            if not res['json']:
-                raise e
-            try:
-                return self.model_cls.schema.from_json(res['json'].datum)
-            except ValidationError:
-                raise e
-            except ValueError:
-                raise e
-        else:
-            message = None
-            if res['json'] and 'error' in res['json']:
-                message = res.json['error']
-            try:
-                abort(res['code'], message)
-            except Exception as e:
-                # Flag the exception to specify that it came from a remote
-                # API. If this exception bubbles up to the web layer, a
-                # generic 500 response will be returned
-                e.remote = True
-                raise
-
-
+            return self.model_cls.schema.from_json(res['json'].datum)
 
 
 class ModelPutter(FlaskView):
     method = "PUT"
     json_request = True
+    acceptable_response_codes = [204]
+    response_must_be_empty = True
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
@@ -368,16 +347,15 @@ class ModelPutter(FlaskView):
         }
 
     def parse_response(self, res):
-        if res['code'] == 204:
-            return
-        else:
-            raise response_to_error(res)
+        return
 
 
 
 class ListPoster(FlaskView):
     method = "POST"
     json_request = True
+    acceptable_response_codes = [201]
+    response_must_be_empty = True
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
@@ -397,15 +375,14 @@ class ListPoster(FlaskView):
         return {'inst': self.model_cls.from_json(req['json'].datum)}
 
     def parse_response(self, res):
-        if res['code'] == 201:
-            return self.model_cls.id_from_url(res['headers']["Location"])
-        else:
-            raise response_to_error(res)
+        return self.model_cls.id_from_url(res['headers']["Location"])
 
 
 
 class ModelDeleter(FlaskView):
     method = "DELETE"
+    acceptable_response_codes = [204]
+    response_must_be_empty = True
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
@@ -425,16 +402,15 @@ class ModelDeleter(FlaskView):
         return {'inst': self.model_cls.get_by_id(req['url_args']['id'])}
 
     def parse_response(self, res):
-        if res['code'] == 204:
-            return
-        else:
-            raise response_to_error(res)
+        return
 
 
 
 class ListGetter(FlaskView):
     method = "GET"
     json_response = True
+    acceptable_response_codes = [200]
+    response_can_be_empty = False
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
@@ -466,16 +442,6 @@ class ListGetter(FlaskView):
         return req.get('query', {})
 
     def parse_response(self, res):
-        if res['code'] == 200:
-            e = InternalServerError("Call returned an invalid value")
-            e.remote = True
-            if not res['json']:
-                raise e
-            try:
-                j = res['json'].datum
-                return map(self.model_cls.from_json, j["_embedded"][self.model_cls.__name__])
-            except (ValidationError, ValueError, KeyError):
-                raise e
-        else:
-            raise response_to_error(res)
+        j = res['json'].datum
+        return map(self.model_cls.from_json, j["_embedded"][self.model_cls.__name__])
 
