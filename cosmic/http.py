@@ -144,6 +144,9 @@ class FlaskView(object):
     response_can_be_empty = True
     response_must_be_empty = None
 
+    request_can_be_empty = True
+    request_must_be_empty = None
+
     query_schema = None
 
     def view(self, **url_args):
@@ -157,15 +160,25 @@ class FlaskView(object):
             else:
                 req['data'] = request.get_data()
 
+            is_empty = request.get_data() == ""
+
+            if ((self.request_must_be_empty == True and not is_empty) or
+                (is_empty and self.request_can_be_empty == False)):
+                raise SpecError()
+
             if self.query_schema != None:
                 req['query'] = self.query_schema.from_multi_dict(request.args)
 
             # Make sure the current TypeMap is on the Teleport context stack
             with cosmos:
-                if hasattr(self, "parse_request"):
-                    return make_response(self.handler(**self.parse_request(req)))
+
+                r = self.handler(**self.parse_request(req))
+
+                if hasattr(self, "build_response"):
+                    return make_response(self.build_response(r))
                 else:
-                    return make_response(self.handler(req))
+                    return make_response(r)
+
         except Exception as err:
             if current_app.debug:
                 raise
@@ -262,25 +275,28 @@ class FlaskViewAction(FlaskView):
         if hasattr(api, '_request'):
             self._request = api._request
 
-    def handler(self, req):
-        data = self.function.json_to_json(req['json'])
-        if data == None:
-            return ("", 204, {})
-        else:
-            body = json.dumps(data.datum)
-            return (body, 200, {"Content-Type": "application/json"})
+    def handler(self, data):
+        return self.function.json_to_json(data)
 
     def build_request(self, *args, **kwargs):
         packed = pack_action_arguments(*args, **kwargs)
-        return {
-            "json": serialize_json(self.function.accepts, packed)
-        }
+        return {"json": serialize_json(self.function.accepts, packed)}
+
+    def parse_request(self, req):
+        return {'data': req['json']}
 
     def parse_response(self, res):
         if self.function.returns and res['json']:
             return self.function.returns.from_json(res['json'].datum)
         else:
             return None
+
+    def build_response(self, data):
+        if data == None:
+            return ("", 204, {})
+        else:
+            body = json.dumps(data.datum)
+            return (body, 200, {"Content-Type": "application/json"})
 
 
 
@@ -290,6 +306,7 @@ class ModelGetter(FlaskView):
     json_response = True
     acceptable_response_codes = [404, 200]
     response_can_be_empty = False
+    request_must_be_empty = True
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
@@ -297,17 +314,19 @@ class ModelGetter(FlaskView):
         self.endpoint = "doc_get_%s" % self.model_cls.__name__
 
     def handler(self, id):
-        model = self.model_cls.get_by_id(id)
-        if model == None:
-            return ("", 404, {})
-        body = json.dumps(self.model_cls.to_json(model))
-        return (body, 200, {"Content-Type": "application/json"})
+        return self.model_cls.get_by_id(id)
 
     def build_request(self, id):
         return {'url_args': {'id': id}}
 
     def parse_request(self, req):
         return {'id': req['url_args']['id']}
+
+    def build_response(self, inst):
+        if inst == None:
+            return ("", 404, {})
+        body = json.dumps(self.model_cls.to_json(inst))
+        return (body, 200, {"Content-Type": "application/json"})
 
     def parse_response(self, res):
         if res['code'] == 404:
@@ -321,6 +340,7 @@ class ModelPutter(FlaskView):
     json_request = True
     acceptable_response_codes = [204]
     response_must_be_empty = True
+    request_can_be_empty = False
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
@@ -332,7 +352,6 @@ class ModelPutter(FlaskView):
             raise NotFound
         assert inst.id == id
         inst.save()
-        return ("", 204, {})
 
     def build_request(self, id, inst):
         return {
@@ -346,6 +365,9 @@ class ModelPutter(FlaskView):
             'inst': self.model_cls.from_json(req['json'].datum)
         }
 
+    def build_response(self, _):
+        return ("", 204, {})
+
     def parse_response(self, res):
         return
 
@@ -356,6 +378,7 @@ class ListPoster(FlaskView):
     json_request = True
     acceptable_response_codes = [201]
     response_must_be_empty = True
+    request_can_be_empty = False
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
@@ -364,9 +387,7 @@ class ListPoster(FlaskView):
 
     def handler(self, inst):
         inst.save()
-        return ("", 201, {
-            "Location": inst.href
-        })
+        return inst
 
     def build_request(self, inst):
         return {'json': Box(self.model_cls.to_json(inst))}
@@ -377,12 +398,17 @@ class ListPoster(FlaskView):
     def parse_response(self, res):
         return self.model_cls.id_from_url(res['headers']["Location"])
 
+    def build_response(self, inst):
+        return ("", 201, {
+            "Location": inst.href
+        })
 
 
 class ModelDeleter(FlaskView):
     method = "DELETE"
     acceptable_response_codes = [204]
     response_must_be_empty = True
+    request_must_be_empty = True
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
@@ -393,7 +419,6 @@ class ModelDeleter(FlaskView):
         if inst == None:
             raise NotFound
         inst.delete()
-        return ("", 204, {})
 
     def build_request(self, inst):
         return {'url_args': {'id': inst.id}}
@@ -404,6 +429,8 @@ class ModelDeleter(FlaskView):
     def parse_response(self, res):
         return
 
+    def build_response(self, _):
+        return ("", 204, {})
 
 
 class ListGetter(FlaskView):
@@ -411,6 +438,7 @@ class ListGetter(FlaskView):
     json_response = True
     acceptable_response_codes = [200]
     response_can_be_empty = False
+    request_must_be_empty = True
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
@@ -425,15 +453,7 @@ class ListGetter(FlaskView):
         if self.query_schema != None and query:
             self_link += "?" + self.query_schema.to_json(query)
 
-        l = self.model_cls.get_list(**query)
-        body = {
-            "_links": {
-                "self": {"href": self_link}
-            },
-            "_embedded": {}
-        }
-        body["_embedded"][self.model_cls.__name__] = map(self.model_cls.to_json, l)
-        return (json.dumps(body), 200, {"Content-Type": "application/json"})
+        return (self.model_cls.get_list(**query), self_link)
 
     def build_request(self, **query):
         return {"query": query}
@@ -444,4 +464,16 @@ class ListGetter(FlaskView):
     def parse_response(self, res):
         j = res['json'].datum
         return map(self.model_cls.from_json, j["_embedded"][self.model_cls.__name__])
+
+    def build_response(self, tup):
+        l, self_link = tup
+        body = {
+            "_links": {
+                "self": {"href": self_link}
+            },
+            "_embedded": {}
+        }
+        body["_embedded"][self.model_cls.__name__] = map(self.model_cls.to_json, l)
+        return (json.dumps(body), 200, {"Content-Type": "application/json"})
+
 
