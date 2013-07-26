@@ -57,7 +57,7 @@ def prep_model(model_cls):
     ])
     links = [
         ("self", {
-            "required": True,
+            "required": False,
             "schema": link_schema
         })
     ]
@@ -190,9 +190,11 @@ class Model(BasicWrapper):
 
     def save(self):
         if self.id:
-            return self.__class__._model_putter(self.id, self)
+            inst = self.__class__._model_putter(self.id, self)
         else:
-            self.id = self.__class__._list_poster(self)
+            inst = self.__class__._list_poster(self)
+            self.id = inst.id
+        self._representation = inst._representation
 
     def delete(self):
         return self.__class__._model_deleter(self)
@@ -212,11 +214,10 @@ class Model(BasicWrapper):
         return inst
 
     def _force(self):
-        m = self.__class__._model_getter(self.id)
-        self.__class__.validate(m)
-        id, self._representation = self.__class__._fill_out(m)
-        if self.id != id:
-            raise ValidationError("Expected id: %s, actual: %s" % (self.id, id))
+        inst = self.__class__._model_getter(self.id)
+        self._representation = inst._representation
+        if self.id != inst.id:
+            raise ValidationError("Expected id: %s, actual: %s" % (self.id, inst.id))
 
 
 

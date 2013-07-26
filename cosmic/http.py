@@ -253,7 +253,7 @@ class FlaskView(object):
 
         try:
             return self.parse_response(r)
-        except ValidationError:
+        except ValidationError as a:
             raise e
 
     def add_to_blueprint(self, blueprint):
@@ -332,14 +332,15 @@ class ModelGetter(FlaskView):
         if res['code'] == 404:
             return None
         if res['code'] == 200:
-            return self.model_cls.schema.from_json(res['json'].datum)
+            return self.model_cls.from_json(res['json'].datum)
 
 
 class ModelPutter(FlaskView):
     method = "PUT"
     json_request = True
-    acceptable_response_codes = [204]
-    response_must_be_empty = True
+    json_response = True
+    acceptable_response_codes = [200]
+    response_can_be_empty = False
     request_can_be_empty = False
 
     def __init__(self, model_cls):
@@ -352,6 +353,7 @@ class ModelPutter(FlaskView):
             raise NotFound
         assert inst.id == id
         inst.save()
+        return inst
 
     def build_request(self, id, inst):
         return {
@@ -365,19 +367,21 @@ class ModelPutter(FlaskView):
             'inst': self.model_cls.from_json(req['json'].datum)
         }
 
-    def build_response(self, _):
-        return ("", 204, {})
+    def build_response(self, inst):
+        body = json.dumps(self.model_cls.to_json(inst))
+        return (body, 200, {"Content-Type": "application/json"})
 
     def parse_response(self, res):
-        return
+        return self.model_cls.from_json(res['json'].datum)
 
 
 
 class ListPoster(FlaskView):
     method = "POST"
     json_request = True
+    json_response = True
     acceptable_response_codes = [201]
-    response_must_be_empty = True
+    response_can_be_empty = False
     request_can_be_empty = False
 
     def __init__(self, model_cls):
@@ -396,11 +400,13 @@ class ListPoster(FlaskView):
         return {'inst': self.model_cls.from_json(req['json'].datum)}
 
     def parse_response(self, res):
-        return self.model_cls.id_from_url(res['headers']["Location"])
+        return self.model_cls.from_json(res['json'].datum)
 
     def build_response(self, inst):
-        return ("", 201, {
-            "Location": inst.href
+        body = json.dumps(self.model_cls.to_json(inst))
+        return (body, 201, {
+            "Location": inst.href,
+            "Content-Type": "application/json"
         })
 
 
