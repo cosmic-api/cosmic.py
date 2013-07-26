@@ -50,7 +50,7 @@ class Language(DBModel):
         required("code", String)
     ]
     query_fields = [
-        optional("code", String)
+        ("code", {"schema": String},)
     ]
 
 

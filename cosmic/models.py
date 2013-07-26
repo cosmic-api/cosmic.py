@@ -23,7 +23,6 @@ class ModelSerializer(BasicWrapper):
         ]))),
         required("query_fields", OrderedMap(Struct([
             required(u"schema", Schema),
-            required(u"required", Boolean),
             optional(u"doc", String)
         ])))
     ])
@@ -33,7 +32,7 @@ class ModelSerializer(BasicWrapper):
         # Take a schema and name and turn them into a model class
         class M(Model):
             properties = datum["data_schema"].param.items()
-            query_fields = datum["query_fields"]
+            query_fields = datum["query_fields"].items()
             links = datum["links"].items()
         M.__name__ = str(datum["name"])
         prep_model(M)
@@ -44,13 +43,13 @@ class ModelSerializer(BasicWrapper):
         return {
             "name": datum.__name__,
             "data_schema": Struct(datum.properties),
-            "links": OrderedDict(datum.links if hasattr(datum, "links") else []),
-            "query_fields": OrderedDict(datum.query_fields if hasattr(datum, "query_fields") else [])
+            "links": OrderedDict(datum.links),
+            "query_fields": OrderedDict(datum.query_fields)
         }
 
 
 def prep_model(model_cls):
-    from .http import ListPoster, ListGetter, ModelGetter, ModelPutter, ModelDeleter
+    from .http import URLParams, ListPoster, ListGetter, ModelGetter, ModelPutter, ModelDeleter
 
     link_schema = Struct([
         required("href", String)
@@ -80,13 +79,22 @@ def prep_model(model_cls):
     if link_names & field_names:
         raise SpecError("Model cannot contain a field and link with the same name: %s" % model_cls.__name__)
 
+    model_cls.schema = Struct(props)
+
+    query_schema_fields = []
+    for tup in model_cls.query_fields:
+        try:
+            query_schema_fields.append(optional(name=tup[0], **tup[1]))
+        except TypeError:
+            import pdb; pdb.set_trace()
+    model_cls.query_schema = URLParams(query_schema_fields)
+
     model_cls._list_poster = ListPoster(model_cls)
     model_cls._list_getter = ListGetter(model_cls)
     model_cls._model_getter = ModelGetter(model_cls)
     model_cls._model_putter = ModelPutter(model_cls)
     model_cls._model_deleter = ModelDeleter(model_cls)
 
-    model_cls.schema = Struct(props)
 
 
 class Model(BasicWrapper):

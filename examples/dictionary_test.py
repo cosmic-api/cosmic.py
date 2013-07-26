@@ -37,7 +37,6 @@ json_spec = {
             u"query_fields": {
                 u"map": {
                     u"code": {
-                        u"required": False,
                         u"schema": {u"type": u"String"}
                     }
                 },

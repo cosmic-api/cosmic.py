@@ -201,7 +201,7 @@ class FlaskView(object):
         if self.json_request and data:
             headers["Content-Type"] = "application/json"
 
-        if self.query_schema != None and query:
+        if self.query_schema and query:
             query_string = self.query_schema.to_json(query)
             if query_string:
                 url += "?%s" % query_string
@@ -448,16 +448,15 @@ class ListGetter(FlaskView):
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
-        if self.model_cls.query_fields != None:
-            self.query_schema = URLParams(self.model_cls.query_fields)
+        self.query_schema = model_cls.query_schema
         self.url = "/%s" % self.model_cls.__name__
         self.endpoint = "list_get_%s" % self.model_cls.__name__
 
     def handler(self, **query):
         self_link = self.url
 
-        if self.query_schema != None and query:
-            self_link += "?" + self.query_schema.to_json(query)
+        if query:
+            self_link += "?" + self.model_cls.query_schema.to_json(query)
 
         return (self.model_cls.get_list(**query), self_link)
 
