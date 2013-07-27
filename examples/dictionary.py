@@ -4,6 +4,7 @@ from collections import OrderedDict
 
 from cosmic.api import API
 from cosmic.testing import DBModel
+from cosmic.models import LazyWrapper
 from teleport import *
 
 
@@ -52,6 +53,11 @@ class Language(DBModel):
     query_fields = [
         optional("code", String)
     ]
+    sets = [
+        ("words", {"model": LazyWrapper("dictionary.Word")})
+    ]
+
+
 
 
 @dictionary.model

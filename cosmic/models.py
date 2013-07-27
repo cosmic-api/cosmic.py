@@ -9,7 +9,6 @@ from .exceptions import ModelNotFound
 from .tools import GetterNamespace, validate_underscore_identifier
 
 
-
 class ModelSerializer(BasicWrapper):
     type_name = "cosmic.Model"
 
@@ -25,7 +24,11 @@ class ModelSerializer(BasicWrapper):
             required(u"schema", Schema),
             required(u"required", Boolean),
             optional(u"doc", String)
-        ])))
+        ]))),
+        required("sets", OrderedMap(Struct([
+            required(u"model", Schema),
+            optional(u"doc", String)
+        ]))),
     ])
 
     @staticmethod
@@ -33,8 +36,9 @@ class ModelSerializer(BasicWrapper):
         # Take a schema and name and turn them into a model class
         class M(Model):
             properties = datum["data_schema"].param.items()
-            query_fields = datum["query_fields"]
+            query_fields = datum["query_fields"].items()
             links = datum["links"].items()
+            sets = datum["sets"].items()
         M.__name__ = str(datum["name"])
         prep_model(M)
         return M
@@ -44,8 +48,9 @@ class ModelSerializer(BasicWrapper):
         return {
             "name": datum.__name__,
             "data_schema": Struct(datum.properties),
-            "links": OrderedDict(datum.links if hasattr(datum, "links") else []),
-            "query_fields": OrderedDict(datum.query_fields if hasattr(datum, "query_fields") else [])
+            "links": OrderedDict(datum.links),
+            "query_fields": OrderedDict(datum.query_fields),
+            "sets": OrderedDict(datum.sets)
         }
 
 
@@ -93,6 +98,7 @@ class Model(BasicWrapper):
     """A data type definition attached to an API."""
     query_fields = []
     links = []
+    sets = []
 
     def __init__(self, data=None):
         self.id = None
@@ -218,6 +224,16 @@ class Model(BasicWrapper):
         self._representation = inst._representation
         if self.id != inst.id:
             raise ValidationError("Expected id: %s, actual: %s" % (self.id, inst.id))
+
+
+class Set(object):
+
+    def __init__(self):
+        pass
+
+    def __contains__(self, inst):
+        pass
+
 
 
 

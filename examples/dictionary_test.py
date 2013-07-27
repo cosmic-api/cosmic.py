@@ -34,6 +34,14 @@ json_spec = {
                 u"map": {},
                 u"order": []
             },
+            u"sets": {
+                u"map": {
+                    u"words": {
+                        u"model": {u"type": u"dictionary.Word"}
+                    }
+                },
+                u"order": [u"words"]
+            },
             u"query_fields": {
                 u"map": {
                     u"code": {
@@ -66,6 +74,10 @@ json_spec = {
                     }
                 },
                 u"order": [u"language"]
+            },
+            u"sets": {
+                u"map": {},
+                u"order": []
             },
             u"query_fields": {
                 u"map": {},

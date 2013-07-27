@@ -30,6 +30,10 @@ json_spec = {
                 u"map": {},
                 u"order": []
             },
+            u"sets": {
+                u"map": {},
+                u"order": []
+            },
             u"query_fields": {
                 u"map": {},
                 u"order": []
