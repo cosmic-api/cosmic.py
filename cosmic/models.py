@@ -14,7 +14,6 @@ class ModelSerializer(BasicWrapper):
     type_name = "cosmic.Model"
 
     schema = Struct([
-        required("name", String),
         optional("data_schema", Schema),
         required("query_fields", OrderedMap(Struct([
             required(u"schema", Schema),
@@ -30,13 +29,11 @@ class ModelSerializer(BasicWrapper):
             properties = datum["data_schema"].param.items()
             query_fields = datum["query_fields"]
             links = []
-        M.__name__ = str(datum["name"])
         return M
 
     @staticmethod
     def disassemble(datum):
         return {
-            "name": datum.__name__,
             "data_schema": Struct(datum.properties),
             "query_fields": OrderedDict(datum.query_fields if hasattr(datum, "query_fields") else [])
         }

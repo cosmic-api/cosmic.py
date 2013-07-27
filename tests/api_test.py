@@ -47,46 +47,47 @@ cookbook_spec = {
         },
         u'order': [u'cabbage', u'noop']
     },
-    u"models": [
-        {
-            u"name": u"Recipe",
-            u"data_schema": {
-                u'type': u"Struct",
-                u"param": {
-                    u"map": {
-                        u"name": {
-                            u"required": True,
-                            u"schema": {u"type": u"String"}
+    u"models": {
+        u"map": {
+            u"Recipe": {
+                u"data_schema": {
+                    u'type': u"Struct",
+                    u"param": {
+                        u"map": {
+                            u"name": {
+                                u"required": True,
+                                u"schema": {u"type": u"String"}
+                            },
                         },
-                    },
-                    u"order": [u"name"]
+                        u"order": [u"name"]
+                    }
+                },
+                u"query_fields": {
+                    u"map": {},
+                    u"order": []
                 }
             },
-            u"query_fields": {
-                u"map": {},
-                u"order": []
+            u"Author": {
+                u"data_schema": {
+                    u'type': u"Struct",
+                    u"param": {
+                        u"map": {
+                            u"is_gordon_ramsay": {
+                                u"required": True,
+                                u"schema": {u"type": u"Boolean"}
+                            },
+                        },
+                        u"order": [u"is_gordon_ramsay"]
+                    }
+                },
+                u"query_fields": {
+                    u"map": {},
+                    u"order": []
+                }
             }
         },
-        {
-            u"name": u"Author",
-            u"data_schema": {
-                u'type': u"Struct",
-                u"param": {
-                    u"map": {
-                        u"is_gordon_ramsay": {
-                            u"required": True,
-                            u"schema": {u"type": u"Boolean"}
-                        },
-                    },
-                    u"order": [u"is_gordon_ramsay"]
-                }
-            },
-            u"query_fields": {
-                u"map": {},
-                u"order": []
-            }
-        }
-    ],
+        u"order": [u"Recipe", u"Author"]
+    },
     u"relationships": {
         u"one_to_many": []
     }

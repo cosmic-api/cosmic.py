@@ -11,27 +11,29 @@ from zodiac import zodiac
 
 json_spec = {
     "name": "zodiac",
-    "models": [
-        {
-            u"name": "Sign",
-            u"data_schema": {
-                u'type': u"Struct",
-                u"param": {
-                    u"map": {
-                        u"name": {
-                            u"required": True,
-                            u"schema": {u"type": u"String"}
+    "models": {
+        u"map": {
+            u"Sign": {
+                u"data_schema": {
+                    u'type': u"Struct",
+                    u"param": {
+                        u"map": {
+                            u"name": {
+                                u"required": True,
+                                u"schema": {u"type": u"String"}
+                            },
                         },
-                    },
-                    u"order": [u"name"]
+                        u"order": [u"name"]
+                    }
+                },
+                u"query_fields": {
+                    u"map": {},
+                    u"order": []
                 }
-            },
-            u"query_fields": {
-                u"map": {},
-                u"order": []
             }
-        }
-    ],
+        },
+        u"order": [u"Sign"]
+    },
     "actions": {
         "map": {
             u"predict": {

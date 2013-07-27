@@ -25,7 +25,7 @@ class API(BasicWrapper):
     schema = Struct([
         required("name", String),
         optional("homepage", String),
-        required("models", Array(ModelSerializer)),
+        required("models", OrderedMap(ModelSerializer)),
         required("relationships", Struct([
             required("one_to_many", Array(Struct([
                 required("one", Schema),
@@ -37,7 +37,7 @@ class API(BasicWrapper):
         required("actions", OrderedMap(Function)),
     ])
 
-    def __init__(self, name, homepage=None, models=[], actions=None, relationships={}):
+    def __init__(self, name, homepage=None, models=None, actions=None, relationships={}):
         self.name = name
         self.homepage = homepage
 
@@ -46,12 +46,17 @@ class API(BasicWrapper):
         else:
             self._actions = OrderedDict()
 
-        self._models = OrderedDict()
+        if models:
+            self._models = models
+        else:
+            self._models = OrderedDict()
+
+
         self._documents = OrderedDict()
         # Populate it if we have initial data
-        for model in models:
+        for name, model in self._models.items():
             model.api = self
-            self._models[model.__name__] = model
+            model.__name__ = str(name)
             prep_model(model)
 
         self._one_to_many = relationships.get("one_to_many", [])
@@ -86,7 +91,7 @@ class API(BasicWrapper):
             "name": datum.name,
             "homepage": datum.homepage,
             "actions": datum._actions,
-            "models": datum._models.values(),
+            "models": datum._models,
             "relationships": {"one_to_many": datum._one_to_many},
         }
 
@@ -264,7 +269,7 @@ class API(BasicWrapper):
         model_cls.api = self
         model_cls.type_name = "%s.%s" % (self.name, model_cls.__name__,)
         # Add to namespace
-        self._models[model_cls.__name__] = model_cls
+        self._models[unicode(model_cls.__name__)] = model_cls
         prep_model(model_cls)
         return model_cls
 

@@ -15,51 +15,52 @@ from dictionary import *
 
 json_spec = {
     u"name": u"dictionary",
-    u"models": [
-        {
-            u"name": u"Language",
-            u"data_schema": {
-                u'type': u"Struct",
-                u"param": {
+    u"models": {
+        u"map": {
+            u"Language": {
+                u"data_schema": {
+                    u'type': u"Struct",
+                    u"param": {
+                        u"map": {
+                            u"code": {
+                                u"required": True,
+                                u"schema": {u"type": u"String"}
+                            },
+                        },
+                        u"order": [u"code"]
+                    }
+                },
+                u"query_fields": {
                     u"map": {
                         u"code": {
-                            u"required": True,
+                            u"required": False,
                             u"schema": {u"type": u"String"}
-                        },
+                        }
                     },
                     u"order": [u"code"]
                 }
             },
-            u"query_fields": {
-                u"map": {
-                    u"code": {
-                        u"required": False,
-                        u"schema": {u"type": u"String"}
+            u"Word": {
+                u"data_schema": {
+                    u'type': u"Struct",
+                    u"param": {
+                        u"map": {
+                            u"text": {
+                                u"required": True,
+                                u"schema": {u"type": u"String"}
+                            },
+                        },
+                        u"order": [u"text"]
                     }
                 },
-                u"order": [u"code"]
+                u"query_fields": {
+                    u"map": {},
+                    u"order": []
+                }
             }
         },
-        {
-            u"name": u"Word",
-            u"data_schema": {
-                u'type': u"Struct",
-                u"param": {
-                    u"map": {
-                        u"text": {
-                            u"required": True,
-                            u"schema": {u"type": u"String"}
-                        },
-                    },
-                    u"order": [u"text"]
-                }
-            },
-            u"query_fields": {
-                u"map": {},
-                u"order": []
-            }
-        }
-    ],
+        u"order": [u"Language", u"Word"]
+    },
     u"actions": {
         u"map": {},
         u"order": []
