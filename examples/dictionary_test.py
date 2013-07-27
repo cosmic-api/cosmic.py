@@ -30,10 +30,6 @@ json_spec = {
                     u"order": [u"code"]
                 }
             },
-            u"links": {
-                u"map": {},
-                u"order": []
-            },
             u"query_fields": {
                 u"map": {
                     u"code": {
@@ -58,15 +54,6 @@ json_spec = {
                     u"order": [u"text"]
                 }
             },
-            u"links": {
-                u"map": {
-                    u"language": {
-                        u"schema": {u"type": u"dictionary.Language"},
-                        u"required": True
-                    }
-                },
-                u"order": [u"language"]
-            },
             u"query_fields": {
                 u"map": {},
                 u"order": []
@@ -76,6 +63,16 @@ json_spec = {
     u"actions": {
         u"map": {},
         u"order": []
+    },
+    u"relationships": {
+        u"one_to_many": [
+            {
+                u'one': {u'type': u'dictionary.Language'},
+                u'one_name': u'language',
+                u'many': {u'type': u'dictionary.Word'},
+                u'many_name': u'words',
+            }
+        ]
     }
 }
 
@@ -98,11 +95,14 @@ class TestDictionary(TestCase):
 
 
     def _test_follow_links(self, word_model):
-        with DBContext(langdb):
-            hundo = word_model.get_by_id("1")
-            self.assertEqual(hundo.language.code, "eo")
-            self.assertEqual(hundo.id, "1")
-            self.assertEqual(hundo.language.id, "1")
+        try:
+            with DBContext(langdb):
+                hundo = word_model.get_by_id("1")
+                self.assertEqual(hundo.language.code, "eo")
+                self.assertEqual(hundo.id, "1")
+                self.assertEqual(hundo.language.id, "1")
+        except Exception:
+            import pdb; pdb.set_trace()
 
     def test_local_follow_links(self):
         self._test_follow_links(Word)

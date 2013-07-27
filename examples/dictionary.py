@@ -60,10 +60,14 @@ class Word(DBModel):
     properties = [
         required("text", String)
     ]
-    links = [
-        required("language", Language)
-    ]
 
+
+dictionary.add_one_to_many_relationship({
+    "one": Language,
+    "one_name": "language",
+    "many": Word,
+    "many_name": "words"
+})
 
 if __name__ == "__main__":
     dictionary.run()

@@ -62,10 +62,6 @@ cookbook_spec = {
                     u"order": [u"name"]
                 }
             },
-            u"links": {
-                u"map": {},
-                u"order": []
-            },
             u"query_fields": {
                 u"map": {},
                 u"order": []
@@ -85,16 +81,15 @@ cookbook_spec = {
                     u"order": [u"is_gordon_ramsay"]
                 }
             },
-            u"links": {
-                u"map": {},
-                u"order": []
-            },
             u"query_fields": {
                 u"map": {},
                 u"order": []
             }
         }
-    ]
+    ],
+    u"relationships": {
+        u"one_to_many": []
+    }
 }
 
 

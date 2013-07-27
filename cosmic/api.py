@@ -11,7 +11,7 @@ from teleport import *
 from flask import Blueprint, Flask
 
 from .actions import Function
-from .models import Model, ModelSerializer, prep_model
+from .models import Model, ModelSerializer, prep_model, LazyWrapper
 from .tools import GetterNamespace, get_args, assert_is_compatible, deserialize_json, validate_underscore_identifier
 from .http import *
 from . import cosmos
@@ -26,10 +26,18 @@ class API(BasicWrapper):
         required("name", String),
         optional("homepage", String),
         required("models", Array(ModelSerializer)),
+        required("relationships", Struct([
+            required("one_to_many", Array(Struct([
+                required("one", Schema),
+                required("one_name", String),
+                required("many", Schema),
+                required("many_name", String),
+            ]))),
+        ])),
         required("actions", OrderedMap(Function)),
     ])
 
-    def __init__(self, name, homepage=None, models=[], actions=None):
+    def __init__(self, name, homepage=None, models=[], actions=None, relationships={}):
         self.name = name
         self.homepage = homepage
 
@@ -44,6 +52,14 @@ class API(BasicWrapper):
         for model in models:
             model.api = self
             self._models[model.__name__] = model
+            prep_model(model)
+
+        self._one_to_many = relationships.get("one_to_many", [])
+        for rel in self._one_to_many:
+            link = optional(rel["one_name"], rel["one"])
+            model_cls = self._models[rel["many"].__name__]
+            model_cls.links.append(link)
+            model_cls._rebuild_schema()
 
         self.actions = GetterNamespace(self._get_function_callable)
         self.models = GetterNamespace(
@@ -52,6 +68,13 @@ class API(BasicWrapper):
 
         # Add to registry so we can reference its models
         cosmos.apis[self.name] = self
+
+    def add_one_to_many_relationship(self, rel):
+        self._one_to_many.append(rel)
+        link = optional(rel["one_name"], rel["one"])
+        rel["many"].links.append(link)
+        rel["many"]._rebuild_schema()
+
 
     @staticmethod
     def assemble(datum):
@@ -63,7 +86,8 @@ class API(BasicWrapper):
             "name": datum.name,
             "homepage": datum.homepage,
             "actions": datum._actions,
-            "models": datum._models.values()
+            "models": datum._models.values(),
+            "relationships": {"one_to_many": datum._one_to_many},
         }
 
     @staticmethod

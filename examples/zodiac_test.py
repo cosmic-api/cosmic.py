@@ -26,10 +26,6 @@ json_spec = {
                     u"order": [u"name"]
                 }
             },
-            u"links": {
-                u"map": {},
-                u"order": []
-            },
             u"query_fields": {
                 u"map": {},
                 u"order": []
@@ -44,6 +40,9 @@ json_spec = {
             }
         },
         "order": [u"predict"]
+    },
+    u"relationships": {
+        u"one_to_many": []
     }
 }
 
@@ -52,6 +51,7 @@ class TestTutorialBuildingAPI(TestCase):
     def setUp(self):
         self.c = zodiac.get_flask_app().test_client()
         self.d = zodiac.get_flask_app(debug=True).test_client()
+        self.maxDiff = None
 
     def test_run(self):
         res = self.d.post('/actions/predict', data='{"name":"leo"}', content_type="application/json")

@@ -16,11 +16,6 @@ class ModelSerializer(BasicWrapper):
     schema = Struct([
         required("name", String),
         optional("data_schema", Schema),
-        required("links", OrderedMap(Struct([
-            required(u"schema", Schema),
-            required(u"required", Boolean),
-            optional(u"doc", String)
-        ]))),
         required("query_fields", OrderedMap(Struct([
             required(u"schema", Schema),
             required(u"required", Boolean),
@@ -34,9 +29,8 @@ class ModelSerializer(BasicWrapper):
         class M(Model):
             properties = datum["data_schema"].param.items()
             query_fields = datum["query_fields"]
-            links = datum["links"].items()
+            links = []
         M.__name__ = str(datum["name"])
-        prep_model(M)
         return M
 
     @staticmethod
@@ -44,7 +38,6 @@ class ModelSerializer(BasicWrapper):
         return {
             "name": datum.__name__,
             "data_schema": Struct(datum.properties),
-            "links": OrderedDict(datum.links if hasattr(datum, "links") else []),
             "query_fields": OrderedDict(datum.query_fields if hasattr(datum, "query_fields") else [])
         }
 
@@ -52,33 +45,7 @@ class ModelSerializer(BasicWrapper):
 def prep_model(model_cls):
     from .http import ListPoster, ListGetter, ModelGetter, ModelPutter, ModelDeleter
 
-    link_schema = Struct([
-        required("href", String)
-    ])
-    links = [
-        ("self", {
-            "required": False,
-            "schema": link_schema
-        })
-    ]
-    link_names = set()
-    field_names = set()
-    for name, link in OrderedDict(model_cls.links).items():
-        validate_underscore_identifier(name)
-        link_names.add(name)
-        links.append((name, {
-            "required": link["required"],
-            "schema": link_schema
-        }))
-    props = [
-        optional("_links", Struct(links)),
-    ]
-    for name, field in OrderedDict(model_cls.properties).items():
-        validate_underscore_identifier(name)
-        field_names.add(name)
-        props.append((name, field))
-    if link_names & field_names:
-        raise SpecError("Model cannot contain a field and link with the same name: %s" % model_cls.__name__)
+    model_cls._rebuild_schema()
 
     model_cls._list_poster = ListPoster(model_cls)
     model_cls._list_getter = ListGetter(model_cls)
@@ -86,7 +53,6 @@ def prep_model(model_cls):
     model_cls._model_putter = ModelPutter(model_cls)
     model_cls._model_deleter = ModelDeleter(model_cls)
 
-    model_cls.schema = Struct(props)
 
 
 class Model(BasicWrapper):
@@ -100,6 +66,40 @@ class Model(BasicWrapper):
             _, self._representation = self.__class__._fill_out(data)
         else:
             self._representation = None
+
+    @classmethod
+    def _rebuild_schema(cls):
+
+        link_schema = Struct([
+            required("href", String)
+        ])
+        links = [
+            ("self", {
+                "required": False,
+                "schema": link_schema
+            })
+        ]
+        link_names = set()
+        field_names = set()
+        for name, link in cls.links:
+            validate_underscore_identifier(name)
+            link_names.add(name)
+            links.append((name, {
+                "required": link["required"],
+                "schema": link_schema
+            }))
+        props = [
+            optional("_links", Struct(links)),
+        ]
+        for name, field in cls.properties:
+            validate_underscore_identifier(name)
+            field_names.add(name)
+            props.append((name, field))
+        if link_names & field_names:
+            raise SpecError("Model cannot contain a field and link with the same name: %s" % cls.__name__)
+
+        cls.schema = Struct(props)
+
 
     @property
     def href(self):
@@ -147,14 +147,14 @@ class Model(BasicWrapper):
         links = OrderedDict()
         if datum.id:
             links["self"] = {"href": datum.href}
-        for name, link in OrderedDict(cls.links).items():
+        for name, link in cls.links:
             value = datum._get_item(name)
             if value != None:
                 links[name] = {"href": value.href}
         d = {}
         if links:
             d["_links"] = links
-        for name in OrderedDict(cls.properties).keys():
+        for name, field in cls.properties:
             value = datum._get_item(name)
             if value != None:
                 d[name] = value
