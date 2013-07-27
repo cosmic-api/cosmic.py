@@ -25,7 +25,7 @@ class API(BasicWrapper):
     schema = Struct([
         required("name", String),
         optional("homepage", String),
-        required("models", Array(ModelSerializer)),
+        required("models", OrderedMap(ModelSerializer)),
         required("actions", OrderedMap(Function)),
     ])
 
@@ -38,12 +38,19 @@ class API(BasicWrapper):
         else:
             self._actions = OrderedDict()
 
-        self._models = OrderedDict()
+        if models:
+            self._models = models
+        else:
+            self._models = OrderedDict()
+
+
         self._documents = OrderedDict()
         # Populate it if we have initial data
-        for model in models:
+        for name, model in self._models.items():
+            model.__name__ = str(name)
             model.api = self
             self._models[model.__name__] = model
+            prep_model(model)
 
         self.actions = GetterNamespace(self._get_function_callable)
         self.models = GetterNamespace(
@@ -63,7 +70,7 @@ class API(BasicWrapper):
             "name": datum.name,
             "homepage": datum.homepage,
             "actions": datum._actions,
-            "models": datum._models.values()
+            "models": datum._models
         }
 
     @staticmethod
@@ -240,7 +247,7 @@ class API(BasicWrapper):
         model_cls.api = self
         model_cls.type_name = "%s.%s" % (self.name, model_cls.__name__,)
         # Add to namespace
-        self._models[model_cls.__name__] = model_cls
+        self._models[unicode(model_cls.__name__)] = model_cls
         prep_model(model_cls)
         return model_cls
 

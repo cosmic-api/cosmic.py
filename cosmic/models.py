@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import sys
 
 from collections import OrderedDict
@@ -13,7 +15,6 @@ class ModelSerializer(BasicWrapper):
     type_name = "cosmic.Model"
 
     schema = Struct([
-        required("name", String),
         optional("data_schema", Schema),
         required("links", OrderedMap(Struct([
             required(u"schema", Schema),
@@ -39,14 +40,11 @@ class ModelSerializer(BasicWrapper):
             query_fields = datum["query_fields"].items()
             links = datum["links"].items()
             sets = datum["sets"].items()
-        M.__name__ = str(datum["name"])
-        prep_model(M)
         return M
 
     @staticmethod
     def disassemble(datum):
         return {
-            "name": datum.__name__,
             "data_schema": Struct(datum.properties),
             "links": OrderedDict(datum.links),
             "query_fields": OrderedDict(datum.query_fields),
