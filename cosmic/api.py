@@ -28,10 +28,10 @@ class API(BasicWrapper):
         required("models", OrderedMap(ModelSerializer)),
         required("relationships", Struct([
             required("one_to_many", Array(Struct([
-                required("one", Schema),
-                required("one_name", String),
-                required("many", Schema),
-                required("many_name", String),
+                required("link_model", Schema),
+                required("link_name", String),
+                required("set_model", Schema),
+                required("set_name", String),
             ]))),
         ])),
         required("actions", OrderedMap(Function)),
@@ -51,9 +51,7 @@ class API(BasicWrapper):
         else:
             self._models = OrderedDict()
 
-
-        self._documents = OrderedDict()
-        # Populate it if we have initial data
+        # Prepare models
         for name, model in self._models.items():
             model.api = self
             model.__name__ = str(name)
@@ -61,10 +59,7 @@ class API(BasicWrapper):
 
         self._one_to_many = relationships.get("one_to_many", [])
         for rel in self._one_to_many:
-            link = optional(rel["one_name"], rel["one"])
-            model_cls = self._models[rel["many"].__name__]
-            model_cls.links.append(link)
-            model_cls._rebuild_schema()
+            self._add_one_to_many_relationship(rel)
 
         self.actions = GetterNamespace(self._get_function_callable)
         self.models = GetterNamespace(
@@ -76,9 +71,17 @@ class API(BasicWrapper):
 
     def add_one_to_many_relationship(self, rel):
         self._one_to_many.append(rel)
-        link = optional(rel["one_name"], rel["one"])
-        rel["many"].links.append(link)
-        rel["many"]._rebuild_schema()
+        self._add_one_to_many_relationship(rel)
+
+    def _add_one_to_many_relationship(self, rel):
+        # Add link on the "set_model" side
+        link = optional(rel["link_name"], rel["link_model"])
+        model_cls = self._models[rel["set_model"].__name__]
+        model_cls.links.append(link)
+        model_cls._rebuild_schema()
+        # Add set on the "link_model" side
+        model_cls = self._models[rel["link_model"].__name__]
+        model_cls.sets.append(rel)
 
 
     @staticmethod
@@ -152,11 +155,7 @@ class API(BasicWrapper):
                 endpoint=endpoint)
         for name, model_cls in self._models.items():
 
-            model_cls._list_poster.add_to_blueprint(blueprint)
-            model_cls._list_getter.add_to_blueprint(blueprint)
-            model_cls._model_getter.add_to_blueprint(blueprint)
-            model_cls._model_putter.add_to_blueprint(blueprint)
-            model_cls._model_deleter.add_to_blueprint(blueprint)
+            model_cls.add_to_blueprint(blueprint)
 
         return blueprint
 

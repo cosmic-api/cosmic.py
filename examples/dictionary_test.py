@@ -68,10 +68,10 @@ json_spec = {
     u"relationships": {
         u"one_to_many": [
             {
-                u'one': {u'type': u'dictionary.Language'},
-                u'one_name': u'language',
-                u'many': {u'type': u'dictionary.Word'},
-                u'many_name': u'words',
+                u"link_model": {u'type': u'dictionary.Language'},
+                u"link_name": u'language',
+                u"set_model": {u'type': u'dictionary.Word'},
+                u"set_name": u'words',
             }
         ]
     }
@@ -96,14 +96,11 @@ class TestDictionary(TestCase):
 
 
     def _test_follow_links(self, word_model):
-        try:
-            with DBContext(langdb):
-                hundo = word_model.get_by_id("1")
-                self.assertEqual(hundo.language.code, "eo")
-                self.assertEqual(hundo.id, "1")
-                self.assertEqual(hundo.language.id, "1")
-        except Exception:
-            import pdb; pdb.set_trace()
+        with DBContext(langdb):
+            hundo = word_model.get_by_id("1")
+            self.assertEqual(hundo.language.code, "eo")
+            self.assertEqual(hundo.id, "1")
+            self.assertEqual(hundo.language.id, "1")
 
     def test_local_follow_links(self):
         self._test_follow_links(Word)
@@ -183,6 +180,18 @@ class TestDictionary(TestCase):
 
     def test_remote_delete(self):
         self._test_delete(self.remote_dictionary.models.Word)
+
+
+    def _test_one_to_many_set(self, language_model, word_model):
+        with DBContext(langdb):
+            hundo = word_model.get_by_id("1")
+            eo = language_model.get_by_id("0")
+            en = language_model.get_by_id("1")
+            self.assertEqual(hundo in eo.words, True)
+            self.assertEqual(hundo in en.words, False)
+
+    def _test_one_to_many_set(self):
+        self._test_get_list(Language, Word)
 
 
     def test_get_language(self):

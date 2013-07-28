@@ -51,11 +51,25 @@ def prep_model(model_cls):
     model_cls._model_deleter = ModelDeleter(model_cls)
 
 
+class OneToManySet(object):
+
+    def __init__(self, one_inst, link_name, set_model):
+        self.one_inst = one_inst
+        self.link_name = link_name
+        self.set_model = set_model
+
+    def __contains__(self, inst):
+        r = inst._get_item(self.link_name)
+        if not r:
+            return False
+        return r.id == self.one_inst.id
+
 
 class Model(BasicWrapper):
     """A data type definition attached to an API."""
     query_fields = []
     links = []
+    sets = []
 
     def __init__(self, data=None):
         self.id = None
@@ -63,6 +77,8 @@ class Model(BasicWrapper):
             _, self._representation = self.__class__._fill_out(data)
         else:
             self._representation = None
+        for rel in self.__class__.sets:
+            setattr(self, rel["set_name"], OneToManySet(self, rel["link_name"], rel["set_model"]))
 
     @classmethod
     def _rebuild_schema(cls):
@@ -209,6 +225,14 @@ class Model(BasicWrapper):
         inst = cls()
         inst.id = id
         return inst
+
+    @classmethod
+    def add_to_blueprint(cls, blueprint):
+        cls._list_poster.add_to_blueprint(blueprint)
+        cls._list_getter.add_to_blueprint(blueprint)
+        cls._model_getter.add_to_blueprint(blueprint)
+        cls._model_putter.add_to_blueprint(blueprint)
+        cls._model_deleter.add_to_blueprint(blueprint)
 
     def _force(self):
         inst = self.__class__._model_getter(self.id)

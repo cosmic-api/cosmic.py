@@ -63,10 +63,10 @@ class Word(DBModel):
 
 
 dictionary.add_one_to_many_relationship({
-    "one": Language,
-    "one_name": "language",
-    "many": Word,
-    "many_name": "words"
+    "link_model": Language,
+    "link_name": "language",
+    "set_model": Word,
+    "set_name": "words"
 })
 
 if __name__ == "__main__":
