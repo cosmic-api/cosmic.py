@@ -66,7 +66,7 @@ def quickstart_test():
     p = Process(target=lambda: zodiac.run(port=9873))
     p.start()
     time.sleep(0.2)
-    headers = { 'Content-Type': 'application/json' }
-    res = requests.post('http://localhost:9873/actions/predict', data='"leo"', headers=headers)
-    assert "handsome" in res.text
+    with cosmos:
+        z = API.load('http://localhost:9873/spec.json')
+        assert "handsome" in z.actions.predict(z.models.Sign("leo"))
     p.terminate()
