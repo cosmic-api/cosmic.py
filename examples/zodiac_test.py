@@ -48,15 +48,25 @@ class TestTutorialBuildingAPI(TestCase):
 
     def test_consuming(self):
         with patch.object(requests, 'get') as mock_get:
-            mock_get.return_value.json = json_spec
+            mock_get.return_value.text = json.dumps(json_spec)
             mock_get.return_value.status_code = 200
 
             with cosmos:
                 h = API.load('http://example.com/spec.json')
                 pisces = h.models.Sign("pisces")
                 with patch.object(requests, 'post') as mock_post:
-                    mock_post.return_value.json = "Yada yada handsome stranger"
+                    mock_post.return_value.text = '"Yada yada handsome stranger"'
                     mock_post.return_value.status_code = 200
                     self.assertRegexpMatches(h.actions.predict(pisces), "handsome stranger")
 
 
+from multiprocessing import Process
+
+def quickstart_test():
+    p = Process(target=lambda: zodiac.run(port=9873))
+    p.start()
+    time.sleep(0.2)
+    headers = { 'Content-Type': 'application/json' }
+    res = requests.post('http://localhost:9873/actions/predict', data='"leo"', headers=headers)
+    assert "handsome" in res.text
+    p.terminate()

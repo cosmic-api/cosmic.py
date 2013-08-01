@@ -95,7 +95,7 @@ class API(BasicWrapper):
         it, returning the :class:`~cosmic.api.API` object.
         """
         res = requests.get(url)
-        api = API.from_json(res.json)
+        api = API.from_json(json.loads(res.text))
         # Set the API url to be the spec URL, minus the /spec.json
         api.url = url[:-10]
         # Once the API has been added to the cosmos, force lazy models to

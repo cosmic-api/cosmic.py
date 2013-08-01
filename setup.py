@@ -18,6 +18,6 @@ setup(
     install_requires = [
         "teleport==0.1.1",
         "Flask==0.9",
-        "requests==0.14.2",
+        "requests==1.2.3"
     ]
 )

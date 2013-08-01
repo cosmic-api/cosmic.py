@@ -196,7 +196,7 @@ class TestAPI(TestCase):
     def test_load_url(self):
         """Test the API.load function when given a spec URL"""
         with patch.object(requests, 'get') as mock_get:
-            mock_get.return_value.json = cookbook_spec
+            mock_get.return_value.text = json.dumps(cookbook_spec)
             mock_get.return_value.status_code = 200
             cookbook_decentralized = API.load('http://example.com/spec.json')
             self.assertEqual(API.to_json(cookbook_decentralized), cookbook_spec)
@@ -211,7 +211,7 @@ class TestRemoteAPI(TestCase):
     def test_remote_no_return_action(self):
         with patch.object(requests, 'post') as mock_post:
             mock_post.return_value.status_code = 200
-            mock_post.return_value.json = None
+            mock_post.return_value.text = ''
             self.assertEqual(self.cookbook.actions.noop(), None)
             mock_post.assert_called_with('http://localhost:8881/api/actions/noop', headers={'Content-Type': 'application/json'}, data="")
 

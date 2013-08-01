@@ -75,14 +75,20 @@ class Callable(object):
 
         headers = {'Content-Type': 'application/json'}
         res = requests.post(self.url, data=data, headers=headers)
+
+        try:
+            payload = string_to_json(res.text)
+        except ValueError:
+            payload = None
+
         if res.status_code != requests.codes.ok:
             message = None
-            if res.json and 'error' in res.json:
-                message = res.json['error']
+            if payload and type(payload.datum) == dict and 'error' in payload.datum:
+                message = payload.datum['error']
             abort(res.status_code, message)
         try:
-            if self.function.returns and res.content != "":
-                return self.function.returns.from_json(res.json)
+            if self.function.returns and payload:
+                return self.function.returns.from_json(payload.datum)
             else:
                 return None
         except ValidationError:
