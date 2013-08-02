@@ -1,6 +1,5 @@
 from .models import Model
 from werkzeug.local import LocalProxy, LocalStack
-from flask import request
 
 _db_ctx_stack = LocalStack()
 

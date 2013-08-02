@@ -11,7 +11,7 @@ from werkzeug.exceptions import Unauthorized
 
 from cosmic.exceptions import *
 from cosmic.api import API
-from cosmic.models import Model, LazyWrapper
+from cosmic.models import Model
 from cosmic import api, request
 
 from cosmic import cosmos
@@ -47,54 +47,55 @@ cookbook_spec = {
         },
         u'order': [u'cabbage', u'noop']
     },
-    u"models": [
-        {
-            u"name": u"Recipe",
-            u"data_schema": {
-                u'type': u"Struct",
-                u"param": {
-                    u"map": {
-                        u"name": {
-                            u"required": True,
-                            u"schema": {u"type": u"String"}
+    u"models": {
+        u"map": {
+            u"Recipe": {
+                u"data_schema": {
+                    u'type': u"Struct",
+                    u"param": {
+                        u"map": {
+                            u"name": {
+                                u"required": True,
+                                u"schema": {u"type": u"String"}
+                            },
                         },
-                    },
-                    u"order": [u"name"]
+                        u"order": [u"name"]
+                    }
+                },
+                u"links": {
+                    u"map": {},
+                    u"order": []
+                },
+                u"query_fields": {
+                    u"map": {},
+                    u"order": []
                 }
             },
-            u"links": {
-                u"map": {},
-                u"order": []
-            },
-            u"query_fields": {
-                u"map": {},
-                u"order": []
+            u"Author": {
+                u"data_schema": {
+                    u'type': u"Struct",
+                    u"param": {
+                        u"map": {
+                            u"is_gordon_ramsay": {
+                                u"required": True,
+                                u"schema": {u"type": u"Boolean"}
+                            },
+                        },
+                        u"order": [u"is_gordon_ramsay"]
+                    }
+                },
+                u"links": {
+                    u"map": {},
+                    u"order": []
+                },
+                u"query_fields": {
+                    u"map": {},
+                    u"order": []
+                }
             }
         },
-        {
-            u"name": u"Author",
-            u"data_schema": {
-                u'type': u"Struct",
-                u"param": {
-                    u"map": {
-                        u"is_gordon_ramsay": {
-                            u"required": True,
-                            u"schema": {u"type": u"Boolean"}
-                        },
-                    },
-                    u"order": [u"is_gordon_ramsay"]
-                }
-            },
-            u"links": {
-                u"map": {},
-                u"order": []
-            },
-            u"query_fields": {
-                u"map": {},
-                u"order": []
-            }
-        }
-    ]
+        u"order": [u"Recipe", u"Author"]
+    }
 }
 
 
@@ -165,18 +166,6 @@ class TestAPI(TestCase):
             self.assertEqual(pancake.name, "pancake")
             self.assertEqual(R.to_json(pancake), d)
 
-    def test_LazyWrapper_okay(self):
-        ls = LazyWrapper("cookbook.Recipe")
-        with cosmos:
-            self.assertEqual(Schema.to_json(ls), {"type": "cookbook.Recipe"})
-            # This time model_cls should be cached
-            self.assertEqual(Schema.to_json(ls), {"type": "cookbook.Recipe"})
-
-    def test_LazyWrapper_fail(self):
-        ls = LazyWrapper("unknown.Unknown")
-        with self.assertRaises(ModelNotFound):
-            ls.from_json(1)
-
     # TODO: Teleport should raise a ValidationError here
     def _test_accepts_invalid_schema(self):
         with self.assertRaisesRegexp(ValidationError, "Missing fields"):
@@ -194,12 +183,6 @@ class TestAPI(TestCase):
                 "name": "turkey"
             }
             self.assertEqual(s.from_json(d).name, "turkey")
-
-    def test_model_deserialize_bad_name(self):
-        with cosmos:
-            Schema.from_json({"type": "cookingbook.Recipe"})
-            with self.assertRaisesRegexp(ModelNotFound, "cookingbook.Recipe"):
-                cosmos.force()
 
     def test_subclassing_hook(self):
         self.assertEqual(set(self.cookbook.models.__all__), set(["Recipe", "Author"]))

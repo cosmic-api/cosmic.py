@@ -1,7 +1,4 @@
-import random
-
-from collections import OrderedDict
-
+from cosmic import cosmos
 from cosmic.api import API
 from cosmic.testing import DBModel
 from teleport import *
@@ -63,6 +60,7 @@ class Word(DBModel):
     links = [
         required("language", Language)
     ]
+    query_fields = []
 
 
 if __name__ == "__main__":

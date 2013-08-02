@@ -222,7 +222,7 @@ class FlaskView(object):
 
         is_empty = res.text == ""
         if ((self.response_must_be_empty == True and not is_empty) or
-            (is_empty and self.response_can_be_empty == False)):
+                (is_empty and self.response_can_be_empty == False)):
             raise e
 
         r = {
