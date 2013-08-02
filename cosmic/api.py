@@ -11,7 +11,7 @@ from teleport import *
 from flask import Blueprint, Flask
 
 from .actions import Function
-from .models import Model, ModelSerializer, prep_model
+from .models import Model, RemoteModel, prep_model
 from .tools import GetterNamespace, get_args, assert_is_compatible, deserialize_json, validate_underscore_identifier
 from .http import *
 from . import cosmos
@@ -25,32 +25,31 @@ class API(BasicWrapper):
     schema = Struct([
         required("name", String),
         optional("homepage", String),
-        required("models", OrderedMap(ModelSerializer)),
+        required("models", OrderedMap(Struct([
+            optional("data_schema", Schema),
+            required("links", OrderedMap(Struct([
+                required(u"schema", Schema),
+                required(u"required", Boolean),
+                optional(u"doc", String)
+            ]))),
+            required("query_fields", OrderedMap(Struct([
+                required(u"schema", Schema),
+                required(u"required", Boolean),
+                optional(u"doc", String)
+            ]))),
+            required("sets", OrderedMap(Struct([
+                required(u"model", Schema),
+                optional(u"doc", String)
+            ]))),
+        ]))),
         required("actions", OrderedMap(Function)),
     ])
 
-    def __init__(self, name, homepage=None, models=[], actions=None):
+    def __init__(self, name, homepage=None):
         self.name = name
         self.homepage = homepage
-
-        if actions:
-            self._actions = actions
-        else:
-            self._actions = OrderedDict()
-
-        if models:
-            self._models = models
-        else:
-            self._models = OrderedDict()
-
-
-        self._documents = OrderedDict()
-        # Populate it if we have initial data
-        for name, model in self._models.items():
-            model.__name__ = str(name)
-            model.api = self
-            self._models[model.__name__] = model
-            prep_model(model)
+        self._models = OrderedDict()
+        self._actions = OrderedDict()
 
         self.actions = GetterNamespace(self._get_function_callable)
         self.models = GetterNamespace(
@@ -62,15 +61,38 @@ class API(BasicWrapper):
 
     @staticmethod
     def assemble(datum):
-        return API(**datum)
+        api = API(name=datum["name"], homepage=datum.get("homepage", None))
+        api._actions = datum["actions"]
+
+        for name, modeldef in datum["models"].items():
+            M = cosmos.M("%s.%s" % (api.name, name))
+
+            M.api = api
+            M.properties = modeldef["data_schema"].param.items()
+            M.query_fields = modeldef["query_fields"].items()
+            M.links = modeldef["links"].items()
+            M.sets = modeldef["sets"].items()
+            prep_model(M)
+
+            api._models[name] = M
+
+        return api
 
     @staticmethod
     def disassemble(datum):
+        models = OrderedDict()
+        for model_cls in datum._models.values():
+            models[unicode(model_cls.__name__)] = {
+                "data_schema": Struct(model_cls.properties),
+                "links": OrderedDict(model_cls.links),
+                "query_fields": OrderedDict(model_cls.query_fields),
+                "sets": OrderedDict(model_cls.sets)
+            }
         return {
             "name": datum.name,
             "homepage": datum.homepage,
             "actions": datum._actions,
-            "models": datum._models
+            "models": models
         }
 
     @staticmethod
@@ -83,12 +105,9 @@ class API(BasicWrapper):
         # Set the API url to be the spec URL, minus the /spec.json
         api.url = url[:-10]
         api._request = RequestsPlugin(api.url)
-        # Once the API has been added to the cosmos, force lazy models to
-        # evaluate.
-        cosmos.force()
         return api
 
-    def get_blueprint(self, debug=False):
+    def get_blueprint(self):
         """Return a :class:`flask.blueprints.Blueprint` instance containing
         everything necessary to run your API. You may use this to augment an
         existing Flask website with an API::
@@ -102,10 +121,6 @@ class API(BasicWrapper):
             hackernews.register_blueprint(
                 hnapi.get_blueprint(),
                 url_prefix="/api")
-        
-        The *debug* parameter will determine whether Cosmic will propagate
-        exceptions, letting them reach the debugger or swallow them up,
-        returning proper HTTP error responses.
         """
 
         spec_view = Function(returns=API)
@@ -128,21 +143,27 @@ class API(BasicWrapper):
                 view_func=view_func.view,
                 methods=[view_func.method],
                 endpoint=endpoint)
-        for name, model_cls in self._models.items():
 
+        for name, model_cls in self._models.items():
             model_cls._list_poster.add_to_blueprint(blueprint)
             model_cls._list_getter.add_to_blueprint(blueprint)
             model_cls._model_getter.add_to_blueprint(blueprint)
             model_cls._model_putter.add_to_blueprint(blueprint)
             model_cls._model_deleter.add_to_blueprint(blueprint)
+            for set_getter in model_cls._set_getters.values():
+                set_getter.add_to_blueprint(blueprint)
 
         return blueprint
 
     def get_flask_app(self, debug=False, url_prefix=None):
         """Returns a Flask application with nothing but the API blueprint
         registered.
+
+        The *debug* parameter will determine whether Cosmic will propagate
+        exceptions, letting them reach the debugger or swallow them up,
+        returning proper HTTP error responses.
         """
-        blueprint = self.get_blueprint(debug=debug)
+        blueprint = self.get_blueprint()
 
         app = Flask(__name__, static_folder=None)
         # When debug is True, PROPAGATE_EXCEPTIONS will be implicitly True

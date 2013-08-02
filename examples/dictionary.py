@@ -2,9 +2,9 @@ import random
 
 from collections import OrderedDict
 
+from cosmic import cosmos
 from cosmic.api import API
 from cosmic.testing import DBModel
-from cosmic.models import LazyWrapper
 from teleport import *
 
 
@@ -54,9 +54,12 @@ class Language(DBModel):
         optional("code", String)
     ]
     sets = [
-        ("words", {"model": LazyWrapper("dictionary.Word")})
+        ("words", {"model": cosmos.M("dictionary.Word")})
     ]
 
+    def _set_contains(self, set_name, inst):
+        assert set_name == "words"
+        return inst.language.id == self.id
 
 
 

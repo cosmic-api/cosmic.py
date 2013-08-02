@@ -197,6 +197,22 @@ class TestDictionary(TestCase):
         self._test_delete(self.remote_dictionary.models.Word)
 
 
+    def _test_set_contains(self, language_model, word_model):
+        c = copy.deepcopy(langdb)
+        with DBContext(c) as dbctx:
+            hundo = word_model.get_by_id("1")
+            en = language_model.get_by_id("0")
+            eo = language_model.get_by_id("1")
+            self.assertTrue(eo._set_contains("words", hundo))
+            self.assertFalse(en._set_contains("words", hundo))
+
+    def test_local_set_contains(self):
+        self._test_set_contains(Language, Word)
+
+    def test_remote_set_contains(self):
+        self._test_set_contains(self.remote_dictionary.models.Language, self.remote_dictionary.models.Word)
+
+
     def test_get_language(self):
         with DBContext(langdb):
             res = self.d.get('/Language/0')

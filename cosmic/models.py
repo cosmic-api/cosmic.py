@@ -11,49 +11,8 @@ from .exceptions import ModelNotFound
 from .tools import GetterNamespace, validate_underscore_identifier
 
 
-class ModelSerializer(BasicWrapper):
-    type_name = "cosmic.Model"
-
-    schema = Struct([
-        optional("data_schema", Schema),
-        required("links", OrderedMap(Struct([
-            required(u"schema", Schema),
-            required(u"required", Boolean),
-            optional(u"doc", String)
-        ]))),
-        required("query_fields", OrderedMap(Struct([
-            required(u"schema", Schema),
-            required(u"required", Boolean),
-            optional(u"doc", String)
-        ]))),
-        required("sets", OrderedMap(Struct([
-            required(u"model", Schema),
-            optional(u"doc", String)
-        ]))),
-    ])
-
-    @staticmethod
-    def assemble(datum):
-        # Take a schema and name and turn them into a model class
-        class M(Model):
-            properties = datum["data_schema"].param.items()
-            query_fields = datum["query_fields"].items()
-            links = datum["links"].items()
-            sets = datum["sets"].items()
-        return M
-
-    @staticmethod
-    def disassemble(datum):
-        return {
-            "data_schema": Struct(datum.properties),
-            "links": OrderedDict(datum.links),
-            "query_fields": OrderedDict(datum.query_fields),
-            "sets": OrderedDict(datum.sets)
-        }
-
-
 def prep_model(model_cls):
-    from .http import ListPoster, ListGetter, ModelGetter, ModelPutter, ModelDeleter
+    from .http import ListPoster, ListGetter, ModelGetter, ModelPutter, ModelDeleter, SetMemberGetter
 
     link_schema = Struct([
         required("href", String)
@@ -66,7 +25,7 @@ def prep_model(model_cls):
     ]
     link_names = set()
     field_names = set()
-    for name, link in OrderedDict(model_cls.links).items():
+    for name, link in model_cls.links:
         validate_underscore_identifier(name)
         link_names.add(name)
         links.append((name, {
@@ -76,7 +35,7 @@ def prep_model(model_cls):
     props = [
         optional("_links", Struct(links)),
     ]
-    for name, field in OrderedDict(model_cls.properties).items():
+    for name, field in model_cls.properties:
         validate_underscore_identifier(name)
         field_names.add(name)
         props.append((name, field))
@@ -88,6 +47,9 @@ def prep_model(model_cls):
     model_cls._model_getter = ModelGetter(model_cls)
     model_cls._model_putter = ModelPutter(model_cls)
     model_cls._model_deleter = ModelDeleter(model_cls)
+    model_cls._set_getters = {}
+    for name, setdef in model_cls.sets:
+        model_cls._set_getters[name] = SetMemberGetter(model_cls, setdef["model"], name)
 
     model_cls.schema = Struct(props)
 
@@ -97,13 +59,13 @@ class Model(BasicWrapper):
     query_fields = []
     links = []
     sets = []
+    _set_getters = {}
 
     def __init__(self, data=None):
-        self.id = None
         if data:
-            _, self._representation = self.__class__._fill_out(data)
+            self.id, self._representation = self.__class__._fill_out(data)
         else:
-            self._representation = None
+            self.id, self._representation = (None, None)
 
     @property
     def href(self):
@@ -192,24 +154,9 @@ class Model(BasicWrapper):
         else:
             super(Model, self).__setattr__(name, value)
 
-    def save(self):
-        if self.id:
-            inst = self.__class__._model_putter(self.id, self)
-        else:
-            inst = self.__class__._list_poster(self)
-            self.id = inst.id
-        self._representation = inst._representation
-
-    def delete(self):
-        return self.__class__._model_deleter(self)
-
     @classmethod
     def validate(cls, datum):
         pass
-
-    @classmethod
-    def get_list(cls, **query):
-        return cls._list_getter(**query)
 
     @classmethod
     def get_by_id(cls, id):
@@ -224,56 +171,43 @@ class Model(BasicWrapper):
             raise ValidationError("Expected id: %s, actual: %s" % (self.id, inst.id))
 
 
-class Set(object):
+class RemoteModel(Model):
 
-    def __init__(self):
-        pass
+    def save(self):
+        if self.id:
+            inst = self.__class__._model_putter(self.id, self)
+        else:
+            inst = self.__class__._list_poster(self)
+            self.id = inst.id
+        self._representation = inst._representation
 
-    def __contains__(self, inst):
-        pass
+    def delete(self):
+        return self.__class__._model_deleter(self)
 
+    @classmethod
+    def get_list(cls, **query):
+        return cls._list_getter(**query)
 
+    def _set_contains(self, set_name, inst):
+        return self.__class__._set_getters[set_name](self.id, inst.id)
 
-
-class LazyWrapper(object):
-    _model_cls = None
-
-    def __init__(self, type_name):
-        self.type_name = type_name
-
-    def from_json(self, datum):
-        return self.model_cls.from_json(datum)
-
-    def to_json(self, datum):
-        return self.model_cls.to_json(datum)
-
-    @property
-    def model_cls(self):
-        from . import cosmos
-        if not self._model_cls:
-            self._model_cls = cosmos.get_model(self.type_name)
-        return self._model_cls
 
 
 class Cosmos(TypeMap):
 
     def __init__(self):
-        self.lazy_serializers = []
         self.apis = {}
+        self.lazy_models = {}
 
-    def force(self):
-        for serializer in self.lazy_serializers:
-            serializer._model_cls = self.get_model(serializer.type_name)
-        self.lazy_serializers = []
-
-    def get_model(self, name):
+    def M(self, name):
         api_name, model_name = name.split('.', 1)
         try:
-            api = self.apis[api_name]
-            model = api._models[model_name]
+            model = self.apis[api_name]._models[model_name]
             return model
         except KeyError:
-            raise ModelNotFound(name)
+            if name not in self.lazy_models:
+                self.lazy_models[name] = type(str(model_name), (RemoteModel,), {"type_name": name})
+            return self.lazy_models[name]
 
     def __enter__(self):
         _ctx_stack.push(self)
@@ -288,18 +222,10 @@ class Cosmos(TypeMap):
         from actions import Function
         if name == "cosmic.API":
             return (API, None,)
-        elif name == "cosmic.Model":
-            return (ModelSerializer, None,)
         elif name == "cosmic.Function":
             return (Function, None,)
         elif '.' in name:
-            try:
-                model_cls = self.get_model(name)
-                return (model_cls, None,)
-            except ModelNotFound:
-                lazy_model = LazyWrapper(name)
-                self.lazy_serializers.append(lazy_model)
-                return (lazy_model, None,)
+            return (self.M(name), None,)
         else:
             return BUILTIN_TYPES[name]
 

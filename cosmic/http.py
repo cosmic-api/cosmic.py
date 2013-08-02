@@ -222,7 +222,7 @@ class FlaskView(object):
 
         is_empty = res.text == ""
         if ((self.response_must_be_empty == True and not is_empty) or
-            (is_empty and self.response_can_be_empty == False)):
+                (is_empty and self.response_can_be_empty == False)):
             raise e
 
         r = {
@@ -482,4 +482,40 @@ class ListGetter(FlaskView):
         body["_embedded"][self.model_cls.__name__] = map(self.model_cls.to_json, l)
         return (json.dumps(body), 200, {"Content-Type": "application/json"})
 
+
+class SetMemberGetter(FlaskView):
+    method = "GET"
+    acceptable_response_codes = [204, 404]
+    response_must_be_empty = True
+    request_must_be_empty = True
+
+    def __init__(self, single_model_cls, multi_model_cls, set_name):
+        self.model_cls = self.single_model_cls = single_model_cls
+        self.multi_model_cls = multi_model_cls
+        self.set_name = set_name
+        self.url = "/%s/<single_id>/%s/<multi_id>" % (self.single_model_cls.__name__, set_name)
+        self.endpoint = "set_member_get_%s_%s" % (self.single_model_cls.__name__, set_name)
+
+    def handler(self, single_id, multi_id):
+        single = self.single_model_cls.get_by_id(single_id)
+        multi = self.multi_model_cls.get_by_id(multi_id)
+        return single._set_contains(self.set_name, multi)
+
+    def build_request(self, single_id, multi_id):
+        return {'url_args': {'single_id': single_id, 'multi_id': multi_id}}
+
+    def parse_request(self, req):
+        return dict(**req['url_args'])
+
+    def build_response(self, yes):
+        if yes:
+            return ("", 204, {})
+        else:
+            return ("", 404, {})
+
+    def parse_response(self, res):
+        if res['code'] == 404:
+            return False
+        if res['code'] == 204:
+            return True
 
