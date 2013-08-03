@@ -61,6 +61,11 @@ class Language(DBModel):
         assert set_name == "words"
         return inst.language.id == self.id
 
+    def _set_put(self, set_name, inst):
+        assert set_name == "words"
+        inst.language = self
+        inst.save()
+
 
 
 @dictionary.model

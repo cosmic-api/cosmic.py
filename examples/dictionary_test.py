@@ -213,6 +213,22 @@ class TestDictionary(TestCase):
         self._test_set_contains(self.remote_dictionary.models.Language, self.remote_dictionary.models.Word)
 
 
+    def _test_set_put(self, language_model, word_model):
+        c = copy.deepcopy(langdb)
+        with DBContext(c) as dbctx:
+            hundo = word_model.get_by_id("1")
+            en = language_model.get_by_id("0")
+            self.assertFalse(en._set_contains("words", hundo))
+            en._set_put("words", hundo)
+            self.assertTrue(en._set_contains("words", hundo))
+
+    def test_local_set_put(self):
+        self._test_set_put(Language, Word)
+
+    def test_remote_set_put(self):
+        self._test_set_put(self.remote_dictionary.models.Language, self.remote_dictionary.models.Word)
+
+
     def test_get_language(self):
         with DBContext(langdb):
             res = self.d.get('/Language/0')

@@ -519,3 +519,36 @@ class SetMemberGetter(FlaskView):
         if res['code'] == 204:
             return True
 
+
+class SetMemberPutter(FlaskView):
+    method = "PUT"
+    acceptable_response_codes = [204]
+    response_must_be_empty = True
+    request_must_be_empty = True
+
+    def __init__(self, single_model_cls, multi_model_cls, set_name):
+        self.model_cls = self.single_model_cls = single_model_cls
+        self.multi_model_cls = multi_model_cls
+        self.set_name = set_name
+        self.url = "/%s/<single_id>/%s/<multi_id>" % (self.single_model_cls.__name__, set_name)
+        self.endpoint = "set_member_put_%s_%s" % (self.single_model_cls.__name__, set_name)
+
+    def handler(self, single_id, multi_id):
+        single = self.single_model_cls.get_by_id(single_id)
+        multi = self.multi_model_cls.get_by_id(multi_id)
+        if single == None or multi == None:
+            raise NotFound
+        return single._set_put(self.set_name, multi)
+
+    def build_request(self, single_id, multi_id):
+        return {'url_args': {'single_id': single_id, 'multi_id': multi_id}}
+
+    def parse_request(self, req):
+        return dict(**req['url_args'])
+
+    def build_response(self, _):
+        return ("", 204, {})
+
+    def parse_response(self, _):
+        return None
+
