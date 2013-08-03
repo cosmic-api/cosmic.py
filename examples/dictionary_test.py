@@ -69,7 +69,7 @@ json_spec = {
                     u"map": {
                         u"language": {
                             u"schema": {u"type": u"dictionary.Language"},
-                            u"required": True
+                            u"required": False
                         }
                     },
                     u"order": [u"language"]
@@ -227,6 +227,22 @@ class TestDictionary(TestCase):
 
     def test_remote_set_put(self):
         self._test_set_put(self.remote_dictionary.models.Language, self.remote_dictionary.models.Word)
+
+
+    def _test_set_delete(self, language_model, word_model):
+        c = copy.deepcopy(langdb)
+        with DBContext(c) as dbctx:
+            hundo = word_model.get_by_id("1")
+            eo = language_model.get_by_id("1")
+            self.assertTrue(eo._set_contains("words", hundo))
+            eo._set_delete("words", hundo)
+            self.assertFalse(eo._set_contains("words", hundo))
+
+    def test_local_set_delete(self):
+        self._test_set_delete(Language, Word)
+
+    def test_remote_set_delete(self):
+        self._test_set_delete(self.remote_dictionary.models.Language, self.remote_dictionary.models.Word)
 
 
     def test_get_language(self):

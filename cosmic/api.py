@@ -154,6 +154,8 @@ class API(BasicWrapper):
                 set_getter.add_to_blueprint(blueprint)
             for set_putter in model_cls._set_putters.values():
                 set_putter.add_to_blueprint(blueprint)
+            for set_deleter in model_cls._set_deleters.values():
+                set_deleter.add_to_blueprint(blueprint)
 
         return blueprint
 

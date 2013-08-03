@@ -13,7 +13,7 @@ from .tools import GetterNamespace, validate_underscore_identifier
 
 def prep_model(model_cls):
     from .http import ListPoster, ListGetter, ModelGetter, ModelPutter, ModelDeleter
-    from .http import SetMemberGetter, SetMemberPutter
+    from .http import SetMemberGetter, SetMemberPutter, SetMemberDeleter
 
     link_schema = Struct([
         required("href", String)
@@ -50,9 +50,11 @@ def prep_model(model_cls):
     model_cls._model_deleter = ModelDeleter(model_cls)
     model_cls._set_getters = {}
     model_cls._set_putters = {}
+    model_cls._set_deleters = {}
     for name, setdef in model_cls.sets:
         model_cls._set_getters[name] = SetMemberGetter(model_cls, setdef["model"], name)
         model_cls._set_putters[name] = SetMemberPutter(model_cls, setdef["model"], name)
+        model_cls._set_deleters[name] = SetMemberDeleter(model_cls, setdef["model"], name)
 
     model_cls.schema = Struct(props)
 
@@ -195,6 +197,9 @@ class RemoteModel(Model):
 
     def _set_put(self, set_name, inst):
         return self.__class__._set_putters[set_name](self.id, inst.id)
+
+    def _set_delete(self, set_name, inst):
+        return self.__class__._set_deleters[set_name](self.id, inst.id)
 
 
 

@@ -59,11 +59,16 @@ class Language(DBModel):
 
     def _set_contains(self, set_name, inst):
         assert set_name == "words"
-        return inst.language.id == self.id
+        return inst.language and inst.language.id == self.id
 
     def _set_put(self, set_name, inst):
         assert set_name == "words"
         inst.language = self
+        inst.save()
+
+    def _set_delete(self, set_name, inst):
+        assert set_name == "words"
+        inst.language = None
         inst.save()
 
 
@@ -75,7 +80,7 @@ class Word(DBModel):
         required("text", String)
     ]
     links = [
-        required("language", Language)
+        optional("language", Language)
     ]
 
 
