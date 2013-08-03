@@ -123,12 +123,12 @@ class API(BasicWrapper):
         returning proper HTTP error responses.
         """
 
-        def spec_view(payload):
-            return Box(self.get_json_spec())
+        spec_view = Function(returns=API)
+        spec_view.func = lambda: self
 
         blueprint = Blueprint('cosmic', __name__)
         blueprint.add_url_rule("/spec.json",
-            view_func=FlaskView(spec_view, debug),
+            view_func=FlaskView(spec_view.json_to_json, debug),
             methods=["GET"],
             endpoint="spec")
         for name, function in self._actions.items():

@@ -39,7 +39,7 @@ class TestTutorialBuildingAPI(TestCase):
         self.assertRegexpMatches(res.data, "handsome stranger")
 
     def test_spec_endpoint(self):
-        res = self.c.get('/spec.json')
+        res = self.d.get('/spec.json')
         self.assertEqual(json.loads(res.data), json_spec)
 
     def test_wrong_sign(self):
