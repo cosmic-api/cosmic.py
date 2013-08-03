@@ -211,8 +211,7 @@ class TestAPI(TestCase):
     def test_serialize(self):
         self.assertEqual(API.to_json(self.cookbook), cookbook_spec)
 
-    def test_call(self):
-        data = '{"spicy": true}'
+    def test_call_action_with_args(self):
         self.assertEqual(self.cookbook.actions.cabbage(spicy=False), "sauerkraut")
 
     def test_spec_endpoint(self):
@@ -225,7 +224,7 @@ class TestAPI(TestCase):
         res = self.client.post('/spec.json')
         self.assertEqual(res.status_code, 405)
 
-    def test_spec_wrong_content_type(self):
+    def test_wrong_content_type(self):
         res = self.client.post('/actions/cabbage', data="1", content_type="application/xml")
         self.assertEqual(res.status_code, 400)
         self.assertRegexpMatches(res.data, "Content-Type")
@@ -235,6 +234,11 @@ class TestAPI(TestCase):
         res = self.client_debug.post('/actions/cabbage', data=data, content_type="application/json")
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.data, '"kimchi"')
+
+    def test_noop_action_okay(self):
+        res = self.client_debug.post('/actions/noop', data='')
+        self.assertEqual(res.status_code, 204)
+        self.assertEqual(res.data, '')
 
     def test_schema(self):
         with cosmos:

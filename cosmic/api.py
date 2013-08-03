@@ -119,7 +119,7 @@ class API(BasicWrapper):
         """
 
         spec_view = Function(returns=API)
-        spec_view.func = lambda payload: self
+        spec_view.func = lambda: self
 
         view_func = FlaskViewAction(spec_view, "/spec.json", self)
         view_func.method = "GET"
