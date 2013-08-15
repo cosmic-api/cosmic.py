@@ -1,7 +1,7 @@
 from cosmic import cosmos
 from cosmic.models import Cosmos
 from cosmic.api import API
-from cosmic.testing import DBModel
+from cosmic.testing import DBModel, DBContext
 from teleport import *
 
 
@@ -54,4 +54,5 @@ def make_planetarium():
 
 if __name__ == "__main__":
     with Cosmos():
-        make_planetarium().run()
+        with DBContext(planet_db):
+            make_planetarium().run()

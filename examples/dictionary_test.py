@@ -84,53 +84,9 @@ json_spec = {
 class TestDictionary(TestCase):
 
     def setUp(self):
+        self.maxDiff = None
         self.c = dictionary.get_flask_app().test_client()
         self.d = dictionary.get_flask_app(debug=True).test_client()
-
-        with patch.object(requests, 'get') as mock_get:
-            mock_get.return_value.json = json_spec
-            mock_get.return_value.status_code = 200
-
-            with Cosmos():
-                self.remote_dictionary = API.load('http://example.com/spec.json')
-                # Use the local API's HTTP client to simulate the remote API's calls
-                self.remote_dictionary._request = WerkzeugTestClientPlugin(self.d)
-
-        self.maxDiff = 2000
-
-
-    def _test_create_model(self, word_model):
-        c = copy.deepcopy(langdb)
-        with DBContext(c) as dbctx:
-            birdo = word_model({
-                "text": "birdo",
-                "_links": {
-                    "language": {"href": "/Language/1"}
-                }
-            })
-            self.assertEqual(birdo.id, None)
-            birdo.save()
-            self.assertEqual(birdo.id, "2")
-
-    def test_local_create_model(self):
-        self._test_create_model(Word)
-
-    def test_remote_create_model(self):
-        self._test_create_model(self.remote_dictionary.models.Word)
-
-
-    def _test_delete(self, word_model):
-        c = copy.deepcopy(langdb)
-        with DBContext(c) as dbctx:
-            hundo = word_model.get_by_id("1")
-            hundo.delete()
-            self.assertEqual(c["words"][1], None)
-
-    def test_local_delete(self):
-        self._test_delete(Word)
-
-    def test_remote_delete(self):
-        self._test_delete(self.remote_dictionary.models.Word)
 
 
     def test_get_language(self):

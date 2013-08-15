@@ -152,3 +152,43 @@ class TestPlanitarium(TestCase):
             self._test_save_data()
 
 
+    def _test_create_model(self):
+        c = copy.deepcopy(planet_db)
+        with DBContext(c):
+            Sphere = cosmos.M('planetarium.Sphere')
+            pluto = Sphere({
+                "name": "Pluto",
+                "_links": {
+                    "revolves_around": {"href": "/Sphere/0"}
+                }
+            })
+            self.assertEqual(pluto.id, None)
+            pluto.save()
+            self.assertEqual(pluto.id, "3")
+
+    def test_local_create_model(self):
+        with self.cosmos1:
+            self._test_create_model()
+
+    def test_remote_create_model(self):
+        with self.cosmos2:
+            self._test_create_model()
+
+
+    def _test_delete(self):
+        c = copy.deepcopy(planet_db)
+        with DBContext(c):
+            Sphere = cosmos.M('planetarium.Sphere')
+            earth = Sphere.get_by_id("1")
+            earth.delete()
+            self.assertEqual(c["spheres"][1], None)
+
+    def test_local_delete(self):
+        with self.cosmos1:
+            self._test_delete()
+
+    def test_remote_delete(self):
+        with self.cosmos2:
+            self._test_delete()
+
+
