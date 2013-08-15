@@ -11,6 +11,7 @@ from cosmic.api import API
 from cosmic.http import WerkzeugTestClientPlugin
 from cosmic import cosmos
 from cosmic.testing import DBContext
+from cosmic.models import Cosmos
 from dictionary import *
 
 json_spec = {
@@ -90,7 +91,7 @@ class TestDictionary(TestCase):
             mock_get.return_value.json = json_spec
             mock_get.return_value.status_code = 200
 
-            with cosmos:
+            with Cosmos():
                 self.remote_dictionary = API.load('http://example.com/spec.json')
                 # Use the local API's HTTP client to simulate the remote API's calls
                 self.remote_dictionary._request = WerkzeugTestClientPlugin(self.d)

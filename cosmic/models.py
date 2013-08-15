@@ -182,6 +182,8 @@ class RemoteModel(Model):
         return cls._list_getter(**query)
 
 
+class Base(object):
+    pass
 
 class Cosmos(TypeMap):
 
@@ -196,7 +198,7 @@ class Cosmos(TypeMap):
             return model
         except KeyError:
             if name not in self.lazy_models:
-                self.lazy_models[name] = type(str(model_name), (RemoteModel,), {"type_name": name})
+                self.lazy_models[name] = type(str(model_name), (Base,), {"type_name": name})
             return self.lazy_models[name]
 
     def __enter__(self):

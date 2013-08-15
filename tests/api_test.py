@@ -11,7 +11,7 @@ from werkzeug.exceptions import Unauthorized
 
 from cosmic.exceptions import *
 from cosmic.api import API
-from cosmic.models import Model
+from cosmic.models import Model, Cosmos
 from cosmic import api, request
 
 from cosmic import cosmos
@@ -104,10 +104,12 @@ class TestAPI(TestCase):
 
     def setUp(self):
         self.maxDiff = None
+        self.cosmos = Cosmos()
+        self.cosmos.__enter__()
 
-        self.cookbook = API(u'cookbook')
+        self.cookbook = cookbook = API(u'cookbook')
 
-        @self.cookbook.action(
+        @cookbook.action(
             accepts=Struct([
                 required(u"spicy", Boolean),
                 optional(u"capitalize", Boolean)
@@ -124,12 +126,12 @@ class TestAPI(TestCase):
             else:
                 return c
 
-        @self.cookbook.action(accepts=None, returns=None)
+        @cookbook.action(accepts=None, returns=None)
         def noop():
             "Does not do anything"
             pass
 
-        @self.cookbook.model
+        @cookbook.model
         class Recipe(Model):
             properties = [
                 required(u"name", String)
@@ -140,7 +142,7 @@ class TestAPI(TestCase):
                 if datum["name"] == "bacon":
                     raise ValidationError("Not kosher")
 
-        @self.cookbook.model
+        @cookbook.model
         class Author(Model):
             properties = [
                 required(u"is_gordon_ramsay", Boolean)
@@ -151,6 +153,9 @@ class TestAPI(TestCase):
 
         self.app = self.cookbook.get_flask_app()
         self.client = self.app.test_client()
+
+    def tearDown(self):
+        self.cosmos.__enter__()
 
     def test_model(self):
         R = self.cookbook.models.Recipe
@@ -241,7 +246,7 @@ class TestAPI(TestCase):
         self.assertEqual(res.data, '')
 
     def test_schema(self):
-        with cosmos:
+        with Cosmos():
             API.from_json(API.to_json(self.cookbook))
 
     def test_load_url(self):
@@ -249,18 +254,26 @@ class TestAPI(TestCase):
         with patch.object(requests, 'get') as mock_get:
             mock_get.return_value.json = cookbook_spec
             mock_get.return_value.status_code = 200
-            cookbook_decentralized = API.load('http://example.com/spec.json')
-            self.assertEqual(API.to_json(cookbook_decentralized), cookbook_spec)
+            with Cosmos():
+                cookbook_decentralized = API.load('http://example.com/spec.json')
+                self.assertEqual(API.to_json(cookbook_decentralized), cookbook_spec)
 
 
 
 class TestRemoteAPI(TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         from cosmic.http import RequestsPlugin
-        self.cookbook = API.from_json(cookbook_spec)
-        self.cookbook.url = 'http://localhost:8881/api'
-        self.cookbook._request = RequestsPlugin('http://localhost:8881')
+        cls.cosmos = Cosmos()
+        cls.cosmos.__enter__()
+        cls.cookbook = API.from_json(cookbook_spec)
+        cls.cookbook.url = 'http://localhost:8881/api'
+        cls.cookbook._request = RequestsPlugin('http://localhost:8881')
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.cosmos.__enter__()
 
     def test_remote_no_return_action(self):
         with patch.object(requests, 'request') as mock_post:

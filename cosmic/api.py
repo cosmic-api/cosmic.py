@@ -54,6 +54,8 @@ class API(BasicWrapper):
             get_all=self._models.keys)
 
         # Add to registry so we can reference its models
+        if self.name in cosmos.apis:
+            raise Exception("API already exists")
         cosmos.apis[self.name] = self
 
     @staticmethod
@@ -63,6 +65,12 @@ class API(BasicWrapper):
 
         for name, modeldef in datum["models"].items():
             M = cosmos.M("%s.%s" % (api.name, name))
+            # Mix in RemoteModel
+            try:
+                M.__bases__ = (RemoteModel,) + M.__bases__
+            except TypeError:
+                raise
+                import pdb; pdb.set_trace()
 
             M.api = api
             M.properties = modeldef["data_schema"].param.items()

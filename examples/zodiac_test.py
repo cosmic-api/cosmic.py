@@ -7,6 +7,7 @@ from unittest2 import TestCase
 
 from cosmic.api import API
 from cosmic import cosmos
+from cosmic.models import Cosmos
 from zodiac import zodiac
 
 json_spec = {
@@ -72,7 +73,7 @@ class TestTutorialBuildingAPI(TestCase):
             mock_get.return_value.json = json_spec
             mock_get.return_value.status_code = 200
 
-            with cosmos:
+            with Cosmos():
                 h = API.load('http://example.com/spec.json')
                 pisces = h.models.Sign({"name": "pisces"})
                 with patch.object(requests, 'request') as mock_post:
