@@ -268,9 +268,13 @@ class API(BasicWrapper):
         """
         model_cls.api = self
         model_cls.type_name = "%s.%s" % (self.name, model_cls.__name__,)
-        # Add to namespace
-        self._models[model_cls.__name__] = model_cls
         prep_model(model_cls)
-        return model_cls
+
+        wrapper = cosmos.M(model_cls.type_name)
+        wrapper.__bases__ = (model_cls,) + wrapper.__bases__
+        # Add to namespace
+        self._models[model_cls.__name__] = wrapper
+
+        return wrapper
 
 
