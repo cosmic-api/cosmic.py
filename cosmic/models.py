@@ -85,8 +85,9 @@ class Model(BasicWrapper):
             if name in links:
                 url = links[name]["href"]
                 model_cls = OrderedDict(cls.links)[name]["schema"]
-                id = model_cls.id_from_url(url)
-                rep[name] = model_cls.get_by_id(id)
+                inst = model_cls()
+                inst.id = model_cls.id_from_url(url)
+                rep[name] = inst
             else:
                 rep[name] = None
         for name in OrderedDict(cls.properties).keys():
@@ -120,19 +121,14 @@ class Model(BasicWrapper):
         return d
 
     def _get_item(self, name):
-        if self._representation == None:
-            if self.id:
-                self._force()
-            else:
-                self.id, self._representation = self.__class__._fill_out({})
+        if name in OrderedDict(self.__class__.links).keys():
+            inst = self._representation[name]
+            if inst is not None and inst._representation is None:
+                i2 = inst.__class__.get_by_id(inst.id)
+                inst._representation = i2._representation
         return self._representation.get(name, None)
 
     def _set_item(self, name, value):
-        if self._representation == None:
-            if self.id:
-                self._force()
-            else:
-                self.id, self._representation = self.__class__._fill_out({})
         self._representation[name] = value
 
     def __getattr__(self, name):
@@ -153,15 +149,8 @@ class Model(BasicWrapper):
 
     @classmethod
     def get_by_id(cls, id):
-        inst = cls()
-        inst.id = id
+        inst = cls._model_getter(id)
         return inst
-
-    def _force(self):
-        inst = self.__class__._model_getter(self.id)
-        self._representation = inst._representation
-        if self.id != inst.id:
-            raise ValidationError("Expected id: %s, actual: %s" % (self.id, inst.id))
 
 
 class RemoteModel(Model):
