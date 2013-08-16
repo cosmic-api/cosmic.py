@@ -49,6 +49,15 @@ def make_planetarium():
             optional("revolves_around", String)
         ]
 
+        @classmethod
+        def validate(cls, datum):
+            if datum["name"][0].islower():
+                raise ValidationError("Name must be capitalized", datum["name"])
+
+    @planetarium.action(accepts=Sphere, returns=String)
+    def hello(sphere):
+        return "Hello, %s" % sphere.name
+
     return planetarium
 
 

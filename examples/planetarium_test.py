@@ -59,9 +59,14 @@ json_spec = {
         },
         u"order": [u"Sphere"]
     },
-    u"actions": {
-        u"map": {},
-        u"order": []
+    "actions": {
+        "map": {
+            u"hello": {
+                "accepts": {"type": "planetarium.Sphere"},
+                "returns": {"type": "String"}
+            }
+        },
+        "order": [u"hello"]
     }
 }
 
