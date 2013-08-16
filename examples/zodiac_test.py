@@ -8,7 +8,7 @@ from unittest2 import TestCase
 from cosmic.api import API
 from cosmic import cosmos
 from cosmic.models import Cosmos
-from zodiac import zodiac
+from zodiac import make_zodiac
 
 json_spec = {
     "name": "zodiac",
@@ -53,20 +53,26 @@ json_spec = {
 class TestTutorialBuildingAPI(TestCase):
 
     def setUp(self):
-        self.c = zodiac.get_flask_app().test_client()
-        self.d = zodiac.get_flask_app(debug=True).test_client()
+        self.cosmos = Cosmos()
+        with self.cosmos:
+            self.zodiac = make_zodiac()
+            self.c = self.zodiac.get_flask_app().test_client()
+            self.d = self.zodiac.get_flask_app(debug=True).test_client()
 
     def test_run(self):
-        res = self.d.post('/actions/predict', data='{"name":"leo"}', content_type="application/json")
-        self.assertRegexpMatches(res.data, "handsome stranger")
+        with self.cosmos:
+            res = self.d.post('/actions/predict', data='{"name":"leo"}', content_type="application/json")
+            self.assertRegexpMatches(res.data, "handsome stranger")
 
     def test_spec_endpoint(self):
-        res = self.c.get('/spec.json')
-        self.assertEqual(json.loads(res.data), json_spec)
+        with self.cosmos:
+            res = self.c.get('/spec.json')
+            self.assertEqual(json.loads(res.data), json_spec)
 
     def test_wrong_sign(self):
-        res = self.c.post('/actions/predict', data='{"name":"tiger"}', content_type="application/json")
-        self.assertEqual(json.loads(res.data), {"error": "Unknown zodiac sign: u'tiger'"})
+        with self.cosmos:
+            res = self.c.post('/actions/predict', data='{"name":"tiger"}', content_type="application/json")
+            self.assertEqual(json.loads(res.data), {"error": "Unknown zodiac sign: u'tiger'"})
 
     def test_consuming(self):
         with patch.object(requests, 'get') as mock_get:

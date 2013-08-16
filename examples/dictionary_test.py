@@ -85,63 +85,72 @@ class TestDictionary(TestCase):
 
     def setUp(self):
         self.maxDiff = None
-        self.c = dictionary.get_flask_app().test_client()
-        self.d = dictionary.get_flask_app(debug=True).test_client()
-
+        self.cosmos = Cosmos()
+        with self.cosmos:
+            self.dictionary = make_dictionary()
+            self.c = self.dictionary.get_flask_app().test_client()
+            self.d = self.dictionary.get_flask_app(debug=True).test_client()
 
     def test_get_language(self):
-        with DBContext(langdb):
-            res = self.d.get('/Language/0')
-            self.assertEqual(json.loads(res.data), langdb["languages"][0])
+        with self.cosmos:
+            with DBContext(langdb):
+                res = self.d.get('/Language/0')
+                self.assertEqual(json.loads(res.data), langdb["languages"][0])
 
     def test_put_language(self):
-        c = copy.deepcopy(langdb)
-        english = copy.deepcopy(c["languages"][0])
-        english["code"] = "english"
-        with DBContext(c):
-            res = self.d.put('/Language/0', data=json.dumps(english), content_type="application/json")
-            self.assertEqual(c["languages"][0]["code"], "english")
+        with self.cosmos:
+            c = copy.deepcopy(langdb)
+            english = copy.deepcopy(c["languages"][0])
+            english["code"] = "english"
+            with DBContext(c):
+                res = self.d.put('/Language/0', data=json.dumps(english), content_type="application/json")
+                self.assertEqual(c["languages"][0]["code"], "english")
 
     def test_delete_language(self):
-        c = copy.deepcopy(langdb)
-        with DBContext(c):
-            res = self.d.delete('/Language/0', content_type="application/json")
-            self.assertEqual(c["languages"][0], None)
+        with self.cosmos:
+            c = copy.deepcopy(langdb)
+            with DBContext(c):
+                res = self.d.delete('/Language/0', content_type="application/json")
+                self.assertEqual(c["languages"][0], None)
 
     def test_get_language_not_found(self):
-        with DBContext(langdb):
-            res = self.d.get('/Language/2')
-            self.assertEqual(res.status_code, 404)
+        with self.cosmos:
+            with DBContext(langdb):
+                res = self.d.get('/Language/2')
+                self.assertEqual(res.status_code, 404)
 
     def test_get_all_languages(self):
-        with DBContext(langdb):
-            url = '/Language'
-            res = self.d.get(url)
-            self.assertEqual(json.loads(res.data), {
-                "_links": {
-                    "self": {"href": url}
-                },
-                "_embedded": {
-                    "Language": langdb["languages"]
-                }
-            })
+        with self.cosmos:
+            with DBContext(langdb):
+                url = '/Language'
+                res = self.d.get(url)
+                self.assertEqual(json.loads(res.data), {
+                    "_links": {
+                        "self": {"href": url}
+                    },
+                    "_embedded": {
+                        "Language": langdb["languages"]
+                    }
+                })
 
     def test_filter_languages(self):
-        with DBContext(langdb):
-            url = '/Language?code=%22en%22'
-            res = self.d.get(url)
-            self.assertEqual(json.loads(res.data), {
-                "_links": {
-                    "self": {"href": url}
-                },
-                "_embedded": {
-                    "Language": [langdb["languages"][0]]
-                }
-            })
+        with self.cosmos:
+            with DBContext(langdb):
+                url = '/Language?code=%22en%22'
+                res = self.d.get(url)
+                self.assertEqual(json.loads(res.data), {
+                    "_links": {
+                        "self": {"href": url}
+                    },
+                    "_embedded": {
+                        "Language": [langdb["languages"][0]]
+                    }
+                })
 
     def test_spec_endpoint(self):
-        res = self.d.get('/spec.json')
-        self.assertEqual(json.loads(res.data), json_spec)
+        with self.cosmos:
+            res = self.d.get('/spec.json')
+            self.assertEqual(json.loads(res.data), json_spec)
 
 
 

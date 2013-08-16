@@ -199,8 +199,7 @@ class API(BasicWrapper):
             })
             requests.post(url, data=data, headers=headers)
 
-        with cosmos:
-            spec = API.to_json(self)
+        spec = API.to_json(self)
 
         url = "https://registry.cosmic-api.com/actions/register_spec"
         if registry_url_override:

@@ -1,6 +1,7 @@
 from cosmic import cosmos
 from cosmic.api import API
 from cosmic.testing import DBModel
+from cosmic.models import Cosmos
 from teleport import *
 
 
@@ -37,31 +38,35 @@ langdb = {
     ]
 }
 
+def make_dictionary():
 
-dictionary = API("dictionary")
+    dictionary = API("dictionary")
 
-@dictionary.model
-class Language(DBModel):
-    db_table = 'languages'
-    properties = [
-        required("code", String)
-    ]
-    query_fields = [
-        optional("code", String)
-    ]
+    @dictionary.model
+    class Language(DBModel):
+        db_table = 'languages'
+        properties = [
+            required("code", String)
+        ]
+        query_fields = [
+            optional("code", String)
+        ]
 
 
-@dictionary.model
-class Word(DBModel):
-    db_table = 'words'
-    properties = [
-        required("text", String)
-    ]
-    links = [
-        required("language", Language)
-    ]
-    query_fields = []
+    @dictionary.model
+    class Word(DBModel):
+        db_table = 'words'
+        properties = [
+            required("text", String)
+        ]
+        links = [
+            required("language", Language)
+        ]
+        query_fields = []
+
+    return dictionary
 
 
 if __name__ == "__main__":
-    dictionary.run()
+    with Cosmos():
+        dictionary.run()

@@ -169,15 +169,12 @@ class FlaskView(object):
             if self.query_schema != None:
                 req['query'] = self.query_schema.from_multi_dict(request.args)
 
-            # Make sure the current TypeMap is on the Teleport context stack
-            with cosmos:
+            r = self.handler(**self.parse_request(req))
 
-                r = self.handler(**self.parse_request(req))
-
-                if hasattr(self, "build_response"):
-                    return make_response(self.build_response(r))
-                else:
-                    return make_response(r)
+            if hasattr(self, "build_response"):
+                return make_response(self.build_response(r))
+            else:
+                return make_response(r)
 
         except Exception as err:
             if current_app.debug:

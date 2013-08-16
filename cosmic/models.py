@@ -222,6 +222,4 @@ class Cosmos(TypeMap):
             return BUILTIN_TYPES[name]
 
 _ctx_stack = LocalStack()
-# If the stack is empty, use this global object
-_global_cosmos = Cosmos()
 

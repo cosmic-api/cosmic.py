@@ -93,8 +93,9 @@ class TestPlanitarium(TestCase):
 
 
     def test_spec_endpoint(self):
-        res = self.d.get('/spec.json')
-        self.assertEqual(json.loads(res.data), json_spec)
+        with self.cosmos1:
+            res = self.d.get('/spec.json')
+            self.assertEqual(json.loads(res.data), json_spec)
 
 
     def _test_follow_links(self):
