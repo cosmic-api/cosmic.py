@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 import json
+import copy
 import requests
 from requests.structures import CaseInsensitiveDict
 
@@ -31,8 +32,12 @@ class WerkzeugTestClientPlugin(object):
 
     def __init__(self, client):
         self.client = client
+        # Save every request and response for testing
+        self.stack = []
 
     def __call__(self, url, **kwargs):
+        saved_req = copy.deepcopy(kwargs)
+        saved_req['url'] = url
         # Content-Type header seems to be ignored, content_type as kwarg
         # works. Possibly a bug in Flask/Werkzeug.
         if 'headers' in kwargs and 'Content-Type' in kwargs['headers']:
@@ -42,6 +47,12 @@ class WerkzeugTestClientPlugin(object):
         resp._content = r.data
         resp.headers = CaseInsensitiveDict(r.headers)
         resp.status_code = r.status_code
+        saved_resp = {
+            "data": r.data,
+            "headers": copy.deepcopy(r.headers),
+            "status_code": r.status_code
+        }
+        self.stack.append((saved_req, saved_resp))
         return resp
 
 

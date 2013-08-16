@@ -89,7 +89,7 @@ class TestPlanitarium(TestCase):
 
                 self.remote_planetarium = API.load('http://example.com/spec.json')
                 # Use the local API's HTTP client to simulate the remote API's calls
-                self.remote_planetarium._request = WerkzeugTestClientPlugin(self.d)
+                self.remote_planetarium._request = self._request = WerkzeugTestClientPlugin(self.d)
 
 
     def test_spec_endpoint(self):
@@ -114,15 +114,27 @@ class TestPlanitarium(TestCase):
         with self.cosmos2:
             self._test_follow_links()
 
+            (req, res) = self._request.stack.pop()
+
+            self.assertEqual(req["method"], "GET")
+            self.assertEqual(req["url"], "/Sphere/0")
+            self.assertEqual(req["data"], "")
+
+            self.assertEqual(res["status_code"], 200)
+            self.assertEqual(json.loads(res["data"]), planet_db['spheres'][0])
+            self.assertEqual(res["headers"]["Content-Type"], "application/json")
+
 
     def _test_get_list(self):
         with DBContext(planet_db):
             Sphere = cosmos.M('planetarium.Sphere')
+            res = Sphere.get_list(name="Oops")
+            self.assertEqual(len(res), 0)
             res = Sphere.get_list(name="Sun")
             self.assertEqual(len(res), 1)
             self.assertEqual(res[0].id, "0")
-            res = Sphere.get_list(name="Oops")
-            self.assertEqual(len(res), 0)
+            res = Sphere.get_list()
+            self.assertEqual(len(res), 3)
 
     def test_local_get_list(self):
         with self.cosmos1:
@@ -131,6 +143,41 @@ class TestPlanitarium(TestCase):
     def test_remote_get_list(self):
         with self.cosmos2:
             self._test_get_list()
+
+            (req, res) = self._request.stack.pop()
+
+            self.assertEqual(req["method"], "GET")
+            self.assertEqual(req["url"], "/Sphere")
+            self.assertEqual(req["data"], "")
+
+            self.assertEqual(res["status_code"], 200)
+            self.assertEqual(json.loads(res["data"]), {
+                "_links": {
+                    "self": {"href": "/Sphere"}
+                },
+                "_embedded": {
+                    "Sphere": planet_db["spheres"]
+                }
+            })
+            self.assertEqual(res["headers"]["Content-Type"], "application/json")
+
+            (req, res) = self._request.stack.pop()
+
+            url = "/Sphere?name=%22Sun%22"
+            self.assertEqual(req["method"], "GET")
+            self.assertEqual(req["url"], url)
+            self.assertEqual(req["data"], "")
+
+            self.assertEqual(res["status_code"], 200)
+            self.assertEqual(json.loads(res["data"]), {
+                "_links": {
+                    "self": {"href": url}
+                },
+                "_embedded": {
+                    "Sphere": [planet_db["spheres"][0]]
+                }
+            })
+            self.assertEqual(res["headers"]["Content-Type"], "application/json")
 
 
     def _test_save_data(self):
@@ -151,6 +198,25 @@ class TestPlanitarium(TestCase):
     def test_remote_save_data(self):
         with self.cosmos2:
             self._test_save_data()
+
+            (req, res) = self._request.stack.pop()
+
+            updated = {
+                u'_links': {
+                    u'self': {u'href': u'/Sphere/2'},
+                    u'revolves_around': {u'href': u'/Sphere/1'}
+                },
+                u'name': u'Luna'
+            }
+
+            self.assertEqual(req["method"], "PUT")
+            self.assertEqual(req["url"], "/Sphere/2")
+            self.assertEqual(json.loads(req["data"]), updated)
+            self.assertEqual(req["headers"]["Content-Type"], "application/json")
+
+            self.assertEqual(res["status_code"], 200)
+            self.assertEqual(json.loads(res["data"]), updated)
+            self.assertEqual(res["headers"]["Content-Type"], "application/json")
 
 
     def _test_create_model(self):
@@ -191,5 +257,22 @@ class TestPlanitarium(TestCase):
     def test_remote_delete(self):
         with self.cosmos2:
             self._test_delete()
+
+            (req, res) = self._request.stack.pop()
+
+            self.assertEqual(req["method"], "DELETE")
+            self.assertEqual(req["url"], "/Sphere/1")
+            self.assertEqual(req["data"], "")
+
+            self.assertEqual(res["status_code"], 204)
+            self.assertEqual(res["data"], "")
+
+    def test_not_found(self):
+        with self.cosmos1:
+            with DBContext(planet_db):
+                res = self.d.get('/Sphere/4')
+                self.assertEqual(res.status_code, 404)
+
+
 
 
