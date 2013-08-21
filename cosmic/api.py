@@ -20,6 +20,14 @@ from . import cosmos
 
 
 class API(BasicWrapper):
+    """An instance of this class represents a Cosmic API, whether it's your
+    own API being served or a third-party API being consumed. In the former
+    case, the API object is bound to a database ORM and other user-defined
+    functions. In the latter case, these functions are replaced by HTTP calls.
+
+    One of the goals of Cosmic is to make local and remote APIs behave as
+    similarly as possible.
+    """
     type_name = "cosmic.API"
 
     schema = Struct([
@@ -116,14 +124,18 @@ class API(BasicWrapper):
         existing Flask website with an API::
 
             from flask import Flask
-            from cosmic import API
+            from cosmic.api import API
+            from cosmic.models import Cosmos
 
             hackernews = Flask(__name__)
-            hnapi = API("hackernews")
 
-            hackernews.register_blueprint(
-                hnapi.get_blueprint(),
-                url_prefix="/api")
+            with Cosmos():
+
+                hnapi = API("hackernews")
+
+                hackernews.register_blueprint(
+                    hnapi.get_blueprint(),
+                    url_prefix="/api")
         """
 
         spec_view = Function(returns=API)
@@ -173,10 +185,6 @@ class API(BasicWrapper):
 
         return app
 
-    def get_json_spec(self):
-        return API.to_json(self)
-
-
     def run(self, url_prefix=None, api_key=None, registry_url_override=None, **kwargs): # pragma: no cover
         """Runs the API as a Flask app. All keyword arguments except
         *url_prefix* channelled into :meth:`Flask.run`.
@@ -224,6 +232,16 @@ class API(BasicWrapper):
             def generate():
                 "Random enough"
                 return 9
+
+        Once registered, an action will become accessible as an attribute of
+        the :data:`API.actions` object.
+
+        .. code:: python
+
+            >>> random.actions.generate()
+            9
+
+
         """
         def wrapper(func):
             name = unicode(func.__name__)
@@ -255,14 +273,21 @@ class API(BasicWrapper):
 
         .. code:: python
 
-            from teleport import String
-            from cosmic.models import Model
-
             dictionary = API("dictionary")
 
             @dictionary.model
             class Word(Model):
-                data_schema = String
+                properties = [
+                    required("text", String)
+                ]
+
+        Once registered, a model will become accessible as an attribute of the
+        :data:`API.models` object.
+
+        .. code:: python
+
+            >>> dictionary.models.Word.from_json({"text": "dog"})
+            <cosmic.models.Word object at 0x9ddcecc>
 
         """
         model_cls.api = self
