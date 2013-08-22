@@ -185,7 +185,7 @@ class TestPlanitarium(TestCase):
             self.assertEqual(res["headers"]["Content-Type"], "application/json")
 
 
-    def _test_save_data(self):
+    def _test_save_property(self):
         c = copy.deepcopy(planet_db)
         with DBContext(c):
             Sphere = cosmos.M('planetarium.Sphere')
@@ -196,13 +196,13 @@ class TestPlanitarium(TestCase):
             self.assertEqual(moon.name, "Luna")
             self.assertEqual(c["spheres"][2]["name"], "Luna")
 
-    def test_local_save_data(self):
+    def test_local_save_property(self):
         with self.cosmos1:
-            self._test_save_data()
+            self._test_save_property()
 
-    def test_remote_save_data(self):
+    def test_remote_save_property(self):
         with self.cosmos2:
-            self._test_save_data()
+            self._test_save_property()
 
             (req, res) = self._request.stack.pop()
 
@@ -212,6 +212,48 @@ class TestPlanitarium(TestCase):
                     u'revolves_around': {u'href': u'/Sphere/1'}
                 },
                 u'name': u'Luna'
+            }
+
+            self.assertEqual(req["method"], "PUT")
+            self.assertEqual(req["url"], "/Sphere/2")
+            self.assertEqual(json.loads(req["data"]), updated)
+            self.assertEqual(req["headers"]["Content-Type"], "application/json")
+
+            self.assertEqual(res["status_code"], 200)
+            self.assertEqual(json.loads(res["data"]), updated)
+            self.assertEqual(res["headers"]["Content-Type"], "application/json")
+
+
+    def _test_save_link(self):
+        c = copy.deepcopy(planet_db)
+        with DBContext(c):
+            Sphere = cosmos.M('planetarium.Sphere')
+            # Save property
+            moon = Sphere.get_by_id("2")
+            self.assertEqual(moon.revolves_around.id, "1")
+            moon.revolves_around = Sphere.get_by_id("0")
+            moon.save()
+            self.assertEqual(moon.revolves_around.id, "0")
+            self.assertEqual(c["spheres"][2]["_links"]["revolves_around"]["href"], "/Sphere/0")
+
+    def test_local_save_link(self):
+        with self.cosmos1:
+            self._test_save_link()
+
+    def test_remote_save_link(self):
+        with self.cosmos2:
+            self._test_save_link()
+            # Discard getter
+            self._request.stack.pop()
+
+            (req, res) = self._request.stack.pop()
+
+            updated = {
+                u'_links': {
+                    u'self': {u'href': u'/Sphere/2'},
+                    u'revolves_around': {u'href': u'/Sphere/0'}
+                },
+                u'name': u'Moon'
             }
 
             self.assertEqual(req["method"], "PUT")
