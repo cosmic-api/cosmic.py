@@ -235,8 +235,23 @@ class TestPlanitarium(TestCase):
                 }
             })
             self.assertEqual(pluto.id, None)
+            self.assertEqual(Sphere.to_json(pluto), {
+                "name": "Pluto",
+                "_links": {
+                    "revolves_around": {"href": "/Sphere/0"}
+                }
+            })
             pluto.save()
             self.assertEqual(pluto.id, "3")
+            full = {
+                "name": "Pluto",
+                "_links": {
+                    "self": {"href": "/Sphere/3"},
+                    "revolves_around": {"href": "/Sphere/0"}
+                }
+            }
+            self.assertEqual(Sphere.to_json(pluto), full)
+            self.assertEqual(c["spheres"][3], full)
 
     def test_local_create_model(self):
         with self.cosmos1:
