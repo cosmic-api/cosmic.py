@@ -118,56 +118,6 @@ class API(BasicWrapper):
         api._request = RequestsPlugin(api.url)
         return api
 
-    def get_blueprint(self):
-        """Return a :class:`flask.blueprints.Blueprint` instance containing
-        everything necessary to run your API. You may use this to augment an
-        existing Flask website with an API::
-
-            from flask import Flask
-            from cosmic.api import API
-            from cosmic.models import Cosmos
-
-            hackernews = Flask(__name__)
-
-            with Cosmos():
-
-                hnapi = API("hackernews")
-
-                hackernews.register_blueprint(
-                    hnapi.get_blueprint(),
-                    url_prefix="/api")
-        """
-
-        spec_view = Function(returns=API)
-        spec_view.func = lambda: self
-
-        view_func = FlaskViewAction(spec_view, "/spec.json", self)
-        view_func.method = "GET"
-
-        blueprint = Blueprint('cosmic', __name__)
-        blueprint.add_url_rule(view_func.url,
-            view_func=view_func.view,
-            methods=[view_func.method],
-            endpoint="spec")
-        
-        for name, function in self._actions.items():
-            url = "/actions/%s" % name
-            endpoint = "function_%s" % name
-            view_func = FlaskViewAction(function, url, self)
-            blueprint.add_url_rule(url,
-                view_func=view_func.view,
-                methods=[view_func.method],
-                endpoint=endpoint)
-
-        for name, model_cls in self._models.items():
-            model_cls._list_poster.add_to_blueprint(blueprint)
-            model_cls._list_getter.add_to_blueprint(blueprint)
-            model_cls._model_getter.add_to_blueprint(blueprint)
-            model_cls._model_putter.add_to_blueprint(blueprint)
-            model_cls._model_deleter.add_to_blueprint(blueprint)
-
-        return blueprint
-
     def get_flask_app(self, debug=False, url_prefix=None):
         """Returns a Flask application with nothing but the API blueprint
         registered.
@@ -176,12 +126,37 @@ class API(BasicWrapper):
         exceptions, letting them reach the debugger or swallow them up,
         returning proper HTTP error responses.
         """
-        blueprint = self.get_blueprint()
 
         app = Flask(__name__, static_folder=None)
         # When debug is True, PROPAGATE_EXCEPTIONS will be implicitly True
         app.debug = debug
-        app.register_blueprint(blueprint, url_prefix=url_prefix)
+
+        spec_view = Function(returns=API)
+        spec_view.func = lambda: self
+
+        view_func = FlaskViewAction(spec_view, "/spec.json", self)
+        view_func.method = "GET"
+
+        app.add_url_rule(view_func.url,
+            view_func=view_func.view,
+            methods=[view_func.method],
+            endpoint="spec")
+        
+        for name, function in self._actions.items():
+            url = "/actions/%s" % name
+            endpoint = "function_%s" % name
+            view_func = FlaskViewAction(function, url, self)
+            app.add_url_rule(url,
+                view_func=view_func.view,
+                methods=[view_func.method],
+                endpoint=endpoint)
+
+        for name, model_cls in self._models.items():
+            model_cls._list_poster.add_to_app(app)
+            model_cls._list_getter.add_to_app(app)
+            model_cls._model_getter.add_to_app(app)
+            model_cls._model_putter.add_to_app(app)
+            model_cls._model_deleter.add_to_app(app)
 
         return app
 

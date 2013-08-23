@@ -264,7 +264,7 @@ class FlaskView(object):
         except ValidationError as a:
             raise e
 
-    def add_to_blueprint(self, blueprint):
+    def add_to_app(self, blueprint):
         blueprint.add_url_rule(self.url,
             view_func=self.view,
             methods=[self.method],
