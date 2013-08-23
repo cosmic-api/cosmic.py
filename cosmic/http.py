@@ -39,7 +39,7 @@ class WerkzeugTestClientPlugin(object):
     def __call__(self, url, **kwargs):
         saved_req = copy.deepcopy(kwargs)
         saved_req['url'] = url
-        # Content-Type header seems to be ignored, content_type as kwarg
+        # TODO: Content-Type header seems to be ignored, content_type as kwarg
         # works. Possibly a bug in Flask/Werkzeug.
         if 'headers' in kwargs and 'Content-Type' in kwargs['headers']:
             kwargs['content_type'] = kwargs['headers'].pop('Content-Type')
@@ -99,7 +99,7 @@ class URLParams(ParametrizedWrapper):
         return md
 
 
-class Headers(BasicWrapper)
+class Headers(BasicWrapper):
     schema = Array(Struct([
         required("name", String),
         required("value", String),
@@ -353,20 +353,17 @@ class Envelope(FlaskView):
     def __init__(self, api):
         self.api = api
         self.url = '/envelope'
-        if hasattr(api, '_request'):
-            self._request = api._request
+        self.endpoint = 'envelope'
 
-    def handler(self, json_request):
-        api_url = request.base_url[:-len(self.url)]
-        url = api_url + json_request['url']
-        method = json_request['method']
-        headers = json_request['headers']
-        body = json_request['body']
+    def handler(self, url, method, headers, body):
+        # TODO: Content-Type headers seems to be ignored
+        content_type = headers.get("Content-Type", None)
         with current_app.test_request_context(url,
                 method=method,
                 headers=headers,
+                content_type=content_type,
                 data=body):
-            response = self.full_dispatch_request()
+            response = current_app.full_dispatch_request()
         return {
             'code': response.status_code,
             'headers': response.headers,
@@ -374,7 +371,7 @@ class Envelope(FlaskView):
         }
 
     def parse_request(self, req):
-        return {'json_request': self.request_schema.from_json(req['json'])}
+        return self.request_schema.from_json(req['json'].datum)
 
     def build_response(self, json_response):
         body = json.dumps(self.response_schema.to_json(json_response))
