@@ -8,12 +8,13 @@ from requests.structures import CaseInsensitiveDict
 from werkzeug.exceptions import HTTPException, InternalServerError, NotFound, abort
 from werkzeug.urls import url_decode, url_encode
 from werkzeug.datastructures import MultiDict
+from werkzeug.datastructures import Headers as WerkzeugHeaders
 from werkzeug.routing import Rule
 from werkzeug.routing import Map as RuleMap
 
 from flask import Flask, make_response, current_app
 from flask import request
-from teleport import Box, ValidationError
+from teleport import *
 
 from .tools import *
 from .exceptions import *
@@ -98,6 +99,28 @@ class URLParams(ParametrizedWrapper):
         return md
 
 
+class Headers(BasicWrapper)
+    schema = Array(Struct([
+        required("name", String),
+        required("value", String),
+    ]))
+
+    @classmethod
+    def assemble(cls, datum):
+        headers = WerkzeugHeaders()
+        for header in datum:
+            headers.add(header["name"], header["value"])
+        return headers
+
+    @classmethod
+    def disassemble(cls, datum):
+        headers = []
+        for name, value in datum.items():
+            headers.append({
+                "name": name,
+                "value": value
+            })
+        return headers
 
 
 def error_response(message, code):
@@ -306,6 +329,56 @@ class FlaskViewAction(FlaskView):
             body = json.dumps(data.datum)
             return (body, 200, {"Content-Type": "application/json"})
 
+
+class Envelope(FlaskView):
+    method = "POST"
+    json_request = True
+    json_response = True
+    request_can_be_empty = False
+    response_can_be_empty = False
+    acceptable_response_codes = [200]
+
+    request_schema = Struct([
+        required("url", String),
+        required("headers", Headers),
+        required("method", String),
+        required("body", String)
+    ])
+    response_schema = Struct([
+        required("headers", Headers),
+        required("code", Integer),
+        required("body", String)
+    ])
+
+    def __init__(self, api):
+        self.api = api
+        self.url = '/envelope'
+        if hasattr(api, '_request'):
+            self._request = api._request
+
+    def handler(self, json_request):
+        api_url = request.base_url[:-len(self.url)]
+        url = api_url + json_request['url']
+        method = json_request['method']
+        headers = json_request['headers']
+        body = json_request['body']
+        with current_app.test_request_context(url,
+                method=method,
+                headers=headers,
+                data=body):
+            response = self.full_dispatch_request()
+        return {
+            'code': response.status_code,
+            'headers': response.headers,
+            'body': response.data
+        }
+
+    def parse_request(self, req):
+        return {'json_request': self.request_schema.from_json(req['json'])}
+
+    def build_response(self, json_response):
+        body = json.dumps(self.response_schema.to_json(json_response))
+        return (body, 200, {"Content-Type": "application/json"})
 
 
 
