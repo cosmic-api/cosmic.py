@@ -39,8 +39,8 @@ class WerkzeugTestClientPlugin(object):
     def __call__(self, url, **kwargs):
         saved_req = copy.deepcopy(kwargs)
         saved_req['url'] = url
-        # TODO: Content-Type header seems to be ignored, content_type as kwarg
-        # works. Possibly a bug in Flask/Werkzeug.
+        # Content-Type should be provided as kwarg because otherwise we can't
+        # access request.mimetype
         if 'headers' in kwargs and 'Content-Type' in kwargs['headers']:
             kwargs['content_type'] = kwargs['headers'].pop('Content-Type')
         r = self.client.open(path=url, **kwargs)
@@ -356,7 +356,6 @@ class Envelope(FlaskView):
         self.endpoint = 'envelope'
 
     def handler(self, url, method, headers, body):
-        # TODO: Content-Type headers seems to be ignored
         content_type = headers.get("Content-Type", None)
         with current_app.test_request_context(url,
                 method=method,
