@@ -22,11 +22,16 @@ from . import cosmos
 class API(BasicWrapper):
     """An instance of this class represents a Cosmic API, whether it's your
     own API being served or a third-party API being consumed. In the former
-    case, the API object is bound to a database ORM and other user-defined
-    functions. In the latter case, these functions are replaced by HTTP calls.
+    case, the API object is instantiated by the constructor and is bound to a
+    database ORM and other user-defined functions. In the latter case, it is
+    instantiated by the :meth:`API.load` method and these functions are
+    replaced by automatically generated HTTP calls.
 
-    One of the goals of Cosmic is to make local and remote APIs behave as
-    similarly as possible.
+    One of the primary goals of Cosmic is to make local and remote APIs behave
+    as similarly as possible.
+
+    :param name: The API name is required, and should be unique
+    :param homepage: If you like, the API spec may include a link to your homepage
     """
     type_name = "cosmic.API"
 
@@ -108,8 +113,15 @@ class API(BasicWrapper):
 
     @staticmethod
     def load(url):
-        """Given a spec URL, loads the JSON form of an API and deserializes
-        it, returning the :class:`~cosmic.api.API` object.
+        """Given a URL to a Cosmic API, fetch the API spec and build an API
+        client::
+
+            >>> planetarium = API.load("http://localhost:5000/spec.json")
+            >>> planetarium.models.Sphere.get_by_id("0")
+            <cosmic.models.Sphere object at 0x8f9ebcc>
+
+        :param url: The API spec url, including ``/spec.json``
+        :rtype: :class:`API` instance
         """
         res = requests.get(url)
         api = API.from_json(res.json)
@@ -118,7 +130,7 @@ class API(BasicWrapper):
         api._request = RequestsPlugin(api.url)
         return api
 
-    def get_flask_app(self, debug=False, url_prefix=None):
+    def get_flask_app(self, debug=False):
         """Returns a Flask application with nothing but the API blueprint
         registered.
 
@@ -166,12 +178,12 @@ class API(BasicWrapper):
 
         return app
 
-    def run(self, url_prefix=None, api_key=None, registry_url_override=None, **kwargs): # pragma: no cover
-        """Runs the API as a Flask app. All keyword arguments except
-        *url_prefix* channelled into :meth:`Flask.run`.
+    def run(self, api_key=None, registry_url_override=None, **kwargs): # pragma: no cover
+        """Runs the API as a Flask app. All keyword arguments are channelled
+        into :meth:`Flask.run`.
         """
         debug = kwargs.get('debug', False)
-        app = self.get_flask_app(debug=debug, url_prefix=url_prefix)
+        app = self.get_flask_app(debug=debug)
 
         if api_key:
             self.submit_spec(api_key, registry_url_override=None)
