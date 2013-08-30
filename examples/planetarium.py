@@ -49,8 +49,8 @@ def make_planetarium():
             optional("revolves_around", String)
         ]
 
-        @classmethod
-        def validate(cls, datum):
+        @staticmethod
+        def validate(datum):
             if datum["name"][0].islower():
                 raise ValidationError("Name must be capitalized", datum["name"])
 

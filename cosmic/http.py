@@ -42,7 +42,7 @@ class WerkzeugTestClientPlugin(object):
         # Content-Type should be provided as kwarg because otherwise we can't
         # access request.mimetype
         if 'headers' in kwargs and 'Content-Type' in kwargs['headers']:
-            kwargs['content_type'] = kwargs['headers'].pop('Content-Type')
+            kwargs['content_type'] = kwargs['headers']['Content-Type']
         r = self.client.open(path=url, **kwargs)
         resp = requests.Response()
         resp._content = r.data
@@ -171,34 +171,66 @@ def reverse_werkzeug_url(url, values):
 
 
 
+class Component(object):
+
+    def parse(self, req_or_res, **kwargs):
+        return {}
+
+    def build(self, req_or_res, **kwargs):
+        pass
+
+
+class JSONBody(Component):
+
+    def parse(self, req_or_res, **kwargs):
+        return {
+            'json': get_payload_from_http_message(req_or_res)
+        }
+
+    def build(self, req_or_res, json, **kwargs):
+        data = json_to_string(json)
+        req_or_res['data'] = data
+        if data != '':
+            req_or_res['headers']['Content-Type'] = 'application/json'
+
+class MustBeEmpty(Component):
+
+    def parse(self, req_or_res, **kwargs):
+        if req_or_res.get_data() != "":
+            raise SpecError()
+        return {}
+
+class CannotBeEmpty(Component):
+
+    def parse(self, req_or_res, **kwargs):
+        if req_or_res.get_data() == "":
+            raise SpecError()
+        return {}
+
+
 class FlaskView(object):
-    json_request = False
     json_response = False
 
     response_can_be_empty = True
     response_must_be_empty = None
 
-    request_can_be_empty = True
-    request_must_be_empty = None
-
     query_schema = None
+
+    request_components = []
+    response_components = []
 
     def view(self, **url_args):
         try:
+            kwargs = {}
+            for component in self.request_components:
+                kwargs.update(component.parse(request, **kwargs))
+
             req = {
                 'url_args': url_args,
                 'headers': request.headers
             }
-            if self.json_request:
-                req['json'] = get_payload_from_http_message(request)
-            else:
-                req['data'] = request.get_data()
-
-            is_empty = request.get_data() == ""
-
-            if ((self.request_must_be_empty == True and not is_empty) or
-                (is_empty and self.request_can_be_empty == False)):
-                raise SpecError()
+            if 'json' in kwargs:
+                req['json'] = kwargs['json']
 
             if self.query_schema != None:
                 req['query'] = self.query_schema.from_multi_dict(request.args)
@@ -218,19 +250,18 @@ class FlaskView(object):
 
     def __call__(self, *args, **kwargs):
         r = self.build_request(*args, **kwargs)
+        if 'headers' not in r:
+            r['headers'] = {}
 
-        if self.json_request:
-            data = json_to_string(r.get('json', None))
-        else:
-            data = r.get('data', "")
+        for component in self.request_components:
+            component.build(r, **r)
+
+        data = r.get('data', '')
+        headers = r.get('headers', {})
 
         url_args = r.get('url_args', {})
-        headers = r.get('headers', {})
         query = r.get('query', {})
         url = reverse_werkzeug_url(self.url, url_args)
-
-        if self.json_request and data:
-            headers["Content-Type"] = "application/json"
 
         if self.query_schema != None and query:
             query_string = self.query_schema.to_json(query)
@@ -296,9 +327,12 @@ class FlaskView(object):
 
 class FlaskViewAction(FlaskView):
     method = "POST"
-    json_request = True
     json_response = True
     acceptable_response_codes = [200, 204]
+
+    request_components = [
+        JSONBody()
+    ]
 
     def __init__(self, function, url, api):
         self.function = function
@@ -332,11 +366,14 @@ class FlaskViewAction(FlaskView):
 
 class Envelope(FlaskView):
     method = "POST"
-    json_request = True
     json_response = True
-    request_can_be_empty = False
     response_can_be_empty = False
     acceptable_response_codes = [200]
+
+    request_components = [
+        CannotBeEmpty(),
+        JSONBody()
+    ]
 
     request_schema = Struct([
         required("url", String),
@@ -383,7 +420,10 @@ class ModelGetter(FlaskView):
     json_response = True
     acceptable_response_codes = [404, 200]
     response_can_be_empty = False
-    request_must_be_empty = True
+
+    request_components = [
+        MustBeEmpty()
+    ]
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
@@ -414,11 +454,14 @@ class ModelGetter(FlaskView):
 
 class ModelPutter(FlaskView):
     method = "PUT"
-    json_request = True
     json_response = True
     acceptable_response_codes = [200]
     response_can_be_empty = False
-    request_can_be_empty = False
+
+    request_components = [
+        CannotBeEmpty(),
+        JSONBody()
+    ]
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
@@ -455,11 +498,14 @@ class ModelPutter(FlaskView):
 
 class ListPoster(FlaskView):
     method = "POST"
-    json_request = True
     json_response = True
     acceptable_response_codes = [201]
     response_can_be_empty = False
-    request_can_be_empty = False
+
+    request_components = [
+        CannotBeEmpty(),
+        JSONBody()
+    ]
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
@@ -491,7 +537,10 @@ class ModelDeleter(FlaskView):
     method = "DELETE"
     acceptable_response_codes = [204]
     response_must_be_empty = True
-    request_must_be_empty = True
+
+    request_components = [
+        MustBeEmpty()
+    ]
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
@@ -521,7 +570,10 @@ class ListGetter(FlaskView):
     json_response = True
     acceptable_response_codes = [200]
     response_can_be_empty = False
-    request_must_be_empty = True
+
+    request_components = [
+        MustBeEmpty()
+    ]
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
