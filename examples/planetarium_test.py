@@ -144,6 +144,7 @@ class TestPlanitarium(TestCase):
         with DBContext(planet_db):
             Sphere = cosmos.M('planetarium.Sphere')
             moon = Sphere.get_by_id("2")
+            self.assertEqual(Sphere.get_by_id("5"), None)
             self.assertEqual(moon.name, "Moon")
             self.assertEqual(moon.revolves_around.name, "Earth")
             self.assertEqual(moon.revolves_around.revolves_around.name, "Sun")

@@ -382,7 +382,7 @@ class ModelGetter(FlaskView):
     method = "GET"
     json_response = True
     acceptable_response_codes = [404, 200]
-    response_can_be_empty = False
+    response_can_be_empty = True
     request_must_be_empty = True
 
     def __init__(self, model_cls):
