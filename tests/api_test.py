@@ -258,39 +258,3 @@ class TestAPI(TestCase):
                 cookbook_decentralized = API.load('http://example.com/spec.json')
                 self.assertEqual(API.to_json(cookbook_decentralized), cookbook_spec)
 
-
-
-class TestRemoteAPI(TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        from cosmic.http import RequestsPlugin
-        cls.cosmos = Cosmos()
-        cls.cosmos.__enter__()
-        cls.cookbook = API.from_json(cookbook_spec)
-        cls.cookbook.url = 'http://localhost:8881/api'
-        cls.cookbook._request = RequestsPlugin('http://localhost:8881')
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.cosmos.__enter__()
-
-    def test_remote_no_return_action(self):
-        with patch.object(requests, 'request') as mock_post:
-            mock_post.return_value.status_code = 200
-            mock_post.return_value.text = ""
-            self.assertEqual(self.cookbook.actions.noop(), None)
-            mock_post.assert_called_with(
-                url='http://localhost:8881/actions/noop',
-                # Content-Type not added when data is empty
-                headers={},
-                method="POST",
-                data="")
-
-    def test_properties(self):
-        self.assertEqual(self.cookbook.name, "cookbook")
-        self.assertEqual(self.cookbook.url, "http://localhost:8881/api")
-
-    def test_models(self):
-        self.assertEqual(self.cookbook.models.__all__, ["Recipe", "Author"])
-
