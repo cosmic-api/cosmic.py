@@ -14,8 +14,6 @@ from cosmic.api import API
 from cosmic.models import Model, Cosmos
 from cosmic import api, request
 
-from cosmic import cosmos
-
 
 cookbook_spec = {
     u'name': u'cookbook',
@@ -104,10 +102,9 @@ class TestAPI(TestCase):
 
     def setUp(self):
         self.maxDiff = None
-        self.cosmos = Cosmos()
-        self.cosmos.__enter__()
 
         self.cookbook = cookbook = API(u'cookbook')
+        self.cookbook.cosmos.__enter__()
 
         @cookbook.action(
             accepts=Struct([
@@ -155,7 +152,7 @@ class TestAPI(TestCase):
         self.client = self.app.test_client()
 
     def tearDown(self):
-        self.cosmos.__enter__()
+        self.cookbook.cosmos.__exit__(None, None, None)
 
     def test_model(self):
         R = self.cookbook.models.Recipe
@@ -165,11 +162,11 @@ class TestAPI(TestCase):
             },
             "name": "pancake"
         }
-        with cosmos:
-            self.assertEqual(Schema.to_json(R), {"type": "cookbook.Recipe"})
-            pancake = R.from_json(d)
-            self.assertEqual(pancake.name, "pancake")
-            self.assertEqual(R.to_json(pancake), d)
+
+        self.assertEqual(Schema.to_json(R), {"type": "cookbook.Recipe"})
+        pancake = R.from_json(d)
+        self.assertEqual(pancake.name, "pancake")
+        self.assertEqual(R.to_json(pancake), d)
 
     # TODO: Teleport should raise a ValidationError here
     def _test_accepts_invalid_schema(self):
@@ -179,15 +176,14 @@ class TestAPI(TestCase):
                 pass
 
     def test_model_deserialize_okay(self):
-        with cosmos:
-            s = Schema.from_json({"type": "cookbook.Recipe"})
-            d = {
-                "_links": {
-                    "self": {"href": "/Recipe/14"}
-                },
-                "name": "turkey"
-            }
-            self.assertEqual(s.from_json(d).name, "turkey")
+        s = Schema.from_json({"type": "cookbook.Recipe"})
+        d = {
+            "_links": {
+                "self": {"href": "/Recipe/14"}
+            },
+            "name": "turkey"
+        }
+        self.assertEqual(s.from_json(d).name, "turkey")
 
     def test_subclassing_hook(self):
         self.assertEqual(set(self.cookbook.models.__all__), set(["Recipe", "Author"]))
@@ -246,15 +242,5 @@ class TestAPI(TestCase):
         self.assertEqual(res.data, '')
 
     def test_schema(self):
-        with Cosmos():
-            API.from_json(API.to_json(self.cookbook))
-
-    def test_load_url(self):
-        """Test the API.load function when given a spec URL"""
-        with patch.object(requests, 'get') as mock_get:
-            mock_get.return_value.json = cookbook_spec
-            mock_get.return_value.status_code = 200
-            with Cosmos():
-                cookbook_decentralized = API.load('http://example.com/spec.json')
-                self.assertEqual(API.to_json(cookbook_decentralized), cookbook_spec)
+        API.from_json(API.to_json(self.cookbook))
 

@@ -3,7 +3,6 @@ from mock import patch, Mock
 
 from cosmic.exceptions import *
 from cosmic.tools import *
-from cosmic import cosmos
 
 from teleport import *
 

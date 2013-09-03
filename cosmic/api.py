@@ -11,7 +11,7 @@ from teleport import *
 from flask import Blueprint, Flask
 
 from .actions import Function
-from .models import Model, RemoteModel, prep_model
+from .models import Model, RemoteModel, prep_model, Cosmos
 from .tools import GetterNamespace, get_args, assert_is_compatible, deserialize_json, validate_underscore_identifier
 from .http import *
 from . import cosmos
@@ -66,10 +66,8 @@ class API(BasicWrapper):
             get_item=self._models.__getitem__,
             get_all=self._models.keys)
 
-        # Add to registry so we can reference its models
-        if self.name in cosmos.apis:
-            raise Exception("API already exists")
-        cosmos.apis[self.name] = self
+        self.cosmos = Cosmos()
+        self.cosmos.apis[self.name] = self
 
     @staticmethod
     def assemble(datum):
@@ -124,7 +122,10 @@ class API(BasicWrapper):
         :rtype: :class:`API` instance
         """
         res = requests.get(url)
-        api = API.from_json(res.json)
+        cosmos = Cosmos()
+        with cosmos:
+            api = API.from_json(res.json)
+        api.cosmos = cosmos
         # Set the API url to be the spec URL, minus the /spec.json
         api.url = url[:-10]
         api._request = RequestsPlugin(api.url)
@@ -140,6 +141,15 @@ class API(BasicWrapper):
         """
 
         app = Flask(__name__, static_folder=None)
+
+        @app.before_request
+        def before_request():
+            self.cosmos.__enter__()
+
+        @app.teardown_request
+        def teardown_request(exception):
+            self.cosmos.__exit__(None, None, None)
+
         # When debug is True, PROPAGATE_EXCEPTIONS will be implicitly True
         app.debug = debug
 
@@ -287,7 +297,7 @@ class API(BasicWrapper):
         model_cls.type_name = "%s.%s" % (self.name, model_cls.__name__,)
         prep_model(model_cls)
 
-        wrapper = cosmos.M(model_cls.type_name)
+        wrapper = self.cosmos.M(model_cls.type_name)
         wrapper.__bases__ = (model_cls,) + wrapper.__bases__
         # Add to namespace
         self._models[model_cls.__name__] = wrapper

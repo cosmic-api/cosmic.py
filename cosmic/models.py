@@ -2,7 +2,7 @@ import sys
 
 from collections import OrderedDict
 
-from werkzeug.local import LocalStack
+from werkzeug.local import LocalStack, LocalProxy
 
 from teleport import *
 from .exceptions import ModelNotFound
@@ -212,3 +212,6 @@ class Cosmos(TypeMap):
 
 _ctx_stack = LocalStack()
 
+def M(name):
+    from cosmic import cosmos
+    return LocalProxy(lambda: cosmos.M(name))
