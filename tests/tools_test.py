@@ -211,6 +211,11 @@ class TestUnderscoreIdentifier(TestCase):
             validate_underscore_identifier(u'what__what')
 
 
+class TestSerializeJSON(TestCase):
+
+    def test_falsy(self):
+        self.assertEqual(serialize_json(Integer, 0).datum, 0)
+
 
 
 

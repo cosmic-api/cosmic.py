@@ -134,11 +134,11 @@ def deserialize_json(schema, datum):
     return None
 
 def serialize_json(schema, datum):
-    if schema and not datum:
+    if schema is not None and datum is None:
         raise ValidationError("Expected data, found None")
-    if datum and not schema:
+    if datum is not None and schema is None:
         raise ValidationError("Expected None, found data")
-    if schema and datum:
+    if schema is not None and datum is not None:
         return Box(schema.to_json(datum))
     return None
 
