@@ -6,6 +6,7 @@ from mock import patch
 from werkzeug.exceptions import Unauthorized, BadRequest, InternalServerError
 from flask import Flask
 
+from cosmic.models import Cosmos
 from cosmic.actions import *
 from cosmic.tools import *
 from cosmic.http import *
@@ -50,15 +51,17 @@ class TestActionCallable(TestCase):
         from cosmic.api import API
         from cosmic.http import RequestsPlugin
 
+        cls.cosmos = Cosmos()
+        cls.cosmos.__enter__()
+
         cls.a = API('a')
-        cls.a.cosmos.__enter__()
         cls.a._request = RequestsPlugin("http://example.com")
         cls.function = Function(Integer, Boolean)
         cls.callable = FlaskViewAction(cls.function, "/actions/even", cls.a)
 
     @classmethod
     def tearDownClass(cls):
-        cls.a.cosmos.__exit__(None, None, None)
+        cls.cosmos.__exit__(None, None, None)
 
     def test_call_okay(self):
         with patch.object(requests, 'request') as mock_post:

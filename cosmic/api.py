@@ -66,8 +66,7 @@ class API(BasicWrapper):
             get_item=self._models.__getitem__,
             get_all=self._models.keys)
 
-        self.cosmos = Cosmos()
-        self.cosmos.apis[self.name] = self
+        cosmos.apis[self.name] = self
 
     @staticmethod
     def assemble(datum):
@@ -122,10 +121,7 @@ class API(BasicWrapper):
         :rtype: :class:`API` instance
         """
         res = requests.get(url)
-        cosmos = Cosmos()
-        with cosmos:
-            api = API.from_json(res.json)
-        api.cosmos = cosmos
+        api = API.from_json(res.json)
         # Set the API url to be the spec URL, minus the /spec.json
         api.url = url[:-10]
         api._request = RequestsPlugin(api.url)
@@ -141,14 +137,6 @@ class API(BasicWrapper):
         """
 
         app = Flask(__name__, static_folder=None)
-
-        @app.before_request
-        def before_request():
-            self.cosmos.__enter__()
-
-        @app.teardown_request
-        def teardown_request(exception):
-            self.cosmos.__exit__(None, None, None)
 
         # When debug is True, PROPAGATE_EXCEPTIONS will be implicitly True
         app.debug = debug
@@ -297,7 +285,7 @@ class API(BasicWrapper):
         model_cls.type_name = "%s.%s" % (self.name, model_cls.__name__,)
         prep_model(model_cls)
 
-        wrapper = self.cosmos.M(model_cls.type_name)
+        wrapper = cosmos.M(model_cls.type_name)
         wrapper.__bases__ = (model_cls,) + wrapper.__bases__
         # Add to namespace
         self._models[model_cls.__name__] = wrapper

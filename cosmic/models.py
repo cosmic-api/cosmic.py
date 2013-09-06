@@ -211,7 +211,3 @@ class Cosmos(TypeMap):
             return BUILTIN_TYPES[name]
 
 _ctx_stack = LocalStack()
-
-def M(name):
-    from cosmic import cosmos
-    return LocalProxy(lambda: cosmos.M(name))

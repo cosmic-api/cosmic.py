@@ -76,26 +76,23 @@ class TestPlanitarium(TestCase):
     def setUp(self):
         self.maxDiff = None
 
-        # The planetarium server
         self.cosmos1 = Cosmos()
-        # The planetarium client
         self.cosmos2 = Cosmos()
 
-        self.planetarium = make_planetarium()
+        with self.cosmos1:
+            self.planetarium = make_planetarium()
 
-        self.c = self.planetarium.get_flask_app().test_client()
-        self.d = self.planetarium.get_flask_app(debug=True).test_client()
+            self.c = self.planetarium.get_flask_app().test_client()
+            self.d = self.planetarium.get_flask_app(debug=True).test_client()
 
-        with patch.object(requests, 'get') as mock_get:
-            mock_get.return_value.json = json_spec
-            mock_get.return_value.status_code = 200
+        with self.cosmos2:
+            with patch.object(requests, 'get') as mock_get:
+                mock_get.return_value.json = json_spec
+                mock_get.return_value.status_code = 200
 
-            self.remote_planetarium = API.load('http://example.com/spec.json')
-            # Use the local API's HTTP client to simulate the remote API's calls
-            self.remote_planetarium._request = self._request = WerkzeugTestClientPlugin(self.d)
-
-        self.cosmos1 = self.planetarium.cosmos
-        self.cosmos2 = self.remote_planetarium.cosmos
+                self.remote_planetarium = API.load('http://example.com/spec.json')
+                # Use the local API's HTTP client to simulate the remote API's calls
+                self.remote_planetarium._request = self._request = WerkzeugTestClientPlugin(self.d)
 
 
     def test_spec_endpoint(self):

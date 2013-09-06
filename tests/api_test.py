@@ -103,8 +103,10 @@ class TestAPI(TestCase):
     def setUp(self):
         self.maxDiff = None
 
+        self.cosmos = Cosmos()
+        self.cosmos.__enter__()
+
         self.cookbook = cookbook = API(u'cookbook')
-        self.cookbook.cosmos.__enter__()
 
         @cookbook.action(
             accepts=Struct([
@@ -152,7 +154,7 @@ class TestAPI(TestCase):
         self.client = self.app.test_client()
 
     def tearDown(self):
-        self.cookbook.cosmos.__exit__(None, None, None)
+        self.cosmos.__exit__(None, None, None)
 
     def test_model(self):
         R = self.cookbook.models.Recipe

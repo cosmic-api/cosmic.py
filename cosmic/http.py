@@ -18,7 +18,6 @@ from teleport import *
 
 from .tools import *
 from .exceptions import *
-from . import cosmos
 
 
 class RequestsPlugin(object):
