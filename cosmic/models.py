@@ -3,6 +3,7 @@ import sys
 from collections import OrderedDict
 
 from werkzeug.local import LocalStack, LocalProxy
+from flask.ctx import _AppCtxGlobals
 
 from teleport import *
 from .exceptions import ModelNotFound
@@ -179,6 +180,7 @@ class Cosmos(TypeMap):
     def __init__(self):
         self.apis = {}
         self.lazy_models = {}
+        self.g = _AppCtxGlobals()
 
     def M(self, name):
         api_name, model_name = name.split('.', 1)
