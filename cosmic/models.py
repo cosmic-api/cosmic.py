@@ -179,18 +179,12 @@ class Cosmos(TypeMap):
 
     def __init__(self):
         self.apis = {}
-        self.lazy_models = {}
         self.g = _AppCtxGlobals()
 
     def M(self, name):
         api_name, model_name = name.split('.', 1)
-        try:
-            model = self.apis[api_name]._models[model_name]
-            return model
-        except KeyError:
-            if name not in self.lazy_models:
-                self.lazy_models[name] = type(str(model_name), (Base,), {"type_name": name})
-            return self.lazy_models[name]
+        model = self.apis[api_name]._models[model_name]
+        return model
 
     def __enter__(self):
         _ctx_stack.push(self)
@@ -208,8 +202,13 @@ class Cosmos(TypeMap):
         elif name == "cosmic.Function":
             return (Function, None,)
         elif '.' in name:
-            return (self.M(name), None,)
+            return (M(name), None,)
         else:
             return BUILTIN_TYPES[name]
 
 _ctx_stack = LocalStack()
+
+def M(name):
+    from cosmic import cosmos
+    return LocalProxy(lambda: cosmos.M(name))
+

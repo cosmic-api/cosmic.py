@@ -11,7 +11,7 @@ from cosmic.api import API
 from cosmic.http import WerkzeugTestClientPlugin
 from cosmic import cosmos
 from cosmic.testing import DBContext
-from cosmic.models import Cosmos
+from cosmic.models import Cosmos, M
 
 from planetarium import *
 
@@ -104,7 +104,7 @@ class TestPlanitarium(TestCase):
         with self.cosmos1:
             c = copy.deepcopy(planet_db)
             with DBContext(c):
-                Sphere = cosmos.M('planetarium.Sphere')
+                Sphere = M('planetarium.Sphere')
                 res = self.d.post('/envelope', content_type="application/json", data=json.dumps({
                     "method": "POST",
                     "url": "/Sphere",
@@ -140,7 +140,7 @@ class TestPlanitarium(TestCase):
 
     def _test_follow_links(self):
         with DBContext(planet_db):
-            Sphere = cosmos.M('planetarium.Sphere')
+            Sphere = M('planetarium.Sphere')
             moon = Sphere.get_by_id("2")
             self.assertEqual(Sphere.get_by_id("5"), None)
             self.assertEqual(moon.name, "Moon")
@@ -168,7 +168,7 @@ class TestPlanitarium(TestCase):
 
     def _test_get_list(self):
         with DBContext(planet_db):
-            Sphere = cosmos.M('planetarium.Sphere')
+            Sphere = M('planetarium.Sphere')
             res = Sphere.get_list(name="Oops")
             self.assertEqual(len(res), 0)
             res = Sphere.get_list(name="Sun")
@@ -176,7 +176,7 @@ class TestPlanitarium(TestCase):
             self.assertEqual(res[0].id, "0")
             res = Sphere.get_list()
             self.assertEqual(len(res), 3)
-
+            
     def test_local_get_list(self):
         with self.cosmos1:
             self._test_get_list()
@@ -224,7 +224,7 @@ class TestPlanitarium(TestCase):
     def _test_save_property(self):
         c = copy.deepcopy(planet_db)
         with DBContext(c):
-            Sphere = cosmos.M('planetarium.Sphere')
+            Sphere = M('planetarium.Sphere')
             moon = Sphere.get_by_id("2")
             moon.name = "Luna"
             self.assertEqual(moon.name, "Luna")
@@ -263,7 +263,7 @@ class TestPlanitarium(TestCase):
     def _test_save_link(self):
         c = copy.deepcopy(planet_db)
         with DBContext(c):
-            Sphere = cosmos.M('planetarium.Sphere')
+            Sphere = M('planetarium.Sphere')
             # Save property
             moon = Sphere.get_by_id("2")
             self.assertEqual(moon.revolves_around.id, "1")
@@ -305,7 +305,7 @@ class TestPlanitarium(TestCase):
     def _test_create_model(self):
         c = copy.deepcopy(planet_db)
         with DBContext(c):
-            Sphere = cosmos.M('planetarium.Sphere')
+            Sphere = M('planetarium.Sphere')
             pluto = Sphere({
                 "name": "Pluto",
                 "_links": {
@@ -343,7 +343,7 @@ class TestPlanitarium(TestCase):
     def _test_delete(self):
         c = copy.deepcopy(planet_db)
         with DBContext(c):
-            Sphere = cosmos.M('planetarium.Sphere')
+            Sphere = M('planetarium.Sphere')
             earth = Sphere.get_by_id("1")
             earth.delete()
             self.assertEqual(c["spheres"][1], None)

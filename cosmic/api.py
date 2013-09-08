@@ -74,13 +74,11 @@ class API(BasicWrapper):
         api._actions = datum["actions"]
 
         for name, modeldef in datum["models"].items():
-            M = cosmos.M("%s.%s" % (api.name, name))
-            # Mix in RemoteModel
-            try:
-                M.__bases__ = (RemoteModel,) + M.__bases__
-            except TypeError:
-                raise
-                import pdb; pdb.set_trace()
+
+            class M(RemoteModel):
+                pass
+
+            M.__name__ = str(name)
 
             M.api = api
             M.properties = modeldef["data_schema"].param.items()
@@ -285,11 +283,9 @@ class API(BasicWrapper):
         model_cls.type_name = "%s.%s" % (self.name, model_cls.__name__,)
         prep_model(model_cls)
 
-        wrapper = cosmos.M(model_cls.type_name)
-        wrapper.__bases__ = (model_cls,) + wrapper.__bases__
         # Add to namespace
-        self._models[model_cls.__name__] = wrapper
+        self._models[model_cls.__name__] = model_cls
 
-        return wrapper
+        return model_cls
 
 

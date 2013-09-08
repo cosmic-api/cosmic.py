@@ -52,6 +52,7 @@ class WerkzeugTestClientPlugin(object):
             "headers": copy.deepcopy(r.headers),
             "status_code": r.status_code
         }
+
         self.stack.append((saved_req, saved_resp))
         return resp
 

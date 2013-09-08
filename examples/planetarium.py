@@ -1,7 +1,10 @@
 from cosmic import cosmos
+from cosmic.models import M
 from cosmic.api import API
 from cosmic.testing import DBModel, DBContext
 from teleport import *
+
+from werkzeug.local import LocalProxy
 
 
 planet_db = {
@@ -42,7 +45,7 @@ def make_planetarium():
             required("name", String)
         ]
         links = [
-            optional("revolves_around", cosmos.M('planetarium.Sphere'))
+            optional("revolves_around", M('planetarium.Sphere'))
         ]
         query_fields = [
             optional("name", String),
@@ -54,12 +57,11 @@ def make_planetarium():
             if datum["name"][0].islower():
                 raise ValidationError("Name must be capitalized", datum["name"])
 
-    @planetarium.action(accepts=cosmos.M('planetarium.Sphere'), returns=String)
+    @planetarium.action(accepts=M('planetarium.Sphere'), returns=String)
     def hello(sphere):
         return "Hello, %s" % sphere.name
 
     return planetarium
-
 
 if __name__ == "__main__":
     with DBContext(planet_db):
