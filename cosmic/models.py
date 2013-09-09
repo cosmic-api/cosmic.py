@@ -175,9 +175,6 @@ class RemoteModel(Model):
         return cls._list_getter(**query)
 
 
-class Base(object):
-    pass
-
 class Cosmos(TypeMap):
 
     def __init__(self):
@@ -186,8 +183,7 @@ class Cosmos(TypeMap):
 
     def M(self, name):
         api_name, model_name = name.split('.', 1)
-        model = self.apis[api_name]._models[model_name]
-        return model
+        return self.apis[api_name]._models[model_name]
 
     def __enter__(self):
         _ctx_stack.push(self)
