@@ -72,18 +72,7 @@ class Model(BasicWrapper):
     @classmethod
     def assemble(cls, datum):
         inst = cls()
-        inst.id, inst._remote_representation = cls._fill_out(datum)
-        return inst
 
-    @classmethod
-    def id_from_url(cls, url):
-        parts = url.split('/')
-        if parts[-2] != cls.__name__:
-            raise ValidationError("Invalid url for %s link: %s" % (cls.__name__, url))
-        return parts[-1]
-
-    @classmethod
-    def _fill_out(cls, datum):
         rep = {}
         links = datum.pop("_links", {})
         for name in OrderedDict(cls.links).keys():
@@ -104,7 +93,18 @@ class Model(BasicWrapper):
         else:
             id = None
         cls.validate(rep)
-        return (id, rep)
+
+        inst._remote_representation = rep
+        inst.id = id
+
+        return inst
+
+    @classmethod
+    def id_from_url(cls, url):
+        parts = url.split('/')
+        if parts[-2] != cls.__name__:
+            raise ValidationError("Invalid url for %s link: %s" % (cls.__name__, url))
+        return parts[-1]
 
     @classmethod
     def disassemble(cls, datum):
