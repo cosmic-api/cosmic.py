@@ -40,6 +40,8 @@ def prep_model(model_cls):
         props.append((name, field))
     if link_names & field_names:
         raise SpecError("Model cannot contain a field and link with the same name: %s" % model_cls.__name__)
+    if 'id' in link_names | field_names:
+        raise SpecError("'id' is a reserved name.")
 
     model_cls._list_poster = ListPoster(model_cls)
     model_cls._list_getter = ListGetter(model_cls)
@@ -55,17 +57,13 @@ class Model(BasicWrapper):
     query_fields = []
     links = []
 
-    def __init__(self, data=None):
-        if data:
-            self.id, self._representation = self.__class__._fill_out(data)
+    def __init__(self, **kwargs):
+        self.id = kwargs.pop('id', None)
+        if kwargs:
+            self._remote_representation = kwargs
         else:
-            self.id, self._representation = (None, None)
-
-    @classmethod
-    def lazy_instance(cls, id):
-        inst = cls()
-        inst.id = id
-        return inst
+            self._remote_representation = None
+        self._local_representation = {}
 
     @property
     def href(self):
@@ -74,7 +72,7 @@ class Model(BasicWrapper):
     @classmethod
     def assemble(cls, datum):
         inst = cls()
-        inst.id, inst._representation = cls._fill_out(datum)
+        inst.id, inst._remote_representation = cls._fill_out(datum)
         return inst
 
     @classmethod
@@ -93,7 +91,7 @@ class Model(BasicWrapper):
                 url = links[name]["href"]
                 model_cls = OrderedDict(cls.links)[name]["schema"]
                 id = model_cls.id_from_url(url)
-                rep[name] = model_cls.lazy_instance(id)
+                rep[name] = model_cls(id=id)
             else:
                 rep[name] = None
         for name in OrderedDict(cls.properties).keys():
@@ -127,13 +125,18 @@ class Model(BasicWrapper):
         return d
 
     def _get_item(self, name):
-        if self._representation is None:
+        if name in self._local_representation:
+            return self._local_representation[name]
+        if self._remote_representation is None:
             i = self.__class__.get_by_id(self.id)
-            self._representation = i._representation
-        return self._representation.get(name, None)
+            self._remote_representation = i._remote_representation
+        return self._remote_representation.get(name, None)
 
     def _set_item(self, name, value):
-        self._representation[name] = value
+        if value is not None:
+            self._local_representation[name] = value
+        else:
+            del self._local_representation[name]
 
     def __getattr__(self, name):
         if name in OrderedDict(self.properties + self.links).keys():
@@ -151,10 +154,6 @@ class Model(BasicWrapper):
     def validate(cls, datum):
         pass
 
-    @classmethod
-    def get_by_id(cls, id):
-        inst = cls._model_getter(id)
-        return inst
 
 
 class RemoteModel(Model):
@@ -165,7 +164,8 @@ class RemoteModel(Model):
         else:
             inst = self.__class__._list_poster(self)
             self.id = inst.id
-        self._representation = inst._representation
+        self._remote_representation = inst._remote_representation
+        self._local_representation = {}
 
     def delete(self):
         return self.__class__._model_deleter(self)
@@ -173,6 +173,10 @@ class RemoteModel(Model):
     @classmethod
     def get_list(cls, **query):
         return cls._list_getter(**query)
+
+    @classmethod
+    def get_by_id(cls, id):
+        return cls._model_getter(id)
 
 
 class Cosmos(TypeMap):

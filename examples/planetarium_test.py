@@ -304,12 +304,9 @@ class TestPlanitarium(TestCase):
         c = copy.deepcopy(planet_db)
         with DBContext(c):
             Sphere = M('planetarium.Sphere')
-            pluto = Sphere({
-                "name": "Pluto",
-                "_links": {
-                    "revolves_around": {"href": "/Sphere/0"}
-                }
-            })
+            pluto = Sphere(
+                name="Pluto",
+                revolves_around=Sphere(id="0"))
             self.assertEqual(pluto.id, None)
             self.assertEqual(Sphere.to_json(pluto), {
                 "name": "Pluto",
