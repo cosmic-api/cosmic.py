@@ -279,8 +279,6 @@ class TestPlanitarium(TestCase):
     def test_remote_save_link(self):
         with self.cosmos2:
             self._test_save_link()
-            # Discard getter
-            self._request.stack.pop()
 
             (req, res) = self._request.stack.pop()
 

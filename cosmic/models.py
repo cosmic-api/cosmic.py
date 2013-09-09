@@ -61,6 +61,12 @@ class Model(BasicWrapper):
         else:
             self.id, self._representation = (None, None)
 
+    @classmethod
+    def lazy_instance(cls, id):
+        inst = cls()
+        inst.id = id
+        return inst
+
     @property
     def href(self):
         return "/%s/%s" % (self.__class__.__name__, self.id)
@@ -86,9 +92,8 @@ class Model(BasicWrapper):
             if name in links:
                 url = links[name]["href"]
                 model_cls = OrderedDict(cls.links)[name]["schema"]
-                inst = model_cls()
-                inst.id = model_cls.id_from_url(url)
-                rep[name] = inst
+                id = model_cls.id_from_url(url)
+                rep[name] = model_cls.lazy_instance(id)
             else:
                 rep[name] = None
         for name in OrderedDict(cls.properties).keys():
@@ -122,11 +127,9 @@ class Model(BasicWrapper):
         return d
 
     def _get_item(self, name):
-        if name in OrderedDict(self.__class__.links).keys():
-            inst = self._representation[name]
-            if inst is not None and inst._representation is None:
-                i2 = inst.__class__.get_by_id(inst.id)
-                inst._representation = i2._representation
+        if self._representation is None:
+            i = self.__class__.get_by_id(self.id)
+            self._representation = i._representation
         return self._representation.get(name, None)
 
     def _set_item(self, name, value):
