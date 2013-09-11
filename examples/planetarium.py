@@ -57,6 +57,7 @@ def make_planetarium():
             if datum["name"][0].islower():
                 raise ValidationError("Name must be capitalized", datum["name"])
 
+
     @planetarium.action(accepts=M('planetarium.Sphere'), returns=String)
     def hello(sphere):
         return "Hello, %s" % sphere.name

@@ -170,12 +170,8 @@ class TestAPI(TestCase):
         self.assertEqual(pancake.name, "pancake")
         self.assertEqual(R.to_json(pancake), d)
 
-    # TODO: Teleport should raise a ValidationError here
-    def _test_accepts_invalid_schema(self):
-        with self.assertRaisesRegexp(ValidationError, "Missing fields"):
-            @self.cookbook.action(returns=Schema.from_json({"type": "Struct"}))
-            def func(a, b=1):
-                pass
+    def test_guess_methods(self):
+        self.assertEqual(self.cookbook.models.Recipe.methods, [])
 
     def test_model_deserialize_okay(self):
         s = Schema.from_json({"type": "cookbook.Recipe"})

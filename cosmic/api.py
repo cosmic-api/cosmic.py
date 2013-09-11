@@ -166,11 +166,16 @@ class API(BasicWrapper):
                 endpoint=endpoint)
 
         for name, model_cls in self._models.items():
-            model_cls._list_poster.add_to_app(app)
-            model_cls._list_getter.add_to_app(app)
-            model_cls._model_getter.add_to_app(app)
-            model_cls._model_putter.add_to_app(app)
-            model_cls._model_deleter.add_to_app(app)
+            if 'create' in model_cls.methods:
+                model_cls._list_poster.add_to_app(app)
+            if 'get_list' in model_cls.methods:
+                model_cls._list_getter.add_to_app(app)
+            if 'get_by_id' in model_cls.methods:
+                model_cls._model_getter.add_to_app(app)
+            if 'update' in model_cls.methods:
+                model_cls._model_putter.add_to_app(app)
+            if 'delete' in model_cls.methods:
+                model_cls._model_deleter.add_to_app(app)
 
         return app
 

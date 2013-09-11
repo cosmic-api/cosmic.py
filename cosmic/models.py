@@ -43,6 +43,19 @@ def prep_model(model_cls):
     if 'id' in link_names | field_names:
         raise SpecError("'id' is a reserved name.")
 
+    # Guess supported methods if not defined
+    if model_cls.methods is None:
+        model_cls.methods = []
+        if hasattr(model_cls, 'get_by_id'):
+            model_cls.methods.append('get_by_id')
+        if hasattr(model_cls, 'get_list'):
+            model_cls.methods.append('get_list')
+        if hasattr(model_cls, 'save'):
+            model_cls.methods.append('create')
+            model_cls.methods.append('update')
+        if hasattr(model_cls, 'delete'):
+            model_cls.methods.append('delete')
+
     model_cls._list_poster = ListPoster(model_cls)
     model_cls._list_getter = ListGetter(model_cls)
     model_cls._model_getter = ModelGetter(model_cls)
@@ -54,6 +67,7 @@ def prep_model(model_cls):
 
 class Model(BasicWrapper):
     """A data type definition attached to an API."""
+    methods = None
     query_fields = []
     links = []
 

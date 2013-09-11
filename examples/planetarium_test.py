@@ -94,6 +94,10 @@ class TestPlanitarium(TestCase):
                 # Use the local API's HTTP client to simulate the remote API's calls
                 self.remote_planetarium._request = self._request = WerkzeugTestClientPlugin(self.d)
 
+    def test_guess_methods(self):
+        with self.cosmos1:
+            all_methods = set(['get_list', 'get_by_id', 'create', 'update', 'delete'])
+            self.assertEqual(set(M('planetarium.Sphere').methods), all_methods)
 
     def test_spec_endpoint(self):
         with self.cosmos1:
