@@ -147,7 +147,8 @@ class TestAPI(TestCase):
                 required(u"is_gordon_ramsay", Boolean)
             ]
 
-        self.app_debug = self.cookbook.get_flask_app(debug=True)
+        self.app_debug = self.cookbook.get_flask_app()
+        self.app_debug.debug = True
         self.client_debug = self.app_debug.test_client()
 
         self.app = self.cookbook.get_flask_app()

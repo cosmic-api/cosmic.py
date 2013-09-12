@@ -138,19 +138,10 @@ class API(BasicWrapper):
         self._authenticate = f
         return f
 
-    def get_flask_app(self, debug=False):
-        """Returns a Flask application with nothing but the API blueprint
-        registered.
-
-        The *debug* parameter will determine whether Cosmic will propagate
-        exceptions, letting them reach the debugger or swallow them up,
-        returning proper HTTP error responses.
-        """
+    def get_flask_app(self):
+        """Returns a Flask application for the API."""
 
         app = Flask(__name__, static_folder=None)
-
-        # When debug is True, PROPAGATE_EXCEPTIONS will be implicitly True
-        app.debug = debug
 
         spec_view = Function(returns=API)
         spec_view.func = lambda: self

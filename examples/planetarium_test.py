@@ -83,7 +83,9 @@ class TestPlanitarium(TestCase):
             self.planetarium = make_planetarium()
 
             self.c = self.planetarium.get_flask_app().test_client()
-            self.d = self.planetarium.get_flask_app(debug=True).test_client()
+            app = self.planetarium.get_flask_app()
+            app.debug = True
+            self.d = app.test_client()
 
         with self.cosmos2:
             with patch.object(requests, 'get') as mock_get:
