@@ -94,6 +94,10 @@ class TestPlanitarium(TestCase):
                 # Use the local API's HTTP client to simulate the remote API's calls
                 self.remote_planetarium._request = self._request = WerkzeugTestClientPlugin(self.d)
 
+                @self.remote_planetarium.auth_headers
+                def auth_headers():
+                    return {"X-Danish": "poppyseed"}
+
     def test_guess_methods(self):
         with self.cosmos1:
             all_methods = set(['get_list', 'get_by_id', 'create', 'update', 'delete'])
@@ -116,6 +120,10 @@ class TestPlanitarium(TestCase):
                         {
                             "name": "Content-Type",
                             "value": "application/json"
+                        },
+                        {
+                            "name": "X-Danish",
+                            "value": "poppyseed"
                         }
                     ],
                     "body": json.dumps({
@@ -367,7 +375,7 @@ class TestPlanitarium(TestCase):
     def test_not_found(self):
         with self.cosmos1:
             with DBContext(planet_db):
-                res = self.d.get('/Sphere/4')
+                res = self.d.get('/Sphere/4', headers={"X-Danish": "poppyseed"})
                 self.assertEqual(res.status_code, 404)
 
 

@@ -6,6 +6,8 @@ from teleport import *
 
 from werkzeug.local import LocalProxy
 
+from flask import abort
+
 
 planet_db = {
     "spheres": [
@@ -36,6 +38,11 @@ def make_planetarium():
 
     planetarium = API("planetarium")
 
+    @planetarium.authenticate
+    def authenticate(headers):
+        danish = headers.get('X-Danish', None)
+        if danish != "poppyseed":
+            abort(401)
 
     @planetarium.model
     class Sphere(DBModel):

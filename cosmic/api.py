@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 import json
+from functools import wraps
 import inspect
 import requests
 from multiprocessing import Process
@@ -8,7 +9,7 @@ from collections import OrderedDict
 
 from teleport import *
 
-from flask import Blueprint, Flask
+from flask import Blueprint, Flask, request
 
 from .actions import Function
 from .models import Model, RemoteModel, prep_model, Cosmos
@@ -60,6 +61,9 @@ class API(BasicWrapper):
 
         self._models = OrderedDict()
         self._actions = OrderedDict()
+
+        self._auth_headers = None
+        self._authenticate = None
 
         self.actions = GetterNamespace(self._get_function_callable)
         self.models = GetterNamespace(
@@ -125,6 +129,15 @@ class API(BasicWrapper):
         api._request = RequestsPlugin(api.url)
         return api
 
+
+    def auth_headers(self, f):
+        self._auth_headers = f
+        return f
+
+    def authenticate(self, f):
+        self._authenticate = f
+        return f
+
     def get_flask_app(self, debug=False):
         """Returns a Flask application with nothing but the API blueprint
         registered.
@@ -155,27 +168,37 @@ class API(BasicWrapper):
             view_func=view_func.view,
             methods=[view_func.method],
             endpoint="envelope")
+
+        def requires_auth(f):
+            @wraps(f)
+            def decorated(*args, **kwargs):
+                if self._authenticate is not None:
+                    self._authenticate(request.headers)
+                return f(*args, **kwargs)
+            return decorated
         
         for name, function in self._actions.items():
             url = "/actions/%s" % name
             endpoint = "function_%s" % name
             view_func = FlaskViewAction(function, url, self)
             app.add_url_rule(url,
-                view_func=view_func.view,
+                view_func=requires_auth(view_func.view),
                 methods=[view_func.method],
                 endpoint=endpoint)
 
         for name, model_cls in self._models.items():
-            if 'create' in model_cls.methods:
-                model_cls._list_poster.add_to_app(app)
-            if 'get_list' in model_cls.methods:
-                model_cls._list_getter.add_to_app(app)
-            if 'get_by_id' in model_cls.methods:
-                model_cls._model_getter.add_to_app(app)
-            if 'update' in model_cls.methods:
-                model_cls._model_putter.add_to_app(app)
-            if 'delete' in model_cls.methods:
-                model_cls._model_deleter.add_to_app(app)
+            handlers = {
+                'create': model_cls._list_poster,
+                'get_list': model_cls._list_getter,
+                'get_by_id': model_cls._model_getter,
+                'update': model_cls._model_putter,
+                'delete': model_cls._model_deleter
+            }
+            for method, handler in handlers.items():
+                if method in model_cls.methods:
+                    args = handler.get_url_rule()
+                    args['view_func'] = requires_auth(args['view_func'])
+                    app.add_url_rule(**args)
 
         return app
 

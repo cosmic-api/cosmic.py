@@ -237,10 +237,9 @@ class FlaskView(object):
             if query_string:
                 url += "?%s" % query_string
 
-        if hasattr(self, "_request"):
-            req_func = self._request
-        else:
-            req_func = self.model_cls.api._request
+        req_func = self.api._request
+        if self.api._auth_headers is not None:
+            headers.update(self.api._auth_headers())
 
         res = req_func(
             url=url,
@@ -287,11 +286,13 @@ class FlaskView(object):
         except ValidationError as a:
             raise e
 
-    def add_to_app(self, blueprint):
-        blueprint.add_url_rule(self.url,
-            view_func=self.view,
-            methods=[self.method],
-            endpoint=self.endpoint)
+    def get_url_rule(self):
+        return {
+            'rule': self.url,
+            'view_func': self.view,
+            'methods': [self.method],
+            'endpoint': self.endpoint
+        }
 
 
 class FlaskViewAction(FlaskView):
@@ -303,8 +304,7 @@ class FlaskViewAction(FlaskView):
     def __init__(self, function, url, api):
         self.function = function
         self.url = url
-        if hasattr(api, '_request'):
-            self._request = api._request
+        self.api = api
 
     def handler(self, data):
         return self.function.json_to_json(data)
@@ -387,6 +387,7 @@ class ModelGetter(FlaskView):
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
+        self.api = model_cls.api
         self.url = "/%s/<id>" % self.model_cls.__name__
         self.endpoint = "doc_get_%s" % self.model_cls.__name__
 
@@ -422,6 +423,7 @@ class ModelPutter(FlaskView):
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
+        self.api = model_cls.api
         self.url = "/%s/<id>" % self.model_cls.__name__
         self.endpoint = "doc_put_%s" % self.model_cls.__name__
 
@@ -463,6 +465,7 @@ class ListPoster(FlaskView):
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
+        self.api = model_cls.api
         self.url = "/%s" % self.model_cls.__name__
         self.endpoint = "list_post_%s" % self.model_cls.__name__
 
@@ -495,6 +498,7 @@ class ModelDeleter(FlaskView):
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
+        self.api = model_cls.api
         self.url = "/%s/<id>" % self.model_cls.__name__
         self.endpoint = "doc_delete_%s" % self.model_cls.__name__
 
@@ -525,6 +529,7 @@ class ListGetter(FlaskView):
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
+        self.api = model_cls.api
         if self.model_cls.query_fields != None:
             self.query_schema = URLParams(self.model_cls.query_fields)
         self.url = "/%s" % self.model_cls.__name__
