@@ -1,8 +1,9 @@
 from __future__ import unicode_literals
 
-from teleport import *
+from teleport import BasicWrapper
 
 from .tools import deserialize_json, serialize_json, apply_to_func
+from .types import *
 
 
 class Function(BasicWrapper):

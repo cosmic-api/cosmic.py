@@ -2,7 +2,7 @@ from cosmic import cosmos
 from cosmic.models import M
 from cosmic.api import API
 from cosmic.testing import DBModel, DBContext
-from teleport import *
+from cosmic.types import *
 
 from werkzeug.local import LocalProxy
 

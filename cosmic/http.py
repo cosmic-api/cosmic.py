@@ -12,9 +12,11 @@ from werkzeug.datastructures import Headers as WerkzeugHeaders
 from werkzeug.routing import Rule
 from werkzeug.routing import Map as RuleMap
 
-from flask import Flask, make_response, current_app
-from flask import request
-from teleport import *
+from flask import Flask, make_response, current_app, request
+from .types import *
+
+from teleport import ParametrizedWrapper, BasicWrapper
+from collections import OrderedDict
 
 from .tools import *
 from .exceptions import *

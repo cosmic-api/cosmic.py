@@ -11,7 +11,7 @@ from cosmic.actions import *
 from cosmic.tools import *
 from cosmic.http import *
 
-from teleport import *
+from cosmic.types import *
 
 class TestURLParams(TestCase):
 

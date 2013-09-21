@@ -6,7 +6,7 @@ from unittest2 import TestCase
 from mock import patch
 
 import requests
-from teleport import *
+from cosmic.types import *
 from werkzeug.exceptions import Unauthorized
 
 from cosmic.exceptions import *

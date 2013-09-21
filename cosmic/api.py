@@ -7,13 +7,13 @@ import requests
 from multiprocessing import Process
 from collections import OrderedDict
 
-from teleport import *
 
 from flask import Blueprint, Flask, request
 
 from .actions import Function
 from .models import Model, RemoteModel, prep_model, Cosmos
 from .tools import GetterNamespace, get_args, assert_is_compatible, deserialize_json, validate_underscore_identifier
+from .types import *
 from .http import *
 from . import cosmos
 

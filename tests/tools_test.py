@@ -1,10 +1,11 @@
 from unittest2 import TestCase
 from mock import patch, Mock
+from collections import OrderedDict
 
 from cosmic.exceptions import *
 from cosmic.tools import *
 
-from teleport import *
+from cosmic.types import *
 
 
 class TestGetArgs(TestCase):

@@ -6,7 +6,7 @@ import json
 
 from .exceptions import SpecError
 
-from teleport import *
+from .types import *
 
 
 class GetterNamespace(object):

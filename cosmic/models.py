@@ -5,9 +5,12 @@ from collections import OrderedDict
 from werkzeug.local import LocalStack, LocalProxy
 from flask.ctx import _AppCtxGlobals
 
-from teleport import *
 from .exceptions import ModelNotFound
 from .tools import GetterNamespace, validate_underscore_identifier
+
+from .types import *
+
+from teleport import BasicWrapper
 
 
 def prep_model(model_cls):
@@ -193,7 +196,7 @@ class RemoteModel(Model):
         return cls._model_getter(id)
 
 
-class Cosmos(TypeMap):
+class Cosmos(object):
 
     def __init__(self):
         self.apis = {}
@@ -205,27 +208,18 @@ class Cosmos(TypeMap):
 
     def __enter__(self):
         _ctx_stack.push(self)
-        super(Cosmos, self).__enter__()
 
     def __exit__(self, *args, **kwargs):
         _ctx_stack.pop()
-        super(Cosmos, self).__exit__(*args, **kwargs)
 
-    def __getitem__(self, name):
-        from api import API
-        from actions import Function
-        if name == "cosmic.API":
-            return (API, None,)
-        elif name == "cosmic.Function":
-            return (Function, None,)
-        elif '.' in name:
-            return (M(name), None,)
-        else:
-            return BUILTIN_TYPES[name]
 
 _ctx_stack = LocalStack()
 
+# Teleport reads param_schema, we don't want that to trigger local resolution
+class LocalProxyHack(LocalProxy):
+    param_schema = None
+
 def M(name):
     from cosmic import cosmos
-    return LocalProxy(lambda: cosmos.M(name))
+    return LocalProxyHack(lambda: cosmos.M(name))
 
