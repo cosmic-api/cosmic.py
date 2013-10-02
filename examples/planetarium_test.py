@@ -76,11 +76,11 @@ class TestPlanitarium(TestCase):
     def setUp(self):
         self.maxDiff = None
 
-        self.cosmos1 = Cosmos()
+        self.cosmos1 = cosmos.clone()
         self.cosmos2 = Cosmos()
 
         with self.cosmos1:
-            self.planetarium = make_planetarium()
+            self.planetarium = planetarium
 
             self.c = self.planetarium.get_flask_app().test_client()
             app = self.planetarium.get_flask_app()

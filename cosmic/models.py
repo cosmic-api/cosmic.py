@@ -202,6 +202,11 @@ class Cosmos(object):
         self.apis = {}
         self.g = _AppCtxGlobals()
 
+    def clone(self):
+        c = Cosmos()
+        c.apis = dict(self.apis.items())
+        return c
+
     def M(self, name):
         api_name, model_name = name.split('.', 1)
         return self.apis[api_name]._models[model_name]
