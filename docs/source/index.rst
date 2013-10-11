@@ -12,7 +12,7 @@ The tutorial should be the best way to get up and running.
 Contents:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
 
    foreword
    overview
