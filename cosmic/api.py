@@ -62,15 +62,28 @@ class API(BasicWrapper):
         self._models = OrderedDict()
         self._actions = OrderedDict()
 
-        self._auth_headers = None
-        self._authenticate = None
-
         self.actions = GetterNamespace(self._get_function_callable)
         self.models = GetterNamespace(
             get_item=self._models.__getitem__,
             get_all=self._models.keys)
 
         cosmos.apis[self.name] = self
+
+
+    # Client side hooks
+
+    _auth_headers = None
+    def auth_headers(self, f):
+        self._auth_headers = f
+        return f
+
+    # Server side hooks
+
+    _authenticate = None
+    def authenticate(self, f):
+        self._authenticate = f
+        return f
+
 
     @staticmethod
     def assemble(datum):
@@ -129,14 +142,6 @@ class API(BasicWrapper):
         api._request = RequestsPlugin(api.url)
         return api
 
-
-    def auth_headers(self, f):
-        self._auth_headers = f
-        return f
-
-    def authenticate(self, f):
-        self._authenticate = f
-        return f
 
     def get_flask_app(self):
         """Returns a Flask application for the API."""

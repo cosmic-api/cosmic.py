@@ -21,14 +21,22 @@ from collections import OrderedDict
 from .tools import *
 from .exceptions import *
 
-
 class RequestsPlugin(object):
 
     def __init__(self, base_url):
         self.base_url = base_url
 
-    def __call__(self, url, **kwargs):
-        return requests.request(url=self.base_url + url, **kwargs)
+    def __call__(self, request):
+        session = requests.sessions.Session()
+        request.url = self.base_url + request.url
+        return session.send(session.prepare_request(request),
+            stream=False,
+            timeout=None,
+            verify=True,
+            cert=None,
+            proxies={},
+            allow_redirects=True)
+
 
 class WerkzeugTestClientPlugin(object):
 
@@ -37,14 +45,19 @@ class WerkzeugTestClientPlugin(object):
         # Save every request and response for testing
         self.stack = []
 
-    def __call__(self, url, **kwargs):
+    def __call__(self, request):
+        kwargs = {
+            "method": request.method,
+            "data": request.data,
+            "headers": request.headers
+        }
         saved_req = copy.deepcopy(kwargs)
-        saved_req['url'] = url
+        saved_req['url'] = request.url
         # Content-Type should be provided as kwarg because otherwise we can't
         # access request.mimetype
-        if 'headers' in kwargs and 'Content-Type' in kwargs['headers']:
-            kwargs['content_type'] = kwargs['headers'].pop('Content-Type')
-        r = self.client.open(path=url, **kwargs)
+        if 'Content-Type' in request.headers:
+            kwargs['content_type'] = request.headers.pop('Content-Type')
+        r = self.client.open(path=request.url, **kwargs)
         resp = requests.Response()
         resp._content = r.data
         resp.headers = CaseInsensitiveDict(r.headers)
@@ -243,11 +256,13 @@ class FlaskView(object):
         if self.api._auth_headers is not None:
             headers.update(self.api._auth_headers())
 
-        res = req_func(
-            url=url,
+        req = requests.Request(
             method=self.method,
+            url=url,
             data=data,
             headers=headers)
+
+        res = req_func(req)
 
         e = InternalServerError("Call returned an invalid value")
         e.remote = True

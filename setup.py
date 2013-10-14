@@ -19,6 +19,6 @@ setup(
         "teleport==0.2.0",
         "Flask==0.10",
         "Werkzeug==0.9.1",
-        "requests==0.14.2",
+        "requests==2.0.0",
     ]
 )
