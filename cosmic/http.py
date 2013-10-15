@@ -24,7 +24,7 @@ from .exceptions import *
 
 class BaseClientHook(object):
 
-    def __call__(self, endpoint, args, kwargs):
+    def call(self, endpoint, *args, **kwargs):
         req = self.build_request(endpoint, *args, **kwargs)
         res = self.make_request(endpoint, req)
         return self.parse_response(endpoint, res)
@@ -52,11 +52,6 @@ class ClientHook(BaseClientHook):
             cert=None,
             proxies={},
             allow_redirects=True)
-
-    def __call__(self, endpoint, args, kwargs):
-        req = self.build_request(endpoint, *args, **kwargs)
-        res = self.make_request(endpoint, req)
-        return self.parse_response(endpoint, res)
 
 
 class SaveStackClientHookMixin(object):
@@ -340,7 +335,7 @@ class FlaskView(object):
             raise e
 
     def __call__(self, *args, **kwargs):
-        return self.api.client_hook(self, args, kwargs)
+        return self.api.client_hook.call(self, *args, **kwargs)
 
 
     def get_url_rule(self):
