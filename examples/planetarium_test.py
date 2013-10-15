@@ -8,7 +8,7 @@ from mock import patch
 from unittest2 import TestCase
 
 from cosmic.api import API
-from cosmic.http import WerkzeugTestClientPlugin
+from cosmic.http import WerkzeugTestClientHook
 from cosmic import cosmos
 from cosmic.testing import DBContext
 from cosmic.models import Cosmos, M
@@ -94,7 +94,7 @@ class TestPlanitarium(TestCase):
 
                 self.remote_planetarium = API.load('http://example.com/spec.json')
                 # Use the local API's HTTP client to simulate the remote API's calls
-                self.remote_planetarium._request = self._request = WerkzeugTestClientPlugin(self.d)
+                self.remote_planetarium.client_hook = WerkzeugTestClientHook(self.d)
 
                 @self.remote_planetarium.auth_headers
                 def auth_headers():
@@ -169,7 +169,7 @@ class TestPlanitarium(TestCase):
         with self.cosmos2:
             self._test_follow_links()
 
-            (req, res) = self._request.stack.pop()
+            (req, res) = self.remote_planetarium.client_hook.stack.pop()
 
             self.assertEqual(req["method"], "GET")
             self.assertEqual(req["url"], "/Sphere/0")
@@ -199,7 +199,7 @@ class TestPlanitarium(TestCase):
         with self.cosmos2:
             self._test_get_list()
 
-            (req, res) = self._request.stack.pop()
+            (req, res) = self.remote_planetarium.client_hook.stack.pop()
 
             self.assertEqual(req["method"], "GET")
             self.assertEqual(req["url"], "/Sphere")
@@ -216,7 +216,7 @@ class TestPlanitarium(TestCase):
             })
             self.assertEqual(res["headers"]["Content-Type"], "application/json")
 
-            (req, res) = self._request.stack.pop()
+            (req, res) = self.remote_planetarium.client_hook.stack.pop()
 
             url = "/Sphere?name=%22Sun%22"
             self.assertEqual(req["method"], "GET")
@@ -254,7 +254,7 @@ class TestPlanitarium(TestCase):
         with self.cosmos2:
             self._test_save_property()
 
-            (req, res) = self._request.stack.pop()
+            (req, res) = self.remote_planetarium.client_hook.stack.pop()
 
             updated = {
                 u'_links': {
@@ -294,7 +294,7 @@ class TestPlanitarium(TestCase):
         with self.cosmos2:
             self._test_save_link()
 
-            (req, res) = self._request.stack.pop()
+            (req, res) = self.remote_planetarium.client_hook.stack.pop()
 
             updated = {
                 u'_links': {
@@ -365,7 +365,7 @@ class TestPlanitarium(TestCase):
         with self.cosmos2:
             self._test_delete()
 
-            (req, res) = self._request.stack.pop()
+            (req, res) = self.remote_planetarium.client_hook.stack.pop()
 
             self.assertEqual(req["method"], "DELETE")
             self.assertEqual(req["url"], "/Sphere/1")

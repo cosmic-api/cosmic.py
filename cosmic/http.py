@@ -21,15 +21,17 @@ from collections import OrderedDict
 from .tools import *
 from .exceptions import *
 
-class RequestsPlugin(object):
+
+class ClientHook(object):
 
     def __init__(self, base_url):
         self.base_url = base_url
+        self.session = requests.sessions.Session()
 
-    def __call__(self, request):
-        session = requests.sessions.Session()
+    def make_request(self, endpoint, request):
         request.url = self.base_url + request.url
-        return session.send(session.prepare_request(request),
+        prepared = self.session.prepare_request(request)
+        return self.session.send(prepared,
             stream=False,
             timeout=None,
             verify=True,
@@ -37,15 +39,20 @@ class RequestsPlugin(object):
             proxies={},
             allow_redirects=True)
 
+    def __call__(self, endpoint, args, kwargs):
+        req = endpoint.build_request(*args, **kwargs)
+        res = self.make_request(endpoint, req)
+        return endpoint.parse_response(res)
 
-class WerkzeugTestClientPlugin(object):
+
+class WerkzeugTestClientHook(ClientHook):
 
     def __init__(self, client):
         self.client = client
         # Save every request and response for testing
         self.stack = []
 
-    def __call__(self, request):
+    def make_request(self, endpoint, request):
         kwargs = {
             "method": request.method,
             "data": request.data,
@@ -70,6 +77,8 @@ class WerkzeugTestClientPlugin(object):
 
         self.stack.append((saved_req, saved_resp))
         return resp
+
+
 
 
 class URLParams(ParametrizedWrapper):
@@ -186,6 +195,7 @@ def reverse_werkzeug_url(url, values):
 
 
 
+
 class FlaskView(object):
     json_request = False
     json_response = False
@@ -218,10 +228,10 @@ class FlaskView(object):
             if self.query_schema != None:
                 req['query'] = self.query_schema.from_multi_dict(request.args)
 
-            r = self.handler(**self.parse_request(req))
+            r = self.handler(**self._parse_request(req))
 
-            if hasattr(self, "build_response"):
-                return make_response(self.build_response(r))
+            if hasattr(self, "_build_response"):
+                return make_response(self._build_response(r))
             else:
                 return make_response(r)
 
@@ -231,8 +241,8 @@ class FlaskView(object):
             else:
                 return error_to_response(err)
 
-    def __call__(self, *args, **kwargs):
-        r = self.build_request(*args, **kwargs)
+    def build_request(self, *args, **kwargs):
+        r = self._build_request(*args, **kwargs)
 
         if self.json_request:
             data = json_to_string(r.get('json', None))
@@ -252,18 +262,16 @@ class FlaskView(object):
             if query_string:
                 url += "?%s" % query_string
 
-        req_func = self.api._request
         if self.api._auth_headers is not None:
             headers.update(self.api._auth_headers())
 
-        req = requests.Request(
+        return requests.Request(
             method=self.method,
             url=url,
             data=data,
             headers=headers)
 
-        res = req_func(req)
-
+    def parse_response(self, res):
         e = InternalServerError("Call returned an invalid value")
         e.remote = True
 
@@ -299,9 +307,13 @@ class FlaskView(object):
                 raise
 
         try:
-            return self.parse_response(r)
+            return self._parse_response(r)
         except ValidationError as a:
             raise e
+
+    def __call__(self, *args, **kwargs):
+        return self.api.client_hook(self, args, kwargs)
+
 
     def get_url_rule(self):
         return {
@@ -326,20 +338,20 @@ class FlaskViewAction(FlaskView):
     def handler(self, data):
         return self.function.json_to_json(data)
 
-    def build_request(self, *args, **kwargs):
+    def _build_request(self, *args, **kwargs):
         packed = pack_action_arguments(*args, **kwargs)
         return {"json": serialize_json(self.function.accepts, packed)}
 
-    def parse_request(self, req):
+    def _parse_request(self, req):
         return {'data': req['json']}
 
-    def parse_response(self, res):
+    def _parse_response(self, res):
         if self.function.returns and res['json']:
             return self.function.returns.from_json(res['json'].datum)
         else:
             return None
 
-    def build_response(self, data):
+    def _build_response(self, data):
         if data == None:
             return ("", 204, {})
         else:
@@ -386,10 +398,10 @@ class Envelope(FlaskView):
             'body': response.data
         }
 
-    def parse_request(self, req):
+    def _parse_request(self, req):
         return self.request_schema.from_json(req['json'].datum)
 
-    def build_response(self, json_response):
+    def _build_response(self, json_response):
         body = json.dumps(self.response_schema.to_json(json_response))
         return (body, 200, {"Content-Type": "application/json"})
 
@@ -411,19 +423,19 @@ class ModelGetter(FlaskView):
     def handler(self, id):
         return self.model_cls.get_by_id(id)
 
-    def build_request(self, id):
+    def _build_request(self, id):
         return {'url_args': {'id': id}}
 
-    def parse_request(self, req):
+    def _parse_request(self, req):
         return {'id': req['url_args']['id']}
 
-    def build_response(self, inst):
+    def _build_response(self, inst):
         if inst == None:
             return ("", 404, {})
         body = json.dumps(self.model_cls.to_json(inst))
         return (body, 200, {"Content-Type": "application/json"})
 
-    def parse_response(self, res):
+    def _parse_response(self, res):
         if res['code'] == 404:
             return None
         if res['code'] == 200:
@@ -451,23 +463,23 @@ class ModelPutter(FlaskView):
         inst.save()
         return inst
 
-    def build_request(self, id, inst):
+    def _build_request(self, id, inst):
         return {
             'json': Box(self.model_cls.to_json(inst)),
             'url_args': {'id': id}
         }
 
-    def parse_request(self, req):
+    def _parse_request(self, req):
         return {
             'id': req['url_args']['id'],
             'inst': self.model_cls.from_json(req['json'].datum)
         }
 
-    def build_response(self, inst):
+    def _build_response(self, inst):
         body = json.dumps(self.model_cls.to_json(inst))
         return (body, 200, {"Content-Type": "application/json"})
 
-    def parse_response(self, res):
+    def _parse_response(self, res):
         return self.model_cls.from_json(res['json'].datum)
 
 
@@ -490,16 +502,16 @@ class ListPoster(FlaskView):
         inst.save()
         return inst
 
-    def build_request(self, inst):
+    def _build_request(self, inst):
         return {'json': Box(self.model_cls.to_json(inst))}
 
-    def parse_request(self, req):
+    def _parse_request(self, req):
         return {'inst': self.model_cls.from_json(req['json'].datum)}
 
-    def parse_response(self, res):
+    def _parse_response(self, res):
         return self.model_cls.from_json(res['json'].datum)
 
-    def build_response(self, inst):
+    def _build_response(self, inst):
         body = json.dumps(self.model_cls.to_json(inst))
         return (body, 201, {
             "Location": inst.href,
@@ -524,16 +536,16 @@ class ModelDeleter(FlaskView):
             raise NotFound
         inst.delete()
 
-    def build_request(self, inst):
+    def _build_request(self, inst):
         return {'url_args': {'id': inst.id}}
 
-    def parse_request(self, req):
+    def _parse_request(self, req):
         return {'inst': self.model_cls.get_by_id(req['url_args']['id'])}
 
-    def parse_response(self, res):
+    def _parse_response(self, res):
         return
 
-    def build_response(self, _):
+    def _build_response(self, _):
         return ("", 204, {})
 
 
@@ -560,17 +572,17 @@ class ListGetter(FlaskView):
 
         return (self.model_cls.get_list(**query), self_link)
 
-    def build_request(self, **query):
+    def _build_request(self, **query):
         return {"query": query}
 
-    def parse_request(self, req):
+    def _parse_request(self, req):
         return req.get('query', {})
 
-    def parse_response(self, res):
+    def _parse_response(self, res):
         j = res['json'].datum
         return map(self.model_cls.from_json, j["_embedded"][self.model_cls.__name__])
 
-    def build_response(self, tup):
+    def _build_response(self, tup):
         l, self_link = tup
         body = {
             "_links": {

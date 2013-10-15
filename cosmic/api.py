@@ -56,6 +56,8 @@ class API(BasicWrapper):
     ])
 
     def __init__(self, name, homepage=None):
+        from .http import ClientHook
+
         self.name = name
         self.homepage = homepage
 
@@ -83,6 +85,7 @@ class API(BasicWrapper):
     def authenticate(self, f):
         self._authenticate = f
         return f
+
 
 
     @staticmethod
@@ -139,7 +142,7 @@ class API(BasicWrapper):
         api = API.from_json(res.json)
         # Set the API url to be the spec URL, minus the /spec.json
         api.url = url[:-10]
-        api._request = RequestsPlugin(api.url)
+        api.client_hook = ClientHook(api.url)
         return api
 
 
