@@ -22,7 +22,21 @@ from .tools import *
 from .exceptions import *
 
 
-class ClientHook(object):
+class BaseClientHook(object):
+
+    def __call__(self, endpoint, args, kwargs):
+        req = self.build_request(endpoint, *args, **kwargs)
+        res = self.make_request(endpoint, req)
+        return self.parse_response(endpoint, res)
+
+    def build_request(self, endpoint, *args, **kwargs):
+        return endpoint.build_request(*args, **kwargs)
+
+    def parse_response(self, endpoint, res):
+        return endpoint.parse_response(res)
+
+
+class ClientHook(BaseClientHook):
 
     def __init__(self, base_url):
         self.base_url = base_url
@@ -40,17 +54,42 @@ class ClientHook(object):
             allow_redirects=True)
 
     def __call__(self, endpoint, args, kwargs):
-        req = endpoint.build_request(*args, **kwargs)
+        req = self.build_request(endpoint, *args, **kwargs)
         res = self.make_request(endpoint, req)
-        return endpoint.parse_response(res)
+        return self.parse_response(endpoint, res)
 
 
-class WerkzeugTestClientHook(ClientHook):
+class SaveStackClientHookMixin(object):
+
+    def __init__(self, *args, **kwargs):
+        self.stack = []
+        self.__last_request = None
+        super(SaveStackClientHookMixin, self).__init__(*args, **kwargs)
+
+    def build_request(self, endpoint, *args, **kwargs):
+        request = super(SaveStackClientHookMixin, self).build_request(endpoint, *args, **kwargs)
+        self.__last_request = {
+            "method": request.method,
+            "data": request.data,
+            "headers": copy.deepcopy(request.headers),
+            "url": request.url,
+        }
+        return request
+
+    def parse_response(self, endpoint, res):
+        saved_resp = {
+            "data": res.text,
+            "headers": res.headers,
+            "status_code": res.status_code
+        }
+        self.stack.append((self.__last_request, saved_resp))
+        return super(SaveStackClientHookMixin, self).parse_response(endpoint, res)
+
+
+class WerkzeugTestClientHook(BaseClientHook):
 
     def __init__(self, client):
         self.client = client
-        # Save every request and response for testing
-        self.stack = []
 
     def make_request(self, endpoint, request):
         kwargs = {
@@ -58,8 +97,6 @@ class WerkzeugTestClientHook(ClientHook):
             "data": request.data,
             "headers": request.headers
         }
-        saved_req = copy.deepcopy(kwargs)
-        saved_req['url'] = request.url
         # Content-Type should be provided as kwarg because otherwise we can't
         # access request.mimetype
         if 'Content-Type' in request.headers:
@@ -69,13 +106,7 @@ class WerkzeugTestClientHook(ClientHook):
         resp._content = r.data
         resp.headers = CaseInsensitiveDict(r.headers)
         resp.status_code = r.status_code
-        saved_resp = {
-            "data": r.data,
-            "headers": copy.deepcopy(r.headers),
-            "status_code": r.status_code
-        }
 
-        self.stack.append((saved_req, saved_resp))
         return resp
 
 

@@ -8,7 +8,7 @@ from mock import patch
 from unittest2 import TestCase
 
 from cosmic.api import API
-from cosmic.http import WerkzeugTestClientHook
+from cosmic.http import WerkzeugTestClientHook, SaveStackClientHookMixin
 from cosmic import cosmos
 from cosmic.testing import DBContext
 from cosmic.models import Cosmos, M
@@ -93,8 +93,12 @@ class TestPlanitarium(TestCase):
                 mock_get.return_value.status_code = 200
 
                 self.remote_planetarium = API.load('http://example.com/spec.json')
+
+                class hook_cls(SaveStackClientHookMixin, WerkzeugTestClientHook):
+                    pass
+
                 # Use the local API's HTTP client to simulate the remote API's calls
-                self.remote_planetarium.client_hook = WerkzeugTestClientHook(self.d)
+                self.remote_planetarium.client_hook = hook_cls(self.d)
 
                 @self.remote_planetarium.auth_headers
                 def auth_headers():
