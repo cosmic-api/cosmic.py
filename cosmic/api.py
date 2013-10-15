@@ -72,13 +72,6 @@ class API(BasicWrapper):
         cosmos.apis[self.name] = self
 
 
-    # Client side hooks
-
-    _auth_headers = None
-    def auth_headers(self, f):
-        self._auth_headers = f
-        return f
-
     # Server side hooks
 
     _authenticate = None

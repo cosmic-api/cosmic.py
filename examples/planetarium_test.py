@@ -94,15 +94,14 @@ class TestPlanitarium(TestCase):
 
                 self.remote_planetarium = API.load('http://example.com/spec.json')
 
-                class hook_cls(SaveStackClientHookMixin, WerkzeugTestClientHook):
-                    pass
+                class Hook(SaveStackClientHookMixin, WerkzeugTestClientHook):
+                    def build_request(self, endpoint, *args, **kwargs):
+                        request = super(Hook, self).build_request(endpoint, *args, **kwargs)
+                        request.headers["X-Danish"] = "poppyseed"
+                        return request
 
                 # Use the local API's HTTP client to simulate the remote API's calls
-                self.remote_planetarium.client_hook = hook_cls(self.d)
-
-                @self.remote_planetarium.auth_headers
-                def auth_headers():
-                    return {"X-Danish": "poppyseed"}
+                self.remote_planetarium.client_hook = Hook(self.d)
 
     def test_guess_methods(self):
         with self.cosmos1:

@@ -293,9 +293,6 @@ class FlaskView(object):
             if query_string:
                 url += "?%s" % query_string
 
-        if self.api._auth_headers is not None:
-            headers.update(self.api._auth_headers())
-
         return requests.Request(
             method=self.method,
             url=url,
