@@ -81,13 +81,14 @@ Authentication
 --------------
 
 * Currently, Cosmic does not provide a standard authentication mechanism.
-* Authentication is done by setting and reading headers.
-* On the client side, there is a hook myapi.auth_headers (set)
-* On the server side, there is a hook myapi.authenticate (read)
+* Authentication is done by making ClientHooks and ServerHooks.
+* To ask for credentials, override ServerHook.build_response
+* To supply credentials, override ClientHook.build_request
+* To check credentials, override ServerHook.parse_request
 * Authentication error should be raised when invalid credentials are provided.
-* If credentials are expected but not provided, an authorization error should be raised.
 * An authorization error can be raised from anywhere in the code.
-* [HTTP spec]
+* By overriding ClientHook.call, you can make the request repeat once credentials have been found.
+* This will let the client continue seamless operation.
 
 Deployment on Heroku
 --------------------

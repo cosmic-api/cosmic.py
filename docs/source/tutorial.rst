@@ -67,4 +67,16 @@ Step 4: Authenticating
 ----------------------
 
 * By default, all models and actions are accessible to all clients.
-* To resrict access, you can use authentication and authorization.
+* To restrict access you use authentication and authorization.
+* Cosmic doesn't currently support or recommend a particular method of authentication.
+* However, it allows you to implement your own via api.client_hook and api.server_hook
+* These hooks let you control HTTP message processing.
+* First, let's teach the server to ask for authentication with WWW-Authenticate
+* [code]
+* Now, let's let the client provide it:
+* [code]
+* Then, let's teach the server to check for it:
+* [code]
+* Sometimes (OAuth), a request might get an unexpected 401 response.
+* In these cases, you may want to get new credentials, then retry the request:
+* [code]
