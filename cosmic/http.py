@@ -256,16 +256,6 @@ class FlaskView(object):
 
     query_schema = None
 
-    def __view(self, **url_args):
-        try:
-            r = self.handler(**self.parse_request(request, **url_args))
-            return self.build_response(r)
-        except Exception as err:
-            if current_app.debug:
-                raise
-            else:
-                return error_to_response(err)
-
     def view(self, **url_args):
         return self.api.server_hook.view(self, request, **url_args)
 
@@ -362,7 +352,6 @@ class FlaskView(object):
 
     def __call__(self, *args, **kwargs):
         return self.api.client_hook.call(self, *args, **kwargs)
-
 
     def get_url_rule(self):
         return {
