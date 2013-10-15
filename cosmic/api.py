@@ -69,16 +69,9 @@ class API(BasicWrapper):
             get_item=self._models.__getitem__,
             get_all=self._models.keys)
 
+        self.server_hook = ServerHook()
+
         cosmos.apis[self.name] = self
-
-
-    # Server side hooks
-
-    _authenticate = None
-    def authenticate(self, f):
-        self._authenticate = f
-        return f
-
 
 
     @staticmethod
@@ -144,12 +137,7 @@ class API(BasicWrapper):
 
         app = Flask(__name__, static_folder=None)
 
-        spec_view = Function(returns=API)
-        spec_view.func = lambda: self
-
-        view_func = FlaskViewAction(spec_view, "/spec.json", self)
-        view_func.method = "GET"
-
+        view_func = Spec("/spec.json", self)
         app.add_url_rule(view_func.url,
             view_func=view_func.view,
             methods=[view_func.method],
@@ -161,20 +149,12 @@ class API(BasicWrapper):
             methods=[view_func.method],
             endpoint="envelope")
 
-        def requires_auth(f):
-            @wraps(f)
-            def decorated(*args, **kwargs):
-                if self._authenticate is not None:
-                    self._authenticate(request.headers)
-                return f(*args, **kwargs)
-            return decorated
-        
         for name, function in self._actions.items():
             url = "/actions/%s" % name
             endpoint = "function_%s" % name
             view_func = FlaskViewAction(function, url, self)
             app.add_url_rule(url,
-                view_func=requires_auth(view_func.view),
+                view_func=view_func.view,
                 methods=[view_func.method],
                 endpoint=endpoint)
 
@@ -189,7 +169,7 @@ class API(BasicWrapper):
             for method, handler in handlers.items():
                 if method in model_cls.methods:
                     args = handler.get_url_rule()
-                    args['view_func'] = requires_auth(args['view_func'])
+                    args['view_func'] = args['view_func']
                     app.add_url_rule(**args)
 
         return app

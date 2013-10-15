@@ -105,6 +105,26 @@ class WerkzeugTestClientHook(BaseClientHook):
         return resp
 
 
+class ServerHook(object):
+
+    def view(self, endpoint, request, **url_args):
+        try:
+            parsed = self.parse_request(endpoint, request, **url_args)
+            r = endpoint.handler(**parsed)
+            return self.build_response(endpoint, r)
+        except Exception as err:
+            if current_app.debug:
+                raise
+            else:
+                return error_to_response(err)
+
+    def parse_request(self, endpoint, request, **url_args):
+        return endpoint.parse_request(request, **url_args)
+
+    def build_response(self, endpoint, *args, **kwargs):
+        return endpoint.build_response(*args, **kwargs)
+
+
 
 
 class URLParams(ParametrizedWrapper):
@@ -226,6 +246,8 @@ class FlaskView(object):
     json_request = False
     json_response = False
 
+    never_authenticate = False
+
     response_can_be_empty = True
     response_must_be_empty = None
 
@@ -234,38 +256,42 @@ class FlaskView(object):
 
     query_schema = None
 
-    def view(self, **url_args):
+    def __view(self, **url_args):
         try:
-            req = {
-                'url_args': url_args,
-                'headers': request.headers
-            }
-            if self.json_request:
-                req['json'] = get_payload_from_http_message(request)
-            else:
-                req['data'] = request.get_data()
-
-            is_empty = request.get_data() == ""
-
-            if ((self.request_must_be_empty == True and not is_empty) or
-                (is_empty and self.request_can_be_empty == False)):
-                raise SpecError()
-
-            if self.query_schema != None:
-                req['query'] = self.query_schema.from_multi_dict(request.args)
-
-            r = self.handler(**self._parse_request(req))
-
-            if hasattr(self, "_build_response"):
-                return make_response(self._build_response(r))
-            else:
-                return make_response(r)
-
+            r = self.handler(**self.parse_request(request, **url_args))
+            return self.build_response(r)
         except Exception as err:
             if current_app.debug:
                 raise
             else:
                 return error_to_response(err)
+
+    def view(self, **url_args):
+        return self.api.server_hook.view(self, request, **url_args)
+
+    def parse_request(self, request, **url_args):
+        req = {
+            'url_args': url_args,
+            'headers': request.headers
+        }
+        if self.json_request:
+            req['json'] = get_payload_from_http_message(request)
+        else:
+            req['data'] = request.get_data()
+
+        is_empty = request.get_data() == ""
+
+        if ((self.request_must_be_empty == True and not is_empty) or
+            (is_empty and self.request_can_be_empty == False)):
+            raise SpecError()
+
+        if self.query_schema != None:
+            req['query'] = self.query_schema.from_multi_dict(request.args)
+
+        return self._parse_request(req)
+
+    def build_response(self, resp):
+        return make_response(self._build_response(resp))
 
     def build_request(self, *args, **kwargs):
         r = self._build_request(*args, **kwargs)
@@ -382,8 +408,38 @@ class FlaskViewAction(FlaskView):
             return (body, 200, {"Content-Type": "application/json"})
 
 
+class Spec(FlaskView):
+    method = "GET"
+    never_authenticate = True
+    json_response = True
+    acceptable_response_codes = [200]
+
+    def __init__(self, url, api):
+        self.url = url
+        self.api = api
+
+    def handler(self):
+        return self.api
+
+    def _build_request(self, *args, **kwargs):
+        return {}
+
+    def _parse_request(self, req):
+        return {}
+
+    def _parse_response(self, res):
+        from .api import API
+        return API.from_json(res['json'].datum)
+
+    def _build_response(self, api):
+        from .api import API
+        body = json.dumps(API.to_json(api))
+        return (body, 200, {"Content-Type": "application/json"})
+
+
 class Envelope(FlaskView):
     method = "POST"
+    never_authenticate = True
     json_request = True
     json_response = True
     request_can_be_empty = False

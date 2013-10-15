@@ -3,6 +3,7 @@ from cosmic.models import M
 from cosmic.api import API
 from cosmic.testing import DBModel, DBContext
 from cosmic.types import *
+from cosmic.http import ServerHook
 
 from werkzeug.local import LocalProxy
 
@@ -37,11 +38,17 @@ planet_db = {
 
 planetarium = API("planetarium")
 
-@planetarium.authenticate
-def authenticate(headers):
-    danish = headers.get('X-Danish', None)
-    if danish != "poppyseed":
-        abort(401)
+
+class SHook(ServerHook):
+
+    def parse_request(self, endpoint, request, **url_args):
+        if not endpoint.never_authenticate:
+            if request.headers.get('X-Danish', None) != "poppyseed":
+                abort(401)
+        return super(SHook, self).parse_request(endpoint, request, **url_args)
+
+planetarium.server_hook = SHook()
+
 
 @planetarium.model
 class Sphere(DBModel):

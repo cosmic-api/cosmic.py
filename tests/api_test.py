@@ -215,7 +215,7 @@ class TestAPI(TestCase):
         self.assertEqual(self.cookbook.actions.cabbage(spicy=False), "sauerkraut")
 
     def test_spec_endpoint(self):
-        res = self.client.get('/spec.json')
+        res = self.client_debug.get('/spec.json')
         self.assertEqual(json.loads(res.data), cookbook_spec)
 
     def test_spec_wrong_method(self):
@@ -242,4 +242,20 @@ class TestAPI(TestCase):
 
     def test_schema(self):
         API.from_json(API.to_json(self.cookbook))
+
+
+class TestAuthentication(TestCase):
+
+    def setUp(self):
+        planetarium = API("planetarium")
+
+        @planetarium.authenticate
+        def authenticate(headers):
+            danish = headers.get('X-Danish', None)
+            if danish != "poppyseed":
+                abort(401)
+
+        @planetarium.action(accepts=Integer, returns=String)
+        def hello(sphere):
+            return "Hello, %s" % sphere.name
 
