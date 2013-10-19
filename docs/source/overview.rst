@@ -4,34 +4,187 @@ Overview
 Installation
 ------------
 
-* Basic installation: $ pip install cosmic
-* Link to virtualenv tutorial
-* Working with master: $ git clone && python setup.py develop
+Assuming you are running Linux or OS X and are familiar with `pip <http://www.pip-installer.org/en/latest/quickstart.html>`_, installation is as easy as:
+
+.. code:: bash
+
+   pip install cosmic
+
+If you are not yet familiar with `virtualenv
+<http://www.virtualenv.org/en/latest/>`_, it is an indespensible tool for
+Python development. It lets you create isolated Python environments for every
+project you are working on. This means that different projects can depend on
+different versions of the same library.
+
+If you would like to work on the bleeding edge of Cosmic development, you 
+can clone the repo using git:
+
+.. code:: bash
+    
+    git clone https://github.com/cosmic-api/cosmic.py.git cosmic-py
+
+Then to install the current version (ideally you want to do this in a
+virtualenv):
+
+.. code:: bash
+
+    cd cosmic-py
+    python setup.py develop
 
 What's in an API?
 -----------------
 
-* An API is an interface, a live component in a multi-party system.
-* In the context of Cosmic, an API is also a serializable object.
-* In the JSON form, this object is called an API spec.
-* This object stores everything necessary to interact with your data and business logic.
-* Metadata: name, homepage.
-* Actions: list of function definitions.
-* Models: list of datatypes and definitions of how entities of those types are to be manipulated.
+A web API is:
+
+* An interface through which a server can share data and functionality with
+  clients over the internet.
+* A component of the server architecture that glues the database and business
+  logic to HTTP.
+
+In the context of Cosmic, an API is represented, unsurprisingly, by an
+instance of the :class:`~cosmic.api.API` class. What is interesting, however,
+is that this object is serializable to JSON. The JSON form of an API is the
+API spec.
+
+You may find it strange that we say "serialize an API" when we could simply
+say "generate an API spec". The reason we say this is to highlight the fact
+that an API is simply a Teleport datatype. The API object on the server and
+the API object on the client are instances of the same class, in fact, they
+are almost identical. The difference is that for every server endpoint, there
+is a hook into the server's database or business logic, whereas each client
+endpoint replaces this with an HTTP call.
+
+Let's serialize a trivial API. Note that :meth:`to_json` is a standard
+Teleport method::
+
+    >>> from cosmic.api import API
+    >>> mathy = API("trivia", homepage="http://example.com")
+    >>> API.to_json(mathy)
+    {
+        u'name': 'mathy',
+        u'homepage': 'http://example.com',
+        u'actions': {u'map': {}, u'order': []},
+        u'models': {u'map': {}, u'order': []}
+    }
+
+Let's take a look at what's inside.
+
+First, there is the basic metadata: the API *name* and *homepage*. The name of
+the API should be unique. Though this is not yet enforced by Cosmic, we plan on
+indexing Cosmic APIs on our website in which case it will become a requirement.
+
+Then, the API spec contains descriptions of *actions* and *models*. These will
+be explained in detail in the next two sections. Here is the Teleport schema
+for the API type:
+
+.. code:: python
+
+    Struct([
+        required("name", String),
+        optional("homepage", String),
+        required("actions", OrderedMap(Function)),
+        required("models", OrderedMap(Struct([
+            optional("data_schema", Schema),
+            required("links", OrderedMap(Struct([
+                required(u"schema", Schema),
+                required(u"required", Boolean),
+                optional(u"doc", String)
+            ]))),
+            required("query_fields", OrderedMap(Struct([
+                required(u"schema", Schema),
+                required(u"required", Boolean),
+                optional(u"doc", String)
+            ])))
+        ])))
+    ])
 
 RPC via Actions
 ---------------
 
-* Actions are API functions.
-* Actions are also serialiable objects, containing the type definition of a function.
-* Actions are registered with an @my_api.action() decorator.
-* Remote actions are called by my_api.actions.foo().
-* Accepts and returns are both optional.
-* When accepts is a Struct, you can pass in values as kwargs.
-* [HTTP spec]
+RPC stands for remote procedure call. It allows remote clients to call
+procedures (functions) in your code. These are commonly implemented as POST
+handlers on action-style URLs, such as ``POST /register_user``. Cosmic goes
+along with this convention, listening to POST requests on ``/actions/<name>``
+URLs.
+
+So what's in an action? Clearly, we need a name in order to generate the URL.
+But apart from the name, Cosmic also expects type definitions for the input
+and output values of the action. These definitions are used for serialization,
+validation and help with generating documentation. Here is the Teleport schema
+that describes an action:
+
+.. code:: python
+
+    Struct([
+        optional("accepts", Schema),
+        optional("returns", Schema),
+        optional("doc", String)
+    ])
+
+Actions are registered with the :meth:`~cosmic.API.action` decorator:
+
+.. code:: python
+
+    >>> from teleport import Integer
+    >>> @mathy.action(accepts=Integer, returns=Integer)
+    ... def square(n):
+    ...     return n ** 2
+    ... 
+    >>>
+
+The function used in the action is perfectly usable:
+
+.. code:: python
+
+    >>> square(2)
+    4
+
+But now there is another way of accessing it:
+
+.. code:: python
+
+    >>> mathy.actions.square(2)
+    4
+
+.. TODO: Executing the same action on the client
+
+Now that the action has been registered, it becomes part of the spec:
+
+.. code:: python
+
+    >>> API.to_json(mathy)
+    {
+        u'name': 'mathy',
+        u'homepage': 'http://example.com',
+        u'actions': {
+            u'map': {
+                u'square': {
+                    u'returns': {'type': 'Integer'},
+                    u'accepts': {'type': 'Integer'}
+                }
+            },
+            u'order': [u'square']
+        },
+        u'models': {u'map': {}, u'order': []}
+    }
+
+If you are not yet familiar with Teleport, you might be wondering what is the
+purpose of the ``name`` and ``order`` items in the ``actions`` object above.
+This is the way Teleport uses JSON to represent an ordered mapping. Both actions
+and models are contained in the Teleport's :class:`~teleport.OrderedMap` type.
+
+Both *accepts* and *returns* are optional. If no accepts schema is provided,
+the action will take no input data, and if the returns schema is not provided,
+the action will return nothing when it completes.
+
+.. TODO: When accepts is a Struct, you can pass in values as kwargs.
+.. TODO: [HTTP spec]
 
 REST via Models
 ---------------
+
+Models are REST-ful resources. A model roughly corresponds to a database
+table. Each model has several optional HTTP endpoints.
 
 * Models define two things: a datatype and (optionally), a set of entities, relationships between them and methods of manipulating them.
 * Model schema is always a Struct (the datatype).

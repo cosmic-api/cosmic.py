@@ -39,6 +39,7 @@ class API(BasicWrapper):
     schema = Struct([
         required("name", String),
         optional("homepage", String),
+        required("actions", OrderedMap(Function)),
         required("models", OrderedMap(Struct([
             optional("data_schema", Schema),
             required("links", OrderedMap(Struct([
@@ -51,8 +52,7 @@ class API(BasicWrapper):
                 required(u"required", Boolean),
                 optional(u"doc", String)
             ])))
-        ]))),
-        required("actions", OrderedMap(Function)),
+        ])))
     ])
 
     def __init__(self, name, homepage=None):
