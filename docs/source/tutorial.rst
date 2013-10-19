@@ -1,8 +1,8 @@
 Tutorial
 ========
 
-Step 0: Null API
-----------------
+Step 0: Null API *
+------------------
 
 * Before we get into the features, let's see what exactly is a Cosmic API.
 * Here's the null API:
@@ -17,8 +17,8 @@ Step 0: Null API
 * You can serialize it again by calling API.to_json:
 * [code]
 
-Step 1: Single-function API
----------------------------
+Step 1: Single-function API *
+-----------------------------
 
 * Now let's make it useful by adding an action:
 * [code]
@@ -36,8 +36,8 @@ Step 1: Single-function API
 * This also helps generate documentation.
 * The system responsible for the type definitions and serialization is a decoupled component called Teleport.
 
-Step 2: Defining a Custom Data Type
------------------------------------
+Step 2: Defining a Custom Data Type *
+-------------------------------------
 
 * Teleport allows you to define custom types from scratch or in terms of primitive types.
 * The definition will aid in serialization, deserialization and validation.
@@ -52,8 +52,8 @@ Step 2: Defining a Custom Data Type
 * [code]
 * You can turn your existing classes into models if you give them the JSON type and implement assemble, disassemble.
 
-Step 3: RESTful API
--------------------
+Step 3: RESTful API *
+---------------------
 
 * Some models not only represent data types, but also correspond to a set of real-world objects.
 * Commonly the model will correspond with a database table and the object with a row in that table.
@@ -63,8 +63,8 @@ Step 3: RESTful API
 * Now if you load this API from a remote computer, you can use these methods to access the objects:
 * [code]
 
-Step 4: Authenticating
-----------------------
+Step 4: Authenticating *
+------------------------
 
 * By default, all models and actions are accessible to all clients.
 * To restrict access you use authentication and authorization.

@@ -180,8 +180,8 @@ the action will return nothing when it completes.
 .. TODO: When accepts is a Struct, you can pass in values as kwargs.
 .. TODO: [HTTP spec]
 
-REST via Models
----------------
+REST via Models *
+-----------------
 
 Models are REST-ful resources. A model roughly corresponds to a database
 table. Each model has several optional HTTP endpoints.
@@ -195,15 +195,15 @@ table. Each model has several optional HTTP endpoints.
 * Model can implement 5 methods below.
 * You can specify which by settings the methods property.
 
-get_by_id
-`````````
+get_by_id *
+```````````
 
 * An id is always a string.
 * Function returns a model instance or None.
 * [HTTP spec]
 
-get_list
-````````
+get_list *
+``````````
 
 * Takes kwargs, determined by query_params attribute of the model.
 * Kwargs get deserialized into URL params.
@@ -211,27 +211,27 @@ get_list
 * Returns a possibly empty list of model instances.
 * [HTTP spec]
 
-save (create)
-`````````````
+save (create) *
+```````````````
 
 * Create is triggered when save is called on a model without an id.
 * When the call completes, an id will be set.
 * [HTTP spec]
 
-save (update)
-`````````````
+save (update) *
+```````````````
 
 * Update is triggered when save is called on a model with an id.
 * [HTTP spec]
 
-delete
-``````
+delete *
+````````
 
 * After the call completes, the model object remains but becomes invalid.
 * [HTTP spec]
 
-Authentication
---------------
+Authentication *
+----------------
 
 * Currently, Cosmic does not provide a standard authentication mechanism.
 * Authentication is done by making ClientHooks and ServerHooks.
@@ -243,8 +243,8 @@ Authentication
 * By overriding ClientHook.call, you can make the request repeat once credentials have been found.
 * This will let the client continue seamless operation.
 
-Deployment on Heroku
---------------------
+Deployment on Heroku *
+----------------------
 
 * Assuming you have a Heroku account
 * $ heroku login

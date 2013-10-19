@@ -35,16 +35,29 @@ decisions and take advantage of the reward: cheap API clients.
 REST and RPC
 ------------
 
-* REST assigns names (URIs) to things (resources).
-* REST provides a uniform interface to manipulate these resources.
-* These resources are often rows in a database.
-* Things not stored in a table can be modeled as resources too.
-* RPC is remote procedure calls.
-* RPC is okay, unless it is used to implement resource manipulation.
-* RPC can complement primarily REST-ful APIs
+The definition of `REST
+<http://en.wikipedia.org/wiki/Representational_state_transfer>`_ is a
+controversial subject. For our purposes, these are the key elements:
 
-Architecture
-------------
+* Objects are assigned unique URLs.
+* These URLs are used to link objects together.
+* Objects are manipulated by a set of standard methods (`CRUD
+  <http://en.wikipedia.org/wiki/Create,_read,_update_and_delete>`_).
+
+It is fairly straightforward to create a REST API from a database table, but
+other kinds of information can be expressed with REST as well. In general it
+is a good idea to try, and fall back on `RPC
+<http://en.wikipedia.org/wiki/Remote_procedure_call>`_ only if REST is clearly
+a bad fit.
+
+RPC stands for "remote procedure call". It is a simple interface where a
+client sends a request to call a remote function with certain parameters and
+gets the return value of the function in the response. You might find many
+discussions online that are framed as "REST vs RPC", but in reality they are
+tools that complement each other.
+
+Architecture *
+--------------
 
 * Cosmic is a layer that sits between business code and HTTP.
 * Cosmic client is a Cosmic server that has been serialized and deserialized.
@@ -57,8 +70,8 @@ Architecture
 * These four functions are intimately related and together define an endpoint.
 * Data enters and exits an endpoint in native form, no HTTP must leak through.
 
-Built on Teleport
------------------
+Built on Teleport *
+-------------------
 
 * Cosmic makes heavy use of Teleport, our type system which we use for serialization, validation and generating documentation.
 * Teleport is JSON.
@@ -67,8 +80,8 @@ Built on Teleport
 * Some object (notably the API) are implemented as Teleport types.
 * Teleport schemas are serializeable, which lets us serialize things like function definitions.
 
-Built on Flask
---------------
+Built on Flask *
+----------------
 
 * For a lot of HTTP-related functions, the Python implementation of Cosmic relies on Flask.
 * A Cosmic API server creates a Flask app from scratch.
