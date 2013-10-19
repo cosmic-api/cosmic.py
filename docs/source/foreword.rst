@@ -4,15 +4,33 @@ Foreword
 Motivation
 ----------
 
-* Writing API clients in inescapable.
-* If you don't use an API client you end up writing your own.
-* For well-known APIs, a client is written in every well-known language (A x L clients).
-* Why isn't there a universal client?
-* Because every API is different.
-* Why is every API different?
-* Because developers are forced to make low-level design choices.
-* Cosmic APIs are similar because Cosmic takes responsibility for these choices.
-* By porting Cosmic to a new language, you do the equivalent of writing numerous API clients.
+You cannot escape writing API clients. On the provider side, the API library
+or framework serves as glue between business code and HTTP. On the consumer
+side, the burden of gluing HTTP to business logic lies on the shoulders of the
+developer.
+
+Writing a client for every API/language combination is a tremendous amount of
+work (``O(n^2)``), only the most popular APIs and the most popular languages
+have clients written for them. Cosmic brings the amount of work down to
+``O(n)`` by specifying a way of building universal clients. Such a client is
+built from the description of an API in the form of a JSON spec.
+
+If you port Cosmic to a new language, you do the equivalent of writing a
+client in for every existing Cosmic API. If you use Cosmic to build an API,
+you get a number of clients for free. New client ports motivate developers
+to pick Cosmic as a server-side API framework. New Cosmic APIs motivate
+developers to write new clients.
+
+As for the API spec, our approach differs from something like `Swagger
+<https://developers.helloreverb.com/swagger/>`_ as we are not trying to
+describe an API in low-level detail (down to the URLs and methods). Instead,
+the JSON spec of a Cosmic API tries to be high-level and semantic.
+
+We are tired of HTTP, we are tired of arguments around how to structure URLs,
+how to serialize query parameters, which headers to include and which codes
+to return. We believe that these questions simply *don't matter*. Pick a way
+and move on to more important questions. Or better yet, let Cosmic make those
+decisions and take advantage of the reward: cheap API clients.
 
 REST and RPC
 ------------
