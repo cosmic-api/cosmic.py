@@ -26,7 +26,7 @@ globals().update(standard_types(getter))
 
 class URLParams(ParametrizedWrapper):
     """A Teleport type that behaves mostly like the :class:`Struct`
-    type, except it serializes the data into a query string.
+    type, except it serializes the data into a query string::
 
         >>> p = URLParams([
         ...     required("foo", Boolean),
@@ -37,6 +37,18 @@ class URLParams(ParametrizedWrapper):
         'foo=true&bar=3'
         >>> p.from_json("foo=false&bar=0")
         {'foo': False, 'bar': 0}
+
+    A string parameter or a parameter whose type is a wrapper over string will
+    not require quotes:
+
+        >>> from datetime import datetime
+        >>> from cosmic.types import *
+        >>> birthday = datetime(year=1991, month=8, day=12)
+        >>> schema = URLParams([
+        ...     required('birthday', DateTime)
+        ... ])
+        >>> schema.from_json('birthday=1991-08-12T00%3A00%3A00')
+        {'birthday': datetime.datetime(1991, 8, 12, 0, 0)}
 
     """
     schema = String

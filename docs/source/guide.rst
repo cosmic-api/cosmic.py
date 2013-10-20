@@ -377,8 +377,6 @@ do::
     >>> city.name
     "San Francisco"
 
-.. TODO: [HTTP spec]
-
 save
 ````
 

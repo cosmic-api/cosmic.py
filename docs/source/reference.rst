@@ -46,3 +46,6 @@ Tools and Helpers
 .. automodule:: cosmic.tools
    :members:
    :undoc-members:
+
+.. autoclass:: cosmic.types.URLParams
+   :show-inheritance:
