@@ -168,8 +168,8 @@ the action will return nothing when it completes.
 .. TODO: When accepts is a Struct, you can pass in values as kwargs.
 .. TODO: [HTTP spec]
 
-REST via Models *
------------------
+REST via Models
+---------------
 
 Models are used to create REST-ful endpoints. A model roughly corresponds to a
 database table. Most basically, a model defines a datatype. If you want to
@@ -194,14 +194,144 @@ Here is the the Teleport schema of a model:
         ])))
     ])
 
-* Models define two things: a datatype and (optionally), a set of entities, relationships between them and methods of manipulating them.
-* Model schema is always a Struct (the datatype).
-* Model instances are actual instances of the model class.
-* API clients have models stored in my_api.models.Bar.
-* Model relationships are defined as links.
-* Many-to-many relationships should be defined with a separate relationship model.
-* Model can implement 5 methods below.
-* You can specify which by settings the methods property.
+The first parameter, *data_schema* is the type definition that describes the
+model data. If your model represents a database table, the *data_schema* could
+be a struct with parameters that correspond to the table's columns. Currently,
+Cosmic expects it to be a struct, but this restriction may be lifted later.
+
+The *links* parameter describes relationships between models. A link from one
+model to another is similar to a foreign key in a relational database. The
+last parameter, *query_fields* is used to describe how a collection of objects
+can be filtered. See :ref:`get_list`.
+
+Before we get to linking and filtering, let's take a look at the model object:
+
+.. code:: python
+
+    from cosmic.api import API
+    from cosmic.models import BaseModel
+
+    places = API('places')
+
+    @places.model
+    class Address(BaseModel):
+        properties = [
+            required("number", Integer),
+            required("street", String),
+            required("city", String)
+        ]
+
+As you can see, a model class should inherit from
+:class:`~cosmic.models.BaseModel` and in order to register it with an API, you
+must use the :meth:`~cosmic.api.API.model` decorator on it. Once a model has 
+been registered with an API, it becomes accessible as part of the
+:data:`~cosmic.api.API.models` namespace, for example ``places.models.Address``.
+
+If you try to serialize this API, you will see the model made it into the spec:
+
+.. code:: python
+
+    >>> API.to_json(places)
+    {
+        u'name': u'places',
+        u'actions': { u'map': {}, u'order': [] },
+        u"models": {
+            u"map": {
+                u"Address": {
+                    u"data_schema": {
+                        u'type': u"Struct",
+                        u"param": {
+                            u"map": {
+                                u"number": {
+                                    u"required": True,
+                                    u"schema": {u"type": u"Integer"}
+                                },
+                                u"street": {
+                                    u"required": True,
+                                    u"schema": {u"type": u"String"}
+                                },
+                                u"city": {
+                                    u"required": False,
+                                    u"schema": {u"type": u"String"}
+                                }
+                            },
+                            u"order": [u"number", u"street", u"city"]
+                        }
+                    },
+                    u"links": { u"map": {}, u"order": [] },
+                    u"query_fields": { u"map": {}, u"order": [] }
+                }
+            },
+            u"order": [u"Address"]
+        }
+    }
+
+There is a good reason model definitions are in the form of classes.
+In Cosmic, the objects that the model defines are represented by actual
+instances of the model class::
+
+    >>> sesame31 = places.models.Address(number=31, street="Sesame")
+    >>> sesame31.number
+    31
+    >>> sesame31.street
+    "Sesame"
+
+This means that you can add methods to your models, or, if you have existing
+classes that you want to turn into Cosmic models, you can do so simply by
+inheriting from :class:`~cosmic.models.BaseModel`, using the
+:meth:`~cosmic.api.API.model` decorator and adding a schema.
+
+A model is actually a Teleport type::
+
+    >>> places.models.Address.to_json(sesame31)
+    {
+        u"number": 31,
+        u"street": "Sesame"
+    }
+
+Links are defined similarly to properties::
+
+    places = API('places')
+
+    @places.model
+    class City(BaseModel):
+        properties = [
+            optional("name", String)
+        ]
+
+    @places.model
+    class Address(BaseModel):
+        properties = [
+            required("number", Integer),
+            required("street", String),
+        ]
+        links = [
+            required("city", City)
+        ]
+
+And referenced similarly to properties::
+
+    >>> toronto = places.models.City(name="Toronto")
+    >>> spadina147 = self.places.models.Address(
+    ...     number=147,
+    ...     street="Spadina",
+    ...     city=toronto)
+    >>> spadina147.city.name
+    "Toronto"
+
+These models are merely data type definitions, they do not have REST endpoints
+because they are not connected to any database. How do you know? You can try
+this::
+
+    >> spadina147.id is None
+    True
+
+If apart from defining a data type we also want to provide access to a
+collection of objects of this data type, there are 4 methods that Cosmic
+allows us to override. These methods correspond to 5 HTTP endpoints. Cosmic
+decides whether the endpoints should be created or not based on whether the
+methods have been defined. This behavior can be overridden by setting the
+:data:`~cosmic.models.BaseModel.methods` property on the model class.
 
 get_by_id *
 ```````````
@@ -209,6 +339,9 @@ get_by_id *
 * An id is always a string.
 * Function returns a model instance or None.
 * [HTTP spec]
+
+
+.. _get_list:
 
 get_list *
 ``````````
