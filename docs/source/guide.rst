@@ -418,14 +418,46 @@ no id, then if the call completes successfully, an id will be set::
     >>> city.id
     "2"
 
-delete *
-````````
+delete
+``````
 
 .. seealso::
 
     :class:`~cosmic.http.DeleteEndpoint` for HTTP spec.
 
-* After the call completes, the model object remains but becomes invalid.
+The :meth:`~cosmic.models.BaseModel.delete` method, upon deleting the object,
+returns nothing.
+
+.. code::
+
+    @places.model
+    class City(BaseModel):
+        properties = [
+            optional("name", String)
+        ]
+
+        @classmethod
+        def get_by_id(cls, id):
+            if id in cities:
+                city = cities[id]
+                city.id = id
+                return city
+            else:
+                return None
+
+        def delete(self):
+            del cities[self.id]
+
+After being called, the instance will still be there but it should be
+considered invalid. If you try to fetch the object with the deleted id using
+:meth:`~cosmic.models.BaseModel.get_by_id`, ``None`` will be returned.
+
+.. code::
+
+    >>> city = places.models.City.get_by_id("0")
+    >>> city.delete()
+    >>> places.models.City.get_by_id("0") is None
+    True
 
 .. _get_list:
 
