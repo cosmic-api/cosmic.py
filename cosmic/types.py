@@ -41,9 +41,7 @@ class URLParams(ParametrizedWrapper):
     A string parameter or a parameter whose type is a wrapper over string will
     not require quotes:
 
-        >>> from datetime import datetime
-        >>> from cosmic.types import *
-        >>> birthday = datetime(year=1991, month=8, day=12)
+        >>> from cosmic.types import DateTime
         >>> schema = URLParams([
         ...     required('birthday', DateTime)
         ... ])
