@@ -9,7 +9,7 @@ APIs
 .. autoclass:: cosmic.api.API
    :members:
 
-.. autoclass:: cosmic.models.Model
+.. autoclass:: cosmic.models.BaseModel
    :members:
 
 Exceptions

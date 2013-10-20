@@ -11,7 +11,7 @@ from werkzeug.exceptions import Unauthorized
 
 from cosmic.exceptions import *
 from cosmic.api import API
-from cosmic.models import Model, Cosmos
+from cosmic.models import BaseModel, Cosmos
 from cosmic import api, request
 
 
@@ -131,7 +131,7 @@ class TestAPI(TestCase):
             pass
 
         @cookbook.model
-        class Recipe(Model):
+        class Recipe(BaseModel):
             properties = [
                 required(u"name", String)
             ]
@@ -142,7 +142,7 @@ class TestAPI(TestCase):
                     raise ValidationError("Not kosher")
 
         @cookbook.model
-        class Author(Model):
+        class Author(BaseModel):
             properties = [
                 required(u"is_gordon_ramsay", Boolean)
             ]

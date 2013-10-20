@@ -1,4 +1,4 @@
-from .models import Model
+from .models import BaseModel
 from werkzeug.local import LocalProxy, LocalStack
 
 _db_ctx_stack = LocalStack()
@@ -18,7 +18,7 @@ class DBContext(object):
         _db_ctx_stack.pop()
 
 
-class DBModel(Model):
+class DBModel(BaseModel):
 
     @classmethod
     def get_by_id(cls, id):

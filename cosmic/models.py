@@ -68,7 +68,7 @@ def prep_model(model_cls):
     model_cls.schema = Struct(props)
 
 
-class Model(BasicWrapper):
+class BaseModel(BasicWrapper):
     """A data type definition attached to an API."""
     methods = None
     query_fields = []
@@ -165,7 +165,7 @@ class Model(BasicWrapper):
         if name in OrderedDict(self.properties + self.links).keys():
             return self._set_item(name, value)
         else:
-            super(Model, self).__setattr__(name, value)
+            super(BaseModel, self).__setattr__(name, value)
 
     @classmethod
     def validate(cls, datum):
@@ -173,7 +173,7 @@ class Model(BasicWrapper):
 
 
 
-class RemoteModel(Model):
+class RemoteModel(BaseModel):
 
     def save(self):
         if self.id:
