@@ -358,15 +358,13 @@ parameter (an id is always a string) and returns a model class instance
         @classmethod
         def get_by_id(cls, id):
             if id in cities:
-                city = cities[id]
-                city.id = id
-                return city
+                return cities[id]
             else:
                 return None
 
     cities = {
-        "0": City(name="Toronto"),
-        "1": City(name="San Francisco"),
+        "0": City(name="Toronto", id="0"),
+        "1": City(name="San Francisco", id="1"),
     }
 
 As you can see, Cosmic doesn't care what kind of database you use, as long as
@@ -376,6 +374,8 @@ do::
     >>> city = places.models.City.get_by_id("1")
     >>> city.name
     "San Francisco"
+    >>> places.models.City.get_by_id("5") is None
+    True
 
 save
 ````
@@ -437,9 +437,7 @@ returns nothing.
         @classmethod
         def get_by_id(cls, id):
             if id in cities:
-                city = cities[id]
-                city.id = id
-                return city
+                return cities[id]
             else:
                 return None
 
@@ -459,17 +457,55 @@ considered invalid. If you try to fetch the object with the deleted id using
 
 .. _get_list:
 
-get_list *
-``````````
+get_list
+````````
 
 .. seealso::
 
     :class:`~cosmic.http.GetListEndpoint` for HTTP spec.
 
-* Takes kwargs, determined by query_params attribute of the model.
-* Kwargs get deserialized into URL params.
-* Array gets unrolled into repeating params, otherwise it's URL-encoded JSON.
-* Returns a possibly empty list of model instances.
+The :meth:`~cosmic.models.BaseModel.get_list` method takes keyword arguments
+as specified by the *query_fields* model property. This schema is used to
+serialize them into a URL query string with the help of
+:class:`~cosmic.types.URLParams`.
+
+.. code::
+
+    @places.model
+    class City(BaseModel):
+        properties = [
+            optional("name", String)
+        ]
+        query_fiels = [
+            optional("country", String)
+        ]
+
+        @classmethod
+        def get_list(cls, country=None):
+            if country is None:
+                return cities.values()
+            elif country == "Canada":
+                return [cities[0]]
+            elif country == "USA":
+                return [cities[1]]
+            else:
+                return []
+
+The return value of this function is a (possibly empty) list of model
+instances::
+
+    >>> l1 = places.models.City.get_list()
+    >>> len(l1)
+    2
+    >>> l2 = places.models.City.get_list(country="Canada")
+    >>> len(l2)
+    1
+    >>> l2[0].name
+    "Toronto"
+    >>> places.models.City.get_list(country="Russia")
+    []
+
+You are free to invent your own pagination schemes using custom query fields.
 
 Authentication *
 ----------------

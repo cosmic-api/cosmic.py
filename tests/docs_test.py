@@ -138,11 +138,14 @@ class TestGuideGetById(TestCase):
 
                 @classmethod
                 def get_by_id(cls, id):
-                    return cities[id]
+                    if id in cities:
+                        return cities[id]
+                    else:
+                        return None
 
             cities = {
-                "0": City(name="Toronto"),
-                "1": City(name="San Francisco"),
+                "0": City(name="Toronto", id="0"),
+                "1": City(name="San Francisco", id="1"),
             }
 
     def test_access_links(self):
@@ -150,6 +153,7 @@ class TestGuideGetById(TestCase):
         with self.cosmos:
             city = places.models.City.get_by_id("0")
             self.assertEqual(city.name, "Toronto")
+            self.assertEqual(places.models.City.get_by_id("5") is None, True)
 
 class TestGuideSave(TestCase):
     maxDiff = None
@@ -174,8 +178,8 @@ class TestGuideSave(TestCase):
                     cities[self.id] = self
 
             cities = {
-                "0": City(name="Toronto"),
-                "1": City(name="San Francisco"),
+                "0": City(name="Toronto", id="0"),
+                "1": City(name="San Francisco", id="1"),
             }
 
     def test_save(self):
@@ -215,8 +219,8 @@ class TestGuideSave(TestCase):
                     del cities[self.id]
 
             cities = {
-                "0": City(name="Toronto"),
-                "1": City(name="San Francisco"),
+                "0": City(name="Toronto", id="0"),
+                "1": City(name="San Francisco", id="1"),
             }
 
     def test_save(self):
@@ -225,3 +229,51 @@ class TestGuideSave(TestCase):
             city = places.models.City.get_by_id("0")
             city.delete()
             self.assertEqual(places.models.City.get_by_id("0") is None, True)
+
+
+class TestGuideSave(TestCase):
+    maxDiff = None
+
+    def setUp(self):
+
+        self.cosmos = Cosmos()
+        with self.cosmos:
+
+            self.places = places = API('places')
+
+            @places.model
+            class City(BaseModel):
+                properties = [
+                    optional("name", String)
+                ]
+                query_fiels = [
+                    optional("country", String)
+                ]
+
+                @classmethod
+                def get_list(cls, country=None):
+                    if country is None:
+                        return cities.values()
+                    elif country == "Canada":
+                        return [cities["0"]]
+                    elif country == "USA":
+                        return [cities["1"]]
+                    else:
+                        return []
+
+            cities = {
+                "0": City(name="Toronto", id="0"),
+                "1": City(name="San Francisco", id="1"),
+            }
+
+    def test_get_list(self):
+        places = self.places
+        with self.cosmos:
+            l1 = places.models.City.get_list()
+            self.assertEqual(len(l1), 2)
+            l2 = places.models.City.get_list(country="Canada")
+            self.assertEqual(len(l2), 1)
+            self.assertEqual(l2[0].name, "Toronto")
+            l3 = places.models.City.get_list(country="Russia")
+            self.assertEqual(l3, [])
+
