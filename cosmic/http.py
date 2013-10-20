@@ -314,24 +314,24 @@ class ActionEndpoint(Endpoint):
     json_response = True
     acceptable_response_codes = [200, 204]
 
-    def __init__(self, function, url, api):
-        self.function = function
-        self.url = url
+    def __init__(self, action, name, api):
+        self.action = action
+        self.url = "/actions/%s" % name
         self.api = api
 
     def handler(self, data):
-        return self.function.json_to_json(data)
+        return self.action.json_to_json(data)
 
     def _build_request(self, *args, **kwargs):
         packed = pack_action_arguments(*args, **kwargs)
-        return {"json": serialize_json(self.function.accepts, packed)}
+        return {"json": serialize_json(self.action.accepts, packed)}
 
     def _parse_request(self, req):
         return {'data': req['json']}
 
     def _parse_response(self, res):
-        if self.function.returns and res['json']:
-            return self.function.returns.from_json(res['json'].datum)
+        if self.action.returns and res['json']:
+            return self.action.returns.from_json(res['json'].datum)
         else:
             return None
 

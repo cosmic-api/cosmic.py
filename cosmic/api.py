@@ -138,10 +138,9 @@ class API(BasicWrapper):
             endpoint="envelope")
 
         for name, function in self._actions.items():
-            url = "/actions/%s" % name
             endpoint = "function_%s" % name
-            view_func = ActionEndpoint(function, url, self)
-            app.add_url_rule(url,
+            view_func = ActionEndpoint(function, name, self)
+            app.add_url_rule(view_func.url,
                 view_func=view_func.view,
                 methods=[view_func.method],
                 endpoint=endpoint)
