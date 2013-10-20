@@ -76,12 +76,12 @@ class Headers(BasicWrapper):
 
 def getter(name):
     from .api import API
-    from .actions import Function
+    from .actions import Action
     from .models import M
     if name == "cosmic.API":
         return API
-    elif name == "cosmic.Function":
-        return Function
+    elif name == "cosmic.Action":
+        return Action
     elif '.' in name:
         return M(name)
     raise KeyError()

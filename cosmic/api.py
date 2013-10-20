@@ -10,7 +10,7 @@ from collections import OrderedDict
 
 from flask import Blueprint, Flask, request
 
-from .actions import Function
+from .actions import Action
 from .models import Model, RemoteModel, prep_model, Cosmos
 from .tools import GetterNamespace, get_args, assert_is_compatible, deserialize_json, validate_underscore_identifier
 from .types import *
@@ -39,7 +39,7 @@ class API(BasicWrapper):
     schema = Struct([
         required("name", String),
         optional("homepage", String),
-        required("actions", OrderedMap(Function)),
+        required("actions", OrderedMap(Action)),
         required("models", OrderedMap(Struct([
             optional("data_schema", Schema),
             required("links", OrderedMap(Struct([
@@ -241,7 +241,7 @@ class API(BasicWrapper):
                 assert_is_compatible(accepts, required, optional)
 
             doc = inspect.getdoc(func)
-            function = Function(accepts, returns, doc)
+            function = Action(accepts, returns, doc)
             function.func = func
 
             self._actions[name] = function

@@ -6,8 +6,8 @@ from .tools import deserialize_json, serialize_json, apply_to_func
 from .types import *
 
 
-class Function(BasicWrapper):
-    type_name = "cosmic.Function"
+class Action(BasicWrapper):
+    type_name = "cosmic.Action"
 
     schema = Struct([
         optional("accepts", Schema),
@@ -22,7 +22,7 @@ class Function(BasicWrapper):
 
     @staticmethod
     def assemble(datum):
-        return Function(**datum)
+        return Action(**datum)
 
     @staticmethod
     def disassemble(datum):

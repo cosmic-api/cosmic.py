@@ -82,7 +82,7 @@ for the API type:
     Struct([
         required("name", String),
         optional("homepage", String),
-        required("actions", OrderedMap(Function)),
+        required("actions", OrderedMap(Action)),
         required("models", OrderedMap(Struct([
             optional("data_schema", Schema),
             required("links", OrderedMap(Struct([
@@ -183,8 +183,12 @@ the action will return nothing when it completes.
 REST via Models *
 -----------------
 
-Models are REST-ful resources. A model roughly corresponds to a database
-table. Each model has several optional HTTP endpoints.
+Models are used to create REST-ful endpoints. A model roughly corresponds to a
+database table. Most basically, a model defines a datatype. If you want to
+give clients access to *objects* of this datatype, you also need to define a
+set of CRUD methods that Cosmic will turn into HTTP endpoints.
+
+Here is the 
 
 * Models define two things: a datatype and (optionally), a set of entities, relationships between them and methods of manipulating them.
 * Model schema is always a Struct (the datatype).

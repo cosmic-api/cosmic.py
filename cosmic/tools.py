@@ -103,7 +103,7 @@ def assert_is_compatible(schema, required, optional):
     """
     # No arguments
     if len(required + optional) == 0:
-        raise SpecError("Function needs to accept arguments")
+        raise SpecError("Action needs to accept arguments")
     # One argument can accept anything
     if len(required + optional) == 1:
         return
@@ -115,7 +115,7 @@ def assert_is_compatible(schema, required, optional):
     # required field in the schema
     for r in required:
         if r not in schema.param.keys() or not schema.param[r]["required"]:
-            raise SpecError("Function argument '%s' must have a corresponding"
+            raise SpecError("Action argument '%s' must have a corresponding"
                             " required field in the accepts schema" % r)
     # All fields in the schema must have a corresponding function argument
     for f in schema.param.keys():
