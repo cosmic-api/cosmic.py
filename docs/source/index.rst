@@ -14,8 +14,8 @@ Contents:
 .. toctree::
    :maxdepth: 3
 
-   foreword
    overview
+   guide
    tutorial
    reference
 
