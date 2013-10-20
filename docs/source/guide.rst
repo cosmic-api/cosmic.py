@@ -89,6 +89,10 @@ for the API type:
 RPC via Actions
 ---------------
 
+.. seealso::
+
+    :class:`~cosmic.http.ActionEndpoint` for HTTP spec.
+
 RPC stands for remote procedure call. It allows remote clients to call
 procedures (functions) in your code. These are commonly implemented as POST
 handlers on action-style URLs, such as ``POST /register_user``. Cosmic goes
@@ -166,7 +170,6 @@ the action will take no input data, and if the returns schema is not provided,
 the action will return nothing when it completes.
 
 .. TODO: When accepts is a Struct, you can pass in values as kwargs.
-.. TODO: [HTTP spec]
 
 REST via Models
 ---------------
@@ -335,6 +338,11 @@ methods have been defined. This behavior can be overridden by setting the
 
 get_by_id
 `````````
+
+.. seealso::
+
+    :class:`~cosmic.http.GetByIdEndpoint` for HTTP spec.
+
 The simplest method to implement is :meth:`get_by_id`. It takes a single
 parameter (an id is always a string) and returns a model class instance
 (or ``None``, if no model is found)::
@@ -376,30 +384,42 @@ do::
 get_list *
 ``````````
 
+.. seealso::
+
+    :class:`~cosmic.http.GetListEndpoint` for HTTP spec.
+
 * Takes kwargs, determined by query_params attribute of the model.
 * Kwargs get deserialized into URL params.
 * Array gets unrolled into repeating params, otherwise it's URL-encoded JSON.
 * Returns a possibly empty list of model instances.
-* [HTTP spec]
 
 save (create) *
 ```````````````
 
+.. seealso::
+
+    :class:`~cosmic.http.CreateEndpoint` for HTTP spec.
+
 * Create is triggered when save is called on a model without an id.
 * When the call completes, an id will be set.
-* [HTTP spec]
 
 save (update) *
 ```````````````
 
+.. seealso::
+
+    :class:`~cosmic.http.UpdateEndpoint` for HTTP spec.
+
 * Update is triggered when save is called on a model with an id.
-* [HTTP spec]
 
 delete *
 ````````
 
+.. seealso::
+
+    :class:`~cosmic.http.DeleteEndpoint` for HTTP spec.
+
 * After the call completes, the model object remains but becomes invalid.
-* [HTTP spec]
 
 Authentication *
 ----------------
