@@ -241,7 +241,7 @@ class TestPlanitarium(TestCase):
 
             (req, res) = self.remote_planetarium.client_hook.stack.pop()
 
-            url = "/Sphere?name=%22Sun%22"
+            url = "/Sphere?name=Sun"
             self.assertEqual(req["method"], "GET")
             self.assertEqual(req["url"], url)
             self.assertEqual(req["data"], "")

@@ -25,6 +25,20 @@ globals().update(standard_types(getter))
 
 
 class URLParams(ParametrizedWrapper):
+    """A Teleport type that behaves mostly like the :class:`Struct`
+    type, except it serializes the data into a query string.
+
+        >>> p = URLParams([
+        ...     required("foo", Boolean),
+        ...     required("bar", Integer)
+        ... ])
+        ...
+        >>> p.to_json({"foo": True, "bar": 3})
+        'foo=true&bar=3'
+        >>> p.from_json("foo=false&bar=0")
+        {'foo': False, 'bar': 0}
+
+    """
     schema = String
 
     def __init__(self, param):
@@ -40,27 +54,28 @@ class URLParams(ParametrizedWrapper):
         return url_encode(self.to_multi_dict(datum))
 
     def from_multi_dict(self, md):
+        from .tools import is_string_type
         # Where only a single param was
         md = md.to_dict(flat=False)
         ret = {}
         for name, field in self.param.items():
             if name in md.keys():
-                if not isinstance(field['schema'], Array) and len(md[name]) == 1:
-                    ret[name] = json.loads(md[name][0])
+                if len(md[name]) > 1:
+                    raise ValidationError("Repeating query parameters not allowed: %s" % name)
+                if is_string_type(field['schema']):
+                    ret[name] = md[name][0]
                 else:
-                    ret[name] = []
-                    for val in md[name]:
-                        ret[name].append(json.loads(val))
+                    ret[name] = json.loads(md[name][0])
         return Struct(self.param).from_json(ret)
 
     def to_multi_dict(self, datum):
+        from .tools import is_string_type
         d = Struct(self.param).to_json(datum)
         md = MultiDict()
         for name, field in self.param.items():
             if name in d.keys():
-                md[name] = []
-                if isinstance(field['schema'], Array):
-                    md[name] = map(json.dumps, d[name])
+                if is_string_type(field['schema']):
+                    md[name] = d[name]
                 else:
                     md[name] = json.dumps(d[name])
         return md

@@ -24,7 +24,7 @@ class GetterNamespace(object):
         >>> n.a
         1
         >>> n.__all__
-        ["a", "b"]
+        [u'a', u'b']
 
     """
 
@@ -161,3 +161,10 @@ def validate_underscore_identifier(id):
         raise SpecError("Identifier cannot start or end with an underscore: %s" % id)
     if '__' in id:
         raise SpecError("Identifier cannot have consecutive underscores: %s" % id)
+
+def is_string_type(serializer):
+    if Schema.to_json(serializer)['type'] == 'String':
+        return True
+    if hasattr(serializer, 'schema'):
+        return is_string_type(serializer.schema)
+    return False

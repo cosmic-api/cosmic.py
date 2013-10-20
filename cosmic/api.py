@@ -103,10 +103,12 @@ class API(BasicWrapper):
     @staticmethod
     def load(url):
         """Given a URL to a Cosmic API, fetch the API spec and build an API
-        client::
+        client:
 
-            >>> planetarium = API.load("http://localhost:5000/spec.json")
-            >>> planetarium.models.Sphere.get_by_id("0")
+        .. code:: python
+
+            >>> planetarium = API.load("http://localhost:5000/spec.json") # doctest: +SKIP
+            >>> planetarium.models.Sphere.get_by_id("0") # doctest: +SKIP
             <cosmic.models.Sphere object at 0x8f9ebcc>
 
         :param url: The API spec url, including ``/spec.json``
@@ -200,23 +202,18 @@ class API(BasicWrapper):
         function, *returns* is a schema that describes the output of the
         function. The name of the function becomes the name of the action.
 
-        .. code:: python
-
-            random = API("random")
-
-            @random.action(returns=Integer)
-            def generate():
-                "Random enough"
-                return 9
-
         Once registered, an action will become accessible as an attribute of
         the :data:`API.actions` object.
 
         .. code:: python
 
+            >>> random = API("random")
+            >>> @random.action(returns=Integer)
+            ... def generate():
+            ...     "Random enough"
+            ...     return 9
             >>> random.actions.generate()
             9
-
 
         """
         def wrapper(func):
@@ -249,21 +246,22 @@ class API(BasicWrapper):
 
         .. code:: python
 
-            dictionary = API("dictionary")
-
-            @dictionary.model
-            class Word(BaseModel):
-                properties = [
-                    required("text", String)
-                ]
+            >>> dictionary = API("dictionary")
+            >>> @dictionary.model
+            ... class Word(BaseModel):
+            ...    properties = [
+            ...        required("text", String)
+            ...    ]
+            ...
 
         Once registered, a model will become accessible as an attribute of the
         :data:`API.models` object.
 
         .. code:: python
 
-            >>> dictionary.models.Word.from_json({"text": "dog"})
-            <cosmic.models.Word object at 0x9ddcecc>
+            >>> w = dictionary.models.Word.from_json({"text": "dog"})
+            >>> w.text
+            u'dog'
 
         """
         model_cls.api = self
