@@ -294,6 +294,21 @@ class Endpoint(object):
 
 
 class ActionEndpoint(Endpoint):
+    """
+    :Request:
+        :Method: ``POST``
+        :URL: ``/actions/<action>`` where *action* is the action name.
+        :Body: The action parameters as a JSON-encoded string or empty if the
+            action expects no parameters.
+        :Content-Type: ``application/json`` if body is not empty.
+    :Response:
+        :Code: ``200`` or ``204`` if body is empty.
+        :Body: The return value as a JSON-encoded string or empty if the actions
+            has no return value.
+        :ContentType: ``application/json`` if body is not empty.
+
+    """
+
     method = "POST"
     json_request = True
     json_response = True
@@ -329,6 +344,17 @@ class ActionEndpoint(Endpoint):
 
 
 class SpecEndpoint(Endpoint):
+    """
+    :Request:
+        :Method: ``GET``
+        :URL: ``/spec.json``
+
+    :Response:
+        :Code: ``200``
+        :Body: The API spec as a JSON-encoded string.
+        :ContentType: ``application/json``
+
+    """
     method = "GET"
     never_authenticate = True
     json_response = True
@@ -407,6 +433,17 @@ class EnvelopeEndpoint(Endpoint):
 
 
 class GetByIdEndpoint(Endpoint):
+    """
+    :Request:
+        :Method: ``GET``
+        :URL: ``/models/<model>/<id>`` where *model* is the model name.
+    :Response:
+        :Code: ``200`` or ``404`` if object is not found.
+        :Body: The object as a JSON-encoded string or empty if the object
+            with the provided id does not exist.
+        :Content-Type: ``application/json`` if body is not empty.
+
+    """
     method = "GET"
     json_response = True
     acceptable_response_codes = [404, 200]
@@ -442,6 +479,17 @@ class GetByIdEndpoint(Endpoint):
 
 
 class UpdateEndpoint(Endpoint):
+    """
+    :Request:
+        :Method: ``PUT``
+        :URL: ``/models/<model>/<id>`` where *model* is the model name.
+        :Body: New model representation as a JSON-encoded string.
+        :ContentType: ``application/json``
+    :Response:
+        :Code: ``200``
+        :Body: New model representation as a JSON-encoded string.
+        :ContentType: ``application/json``
+    """
     method = "PUT"
     json_request = True
     json_response = True
@@ -484,6 +532,17 @@ class UpdateEndpoint(Endpoint):
 
 
 class CreateEndpoint(Endpoint):
+    """
+    :Request:
+        :Method: ``POST``
+        :URL: ``/models/<model>`` where *model* is the model name.
+        :Body: New model representation as a JSON-encoded string.
+        :ContentType: ``application/json``
+    :Response:
+        :Code: ``201``
+        :Body: New model representation as a JSON-encoded string.
+        :ContentType: ``application/json``
+    """
     method = "POST"
     json_request = True
     json_response = True
@@ -519,6 +578,14 @@ class CreateEndpoint(Endpoint):
 
 
 class DeleteEndpoint(Endpoint):
+    """
+    :Request:
+        :Method: ``DELETE``
+        :URL: ``/models/<model>/<id>`` where *model* is the model name.
+    :Response:
+        :Code: ``204``
+        :Body: Empty.
+    """
     method = "DELETE"
     acceptable_response_codes = [204]
     response_must_be_empty = True
@@ -549,6 +616,30 @@ class DeleteEndpoint(Endpoint):
 
 
 class GetListEndpoint(Endpoint):
+    """
+    :Request:
+        :Method: ``GET``
+        :URL: ``/models/<model>`` where *model* is the model name.
+        :Query: Query parameters serialized by the model's *query_schema*
+    :Response:
+        :Code: ``200``
+        :Body:
+
+            .. code::
+
+                {
+                    "_links": {
+                        "self": {"href": <self>}
+                    },
+                    "_embedded": {
+                        <model>: [<repr>*]
+                    }
+                }
+
+            In the above, *self* is the request URL, *model* is the name of
+            the model that was requested and *repr* is a JSON representation
+            of an instance of that model which was matched by the query.
+    """
     method = "GET"
     json_response = True
     acceptable_response_codes = [200]
