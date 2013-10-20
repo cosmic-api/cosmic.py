@@ -83,19 +83,7 @@ for the API type:
         required("name", String),
         optional("homepage", String),
         required("actions", OrderedMap(Action)),
-        required("models", OrderedMap(Struct([
-            optional("data_schema", Schema),
-            required("links", OrderedMap(Struct([
-                required(u"schema", Schema),
-                required(u"required", Boolean),
-                optional(u"doc", String)
-            ]))),
-            required("query_fields", OrderedMap(Struct([
-                required(u"schema", Schema),
-                required(u"required", Boolean),
-                optional(u"doc", String)
-            ])))
-        ])))
+        required("models", OrderedMap(Model))
     ])
 
 RPC via Actions
@@ -188,7 +176,23 @@ database table. Most basically, a model defines a datatype. If you want to
 give clients access to *objects* of this datatype, you also need to define a
 set of CRUD methods that Cosmic will turn into HTTP endpoints.
 
-Here is the 
+Here is the the Teleport schema of a model:
+
+.. code:: python
+
+    Struct([
+        optional("data_schema", Schema),
+        required("links", OrderedMap(Struct([
+            required(u"schema", Schema),
+            required(u"required", Boolean),
+            optional(u"doc", String)
+        ]))),
+        required("query_fields", OrderedMap(Struct([
+            required(u"schema", Schema),
+            required(u"required", Boolean),
+            optional(u"doc", String)
+        ])))
+    ])
 
 * Models define two things: a datatype and (optionally), a set of entities, relationships between them and methods of manipulating them.
 * Model schema is always a Struct (the datatype).

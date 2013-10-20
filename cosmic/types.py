@@ -1,9 +1,27 @@
 import json
+from collections import OrderedDict
+
 from werkzeug.urls import url_decode, url_encode
 from werkzeug.datastructures import MultiDict
 from werkzeug.datastructures import Headers as WerkzeugHeaders
 
-from teleport import *
+from teleport import standard_types, ParametrizedWrapper, BasicWrapper, required, optional, Box, ValidationError
+
+def getter(name):
+    from .api import API
+    from .actions import Action
+    from .models import M
+    if name == "cosmic.API":
+        return API
+    elif name == "cosmic.Action":
+        return Action
+    elif name == "cosmic.Model":
+        return Model
+    elif '.' in name:
+        return M(name)
+    raise KeyError()
+
+globals().update(standard_types(getter))
 
 
 class URLParams(ParametrizedWrapper):
@@ -74,16 +92,20 @@ class Headers(BasicWrapper):
 
 
 
-def getter(name):
-    from .api import API
-    from .actions import Action
-    from .models import M
-    if name == "cosmic.API":
-        return API
-    elif name == "cosmic.Action":
-        return Action
-    elif '.' in name:
-        return M(name)
-    raise KeyError()
+class Model(BasicWrapper):
+    schema = Struct([
+        optional("data_schema", Schema),
+        required("links", OrderedMap(Struct([
+            required(u"schema", Schema),
+            required(u"required", Boolean),
+            optional(u"doc", String)
+        ]))),
+        required("query_fields", OrderedMap(Struct([
+            required(u"schema", Schema),
+            required(u"required", Boolean),
+            optional(u"doc", String)
+        ])))
+    ])
 
-globals().update(standard_types(getter))
+
+

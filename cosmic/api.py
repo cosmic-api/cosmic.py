@@ -40,19 +40,7 @@ class API(BasicWrapper):
         required("name", String),
         optional("homepage", String),
         required("actions", OrderedMap(Action)),
-        required("models", OrderedMap(Struct([
-            optional("data_schema", Schema),
-            required("links", OrderedMap(Struct([
-                required(u"schema", Schema),
-                required(u"required", Boolean),
-                optional(u"doc", String)
-            ]))),
-            required("query_fields", OrderedMap(Struct([
-                required(u"schema", Schema),
-                required(u"required", Boolean),
-                optional(u"doc", String)
-            ])))
-        ])))
+        required("models", OrderedMap(Model))
     ])
 
     def __init__(self, name, homepage=None):
