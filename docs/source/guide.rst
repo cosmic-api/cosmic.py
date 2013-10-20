@@ -333,13 +333,43 @@ decides whether the endpoints should be created or not based on whether the
 methods have been defined. This behavior can be overridden by setting the
 :data:`~cosmic.models.BaseModel.methods` property on the model class.
 
-get_by_id *
-```````````
+get_by_id
+`````````
+The simplest method to implement is :meth:`get_by_id`. It takes a single
+parameter (an id is always a string) and returns a model class instance
+(or ``None``, if no model is found)::
 
-* An id is always a string.
-* Function returns a model instance or None.
-* [HTTP spec]
+    places = API('places')
 
+    @places.model
+    class City(BaseModel):
+        properties = [
+            optional("name", String)
+        ]
+
+        @classmethod
+        def get_by_id(cls, id):
+            if id in cities:
+                city = cities[id]
+                city.id = id
+                return city
+            else:
+                return None
+
+    cities = {
+        "0": City(name="Toronto"),
+        "1": City(name="San Francisco"),
+    }
+
+As you can see, Cosmic doesn't care what kind of database you use, as long as
+the method returns the right value. Now if we want to use this method, we can
+do::
+
+    >>> city = places.models.City.get_by_id("1")
+    >>> city.name
+    "San Francisco"
+
+.. TODO: [HTTP spec]
 
 .. _get_list:
 
