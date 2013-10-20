@@ -300,7 +300,7 @@ class ActionEndpoint(Endpoint):
         :URL: ``/actions/<action>`` where *action* is the action name.
         :Body: The action parameters as a JSON-encoded string or empty if the
             action expects no parameters.
-        :Content-Type: ``application/json`` if body is not empty.
+        :ContentType: ``application/json`` if body is not empty.
     :Response:
         :Code: ``200`` or ``204`` if body is empty.
         :Body: The return value as a JSON-encoded string or empty if the actions
@@ -441,7 +441,7 @@ class GetByIdEndpoint(Endpoint):
         :Code: ``200`` or ``404`` if object is not found.
         :Body: The object as a JSON-encoded string or empty if the object
             with the provided id does not exist.
-        :Content-Type: ``application/json`` if body is not empty.
+        :ContentType: ``application/json`` if body is not empty.
 
     """
     method = "GET"
@@ -489,6 +489,7 @@ class UpdateEndpoint(Endpoint):
         :Code: ``200``
         :Body: New model representation as a JSON-encoded string.
         :ContentType: ``application/json``
+
     """
     method = "PUT"
     json_request = True
@@ -542,6 +543,7 @@ class CreateEndpoint(Endpoint):
         :Code: ``201``
         :Body: New model representation as a JSON-encoded string.
         :ContentType: ``application/json``
+
     """
     method = "POST"
     json_request = True
@@ -585,6 +587,7 @@ class DeleteEndpoint(Endpoint):
     :Response:
         :Code: ``204``
         :Body: Empty.
+
     """
     method = "DELETE"
     acceptable_response_codes = [204]
@@ -623,6 +626,7 @@ class GetListEndpoint(Endpoint):
         :Query: Query parameters serialized by the model's *query_schema*
     :Response:
         :Code: ``200``
+        :ContentType: ``application/json``
         :Body:
 
             .. code::
@@ -639,6 +643,7 @@ class GetListEndpoint(Endpoint):
             In the above, *self* is the request URL, *model* is the name of
             the model that was requested and *repr* is a JSON representation
             of an instance of that model which was matched by the query.
+            
     """
     method = "GET"
     json_response = True
