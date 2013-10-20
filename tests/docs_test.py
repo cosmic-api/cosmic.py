@@ -116,7 +116,7 @@ class TestGuideModelLinks(TestCase):
             self.assertEqual(spadina147.id is None, True)
 
 
-class TestGuideModelGetById(TestCase):
+class TestGuideGetById(TestCase):
     maxDiff = None
 
     def setUp(self):
@@ -145,4 +145,38 @@ class TestGuideModelGetById(TestCase):
         with self.cosmos:
             city = self.places.models.City.get_by_id("0")
             self.assertEqual(city.name, "Toronto")
+
+class TestGuideSave(TestCase):
+    maxDiff = None
+
+    def setUp(self):
+
+        self.cosmos = Cosmos()
+        with self.cosmos:
+
+            self.places = places = API('places')
+
+            @places.model
+            class City(BaseModel):
+                properties = [
+                    optional("name", String)
+                ]
+
+                def save(self):
+                    if self.id is None:
+                        # Create new id
+                        self.id = str(len(cities))
+                    cities[self.id] = self
+
+            cities = {
+                "0": City(name="Toronto"),
+                "1": City(name="San Francisco"),
+            }
+
+    def test_save(self):
+        with self.cosmos:
+            city = self.places.models.City(name="Moscow")
+            self.assertEqual(city.id is None, True)
+            city.save()
+            self.assertEqual(city.id, "2")
 

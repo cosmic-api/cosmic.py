@@ -379,6 +379,54 @@ do::
 
 .. TODO: [HTTP spec]
 
+save
+````
+
+.. seealso::
+
+    :class:`~cosmic.http.CreateEndpoint` and
+    :class:`~cosmic.http.UpdateEndpoint` for HTTP spec.
+
+The :meth:`~cosmic.models.BaseModel.save` method is actually used for two
+different operations: saving and updating. On the HTTP level they are two
+distinct HTTP endpoints.
+
+.. code::
+
+    @places.model
+    class City(BaseModel):
+        properties = [
+            optional("name", String)
+        ]
+
+        def save(self):
+            if self.id is None:
+                # Create new id
+                self.id = str(len(cities))
+            cities[self.id] = self
+
+When implementing this function on the server side, you should check for the
+model's *id* property. If set, you should update, if not set, you should save,
+creating a new id in the process. On the client side, whether id is set will
+determine which HTTP call to make. If :meth:`save` is called on a model with
+no id, then if the call completes successfully, an id will be set::
+
+    >>> city = City(name="Moscow")
+    >>> city.id is None
+    True
+    >>> city.save()
+    >>> city.id
+    "2"
+
+delete *
+````````
+
+.. seealso::
+
+    :class:`~cosmic.http.DeleteEndpoint` for HTTP spec.
+
+* After the call completes, the model object remains but becomes invalid.
+
 .. _get_list:
 
 get_list *
@@ -392,34 +440,6 @@ get_list *
 * Kwargs get deserialized into URL params.
 * Array gets unrolled into repeating params, otherwise it's URL-encoded JSON.
 * Returns a possibly empty list of model instances.
-
-save (create) *
-```````````````
-
-.. seealso::
-
-    :class:`~cosmic.http.CreateEndpoint` for HTTP spec.
-
-* Create is triggered when save is called on a model without an id.
-* When the call completes, an id will be set.
-
-save (update) *
-```````````````
-
-.. seealso::
-
-    :class:`~cosmic.http.UpdateEndpoint` for HTTP spec.
-
-* Update is triggered when save is called on a model with an id.
-
-delete *
-````````
-
-.. seealso::
-
-    :class:`~cosmic.http.DeleteEndpoint` for HTTP spec.
-
-* After the call completes, the model object remains but becomes invalid.
 
 Authentication *
 ----------------
