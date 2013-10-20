@@ -125,13 +125,13 @@ class API(BasicWrapper):
 
         app = Flask(__name__, static_folder=None)
 
-        view_func = Spec("/spec.json", self)
+        view_func = SpecEndpoint("/spec.json", self)
         app.add_url_rule(view_func.url,
             view_func=view_func.view,
             methods=[view_func.method],
             endpoint="spec")
 
-        view_func = Envelope(self)
+        view_func = EnvelopeEndpoint(self)
         app.add_url_rule(view_func.url,
             view_func=view_func.view,
             methods=[view_func.method],
@@ -140,7 +140,7 @@ class API(BasicWrapper):
         for name, function in self._actions.items():
             url = "/actions/%s" % name
             endpoint = "function_%s" % name
-            view_func = FlaskViewAction(function, url, self)
+            view_func = ActionEndpoint(function, url, self)
             app.add_url_rule(url,
                 view_func=view_func.view,
                 methods=[view_func.method],
@@ -242,7 +242,7 @@ class API(BasicWrapper):
         if hasattr(function, "func"):
             return function.func
         else:
-            return FlaskViewAction(function, '/actions/' + name, self)
+            return ActionEndpoint(function, '/actions/' + name, self)
 
     def model(self, model_cls):
         """A decorator for registering a model with an API. The name of the

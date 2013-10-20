@@ -14,7 +14,7 @@ from teleport import BasicWrapper
 
 
 def prep_model(model_cls):
-    from .http import ListPoster, ListGetter, ModelGetter, ModelPutter, ModelDeleter
+    from .http import CreateEndpoint, GetListEndpoint, GetByIdEndpoint, UpdateEndpoint, DeleteEndpoint
 
     link_schema = Struct([
         required("href", String)
@@ -59,11 +59,11 @@ def prep_model(model_cls):
         if hasattr(model_cls, 'delete'):
             model_cls.methods.append('delete')
 
-    model_cls._list_poster = ListPoster(model_cls)
-    model_cls._list_getter = ListGetter(model_cls)
-    model_cls._model_getter = ModelGetter(model_cls)
-    model_cls._model_putter = ModelPutter(model_cls)
-    model_cls._model_deleter = ModelDeleter(model_cls)
+    model_cls._list_poster = CreateEndpoint(model_cls)
+    model_cls._list_getter = GetListEndpoint(model_cls)
+    model_cls._model_getter = GetByIdEndpoint(model_cls)
+    model_cls._model_putter = UpdateEndpoint(model_cls)
+    model_cls._model_deleter = DeleteEndpoint(model_cls)
 
     model_cls.schema = Struct(props)
 

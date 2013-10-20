@@ -173,7 +173,7 @@ def reverse_werkzeug_url(url, values):
 
 
 
-class FlaskView(object):
+class Endpoint(object):
     json_request = False
     json_response = False
 
@@ -293,7 +293,7 @@ class FlaskView(object):
         }
 
 
-class FlaskViewAction(FlaskView):
+class ActionEndpoint(Endpoint):
     method = "POST"
     json_request = True
     json_response = True
@@ -328,7 +328,7 @@ class FlaskViewAction(FlaskView):
             return (body, 200, {"Content-Type": "application/json"})
 
 
-class Spec(FlaskView):
+class SpecEndpoint(Endpoint):
     method = "GET"
     never_authenticate = True
     json_response = True
@@ -357,7 +357,7 @@ class Spec(FlaskView):
         return (body, 200, {"Content-Type": "application/json"})
 
 
-class Envelope(FlaskView):
+class EnvelopeEndpoint(Endpoint):
     method = "POST"
     never_authenticate = True
     json_request = True
@@ -406,7 +406,7 @@ class Envelope(FlaskView):
 
 
 
-class ModelGetter(FlaskView):
+class GetByIdEndpoint(Endpoint):
     method = "GET"
     json_response = True
     acceptable_response_codes = [404, 200]
@@ -441,7 +441,7 @@ class ModelGetter(FlaskView):
             return self.model_cls.from_json(res['json'].datum)
 
 
-class ModelPutter(FlaskView):
+class UpdateEndpoint(Endpoint):
     method = "PUT"
     json_request = True
     json_response = True
@@ -483,7 +483,7 @@ class ModelPutter(FlaskView):
 
 
 
-class ListPoster(FlaskView):
+class CreateEndpoint(Endpoint):
     method = "POST"
     json_request = True
     json_response = True
@@ -518,7 +518,7 @@ class ListPoster(FlaskView):
         })
 
 
-class ModelDeleter(FlaskView):
+class DeleteEndpoint(Endpoint):
     method = "DELETE"
     acceptable_response_codes = [204]
     response_must_be_empty = True
@@ -548,7 +548,7 @@ class ModelDeleter(FlaskView):
         return ("", 204, {})
 
 
-class ListGetter(FlaskView):
+class GetListEndpoint(Endpoint):
     method = "GET"
     json_response = True
     acceptable_response_codes = [200]
