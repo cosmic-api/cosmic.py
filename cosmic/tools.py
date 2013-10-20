@@ -43,7 +43,7 @@ class GetterNamespace(object):
 def get_args(func):
     """Given a function, returns a tuple (*required*, *optional*), tuples of
     non-keyword and keyword arguments respectively. If a function contains
-    splats (* or **), a :exc:`~cosmic.exceptions.SpecError` will be raised.
+    splats (\* or \**), a :exc:`~cosmic.exceptions.SpecError` will be raised.
     """
     args, varargs, keywords, defaults = inspect.getargspec(func)
     if varargs or keywords:
