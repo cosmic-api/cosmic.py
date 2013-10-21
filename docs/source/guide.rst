@@ -476,7 +476,7 @@ serialize them into a URL query string with the help of
         properties = [
             optional("name", String)
         ]
-        query_fiels = [
+        query_fields = [
             optional("country", String)
         ]
 
@@ -507,38 +507,60 @@ instances::
 
 You are free to invent your own pagination schemes using custom query fields.
 
-Authentication *
-----------------
+Authentication
+--------------
 
 Currently, Cosmic does not provide a standard authentication mechanism. It
 does provide powerful HTTP hooks which can be used to implement different
 authentication schemes.
 
-On the server, you can subclass :class:`~cosmic.http.ServerHook` to make it
-ask for credentials as well as to verify them::
+On the server, you can override your API's :data:`~cosmic.API.server_hook`
+property with an instance of a custom subclass
+:class:`~cosmic.http.ServerHook`. On the client, you can override
+:data:`~cosmic.API.client_hook` with an instance of a subclass of
+:class:`~cosmic.http.ClientHook`. These classes are symmetrically similar,
+each of them provides three methods to override. Let's override the
+:meth:`~cosmic.http.ServerHook.view` method of
+:class:`~cosmic.http.ServerHook` to enable our API to verify user credentials.
 
-    from flask import abort
+.. code::
+
+    from flask import make_response
+    from cosmic.api import API
+    from cosmic.http import ServerHook
 
     planetarium = API("planetarium")
 
-    class SHook(ServerHook):
+    class CustomServerHook(ServerHook):
 
-        def parse_request(self, endpoint, request, **url_args):
+        def view(self, endpoint, request, **url_args):
             if not endpoint.never_authenticate:
-                if request.headers.get('Authorization', None) != "secret":
-                    abort(401)
-            return super(SHook, self).parse_request(endpoint, request, **url_args)
-            
-    planetarium.server_hook = SHook()
+                if request.headers.get('Authorization', None) != 'secret':
+                    return make_response("", 401, {'WWW-Authenticate': 'MyAuth'})
+            return super(CustomServerHook, self).view(endpoint, request, **url_args)
 
-planetarium.server_hook = SHook()
-* Currently, Cosmic does not provide a standard authentication mechanism.
-* Authentication is done by making ClientHooks and ServerHooks.
-* To ask for credentials, override ServerHook.build_response
-* To supply credentials, override ClientHook.build_request
-* To check credentials, override ServerHook.parse_request
-* Authentication error should be raised when invalid credentials are provided.
-* An authorization error can be raised from anywhere in the code.
-* By overriding ClientHook.call, you can make the request repeat once credentials have been found.
-* This will let the client continue seamless operation.
+    planetarium.server_hook = CustomServerHook()
+
+In this example, we check for credentials provided in the *Authorization*
+header. If they are missing or wrong, we return a 401 response, asking for
+authentication via the *WWW-Authenticate* header.
+
+Now let's implement a hook on the client to add credentials to every request
+that needs it.
+
+.. code::
+
+    from cosmic.api import API
+    from cosmic.http import ClientHook
+
+    planetarium = API.load('https://api.planetarium.com/spec.json')
+
+    class CustomClientHook(ClientHook):
+
+        def build_request(self, endpoint, *args, **kwargs):
+            request = super(Hook, self).build_request(endpoint, *args, **kwargs)
+            request.headers["Authorization"] = "secret"
+            return request
+
+This should be enough to get authentication working between client and server.
 
