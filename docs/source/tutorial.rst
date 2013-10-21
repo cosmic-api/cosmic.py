@@ -1,21 +1,56 @@
 Tutorial
 ========
 
-Step 0: Null API *
-------------------
+Step 0: Blank API
+-----------------
 
-* Before we get into the features, let's see what exactly is a Cosmic API.
-* Here's the null API:
-* [code]
-* Now let's run the server:
-* [code]
-* Now let's fetch the spec that remote instances of Cosmic will use to build clients:
-* [code]
-* On another computer, you may load an API by doing this:
-* [code]
-* This is just a serialized and deserialized version of the original API object.
-* You can serialize it again by calling API.to_json:
-* [code]
+Before we get into the features, let's create a blank API, to see how an API
+is served and consumed. Here it is::
+
+    from cosmic.api import API
+
+    zen = API('zen')
+
+    if __name__ == "__main__":
+        zen.run()
+
+If you save this as ``zen.py`` and run:
+
+.. code:: bash
+
+    $ python zen.py
+    * Running on http://127.0.0.1:5000/
+
+The only endpoint provided by our API is ``/spec.json``. Let's try to GET it
+to see what's inside (:mod:`json.tool` is used for pretty printing):
+
+.. code:: bash
+
+    $ curl http://127.0.0.1:5000/spec.json | python -m json.tool
+    {
+        "name": "zen",
+        "actions": {
+            "map": {},
+            "order": []
+        },
+        "models": {
+            "map": {},
+            "order": []
+        }
+    }
+
+This is the API spec, a JSON document that is used to build API clients. You
+rarely need to see this spec, a mere URL is enough to load your API on a
+remote computer. Open up another shell, and try the following::
+
+    >>> from cosmic.api import API
+    >>> zen = API.load("http://127.0.0.1:5000/spec.json")
+    >>>
+
+Note that both on the client and the server, an API is an instance of the same
+class, :class:`~cosmic.api.API`. In fact, the server and client version of
+this class behave almost identically. This is one of the design goals of
+Cosmic. Now that we know the workflow, let's add some functionality.
 
 Step 1: Single-function API *
 -----------------------------
