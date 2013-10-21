@@ -115,7 +115,7 @@ class API(BasicWrapper):
         :rtype: :class:`API` instance
         """
         res = requests.get(url)
-        api = API.from_json(res.json)
+        api = API.from_json(res.json())
         # Set the API url to be the spec URL, minus the /spec.json
         api.url = url[:-10]
         api.client_hook = ClientHook(api.url)
@@ -168,7 +168,8 @@ class API(BasicWrapper):
         into :meth:`Flask.run`.
         """
         debug = kwargs.get('debug', False)
-        app = self.get_flask_app(debug=debug)
+        app = self.get_flask_app()
+        app.debug = debug
 
         if api_key:
             self.submit_spec(api_key, registry_url_override=None)
