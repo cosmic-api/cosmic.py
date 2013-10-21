@@ -494,13 +494,13 @@ serialize them into a URL query string with the help of
 The return value of this function is a (possibly empty) list of model
 instances::
 
-    >>> l1 = places.models.City.get_list()
-    >>> len(l1)
+    >>> l = places.models.City.get_list()
+    >>> len(l)
     2
-    >>> l2 = places.models.City.get_list(country="Canada")
-    >>> len(l2)
+    >>> l = places.models.City.get_list(country="Canada")
+    >>> len(l)
     1
-    >>> l2[0].name
+    >>> l[0].name
     "Toronto"
     >>> places.models.City.get_list(country="Russia")
     []
@@ -510,6 +510,28 @@ You are free to invent your own pagination schemes using custom query fields.
 Authentication *
 ----------------
 
+Currently, Cosmic does not provide a standard authentication mechanism. It
+does provide powerful HTTP hooks which can be used to implement different
+authentication schemes.
+
+On the server, you can subclass :class:`~cosmic.http.ServerHook` to make it
+ask for credentials as well as to verify them::
+
+    from flask import abort
+
+    planetarium = API("planetarium")
+
+    class SHook(ServerHook):
+
+        def parse_request(self, endpoint, request, **url_args):
+            if not endpoint.never_authenticate:
+                if request.headers.get('Authorization', None) != "secret":
+                    abort(401)
+            return super(SHook, self).parse_request(endpoint, request, **url_args)
+            
+    planetarium.server_hook = SHook()
+
+planetarium.server_hook = SHook()
 * Currently, Cosmic does not provide a standard authentication mechanism.
 * Authentication is done by making ClientHooks and ServerHooks.
 * To ask for credentials, override ServerHook.build_response
@@ -519,16 +541,4 @@ Authentication *
 * An authorization error can be raised from anywhere in the code.
 * By overriding ClientHook.call, you can make the request repeat once credentials have been found.
 * This will let the client continue seamless operation.
-
-Deployment on Heroku *
-----------------------
-
-* Assuming you have a Heroku account
-* $ heroku login
-* Add cosmic to requirements.txt
-* Create Procfile
-* [example app]
-* $ git init && git commit
-* Heroku create
-* $ git push origin master
 
