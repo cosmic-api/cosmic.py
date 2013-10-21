@@ -89,7 +89,7 @@ class TestPlanitarium(TestCase):
 
         with self.cosmos2:
             with patch.object(requests, 'get') as mock_get:
-                mock_get.return_value.json = json_spec
+                mock_get.return_value.json = lambda: json_spec
                 mock_get.return_value.status_code = 200
 
                 self.remote_planetarium = API.load('http://example.com/spec.json')
@@ -174,6 +174,13 @@ class TestPlanitarium(TestCase):
                     }
                 })
 
+    def test_local_call_action(self):
+        pluto = self.planetarium.models.Sphere(name="Pluto")
+        self.assertEqual(self.planetarium.actions.hello(pluto), "Hello, Pluto")
+
+    def test_remote_call_action(self):
+        pluto = self.remote_planetarium.models.Sphere(name="Pluto")
+        self.assertEqual(self.remote_planetarium.actions.hello(pluto), "Hello, Pluto")
 
     def _test_follow_links(self):
         with DBContext(planet_db):
