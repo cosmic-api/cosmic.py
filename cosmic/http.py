@@ -209,10 +209,10 @@ class Endpoint(object):
         if self.query_schema != None:
             req['query'] = self.query_schema.from_multi_dict(request.args)
 
-        return self._parse_request(req)
+        return req
 
     def build_response(self, resp):
-        return make_response(self._build_response(resp))
+        raise NotImplementedError()
 
     def build_request(self, *args, **kwargs):
         r = self._build_request(*args, **kwargs)
@@ -335,7 +335,8 @@ class ActionEndpoint(Endpoint):
         packed = args_to_datum(*args, **kwargs)
         return {"json": serialize_json(self.action.accepts, packed)}
 
-    def _parse_request(self, req):
+    def parse_request(self, req, **url_args):
+        req = super(ActionEndpoint, self).parse_request(req, **url_args)
         return {'data': deserialize_json(self.action.accepts, req['json'])}
 
     def _parse_response(self, res):
@@ -344,13 +345,13 @@ class ActionEndpoint(Endpoint):
         else:
             return None
 
-    def _build_response(self, data):
+    def build_response(self, data):
         data = serialize_json(self.action.returns, data)
         if data == None:
-            return ("", 204, {})
+            return make_response("", 204, {})
         else:
             body = json.dumps(data.datum)
-            return (body, 200, {"Content-Type": "application/json"})
+            return make_response(body, 200, {"Content-Type": "application/json"})
 
 
 class SpecEndpoint(Endpoint):
@@ -377,20 +378,20 @@ class SpecEndpoint(Endpoint):
     def handler(self):
         return self.api
 
-    def _build_request(self, *args, **kwargs):
+    def parse_request(self, *args, **kwargs):
         return {}
 
-    def _parse_request(self, req):
+    def _build_request(self, *args, **kwargs):
         return {}
 
     def _parse_response(self, res):
         from .api import API
         return API.from_json(res['json'].datum)
 
-    def _build_response(self, api):
+    def build_response(self, api):
         from .api import API
         body = json.dumps(API.to_json(api))
-        return (body, 200, {"Content-Type": "application/json"})
+        return make_response(body, 200, {"Content-Type": "application/json"})
 
 
 class EnvelopeEndpoint(Endpoint):
@@ -433,12 +434,13 @@ class EnvelopeEndpoint(Endpoint):
             'body': response.data
         }
 
-    def _parse_request(self, req):
+    def parse_request(self, req, **url_args):
+        req = super(EnvelopeEndpoint, self).parse_request(req, **url_args)
         return self.request_schema.from_json(req['json'].datum)
 
-    def _build_response(self, json_response):
+    def build_response(self, json_response):
         body = json.dumps(self.response_schema.to_json(json_response))
-        return (body, 200, {"Content-Type": "application/json"})
+        return make_response(body, 200, {"Content-Type": "application/json"})
 
 
 
@@ -472,14 +474,15 @@ class GetByIdEndpoint(Endpoint):
     def _build_request(self, id):
         return {'url_args': {'id': id}}
 
-    def _parse_request(self, req):
+    def parse_request(self, req, **url_args):
+        req = super(GetByIdEndpoint, self).parse_request(req, **url_args)
         return {'id': req['url_args']['id']}
 
-    def _build_response(self, inst):
+    def build_response(self, inst):
         if inst == None:
             return ("", 404, {})
         body = json.dumps(self.model_cls.to_json(inst))
-        return (body, 200, {"Content-Type": "application/json"})
+        return make_response(body, 200, {"Content-Type": "application/json"})
 
     def _parse_response(self, res):
         if res['code'] == 404:
@@ -527,15 +530,16 @@ class UpdateEndpoint(Endpoint):
             'url_args': {'id': id}
         }
 
-    def _parse_request(self, req):
+    def parse_request(self, req, **url_args):
+        req = super(UpdateEndpoint, self).parse_request(req, **url_args)
         return {
             'id': req['url_args']['id'],
             'inst': self.model_cls.from_json(req['json'].datum)
         }
 
-    def _build_response(self, inst):
+    def build_response(self, inst):
         body = json.dumps(self.model_cls.to_json(inst))
-        return (body, 200, {"Content-Type": "application/json"})
+        return make_response(body, 200, {"Content-Type": "application/json"})
 
     def _parse_response(self, res):
         return self.model_cls.from_json(res['json'].datum)
@@ -575,15 +579,16 @@ class CreateEndpoint(Endpoint):
     def _build_request(self, inst):
         return {'json': Box(self.model_cls.to_json(inst))}
 
-    def _parse_request(self, req):
+    def parse_request(self, req, **url_args):
+        req = super(CreateEndpoint, self).parse_request(req, **url_args)
         return {'inst': self.model_cls.from_json(req['json'].datum)}
 
     def _parse_response(self, res):
         return self.model_cls.from_json(res['json'].datum)
 
-    def _build_response(self, inst):
+    def build_response(self, inst):
         body = json.dumps(self.model_cls.to_json(inst))
-        return (body, 201, {
+        return make_response(body, 201, {
             "Location": inst.href,
             "Content-Type": "application/json"
         })
@@ -618,14 +623,15 @@ class DeleteEndpoint(Endpoint):
     def _build_request(self, inst):
         return {'url_args': {'id': inst.id}}
 
-    def _parse_request(self, req):
+    def parse_request(self, req, **url_args):
+        req = super(DeleteEndpoint, self).parse_request(req, **url_args)
         return {'inst': self.model_cls.get_by_id(req['url_args']['id'])}
 
     def _parse_response(self, res):
         return
 
-    def _build_response(self, _):
-        return ("", 204, {})
+    def build_response(self, _):
+        return make_response("", 204, {})
 
 
 class GetListEndpoint(Endpoint):
@@ -680,14 +686,15 @@ class GetListEndpoint(Endpoint):
     def _build_request(self, **query):
         return {"query": query}
 
-    def _parse_request(self, req):
+    def parse_request(self, req, **url_args):
+        req = super(GetListEndpoint, self).parse_request(req, **url_args)
         return req.get('query', {})
 
     def _parse_response(self, res):
         j = res['json'].datum
         return map(self.model_cls.from_json, j["_embedded"][self.model_cls.__name__])
 
-    def _build_response(self, tup):
+    def build_response(self, tup):
         l, self_link = tup
         body = {
             "_links": {
@@ -696,6 +703,6 @@ class GetListEndpoint(Endpoint):
             "_embedded": {}
         }
         body["_embedded"][self.model_cls.__name__] = map(self.model_cls.to_json, l)
-        return (json.dumps(body), 200, {"Content-Type": "application/json"})
+        return make_response(json.dumps(body), 200, {"Content-Type": "application/json"})
 
 
