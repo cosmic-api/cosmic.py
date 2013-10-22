@@ -58,29 +58,7 @@ def get_args(func):
     return (required, optional,)
 
 
-def apply_to_func(func, data):
-    """Applies a piece of normalized data to the user-defined action function
-    based on its argument spec. The data is assumed to be normalized by a
-    schema compatible with *func*. (see
-    :func:`~cosmic.tools.assert_is_compatible`). Thus, no validation is
-    performed.
-
-    If *func* takes a single argument, *data* is passed in as is. If it takes
-    multiple arguments, *data* is assumed to be a dict and is unpacked into
-    the function arguments.
-
-    If object is None, *func* is called with no arguments.
-    """
-    if data == None:
-        return func()
-    required, optional = get_args(func)
-    # If only one argument, take the whole object
-    if len(required + optional) == 1:
-        return func(data)
-    return func(**data)
-
-
-def pack_action_arguments(*args, **kwargs):
+def args_to_datum(*args, **kwargs):
     """Takes arbitrary args and kwargs and packs them into a dict if there are
     more than one. Returns `None` if there are no arguments. Must be called
     with either a single argument or multiple keyword arguments.

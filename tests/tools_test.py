@@ -39,64 +39,30 @@ class TestGetArgs(TestCase):
 
 
 
-class TestApplyToFunc(TestCase):
-
-    def test_no_arg_okay(self):
-        def f(): return "okay"
-        self.assertEqual(apply_to_func(f, None), "okay")
-
-    def test_one_arg_okay(self):
-        def f(a): return a
-        self.assertEqual(apply_to_func(f, 1), 1)
-
-    def test_one_kwarg_okay(self):
-        def f(a=2): return a
-        self.assertEqual(apply_to_func(f, 1), 1)
-        self.assertEqual(apply_to_func(f, {}), {})
-        self.assertEqual(apply_to_func(f, None), 2)
-
-    def test_one_kwarg_passed_none(self):
-        # None is an explicit value
-        def f(a=2): return a
-        n = Box(None)
-        self.assertEqual(apply_to_func(f, n), n)
-
-    def test_multiple_args_and_kwargs_okay(self):
-        def f(a, b=1): return a, b
-        res = apply_to_func(f, {'a': 2})
-        self.assertEqual(res, (2, 1,))
-        res = apply_to_func(f, {'a': 2, 'b': 2})
-        self.assertEqual(res, (2, 2,))
-
-    def test_multiple_kwargs_okay(self):
-        def f(a=5, b=1): return a, b
-        self.assertEqual(apply_to_func(f, {}), (5, 1,))
-
-
-class TestPackActionArguments(TestCase):
+class TestArgsToDatum(TestCase):
 
     def test_one_arg(self):
-        res = pack_action_arguments("universe")
+        res = args_to_datum("universe")
         self.assertEqual(res, "universe")
 
     def test_one_kwarg(self):
-        res = pack_action_arguments(what="universe")
+        res = args_to_datum(what="universe")
         self.assertEqual(res, {"what": "universe"})
 
     def test_many_kwargs(self):
-        res = pack_action_arguments(what="universe", when="now")
+        res = args_to_datum(what="universe", when="now")
         self.assertEqual(res, {"what": "universe", "when": "now"})
 
     def test_multiple_args(self):
         with self.assertRaises(SpecError):
-            pack_action_arguments("universe", "now")
+            args_to_datum("universe", "now")
 
     def test_no_args_no_kwargs(self):
-        self.assertEqual(pack_action_arguments(), None)
+        self.assertEqual(args_to_datum(), None)
 
     def test_mixed_args_and_kwargs(self):
         with self.assertRaises(SpecError):
-            pack_action_arguments("universe", when="now")
+            args_to_datum("universe", when="now")
 
 
 class TestAssertIsCompatible(TestCase):

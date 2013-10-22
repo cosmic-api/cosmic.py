@@ -320,14 +320,23 @@ class ActionEndpoint(Endpoint):
         self.api = api
 
     def handler(self, data):
-        return self.action.json_to_json(data)
+        args = ()
+        kwargs = {}
+        if data is not None:
+            required, optional = get_args(self.action.func)
+            # If only one argument, take the whole object
+            if len(required + optional) == 1:
+                args = (data,)
+            else:
+                kwargs = data
+        return self.action.func(*args, **kwargs)
 
     def _build_request(self, *args, **kwargs):
-        packed = pack_action_arguments(*args, **kwargs)
+        packed = args_to_datum(*args, **kwargs)
         return {"json": serialize_json(self.action.accepts, packed)}
 
     def _parse_request(self, req):
-        return {'data': req['json']}
+        return {'data': deserialize_json(self.action.accepts, req['json'])}
 
     def _parse_response(self, res):
         if self.action.returns and res['json']:
@@ -336,6 +345,7 @@ class ActionEndpoint(Endpoint):
             return None
 
     def _build_response(self, data):
+        data = serialize_json(self.action.returns, data)
         if data == None:
             return ("", 204, {})
         else:

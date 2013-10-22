@@ -2,7 +2,6 @@ from __future__ import unicode_literals
 
 from teleport import BasicWrapper
 
-from .tools import deserialize_json, serialize_json, apply_to_func
 from .types import *
 
 
@@ -32,7 +31,3 @@ class Action(BasicWrapper):
             "doc": datum.doc
         }
 
-    def json_to_json(self, payload):
-        normalized = deserialize_json(self.accepts, payload)
-        ret = apply_to_func(self.func, normalized)
-        return serialize_json(self.returns, ret)

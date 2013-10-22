@@ -82,6 +82,9 @@ class API(BasicWrapper):
 
             api._models[name] = M
 
+        for name, action in datum["actions"].items():
+            action.endpoint = ActionEndpoint(action, name, api)
+
         return api
 
     @staticmethod
@@ -117,8 +120,7 @@ class API(BasicWrapper):
         res = requests.get(url)
         api = API.from_json(res.json())
         # Set the API url to be the spec URL, minus the /spec.json
-        api.url = url[:-10]
-        api.client_hook = ClientHook(api.url)
+        api.client_hook = ClientHook(url[:-10])
         return api
 
 
@@ -226,20 +228,21 @@ class API(BasicWrapper):
                 assert_is_compatible(accepts, required, optional)
 
             doc = inspect.getdoc(func)
-            function = Action(accepts, returns, doc)
-            function.func = func
+            action = Action(accepts, returns, doc)
+            action.func = func
+            action.endpoint = ActionEndpoint(action, name, self)
 
-            self._actions[name] = function
+            self._actions[name] = action
 
             return func
         return wrapper
 
     def _get_function_callable(self, name):
-        function = self._actions[name]
-        if hasattr(function, "func"):
-            return function.func
+        action = self._actions[name]
+        if hasattr(action, "func"):
+            return action.func
         else:
-            return ActionEndpoint(function, name, self)
+            return action.endpoint
 
     def model(self, model_cls):
         """A decorator for registering a model with an API. The name of the
