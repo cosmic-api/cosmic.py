@@ -173,29 +173,6 @@ class BaseModel(BasicWrapper):
 
 
 
-class RemoteModel(BaseModel):
-
-    def save(self):
-        if self.id:
-            inst = self.__class__._model_putter(self.id, self)
-        else:
-            inst = self.__class__._list_poster(self)
-            self.id = inst.id
-        self._remote_representation = inst._remote_representation
-        self._local_representation = {}
-
-    def delete(self):
-        return self.__class__._model_deleter(self)
-
-    @classmethod
-    def get_list(cls, **query):
-        return cls._list_getter(**query)
-
-    @classmethod
-    def get_by_id(cls, id):
-        return cls._model_getter(id)
-
-
 class Cosmos(object):
 
     def __init__(self):

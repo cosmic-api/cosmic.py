@@ -106,8 +106,8 @@ class ServerHook(object):
 
     def view(self, endpoint, request, **url_args):
         try:
-            parsed = self.parse_request(endpoint, request, **url_args)
-            r = endpoint.handler(**parsed)
+            kwargs = self.parse_request(endpoint, request, **url_args)
+            r = endpoint.handler(**kwargs)
             return self.build_response(endpoint, r)
         except Exception as err:
             if current_app.debug:
@@ -309,21 +309,12 @@ class ActionEndpoint(Endpoint):
     json_response = True
     acceptable_response_codes = [200, 204]
 
-    def __init__(self, action, name, api):
+    def __init__(self, action, name):
         self.action = action
+        self.api = action.api
         self.url = "/actions/%s" % name
-        self.api = api
 
-    def handler(self, data):
-        args = ()
-        kwargs = {}
-        if data is not None:
-            required, optional = get_args(self.action.func)
-            # If only one argument, take the whole object
-            if len(required + optional) == 1:
-                args = (data,)
-            else:
-                kwargs = data
+    def handler(self, *args, **kwargs):
         return self.action.func(*args, **kwargs)
 
     def build_request(self, *args, **kwargs):
@@ -333,7 +324,17 @@ class ActionEndpoint(Endpoint):
 
     def parse_request(self, req, **url_args):
         req = super(ActionEndpoint, self).parse_request(req, **url_args)
-        return {'data': deserialize_json(self.action.accepts, req['json'])}
+        data = deserialize_json(self.action.accepts, req['json'])
+        kwargs = {}
+        if data is not None:
+            required, optional = get_args(self.action.func)
+            # If only one argument, take the whole object
+            if len(required + optional) == 1:
+                kwargs = {}
+                kwargs[required[0]] = data
+            else:
+                kwargs = data
+        return kwargs
 
     def parse_response(self, res):
         res = super(ActionEndpoint, self).parse_response(res)
@@ -375,7 +376,7 @@ class SpecEndpoint(Endpoint):
     def handler(self):
         return self.api
 
-    def parse_request(self, *args, **kwargs):
+    def parse_request(self, req, **url_args):
         return {}
 
     def build_request(self, *args, **kwargs):
@@ -618,8 +619,6 @@ class DeleteEndpoint(Endpoint):
         self.endpoint = "doc_delete_%s" % self.model_cls.__name__
 
     def handler(self, inst):
-        if inst == None:
-            raise NotFound
         inst.delete()
 
     def build_request(self, inst):
@@ -628,7 +627,10 @@ class DeleteEndpoint(Endpoint):
 
     def parse_request(self, req, **url_args):
         req = super(DeleteEndpoint, self).parse_request(req, **url_args)
-        return {'inst': self.model_cls.get_by_id(req['url_args']['id'])}
+        inst = self.model_cls.get_by_id(req['url_args']['id'])
+        if inst == None:
+            raise NotFound
+        return {'inst': inst}
 
     def parse_response(self, res):
         return
@@ -679,12 +681,7 @@ class GetListEndpoint(Endpoint):
         self.endpoint = "list_get_%s" % self.model_cls.__name__
 
     def handler(self, **query):
-        self_link = self.url
-
-        if self.query_schema != None and query:
-            self_link += "?" + self.query_schema.to_json(query)
-
-        return (self.model_cls.get_list(**query), self_link)
+        return self.model_cls.get_list(**query)
 
     def build_request(self, **query):
         return super(GetListEndpoint, self).build_request(query=query)
@@ -698,8 +695,11 @@ class GetListEndpoint(Endpoint):
         j = res['json'].datum
         return map(self.model_cls.from_json, j["_embedded"][self.model_cls.__name__])
 
-    def build_response(self, tup):
-        l, self_link = tup
+    def build_response(self, l):
+        query_string = request.full_path[len(request.path):]
+        self_link = request.path
+        if query_string != '?':
+            self_link += query_string
         body = {
             "_links": {
                 "self": {"href": self_link}

@@ -11,7 +11,7 @@ from collections import OrderedDict
 from flask import Blueprint, Flask, request
 
 from .actions import Action
-from .models import BaseModel, RemoteModel, prep_model, Cosmos
+from .models import BaseModel, prep_model, Cosmos
 from .tools import GetterNamespace, get_args, assert_is_compatible, deserialize_json, validate_underscore_identifier
 from .types import *
 from .http import *
@@ -48,29 +48,55 @@ class API(BasicWrapper):
 
         self.name = name
         self.homepage = homepage
+        self.server_hook = ServerHook()
+
+        self._actions = OrderedDict()
+        self.actions = GetterNamespace(
+            get_item=self._actions.__getitem__,
+            get_all=self._actions.keys)
 
         self._models = OrderedDict()
-        self._actions = OrderedDict()
-
-        self.actions = GetterNamespace(self._get_function_callable)
         self.models = GetterNamespace(
             get_item=self._models.__getitem__,
             get_all=self._models.keys)
 
-        self.server_hook = ServerHook()
-
         cosmos.apis[self.name] = self
 
+    def _get_function_callable(self, name):
+        return self._actions[name]
 
     @staticmethod
     def assemble(datum):
         api = API(name=datum["name"], homepage=datum.get("homepage", None))
-        api._actions = datum["actions"]
+
+        api._actions.update(datum["actions"])
+        for name, action in datum["actions"].items():
+            action.api = api
+            action.endpoint = ActionEndpoint(action, name)
 
         for name, modeldef in datum["models"].items():
 
-            class M(RemoteModel):
-                pass
+            class M(BaseModel):
+
+                def save(self):
+                    if self.id:
+                        inst = self.__class__._model_putter(self.id, self)
+                    else:
+                        inst = self.__class__._list_poster(self)
+                        self.id = inst.id
+                    self._remote_representation = inst._remote_representation
+                    self._local_representation = {}
+
+                def delete(self):
+                    return self.__class__._model_deleter(self)
+
+                @classmethod
+                def get_list(cls, **query):
+                    return cls._list_getter(**query)
+
+                @classmethod
+                def get_by_id(cls, id):
+                    return cls._model_getter(id)
 
             M.__name__ = str(name)
 
@@ -81,9 +107,6 @@ class API(BasicWrapper):
             prep_model(M)
 
             api._models[name] = M
-
-        for name, action in datum["actions"].items():
-            action.endpoint = ActionEndpoint(action, name, api)
 
         return api
 
@@ -143,7 +166,7 @@ class API(BasicWrapper):
 
         for name, action in self._actions.items():
             endpoint = "function_%s" % name
-            view_func = ActionEndpoint(action, name, self)
+            view_func = action.endpoint
             app.add_url_rule(view_func.url,
                 view_func=view_func.view,
                 methods=[view_func.method],
@@ -229,20 +252,14 @@ class API(BasicWrapper):
 
             doc = inspect.getdoc(func)
             action = Action(accepts, returns, doc)
+            action.api = self
             action.func = func
-            action.endpoint = ActionEndpoint(action, name, self)
+            action.endpoint = ActionEndpoint(action, name)
 
             self._actions[name] = action
 
             return func
         return wrapper
-
-    def _get_function_callable(self, name):
-        action = self._actions[name]
-        if hasattr(action, "func"):
-            return action.func
-        else:
-            return action.endpoint
 
     def model(self, model_cls):
         """A decorator for registering a model with an API. The name of the

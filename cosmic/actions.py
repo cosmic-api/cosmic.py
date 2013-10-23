@@ -31,3 +31,8 @@ class Action(BasicWrapper):
             "doc": datum.doc
         }
 
+    def __call__(self, *args, **kwargs):
+        if hasattr(self, "func"):
+            return self.func(*args, **kwargs)
+        return self.endpoint(*args, **kwargs)
+
