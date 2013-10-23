@@ -657,6 +657,9 @@ class GetListEndpoint(Endpoint):
         :ContentType: ``application/json``
         :Body:
 
+            The syntax follows `JSON HAL
+            <http://stateless.co/hal_specification.html>`_ specification.
+
             .. code::
 
                 {

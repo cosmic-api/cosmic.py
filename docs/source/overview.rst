@@ -101,6 +101,23 @@ serialize the API.
 
 Teleport makes it easy to define custom types, a feature used by Cosmic.
 
+The Teleport docs will teach you to import from the :mod:`teleport` module::
+
+    from teleport import *
+
+In Cosmic, you should import from :mod:`cosmic.types`::
+
+    from cosmic.types import *
+
+Apart from providing the standard Teleport types, this will give you custom
+types defined by the Cosmic library as well as access to Cosmic models by
+using the ``<api>.<model>`` syntax. For instance::
+
+    >>> from cosmic.types import Schema
+    >>> from myapi import MyModel
+    >>> Schema.to_json(MyModel)
+    {u'type': u'myapi.MyModel'}
+
 Built on Flask
 --------------
 
@@ -111,3 +128,14 @@ API. When working on a Cosmic API, some knowledge of Flask may be necessary.
 In particular, Flask provides some objects that could be useful to import:
 `request <http://flask.pocoo.org/docs/api/#flask.request>`_ and `g
 <http://flask.pocoo.org/docs/api/#flask.g>`_.
+
+.. _hal:
+
+Hypermedia with JSON HAL
+------------------------
+
+`JSON HAL <http://stateless.co/hal_specification.html>`_ is a compact
+specification for linking REST-ful resources as well as returning multiple
+embedded resources in one call (this is used by the :ref:`get_list` endpoint).
+Note that HAL recommends ``application/hal+json`` for the *Content-Type*
+header, but currently Cosmic responds only to ``application/json``.

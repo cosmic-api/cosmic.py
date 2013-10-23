@@ -117,7 +117,7 @@ Actions are registered with the :meth:`~cosmic.API.action` decorator:
 
 .. code:: python
 
-    >>> from teleport import Integer
+    >>> from cosmic.types import Integer
     >>> @mathy.action(accepts=Integer, returns=Integer)
     ... def square(n):
     ...     return n ** 2
