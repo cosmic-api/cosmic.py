@@ -507,6 +507,8 @@ instances::
 
 You are free to invent your own pagination schemes using custom query fields.
 
+.. _guide-authentication:
+
 Authentication
 --------------
 

@@ -84,7 +84,7 @@ namespace of the API object::
 Remember how the client and server components are instances of the same class?
 Well, here's how you call this action from the client::
 
-    >>> zen = API.load("http://127.0.0.1:5000/spec.json")
+    >>> mathy = API.load("http://127.0.0.1:5000/spec.json")
     >>> mathy.actions.add([1, 2, 3])
     6
 
@@ -114,7 +114,7 @@ server returned a special 400 response, which the client turned into a
 in correct API usage. On the server side, it greatly reduces boilerplate and
 the number potentially dangerous errors that result from malformatted data.
 
-These type definition are used to generate documentation.
+These type definitions can also be used to generate documentation.
 
 The system responsible for the type definitions and serialization is a
 decoupled component called Teleport.
@@ -190,26 +190,20 @@ Let's augment the model we defined above to allow Cosmic to expose it::
 
 Every method implemented on the server becomes accessible on the client::
 
+    >>> planetarium = API.load('http://localhost:5000/spec.json')
     >>> sphere = planetarium.models.Sphere.get_by_id("0")
     >>> sphere
     <cosmic.api.Sphere object at 0xa8076ec>
     >>> sphere.name
     u'Earth'
 
-Step 4: Authenticating *
-------------------------
+Step 4: Authenticating
+----------------------
 
-* By default, all models and actions are accessible to all clients.
-* To restrict access you use authentication and authorization.
-* Cosmic doesn't currently support or recommend a particular method of authentication.
-* However, it allows you to implement your own via api.client_hook and api.server_hook
-* These hooks let you control HTTP message processing.
-* First, let's teach the server to ask for authentication with WWW-Authenticate
-* [code]
-* Now, let's let the client provide it:
-* [code]
-* Then, let's teach the server to check for it:
-* [code]
-* Sometimes (OAuth), a request might get an unexpected 401 response.
-* In these cases, you may want to get new credentials, then retry the request:
-* [code]
+By default, all models and actions are accessible to all clients. To restrict
+access you use authentication and authorization. Cosmic doesn't currently
+support or recommend a particular method of authentication. However, it allows
+you to implement your own via :data:`~cosmic.api.API.client_hook` and 
+:data:`~cosmic.api.API.server_hook`.
+
+See :ref:`guide-authentication` for an example.
