@@ -229,7 +229,7 @@ class API(BasicWrapper):
         function. The name of the function becomes the name of the action.
 
         Once registered, an action will become accessible as an attribute of
-        the :data:`API.actions` object.
+        the :data:`~cosmic.api.API.actions` object.
 
         .. code:: python
 
@@ -276,7 +276,7 @@ class API(BasicWrapper):
             ...
 
         Once registered, a model will become accessible as an attribute of the
-        :data:`API.models` object.
+        :data:`~cosmic.api.API.models` object.
 
         .. code:: python
 

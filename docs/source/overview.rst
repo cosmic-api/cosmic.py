@@ -85,6 +85,11 @@ client. Serialization is handled by our library, Teleport.
 Built on Teleport
 -----------------
 
+.. seealso::
+
+    The `Teleport documentation </docs/teleport/python/latest/>`_ is worth a
+    look if you are getting started with Cosmic.
+
 Teleport is our very own library that is used for JSON serialization,
 validation, and generating documentation. At first this might seem like an odd
 set of features for a library, but they come quite naturally from the fact
