@@ -32,7 +32,8 @@ We are tired of HTTP, we are tired of arguments around how to structure URLs,
 how to serialize query parameters, which headers to include and which codes
 to return. We believe that these questions simply *don't matter*. Pick a way
 and move on to more important questions. Or better yet, let Cosmic make those
-decisions and take advantage of the reward: cheap API clients.
+decisions and take advantage of the reward: minimal boilerplate code and cheap
+API clients.
 
 REST and RPC
 ------------
@@ -74,13 +75,19 @@ serializable type. When you serialize a server-side Cosmic API, you get the
 JSON spec, when you deserialize it on a different machine, you get an API
 client. Serialization is handled by our library, Teleport.
 
-..  TODO
-    * [endpoint diagram]
-    * Where a Cosmic server will call a user-defined function, a Cosmic client will call the Cosmic server.
-    * Server: parse request, make response (Flask)
-    * Client: make request, parse response (Requests)
-    * These four functions are intimately related and together define an endpoint.
-    * Data enters and exits an endpoint in native form, no HTTP must leak through.
+Cosmic abstracts HTTP into endpoints. An endpoint is a rule for serving a
+function via HTTP. It contains both the server and the client component. For
+the server, it defines :meth:`parse_request` and :meth:`build_response`
+methods. For the client, it defined :meth:`build_request` and
+:meth:`parse_response`. The reason the server and the client components are
+grouped in one object is that the client's :math:`build_request` method is
+intimately related to the server's :meth:`parse_request` method. Similarly,
+:meth:`build_response` and :meth:`parse_response` are perfectly symmetrical.
+
+Cosmic treats HTTP as an elaborate serialization scheme and takes full
+responsibility for it, leaving you with natively-behaving functions.
+
+..  TODO [endpoint diagram]
 
 Built on Teleport
 -----------------
