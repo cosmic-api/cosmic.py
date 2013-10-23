@@ -139,7 +139,11 @@ def error_to_response(err):
     elif isinstance(err, SpecError):
         return error_response(err.args[0], 400)
     elif isinstance(err, ValidationError):
-        return error_response(str(err), 400)
+        body = {
+            "error": str(err),
+            "is_validation_error": True
+        }
+        return make_response(json.dumps(body), 400, {"Content-Type": "application/json"})
     else:
         return error_response("Internal Server Error", 500)
 
@@ -264,8 +268,11 @@ class Endpoint(object):
 
         if r['code'] not in self.acceptable_response_codes:
             message = None
-            if 'json' in r and r['json'] and type(r['json'].datum) == dict and 'error' in r['json'].datum:
-                message = r['json'].datum['error']
+            if 'json' in r and r['json'] and type(r['json'].datum) == dict:
+                if r['json'].datum.get('is_validation_error', False):
+                    raise ValidationError(r['json'].datum.get('error', ''))
+                if 'error' in r['json'].datum:
+                    message = r['json'].datum['error']
             try:
                 abort(r['code'], message)
             except Exception as e:

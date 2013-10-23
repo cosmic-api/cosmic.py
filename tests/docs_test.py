@@ -1,4 +1,5 @@
 from unittest2 import TestCase
+from mock import patch
 
 from cosmic.models import Cosmos, BaseModel
 from cosmic.actions import *
@@ -190,7 +191,7 @@ class TestGuideSave(TestCase):
             city.save()
             self.assertEqual(city.id, "2")
 
-class TestGuideSave(TestCase):
+class TestGuideDelete(TestCase):
     maxDiff = None
 
     def setUp(self):
@@ -231,7 +232,7 @@ class TestGuideSave(TestCase):
             self.assertEqual(places.models.City.get_by_id("0") is None, True)
 
 
-class TestGuideSave(TestCase):
+class TestGuideGetList(TestCase):
     maxDiff = None
 
     def setUp(self):
@@ -277,3 +278,40 @@ class TestGuideSave(TestCase):
             l3 = places.models.City.get_list(country="Russia")
             self.assertEqual(l3, [])
 
+
+class TestGuideAction(TestCase):
+    maxDiff = None
+
+    def setUp(self):
+
+        self.cosmos1 = Cosmos()
+        with self.cosmos1:
+
+            self.mathy = mathy = API("mathy")
+
+            @mathy.action(accepts=Array(Integer), returns=Integer)
+            def add(numbers):
+                return sum(numbers)
+
+            self.add = add
+
+        self.cosmos2 = Cosmos()
+        with self.cosmos2:
+            with patch.object(requests, 'get') as mock_get:
+                mock_get.return_value.json = lambda: API.to_json(mathy)
+                mock_get.return_value.status_code = 200
+                self.remote_mathy = API.load('http://example.com/spec.json')
+                self.remote_mathy.client_hook = WerkzeugTestClientHook(mathy.get_flask_app().test_client())
+
+    def test_call_as_function(self):
+        self.assertEqual(self.add([1, 2, 3]), 6)
+
+    def test_call_as_action(self):
+        self.assertEqual(self.mathy.actions.add([1, 2, 3]), 6)
+
+    def test_call_as_action_remote(self):
+        self.assertEqual(self.remote_mathy.actions.add([1, 2, 3]), 6)
+
+    def test_remote_action_validation_error(self):
+        with self.assertRaisesRegexp(ValidationError, "Invalid Integer"):
+            self.remote_mathy.actions.add([1, 2, True])

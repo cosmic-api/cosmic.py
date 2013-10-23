@@ -4,7 +4,7 @@ Tutorial
 Step 0: Blank API
 -----------------
 
-Before we get into the features, let's create a blank API, to see how an API
+Before we get into the features, let's create a blank API to see how an API
 is served and consumed. Here it is::
 
     from cosmic.api import API
@@ -14,7 +14,7 @@ is served and consumed. Here it is::
     if __name__ == "__main__":
         zen.run()
 
-If you save this as ``zen.py`` and run:
+Save this as ``zen.py`` and run:
 
 .. code:: bash
 
@@ -45,31 +45,79 @@ remote computer. Open up another shell, and try the following::
 
     >>> from cosmic.api import API
     >>> zen = API.load("http://127.0.0.1:5000/spec.json")
-    >>>
 
 Note that both on the client and the server, an API is an instance of the same
 class, :class:`~cosmic.api.API`. In fact, the server and client version of
 this class behave almost identically. This is one of the design goals of
 Cosmic. Now that we know the workflow, let's add some functionality.
 
-Step 1: Single-function API *
------------------------------
+Step 1: Single-function API
+---------------------------
 
-* Now let's make it useful by adding an action:
-* [code]
-* An action is just a function exposed to the web by Cosmic.
-* See how your API spec is now different:
-* [code]
-* A remote API may call it like this:
-* [code]
-* Notice the type definitions.
-* They help Cosmic serialize complex data and validate it.
-* Here's what happens when you pass in the wrong type from a remote API:
-* [code]
-* The call never actually reached your function.
-* For dynamically-typed languages like Python this improves security.
-* This also helps generate documentation.
-* The system responsible for the type definitions and serialization is a decoupled component called Teleport.
+While we encourage you to use a REST-ful approach for designing your API,
+there are situationis where a simple remote procedure call is a good fit. Here
+is an API that defines a single action::
+
+    from cosmic.api import API
+    from cosmic.types import Array, Integer
+
+    mathy = API("mathy")
+
+    @mathy.action(accepts=Array(Integer), returns=Integer)
+    def add(numbers):
+        return sum(numbers)
+
+An *action* is a function exposed to the web by Cosmic. Even after applying
+the :meth:`~cosmic.API.action` decorator, it remains a simple function::
+
+    >>> from mathy import add
+    >>> add([1, 2, 3])
+    6
+
+However, it also becomes accessible in the :data:`~cosmic.API.actions`
+namespace of the API object::
+
+    >>> from mathy import mathy
+    >>> mathy.actions.add([1, 2, 3])
+    6
+
+Remember how the client and server components are instances of the same class?
+Well, here's how you call this action from the client::
+
+    >>> zen = API.load("http://127.0.0.1:5000/spec.json")
+    >>> mathy.actions.add([1, 2, 3])
+    6
+
+Notice the type definitions. They help Cosmic serialize complex data and
+validate it. See what happens when you pass in the wrong type::
+
+    >>> mathy.actions.add([1, 2, True])
+    Traceback (most recent call last):
+      File "<stdin>", line 1, in <module>
+      File "cosmic/actions.py", line 37, in __call__
+        return self.endpoint(*args, **kwargs)
+      File "cosmic/http.py", line 287, in __call__
+        return self.api.client_hook.call(self, *args, **kwargs)
+      File "cosmic/http.py", line 27, in call
+        return self.parse_response(endpoint, res)
+      File "cosmic/http.py", line 33, in parse_response
+        return endpoint.parse_response(res)
+      File "cosmic/http.py", line 347, in parse_response
+        res = super(ActionEndpoint, self).parse_response(res)
+      File "cosmic/http.py", line 273, in parse_response
+        raise ValidationError(r['json'].datum.get('error', ''))
+    teleport.ValidationError: Item at [2] Invalid Integer: True
+
+In the background, the Cosmic client made a request, to which the Cosmic
+server returned a special 400 response, which the client turned into a
+:exc:`~teleport.ValidationError`. On the client side, this validation guides
+in correct API usage. On the server side, it greatly reduces boilerplate and
+the number potentially dangerous errors that result from malformatted data.
+
+These type definition are used to generate documentation.
+
+The system responsible for the type definitions and serialization is a
+decoupled component called Teleport.
 
 Step 2: Defining a Custom Data Type *
 -------------------------------------
