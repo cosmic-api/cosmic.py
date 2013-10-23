@@ -119,21 +119,45 @@ These type definition are used to generate documentation.
 The system responsible for the type definitions and serialization is a
 decoupled component called Teleport.
 
-Step 2: Defining a Custom Data Type *
--------------------------------------
+Step 2: Defining a Custom Data Type
+-----------------------------------
 
-* Teleport allows you to define custom types from scratch or in terms of primitive types.
-* The definition will aid in serialization, deserialization and validation.
-* Better yet, define them in terms of types supplied by Teleport.
-* This will help you automatically generate documentation:
-* [docs]
-* And spare you the boilerplate serialization code.
-* With Cosmic, you can attach such definition to your API, creating a model.
-* Here's a simple model:
-* [code]
-* Here's how you instantiate it:
-* [code]
-* You can turn your existing classes into models if you give them the JSON type and implement assemble, disassemble.
+Teleport allows you to define custom types from scratch or in terms of other
+types. These definition will aid in serialization, deserialization and
+validation. With Cosmic, you can attach such definition to your API, creating
+a model. Here's a simple model::
+
+    planetarium = API('planetarium')
+
+    @planetarium.model
+    class Sphere(DBModel):
+        db_table = "spheres"
+
+        properties = [
+            required("name", String)
+        ]
+
+Here's how you instantiate it::
+
+    >>> Sphere(name="Pluto")
+    <examples.planetarium.Sphere object at 0xa8b434c>
+
+And on the server::
+
+    >>> planetarium.models.Sphere(name="Neptune")
+    <cosmic.api.Sphere object at 0xa8076ec>
+
+Actions can take models as parameters::
+
+    @planetarium.action(accepts=Sphere, returns=String)
+    def hello(sphere):
+        return "Hello, %s" % sphere.name
+
+Now you can call this both from the client or from the server::
+
+    >>> neptune = planetarium.models.Sphere(name="Neptune")
+    >>> planetarium.actions.hello(neptune)
+    u'Hello Neptune'
 
 Step 3: RESTful API *
 ---------------------
