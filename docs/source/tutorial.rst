@@ -127,12 +127,12 @@ types. These definition will aid in serialization, deserialization and
 validation. With Cosmic, you can attach such definition to your API, creating
 a model. Here's a simple model::
 
+    from cosmic.models import BaseModel
+
     planetarium = API('planetarium')
 
     @planetarium.model
-    class Sphere(DBModel):
-        db_table = "spheres"
-
+    class Sphere(BaseModel):
         properties = [
             required("name", String)
         ]
@@ -159,16 +159,42 @@ Now you can call this both from the client or from the server::
     >>> planetarium.actions.hello(neptune)
     u'Hello Neptune'
 
-Step 3: RESTful API *
----------------------
+Step 3: RESTful API
+-------------------
 
-* Some models not only represent data types, but also correspond to a set of real-world objects.
-* Commonly the model will correspond with a database table and the object with a row in that table.
-* Cosmic doesn't care where these objects are stored so long as you implement 5 methods [link to overview]
-* Let's augment the model we defined above to allow Cosmic to expose it:
-* [code]
-* Now if you load this API from a remote computer, you can use these methods to access the objects:
-* [code]
+Some models not only represent data types, but also correspond to sets of
+real-world objects. Commonly the model will correspond with a database table
+and the object with a row in that table. Cosmic doesn't care where these
+objects are stored, you are expected to provide access to them by implementing
+up to 5 methods.
+
+Let's augment the model we defined above to allow Cosmic to expose it::
+
+    @planetarium.model
+    class Sphere(BaseModel):
+        properties = [
+            required("name", String)
+        ]
+
+        @classmethod
+        def get_by_id(cls, id):
+            if id in spheres:
+                return spheres[id]
+            else:
+                return None
+
+    spheres = {
+        "0": Sphere(name="Earth", id="0"),
+        "1": Sphere(name="Moon", id="0")
+    }
+
+Every method implemented on the server becomes accessible on the client::
+
+    >>> sphere = planetarium.models.Sphere.get_by_id("0")
+    >>> sphere
+    <cosmic.api.Sphere object at 0xa8076ec>
+    >>> sphere.name
+    u'Earth'
 
 Step 4: Authenticating *
 ------------------------
