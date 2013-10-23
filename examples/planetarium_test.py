@@ -215,7 +215,7 @@ class TestPlanitarium(TestCase):
 
     def test_remote_str_model(self):
         m = self.remote_planetarium.models.Sphere(name="Neptune")
-        self.assertRegexpMatches(str(m), 'examples.planetarium.Sphere object at')
+        self.assertRegexpMatches(str(m), 'cosmic.api.Sphere object at')
 
 
     def _test_get_list(self):
