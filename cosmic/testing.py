@@ -23,16 +23,16 @@ class DBModel(BaseModel):
     @classmethod
     def get_by_id(cls, id):
         try:
-            return cls.from_json(db[cls.db_table][int(id)])
+            return cls.from_json(db[cls.__name__][int(id)])
         except IndexError:
             return None
 
     @classmethod
     def get_list(cls, **kwargs):
         if not kwargs:
-            return map(cls.from_json, db[cls.db_table])
+            return map(cls.from_json, db[cls.__name__])
         ret = []
-        for row in db[cls.db_table]:
+        for row in db[cls.__name__]:
             if row != None:
                 keep = True
                 for key, val in kwargs.items():
@@ -44,7 +44,7 @@ class DBModel(BaseModel):
         return ret
 
     def save(self):
-        table = db[self.__class__.db_table]
+        table = db[self.__class__.__name__]
         if not self.id:
             self.id = str(len(table))
             table.append(self.__class__.to_json(self))
@@ -52,5 +52,5 @@ class DBModel(BaseModel):
             table[int(self.id)] = self.__class__.to_json(self)
 
     def delete(self):
-        db[self.__class__.db_table][int(self.id)] = None
+        db[self.__class__.__name__][int(self.id)] = None
 

@@ -206,7 +206,7 @@ class TestPlanitarium(TestCase):
             self.assertEqual(req["data"], "")
 
             self.assertEqual(res["status_code"], 200)
-            self.assertEqual(json.loads(res["data"]), planet_db['spheres'][0])
+            self.assertEqual(json.loads(res["data"]), planet_db['Sphere'][0])
             self.assertEqual(res["headers"]["Content-Type"], "application/json")
 
     def test_local_str_model(self):
@@ -228,7 +228,7 @@ class TestPlanitarium(TestCase):
             self.assertEqual(res[0].id, "0")
             res = Sphere.get_list()
             self.assertEqual(len(res), 3)
-            
+
     def test_local_get_list(self):
         with self.cosmos1:
             self._test_get_list()
@@ -249,7 +249,7 @@ class TestPlanitarium(TestCase):
                     "self": {"href": "/Sphere"}
                 },
                 "_embedded": {
-                    "Sphere": planet_db["spheres"]
+                    "Sphere": planet_db['Sphere']
                 }
             })
             self.assertEqual(res["headers"]["Content-Type"], "application/json")
@@ -267,7 +267,7 @@ class TestPlanitarium(TestCase):
                     "self": {"href": url}
                 },
                 "_embedded": {
-                    "Sphere": [planet_db["spheres"][0]]
+                    "Sphere": [planet_db['Sphere'][0]]
                 }
             })
             self.assertEqual(res["headers"]["Content-Type"], "application/json")
@@ -282,7 +282,7 @@ class TestPlanitarium(TestCase):
             self.assertEqual(moon.name, "Luna")
             moon.save()
             self.assertEqual(moon.name, "Luna")
-            self.assertEqual(c["spheres"][2]["name"], "Luna")
+            self.assertEqual(c['Sphere'][2]["name"], "Luna")
 
     def test_local_save_property(self):
         with self.cosmos1:
@@ -322,7 +322,7 @@ class TestPlanitarium(TestCase):
             moon.revolves_around = Sphere.get_by_id("0")
             moon.save()
             self.assertEqual(moon.revolves_around.id, "0")
-            self.assertEqual(c["spheres"][2]["_links"]["revolves_around"]["href"], "/Sphere/0")
+            self.assertEqual(c['Sphere'][2]["_links"]["revolves_around"]["href"], "/Sphere/0")
 
     def test_local_save_link(self):
         with self.cosmos1:
@@ -376,7 +376,7 @@ class TestPlanitarium(TestCase):
                 }
             }
             self.assertEqual(Sphere.to_json(pluto), full)
-            self.assertEqual(c["spheres"][3], full)
+            self.assertEqual(c['Sphere'][3], full)
 
     def test_local_create_model(self):
         with self.cosmos1:
@@ -393,7 +393,7 @@ class TestPlanitarium(TestCase):
             Sphere = M('planetarium.Sphere')
             earth = Sphere.get_by_id("1")
             earth.delete()
-            self.assertEqual(c["spheres"][1], None)
+            self.assertEqual(c['Sphere'][1], None)
 
     def test_local_delete(self):
         with self.cosmos1:

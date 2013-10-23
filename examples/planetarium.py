@@ -11,7 +11,7 @@ from flask import abort
 
 
 planet_db = {
-    "spheres": [
+    "Sphere": [
         {
             u"name": u"Sun",
             u"_links": {
@@ -52,7 +52,6 @@ planetarium.server_hook = SHook()
 
 @planetarium.model
 class Sphere(DBModel):
-    db_table = "spheres"
 
     properties = [
         required("name", String)
