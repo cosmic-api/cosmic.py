@@ -214,17 +214,16 @@ class Endpoint(object):
     def build_response(self, resp):
         raise NotImplementedError()
 
-    def build_request(self, *args, **kwargs):
-        r = self._build_request(*args, **kwargs)
+    def build_request(self,
+            json=None,
+            data="",
+            url_args={},
+            headers={},
+            query={}):
 
         if self.json_request:
-            data = json_to_string(r.get('json', None))
-        else:
-            data = r.get('data', "")
+            data = json_to_string(json)
 
-        url_args = r.get('url_args', {})
-        headers = r.get('headers', {})
-        query = r.get('query', {})
         url = reverse_werkzeug_url(self.url, url_args)
 
         if self.json_request and data:
@@ -275,11 +274,7 @@ class Endpoint(object):
                 # generic 500 response will be returned
                 e.remote = True
                 raise
-
-        try:
-            return self._parse_response(r)
-        except ValidationError as a:
-            raise e
+        return r
 
     def __call__(self, *args, **kwargs):
         return self.api.client_hook.call(self, *args, **kwargs)
@@ -331,15 +326,17 @@ class ActionEndpoint(Endpoint):
                 kwargs = data
         return self.action.func(*args, **kwargs)
 
-    def _build_request(self, *args, **kwargs):
+    def build_request(self, *args, **kwargs):
         packed = args_to_datum(*args, **kwargs)
-        return {"json": serialize_json(self.action.accepts, packed)}
+        json = serialize_json(self.action.accepts, packed)
+        return super(ActionEndpoint, self).build_request(json=json)
 
     def parse_request(self, req, **url_args):
         req = super(ActionEndpoint, self).parse_request(req, **url_args)
         return {'data': deserialize_json(self.action.accepts, req['json'])}
 
-    def _parse_response(self, res):
+    def parse_response(self, res):
+        res = super(ActionEndpoint, self).parse_response(res)
         if self.action.returns and res['json']:
             return self.action.returns.from_json(res['json'].datum)
         else:
@@ -381,10 +378,11 @@ class SpecEndpoint(Endpoint):
     def parse_request(self, *args, **kwargs):
         return {}
 
-    def _build_request(self, *args, **kwargs):
-        return {}
+    def build_request(self, *args, **kwargs):
+        return super(SpecEndpoint, self).build_request()
 
-    def _parse_response(self, res):
+    def parse_response(self, res):
+        res = super(SpecEndpoint, self).parse_response(res)
         from .api import API
         return API.from_json(res['json'].datum)
 
@@ -471,8 +469,9 @@ class GetByIdEndpoint(Endpoint):
     def handler(self, id):
         return self.model_cls.get_by_id(id)
 
-    def _build_request(self, id):
-        return {'url_args': {'id': id}}
+    def build_request(self, id):
+        return super(GetByIdEndpoint, self).build_request(
+            url_args={'id': id})
 
     def parse_request(self, req, **url_args):
         req = super(GetByIdEndpoint, self).parse_request(req, **url_args)
@@ -484,7 +483,8 @@ class GetByIdEndpoint(Endpoint):
         body = json.dumps(self.model_cls.to_json(inst))
         return make_response(body, 200, {"Content-Type": "application/json"})
 
-    def _parse_response(self, res):
+    def parse_response(self, res):
+        res = super(GetByIdEndpoint, self).parse_response(res)
         if res['code'] == 404:
             return None
         if res['code'] == 200:
@@ -524,11 +524,10 @@ class UpdateEndpoint(Endpoint):
         inst.save()
         return inst
 
-    def _build_request(self, id, inst):
-        return {
-            'json': Box(self.model_cls.to_json(inst)),
-            'url_args': {'id': id}
-        }
+    def build_request(self, id, inst):
+        return super(UpdateEndpoint, self).build_request(
+            json=Box(self.model_cls.to_json(inst)),
+            url_args={'id': id})
 
     def parse_request(self, req, **url_args):
         req = super(UpdateEndpoint, self).parse_request(req, **url_args)
@@ -541,7 +540,8 @@ class UpdateEndpoint(Endpoint):
         body = json.dumps(self.model_cls.to_json(inst))
         return make_response(body, 200, {"Content-Type": "application/json"})
 
-    def _parse_response(self, res):
+    def parse_response(self, res):
+        res = super(UpdateEndpoint, self).parse_response(res)
         return self.model_cls.from_json(res['json'].datum)
 
 
@@ -576,14 +576,16 @@ class CreateEndpoint(Endpoint):
         inst.save()
         return inst
 
-    def _build_request(self, inst):
-        return {'json': Box(self.model_cls.to_json(inst))}
+    def build_request(self, inst):
+        return super(CreateEndpoint, self).build_request(
+            json=Box(self.model_cls.to_json(inst)))
 
     def parse_request(self, req, **url_args):
         req = super(CreateEndpoint, self).parse_request(req, **url_args)
         return {'inst': self.model_cls.from_json(req['json'].datum)}
 
-    def _parse_response(self, res):
+    def parse_response(self, res):
+        res = super(CreateEndpoint, self).parse_response(res)
         return self.model_cls.from_json(res['json'].datum)
 
     def build_response(self, inst):
@@ -620,14 +622,15 @@ class DeleteEndpoint(Endpoint):
             raise NotFound
         inst.delete()
 
-    def _build_request(self, inst):
-        return {'url_args': {'id': inst.id}}
+    def build_request(self, inst):
+        return super(DeleteEndpoint, self).build_request(
+            url_args={'id': inst.id})
 
     def parse_request(self, req, **url_args):
         req = super(DeleteEndpoint, self).parse_request(req, **url_args)
         return {'inst': self.model_cls.get_by_id(req['url_args']['id'])}
 
-    def _parse_response(self, res):
+    def parse_response(self, res):
         return
 
     def build_response(self, _):
@@ -683,14 +686,15 @@ class GetListEndpoint(Endpoint):
 
         return (self.model_cls.get_list(**query), self_link)
 
-    def _build_request(self, **query):
-        return {"query": query}
+    def build_request(self, **query):
+        return super(GetListEndpoint, self).build_request(query=query)
 
     def parse_request(self, req, **url_args):
         req = super(GetListEndpoint, self).parse_request(req, **url_args)
         return req.get('query', {})
 
-    def _parse_response(self, res):
+    def parse_response(self, res):
+        res = super(GetListEndpoint, self).parse_response(res)
         j = res['json'].datum
         return map(self.model_cls.from_json, j["_embedded"][self.model_cls.__name__])
 
