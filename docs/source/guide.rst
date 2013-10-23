@@ -86,6 +86,16 @@ for the API type:
         required("models", OrderedMap(Model))
     ])
 
+Client and Server
+-----------------
+
+In Cosmic, the same :class:`~cosmic.api.API` class is used for the API server
+and the API client. In fact, the server and the client objects behave almost
+identically. After you run your server component, you can build the client in
+a single line of code::
+
+    >>> myapi = API.load('http://localhost:5000/spec.json')
+
 RPC via Actions
 ---------------
 
@@ -138,7 +148,11 @@ But now there is another way of accessing it:
     >>> mathy.actions.square(2)
     4
 
-.. TODO: Executing the same action on the client
+And from the client, it is accessed identically::
+
+    >>> mathy = API.load('http://localhost:5000/spec.json')
+    >>> mathy.actions.square(2)
+    4
 
 Now that the action has been registered, it becomes part of the spec:
 
@@ -169,7 +183,22 @@ Both *accepts* and *returns* are optional. If no accepts schema is provided,
 the action will take no input data, and if the returns schema is not provided,
 the action will return nothing when it completes.
 
-.. TODO: When accepts is a Struct, you can pass in values as kwargs.
+Normally, the action function is expected to take a single non-keyword
+argument. If your action needs to take multiple arguments, use the Teleport
+:class:`~teleport.Struct` type::
+
+    @mathy.action(accepts=Struct([
+        required(u'numerator', Integer),
+        required(u'denominator', Integer),
+    ]), returns=Integer)
+    def divide(numerator, denominator):
+        return numerator / denominator
+
+This may be called remotely as::
+
+    >>> mathy = API.load('http://localhost:5000/spec.json')
+    >>> mathy.actions.divide(numerator=10, denominator=5)
+    2
 
 REST via Models
 ---------------

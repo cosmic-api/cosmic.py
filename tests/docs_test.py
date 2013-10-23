@@ -293,6 +293,14 @@ class TestGuideAction(TestCase):
             def add(numbers):
                 return sum(numbers)
 
+            @mathy.action(accepts=Struct([
+                required(u'numerator', Integer),
+                required(u'denominator', Integer),
+            ]), returns=Integer)
+            def divide(numerator, denominator):
+                return numerator / denominator
+
+
             self.add = add
 
         self.cosmos2 = Cosmos()
@@ -311,6 +319,9 @@ class TestGuideAction(TestCase):
 
     def test_call_as_action_remote(self):
         self.assertEqual(self.remote_mathy.actions.add([1, 2, 3]), 6)
+
+    def test_call_as_action_remote_kwargs(self):
+        self.assertEqual(self.remote_mathy.actions.divide(numerator=10, denominator=5), 2)
 
     def test_remote_action_validation_error(self):
         with self.assertRaisesRegexp(ValidationError, "Invalid Integer"):
