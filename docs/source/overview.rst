@@ -12,8 +12,8 @@ while providing a well-documented, clean HTTP structure as a fallback.
 
 We are tired of discussing HTTP, of arguments around how to structure URLs,
 how to serialize query parameters, which headers to include and which codes to
-return. We believe that these questions simply *don't matter*. Cosmic attempts
-to gather the best conventions of HTTP APIs and abstracts them away.
+return. We believe that these questions are simply not worth your time. Cosmic
+attempts to gather the best conventions of HTTP APIs and abstracts them away.
 
 When you write your API server using Cosmic, developers can use it in their
 favorite language as if it was a locally installed library. In addition to
