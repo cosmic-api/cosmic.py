@@ -17,8 +17,8 @@ to gather the best conventions of HTTP APIs and abstracts them away.
 
 When you write your API server using Cosmic, developers can use it in their
 favorite language as if it was a locally installed library. In addition to
-this, we are working on the Cosmic Registry, a centralized hub of Cosmic APIs
-with beautiful automatically-generated documentation.
+this, we are working on the Cosmic Registry, a centralized hub of richly
+integrated Cosmic APIs with beautiful auto-generated documentation.
 
 The Universal Client
 --------------------
