@@ -6,6 +6,23 @@ Before we dig in, here is a high-level overview of Cosmic.
 Motivation
 ----------
 
+We believe that using web APIs should be as easy as using native libraries.
+Cosmic builds a native communication bridge across all supported languages,
+while providing a well-documented, clean HTTP structure as a fallback.
+
+We are tired of discussing HTTP, of arguments around how to structure URLs,
+how to serialize query parameters, which headers to include and which codes to
+return. We believe that these questions simply *don't matter*. Cosmic attempts
+to gather the best conventions of HTTP APIs and abstracts them away.
+
+When you write your API server using Cosmic, developers can use it in their
+favorite language as if it was a locally installed library. In addition to
+this, we are working on the Cosmic Registry, a centralized hub of Cosmic APIs
+with beautiful automatically-generated documentation.
+
+The Universal Client
+--------------------
+
 You cannot escape writing API clients. On the provider side, the API library
 or framework serves as glue between business code and HTTP. On the consumer
 side, the burden of gluing HTTP to business logic lies on the shoulders of the
@@ -27,11 +44,6 @@ As for the API spec, our approach differs from something like `Swagger
 <https://developers.helloreverb.com/swagger/>`_ as we are not trying to
 describe an API in low-level detail (down to the URLs and methods). Instead,
 the JSON spec of a Cosmic API tries to be high-level and semantic.
-
-We are tired of discussing HTTP, of arguments around how to structure URLs,
-how to serialize query parameters, which headers to include and which codes to
-return. We believe that these questions simply *don't matter*. Cosmic attempts
-to gather the best conventions of HTTP APIs and abstracts them away.
 
 REST and RPC
 ------------
