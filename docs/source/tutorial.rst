@@ -88,8 +88,9 @@ Well, here's how you call this action from the client::
     >>> mathy.actions.add([1, 2, 3])
     6
 
-Notice the type definitions. They help Cosmic serialize complex data and
-validate it. See what happens when you pass in the wrong type::
+Did you notice the type definitions in the action? They help Cosmic serialize
+complex data and validate it. See what happens when you pass in the wrong
+type::
 
     >>> mathy.actions.add([1, 2, True])
     Traceback (most recent call last):
@@ -134,7 +135,7 @@ a model. Here's a simple model::
     @planetarium.model
     class Sphere(BaseModel):
         properties = [
-            required("name", String)
+            required(u"name", string)
         ]
 
 Here's how you instantiate it::

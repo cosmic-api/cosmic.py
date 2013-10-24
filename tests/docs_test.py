@@ -22,9 +22,9 @@ class TestGuideModels(TestCase):
             @places.model
             class Address(BaseModel):
                 properties = [
-                    required("number", Integer),
-                    required("street", String),
-                    optional("city", String)
+                    required(u"number", Integer),
+                    required(u"street", String),
+                    optional(u"city", String)
                 ]
 
     def test_to_json(self):
@@ -88,30 +88,38 @@ class TestGuideModelLinks(TestCase):
 
     def setUp(self):
 
-        self.cosmos = Cosmos()
-        with self.cosmos:
+        self.cosmos1 = Cosmos()
+        with self.cosmos1:
 
             self.places = places = API('places')
 
             @places.model
             class City(BaseModel):
                 properties = [
-                    optional("name", String)
+                    optional(u"name", String)
                 ]
 
             @places.model
             class Address(BaseModel):
                 properties = [
-                    required("number", Integer),
-                    required("street", String),
+                    required(u"number", Integer),
+                    required(u"street", String),
                 ]
                 links = [
-                    required("city", City)
+                    required(u"city", City)
                 ]
+
+        self.cosmos2 = Cosmos()
+        with self.cosmos2:
+            with patch.object(requests, 'get') as mock_get:
+                mock_get.return_value.json = lambda: API.to_json(places)
+                mock_get.return_value.status_code = 200
+                self.remote_places = API.load('http://example.com/spec.json')
+                self.remote_places.client_hook = WerkzeugTestClientHook(places.get_flask_app().test_client())
 
     def test_access_links(self):
         places = self.places
-        with self.cosmos:
+        with self.cosmos1:
             toronto = places.models.City(name="Toronto")
             spadina147 = places.models.Address(
                 number=147,
@@ -120,6 +128,11 @@ class TestGuideModelLinks(TestCase):
 
             self.assertEqual(spadina147.city.name, "Toronto")
             self.assertEqual(spadina147.id is None, True)
+
+    def remote_create_models(self):
+        with self.cosmos2:
+            elm13 = self.remote_places.models.Address(number=13, street="Elm")
+            self.assertEqual(elm13.number, 13)
 
 
 class TestGuideGetById(TestCase):
@@ -134,7 +147,7 @@ class TestGuideGetById(TestCase):
             @places.model
             class City(BaseModel):
                 properties = [
-                    optional("name", String)
+                    optional(u"name", String)
                 ]
 
                 @classmethod
@@ -169,8 +182,13 @@ class TestGuideSave(TestCase):
             @places.model
             class City(BaseModel):
                 properties = [
-                    optional("name", String)
+                    optional(u"name", String)
                 ]
+
+                @classmethod
+                def validate(cls, datum):
+                    if datum[u"name"][0].islower():
+                        raise ValidationError("Name must be capitalized", datum["name"])
 
                 def save(self):
                     if self.id is None:
@@ -178,10 +196,18 @@ class TestGuideSave(TestCase):
                         self.id = str(len(cities))
                     cities[self.id] = self
 
-            cities = {
-                "0": City(name="Toronto", id="0"),
-                "1": City(name="San Francisco", id="1"),
-            }
+        self.cosmos2 = Cosmos()
+        with self.cosmos2:
+            with patch.object(requests, 'get') as mock_get:
+                mock_get.return_value.json = lambda: API.to_json(places)
+                mock_get.return_value.status_code = 200
+                self.remote_places = API.load('http://example.com/spec.json')
+                self.remote_places.client_hook = WerkzeugTestClientHook(places.get_flask_app().test_client())
+
+        cities = {
+            "0": City(name="Toronto", id="0"),
+            "1": City(name="San Francisco", id="1"),
+        }
 
     def test_save(self):
         places = self.places
@@ -190,6 +216,14 @@ class TestGuideSave(TestCase):
             self.assertEqual(city.id is None, True)
             city.save()
             self.assertEqual(city.id, "2")
+
+    def test_save(self):
+        places = self.remote_places
+        with self.cosmos:
+            city = places.models.City(name="moscow")
+            with self.assertRaisesRegexp(ValidationError, "must be capitalized"):
+                city.save()
+
 
 class TestGuideDelete(TestCase):
     maxDiff = None
@@ -204,7 +238,7 @@ class TestGuideDelete(TestCase):
             @places.model
             class City(BaseModel):
                 properties = [
-                    optional("name", String)
+                    optional(u"name", String)
                 ]
 
                 @classmethod
@@ -245,10 +279,10 @@ class TestGuideGetList(TestCase):
             @places.model
             class City(BaseModel):
                 properties = [
-                    optional("name", String)
+                    optional(u"name", String)
                 ]
                 query_fiels = [
-                    optional("country", String)
+                    optional(u"country", String)
                 ]
 
                 @classmethod

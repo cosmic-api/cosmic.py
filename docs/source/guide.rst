@@ -200,26 +200,23 @@ This may be called remotely as::
     >>> mathy.actions.divide(numerator=10, denominator=5)
     2
 
-REST via Models
----------------
+Models as Data Types
+--------------------
 
-Models are used to create REST-ful endpoints. A model roughly corresponds to a
-database table. Most basically, a model defines a datatype. If you want to
-give clients access to *objects* of this datatype, you also need to define a
-set of CRUD methods that Cosmic will turn into HTTP endpoints.
-
-Here is the the Teleport schema of a model:
+Models are data type definitions attached to an API, they use Teleport schemas
+to describe their data. In the API spec, a model is described with the following
+schema:
 
 .. code:: python
 
     Struct([
-        optional("data_schema", Schema),
-        required("links", OrderedMap(Struct([
+        optional(u"data_schema", Schema),
+        required(u"links", OrderedMap(Struct([
             required(u"schema", Schema),
             required(u"required", Boolean),
             optional(u"doc", String)
         ]))),
-        required("query_fields", OrderedMap(Struct([
+        required(u"query_fields", OrderedMap(Struct([
             required(u"schema", Schema),
             required(u"required", Boolean),
             optional(u"doc", String)
@@ -231,10 +228,9 @@ model data. If your model represents a database table, the *data_schema* could
 be a struct with parameters that correspond to the table's columns. Currently,
 Cosmic expects it to be a struct, but this restriction may be lifted later.
 
-The *links* parameter describes relationships between models. A link from one
-model to another is similar to a foreign key in a relational database. The
-last parameter, *query_fields* is used to describe how a collection of objects
-can be filtered. See :ref:`get_list`.
+The *links* parameter describes relationships between models. The last
+parameter, *query_fields* is used to describe how a collection of objects can
+be filtered. Both of these are used by Cosmic to create REST endpoints.
 
 Before we get to linking and filtering, let's take a look at the model object:
 
@@ -248,9 +244,9 @@ Before we get to linking and filtering, let's take a look at the model object:
     @places.model
     class Address(BaseModel):
         properties = [
-            required("number", Integer),
-            required("street", String),
-            required("city", String)
+            required(u"number", Integer),
+            required(u"street", String),
+            required(u"city", String)
         ]
 
 As you can see, a model class should inherit from
@@ -302,24 +298,48 @@ There is a good reason model definitions are in the form of classes.
 In Cosmic, the objects that the model defines are represented by actual
 instances of the model class::
 
-    >>> sesame31 = places.models.Address(number=31, street="Sesame")
+    >>> sesame31 = Address(number=31, street="Sesame")
     >>> sesame31.number
     31
     >>> sesame31.street
     "Sesame"
 
-This means that you can add methods to your models, or, if you have existing
-classes that you want to turn into Cosmic models, you can do so simply by
-inheriting from :class:`~cosmic.models.BaseModel`, using the
-:meth:`~cosmic.api.API.model` decorator and adding a schema.
+This means that you can easily add methods to your models.
 
-A model is actually a Teleport type::
+Furthermore, a model is actually a Teleport type::
 
-    >>> places.models.Address.to_json(sesame31)
+    >>> Address.to_json(sesame31)
     {
         u"number": 31,
         u"street": "Sesame"
     }
+
+:class:`~cosmic.models.BaseModel` inherits from Teleport's
+:class:`~teleport.BasicWrapper`. If you have existing classes that you want to
+turn into Cosmic models, you can do so quite easily. (See `Creating Custom
+Types </docs/teleport/python/latest/index.html#creating-custom-types>`_ in
+Teleport.)
+
+Once registered with an API, a model becomes available in the
+:data:`~cosmic.api.API.models` namespace. The beauty of this namespace
+is that it is identical on the client and server. Here is how to create
+an :class:`Address` on the client::
+
+    >>> places = API.load('http://localhost:5000/spec.json')
+    >>> elm13 = places.models.Address(number=13, street="Elm")
+    >>> elm13.number
+    13
+
+REST via Models
+---------------
+
+Models can be used to create REST-ful endpoints. A model roughly corresponds
+to a database table. If you want to give clients access to *objects* of the
+data type defined by the model, you also need to define a set of CRUD methods
+that Cosmic will turn into HTTP endpoints.
+
+The *links* parameter describes relationships between models. A link from one
+model to another is similar to a foreign key in a relational database.
 
 Links are defined similarly to properties::
 
@@ -328,17 +348,17 @@ Links are defined similarly to properties::
     @places.model
     class City(BaseModel):
         properties = [
-            optional("name", String)
+            optional(u"name", String)
         ]
 
     @places.model
     class Address(BaseModel):
         properties = [
-            required("number", Integer),
-            required("street", String),
+            required(u"number", Integer),
+            required(u"street", String),
         ]
         links = [
-            required("city", City)
+            required(u"city", City)
         ]
 
 And referenced similarly to properties::
@@ -381,7 +401,7 @@ parameter (an id is always a string) and returns a model class instance
     @places.model
     class City(BaseModel):
         properties = [
-            optional("name", String)
+            optional(u"name", String)
         ]
 
         @classmethod
@@ -423,7 +443,7 @@ distinct HTTP endpoints.
     @places.model
     class City(BaseModel):
         properties = [
-            optional("name", String)
+            optional(u"name", String)
         ]
 
         def save(self):
@@ -445,6 +465,39 @@ no id, then if the call completes successfully, an id will be set::
     >>> city.id
     "2"
 
+To add extra validation to a model, you can override the
+:meth:`~class.model.BaseModel.validate` method. This method gets called after
+the model schema has been used to deserialize the data and before the
+model object gets instantiated. Here is a :meth:`validate` method for
+:class:`City`::
+
+    @classmethod
+    def validate(cls, datum):
+        if datum[u"name"][0].islower():
+            raise ValidationError("Name must be capitalized", datum["name"])
+
+A :exc:`ValidationError` will be raised if you try to save an invalid model
+from a remote client:
+
+    >>> places = API.load('http://localhost:5000/spec.json')
+    >>> moscow = places.models.City(name="moscow")
+    >>> moscow.save()
+    Traceback (most recent call last):
+      File "<stdin>", line 1, in <module>
+      File "cosmic/api.py", line 85, in save
+        inst = self.__class__._list_poster(self)
+      File "cosmic/http.py", line 287, in __call__
+        return self.api.client_hook.call(self, *args, **kwargs)
+      File "cosmic/http.py", line 27, in call
+        return self.parse_response(endpoint, res)
+      File "cosmic/http.py", line 33, in parse_response
+        return endpoint.parse_response(res)
+      File "cosmic/http.py", line 596, in parse_response
+        res = super(CreateEndpoint, self).parse_response(res)
+      File "cosmic/http.py", line 273, in parse_response
+        raise ValidationError(r['json'].datum.get('error', ''))
+    teleport.ValidationError: Name must be capitalized: u'moscow'
+
 delete
 ``````
 
@@ -460,7 +513,7 @@ returns nothing.
     @places.model
     class City(BaseModel):
         properties = [
-            optional("name", String)
+            optional(u"name", String)
         ]
 
         @classmethod
@@ -503,10 +556,10 @@ serialize them into a URL query string with the help of
     @places.model
     class City(BaseModel):
         properties = [
-            optional("name", String)
+            optional(u"name", String)
         ]
         query_fields = [
-            optional("country", String)
+            optional(u"country", String)
         ]
 
         @classmethod
