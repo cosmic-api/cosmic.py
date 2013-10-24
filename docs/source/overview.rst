@@ -42,8 +42,11 @@ developers to write new clients.
 
 As for the API spec, our approach differs from something like `Swagger
 <https://developers.helloreverb.com/swagger/>`_ as we are not trying to
-describe an API in low-level detail (down to the URLs and methods). Instead,
-the JSON spec of a Cosmic API tries to be high-level and semantic.
+describe an API in low-level detail. Instead, the JSON spec of a Cosmic API
+tries to be high-level and semantic. For instance, in Swagger, every REST-ful
+endpoint of a collection needs to be described separately, including the
+method, URL format and response code. In Cosmic, these details are decided by
+the framework, so the API spec only describes the data structure of the model.
 
 REST and RPC
 ------------
