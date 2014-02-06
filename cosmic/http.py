@@ -192,7 +192,10 @@ class Endpoint(object):
     query_schema = None
 
     def view(self, **url_args):
-        return self.api.server_hook.view(self, request, **url_args)
+        # Pull Request object out of Flask's magical local. From now
+        # on, we'll pass it explicitly.
+        r = request._get_current_object()
+        return self.api.server_hook.view(self, r, **url_args)
 
     def parse_request(self, request, **url_args):
         req = {
