@@ -33,8 +33,9 @@ class BaseClientHook(object):
 
 class ClientHook(BaseClientHook):
 
-    def __init__(self, base_url):
+    def __init__(self, base_url, verify=True):
         self.base_url = base_url
+        self.verify = verify
         self.session = requests.sessions.Session()
 
     def make_request(self, endpoint, request):
@@ -43,7 +44,7 @@ class ClientHook(BaseClientHook):
         return self.session.send(prepared,
             stream=False,
             timeout=None,
-            verify=True,
+            verify=self.verify,
             cert=None,
             proxies={},
             allow_redirects=True)
