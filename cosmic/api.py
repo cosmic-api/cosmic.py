@@ -127,7 +127,7 @@ class API(BasicWrapper):
         }
 
     @staticmethod
-    def load(url):
+    def load(url, verify=True):
         """Given a URL to a Cosmic API, fetch the API spec and build an API
         client:
 
@@ -140,7 +140,7 @@ class API(BasicWrapper):
         :param url: The API spec url, including ``/spec.json``
         :rtype: :class:`API` instance
         """
-        res = requests.get(url)
+        res = requests.get(url, verify=verify)
         api = API.from_json(res.json())
         # Set the API url to be the spec URL, minus the /spec.json
         api.client_hook = ClientHook(url[:-10])
