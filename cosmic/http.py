@@ -148,7 +148,7 @@ def error_to_response(err):
 
 
 def get_payload_from_http_message(req):
-    bytes = req.get_data()
+    bytes = req.data
     if not bytes:
         return None
     if req.mimetype != "application/json":
