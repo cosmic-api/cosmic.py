@@ -204,9 +204,9 @@ class Endpoint(object):
         if self.json_request:
             req['json'] = get_payload_from_http_message(request)
         else:
-            req['data'] = request.get_data()
+            req['data'] = request.data
 
-        is_empty = request.get_data() == ""
+        is_empty = request.data == ""
 
         if ((self.request_must_be_empty == True and not is_empty) or
             (is_empty and self.request_can_be_empty == False)):
