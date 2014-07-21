@@ -589,6 +589,41 @@ instances::
 
 You are free to invent your own pagination schemes using custom query fields.
 
+Often it will be useful to return metadata along with the items, for example, 
+the total count if the list is paginated, or a timestamp. You can specify this
+by including the :data:`list_metadata` attribute.
+
+.. code::
+
+    @places.model
+    class City(BaseModel):
+        properties = [
+            optional(u"name", String)
+        ]
+        query_fields = [
+            optional(u"country", String)
+        ]
+        list_metadata = [
+            required(u"last_updated", DateTime)
+        ]
+
+        @classmethod
+        def get_list(cls, country=None):
+            metadata = {"last_updated": datetime.datetime.now()}
+            if country is None:
+                return (cities.values(), metadata)
+            elif country == "Canada":
+                return ([cities[0]], metadata)
+            elif country == "USA":
+                return ([cities[1]], metadata)
+            else:
+                return ([], metadata)
+
+As you can see, when :data:`list_metadata` is specified, the return value
+of :meth:`get_list` is a tuple, where the first item is the list, and the
+second is a dict containing the metadata.
+
+
 .. _guide-authentication:
 
 Authentication
