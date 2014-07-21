@@ -67,6 +67,10 @@ cookbook_spec = {
                 u"query_fields": {
                     u"map": {},
                     u"order": []
+                },
+                u"list_metadata": {
+                    u"map": {},
+                    u"order": []
                 }
             },
             u"Author": {
@@ -87,6 +91,10 @@ cookbook_spec = {
                     u"order": []
                 },
                 u"query_fields": {
+                    u"map": {},
+                    u"order": []
+                },
+                u"list_metadata": {
                     u"map": {},
                     u"order": []
                 }

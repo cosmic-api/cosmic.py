@@ -129,6 +129,11 @@ class Model(BasicWrapper):
             required(u"schema", Schema),
             required(u"required", Boolean),
             optional(u"doc", String)
+        ]))),
+        required("list_metadata", OrderedMap(Struct([
+            required(u"schema", Schema),
+            required(u"required", Boolean),
+            optional(u"doc", String)
         ])))
     ])
 

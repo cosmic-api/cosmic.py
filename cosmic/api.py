@@ -103,6 +103,7 @@ class API(BasicWrapper):
             M.api = api
             M.properties = modeldef["data_schema"].param.items()
             M.query_fields = modeldef["query_fields"].items()
+            M.list_metadata = modeldef["list_metadata"].items()
             M.links = modeldef["links"].items()
             prep_model(M)
 
@@ -117,7 +118,8 @@ class API(BasicWrapper):
             models[unicode(model_cls.__name__)] = {
                 "data_schema": Struct(model_cls.properties),
                 "links": OrderedDict(model_cls.links),
-                "query_fields": OrderedDict(model_cls.query_fields)
+                "query_fields": OrderedDict(model_cls.query_fields),
+                "list_metadata": OrderedDict(model_cls.list_metadata),
             }
         return {
             "name": datum.name,

@@ -72,6 +72,7 @@ class BaseModel(BasicWrapper):
     """A data type definition attached to an API."""
     methods = None
     query_fields = []
+    list_metadata = []
     links = []
 
     def __init__(self, **kwargs):

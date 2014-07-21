@@ -57,7 +57,8 @@ class TestGuideModels(TestCase):
                                 }
                             },
                             u"links": { u"map": {}, u"order": [] },
-                            u"query_fields": { u"map": {}, u"order": [] }
+                            u"query_fields": { u"map": {}, u"order": [] },
+                            u"list_metadata": { u"map": {}, u"order": [] }
                         }
                     },
                     u"order": [u"Address"]

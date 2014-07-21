@@ -33,6 +33,11 @@ json_spec = {
                         u"order": [u"name"]
                     }
                 },
+                u"list_metadata": {
+                    u"map": {},
+                    u"order": [],
+
+                },
                 u"query_fields": {
                     u"map": {
                         u"name": {
