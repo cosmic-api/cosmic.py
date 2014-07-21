@@ -1,3 +1,5 @@
+import datetime
+
 from cosmic import cosmos
 from cosmic.models import M
 from cosmic.api import API
@@ -63,6 +65,17 @@ class Sphere(DBModel):
         optional("name", String),
         optional("revolves_around", String)
     ]
+    list_metadata = [
+        required('last_updated', DateTime)
+    ]
+
+    @classmethod
+    def get_list(cls, **kwargs):
+        l = super(Sphere, cls).get_list(**kwargs)
+        metadata = {
+            'last_updated': datetime.datetime(year=2014, month=1, day=1)
+        }
+        return (l, metadata)
 
     @classmethod
     def validate(cls, datum):

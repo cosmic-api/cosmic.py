@@ -34,8 +34,13 @@ json_spec = {
                     }
                 },
                 u"list_metadata": {
-                    u"map": {},
-                    u"order": [],
+                    u"map": {
+                        u"last_updated": {
+                            u"required": True,
+                            u"schema": {u"type": u"DateTime"}
+                        },
+                    },
+                    u"order": [u"last_updated"],
 
                 },
                 u"query_fields": {
@@ -227,12 +232,12 @@ class TestPlanitarium(TestCase):
         with DBContext(planet_db):
             Sphere = M('planetarium.Sphere')
             res = Sphere.get_list(name="Oops")
-            self.assertEqual(len(res), 0)
+            self.assertEqual(len(res[0]), 0)
             res = Sphere.get_list(name="Sun")
-            self.assertEqual(len(res), 1)
-            self.assertEqual(res[0].id, "0")
+            self.assertEqual(len(res[0]), 1)
+            self.assertEqual(res[0][0].id, "0")
             res = Sphere.get_list()
-            self.assertEqual(len(res), 3)
+            self.assertEqual(len(res[0]), 3)
 
     def test_local_get_list(self):
         with self.cosmos1:
@@ -255,7 +260,8 @@ class TestPlanitarium(TestCase):
                 },
                 "_embedded": {
                     "Sphere": planet_db['Sphere']
-                }
+                },
+                'last_updated': '2014-01-01T00:00:00'
             })
             self.assertEqual(res["headers"]["Content-Type"], "application/json")
 
@@ -273,7 +279,8 @@ class TestPlanitarium(TestCase):
                 },
                 "_embedded": {
                     "Sphere": [planet_db['Sphere'][0]]
-                }
+                },
+                'last_updated': '2014-01-01T00:00:00'
             })
             self.assertEqual(res["headers"]["Content-Type"], "application/json")
 

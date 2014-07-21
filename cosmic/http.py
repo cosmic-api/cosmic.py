@@ -705,9 +705,16 @@ class GetListEndpoint(Endpoint):
     def parse_response(self, res):
         res = super(GetListEndpoint, self).parse_response(res)
         j = res['json'].datum
-        return map(self.model_cls.from_json, j["_embedded"][self.model_cls.__name__])
+        l = map(self.model_cls.from_json, j["_embedded"][self.model_cls.__name__])
+        if self.model_cls.list_metadata:
+            meta = j.copy()
+            del meta['_embedded']
+            del meta['_links']
+            meta = Struct(self.model_cls.list_metadata).from_json(meta)
+            return l, meta
+        return l
 
-    def build_response(self, l):
+    def build_response(self, list_or_tuple):
         query_string = request.full_path[len(request.path):]
         self_link = request.path
         if query_string != '?':
@@ -718,6 +725,14 @@ class GetListEndpoint(Endpoint):
             },
             "_embedded": {}
         }
+
+        if self.model_cls.list_metadata:
+            l, meta = list_or_tuple
+            meta = Struct(self.model_cls.list_metadata).to_json(meta)
+            body.update(meta)
+        else:
+            l = list_or_tuple
+
         body["_embedded"][self.model_cls.__name__] = map(self.model_cls.to_json, l)
         return make_response(json.dumps(body), 200, {"Content-Type": "application/json"})
 
