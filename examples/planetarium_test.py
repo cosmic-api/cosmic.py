@@ -65,18 +65,25 @@ json_spec = {
                     },
                     u"order": [u"revolves_around"]
                 },
+                u'methods': {
+                    u'get_by_id': True,
+                    u'get_list': True,
+                    u'create': True,
+                    u'update': True,
+                    u'delete': True,
+                },
             },
         },
         u"order": [u"Sphere"]
     },
-    "actions": {
-        "map": {
+    u"actions": {
+        u"map": {
             u"hello": {
-                "accepts": {"type": "planetarium.Sphere"},
-                "returns": {"type": "String"}
+                u"accepts": {u"type": u"planetarium.Sphere"},
+                u"returns": {u"type": u"String"}
             }
         },
-        "order": [u"hello"]
+        u"order": [u"hello"]
     }
 }
 

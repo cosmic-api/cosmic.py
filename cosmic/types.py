@@ -130,6 +130,13 @@ class Model(BasicWrapper):
             required(u"required", Boolean),
             optional(u"doc", String)
         ]))),
+        required("methods", Struct([
+            required("get_by_id", Boolean),
+            required("get_list", Boolean),
+            required("create", Boolean),
+            required("update", Boolean),
+            required("delete", Boolean),
+        ])),
         required("list_metadata", OrderedMap(Struct([
             required(u"schema", Schema),
             required(u"required", Boolean),

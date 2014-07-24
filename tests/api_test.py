@@ -71,7 +71,14 @@ cookbook_spec = {
                 u"list_metadata": {
                     u"map": {},
                     u"order": []
-                }
+                },
+                u'methods': {
+                    u'get_by_id': False,
+                    u'get_list': False,
+                    u'create': False,
+                    u'update': False,
+                    u'delete': False,
+                },
             },
             u"Author": {
                 u"data_schema": {
@@ -97,7 +104,14 @@ cookbook_spec = {
                 u"list_metadata": {
                     u"map": {},
                     u"order": []
-                }
+                },
+                u'methods': {
+                    u'get_by_id': False,
+                    u'get_list': False,
+                    u'create': False,
+                    u'update': False,
+                    u'delete': False,
+                },
             }
         },
         u"order": [u"Recipe", u"Author"]

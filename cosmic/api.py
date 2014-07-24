@@ -18,6 +18,7 @@ from .http import *
 from . import cosmos
 
 
+MODEL_METHODS = ['get_by_id', 'get_list', 'create', 'update', 'delete']
 
 
 class API(BasicWrapper):
@@ -77,6 +78,8 @@ class API(BasicWrapper):
         for name, modeldef in datum["models"].items():
 
             class M(BaseModel):
+                type_name = "{}.{}".format(api.name, name)
+                methods = []
 
                 def save(self):
                     if self.id:
@@ -97,6 +100,10 @@ class API(BasicWrapper):
                 @classmethod
                 def get_by_id(cls, id):
                     return cls._model_getter(id)
+
+            for method in MODEL_METHODS:
+                if modeldef["methods"][method]:
+                    M.methods.append(method)
 
             M.__name__ = str(name)
 
@@ -120,6 +127,13 @@ class API(BasicWrapper):
                 "links": OrderedDict(model_cls.links),
                 "query_fields": OrderedDict(model_cls.query_fields),
                 "list_metadata": OrderedDict(model_cls.list_metadata),
+                "methods": {
+                    "get_by_id": "get_by_id" in model_cls.methods,
+                    "get_list": "get_list" in model_cls.methods,
+                    "create": "create" in model_cls.methods,
+                    "update": "update" in model_cls.methods,
+                    "delete": "delete" in model_cls.methods,
+                }
             }
         return {
             "name": datum.name,

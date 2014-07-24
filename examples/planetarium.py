@@ -55,6 +55,7 @@ planetarium.server_hook = SHook()
 @planetarium.model
 class Sphere(DBModel):
 
+    methods = ["get_list", "get_by_id", "create", "update", "delete"]
     properties = [
         required("name", String)
     ]

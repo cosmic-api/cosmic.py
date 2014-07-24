@@ -58,7 +58,14 @@ class TestGuideModels(TestCase):
                             },
                             u"links": { u"map": {}, u"order": [] },
                             u"query_fields": { u"map": {}, u"order": [] },
-                            u"list_metadata": { u"map": {}, u"order": [] }
+                            u"list_metadata": { u"map": {}, u"order": [] },
+                            u'methods': {
+                                u'get_by_id': False,
+                                u'get_list': False,
+                                u'create': False,
+                                u'update': False,
+                                u'delete': False,
+                            },
                         }
                     },
                     u"order": [u"Address"]
@@ -182,6 +189,7 @@ class TestGuideSave(TestCase):
 
             @places.model
             class City(BaseModel):
+                methods = ["create", "update"]
                 properties = [
                     optional(u"name", String)
                 ]
@@ -238,6 +246,7 @@ class TestGuideDelete(TestCase):
 
             @places.model
             class City(BaseModel):
+                methods = ["get_by_id", "delete"]
                 properties = [
                     optional(u"name", String)
                 ]
