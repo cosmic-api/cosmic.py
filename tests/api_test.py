@@ -207,13 +207,13 @@ class TestAPI(TestCase):
         self.assertEqual(s.from_json(d).name, "turkey")
 
     def test_subclassing_hook(self):
-        self.assertEqual(set(self.cookbook.models.__all__), set(["Recipe", "Author"]))
+        self.assertEqual(set(self.cookbook.models.__dict__.keys()), set(["Recipe", "Author"]))
 
     def test_recursive_subclassing_hook(self):
         @self.cookbook.model
         class ChocolateAuthor(self.cookbook.models.Author):
             pass
-        self.assertEqual(set(self.cookbook.models.__all__), set(["Recipe", "Author", "ChocolateAuthor"]))
+        self.assertEqual(set(self.cookbook.models.__dict__.keys()), set(["Recipe", "Author", "ChocolateAuthor"]))
 
     def test_model_schema_validation(self):
         with self.assertRaises(ValidationError):

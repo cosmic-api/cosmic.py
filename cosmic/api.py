@@ -21,6 +21,10 @@ from . import cosmos
 MODEL_METHODS = ['get_by_id', 'get_list', 'create', 'update', 'delete']
 
 
+class Object(object):
+    pass
+
+
 class API(BasicWrapper):
     """An instance of this class represents a Cosmic API, whether it's your
     own API being served or a third-party API being consumed. In the former
@@ -40,8 +44,36 @@ class API(BasicWrapper):
     schema = Struct([
         required("name", String),
         optional("homepage", String),
-        required("actions", OrderedMap(Action)),
-        required("models", OrderedMap(Model))
+        required("actions", OrderedMap(Struct([
+            optional("accepts", Schema),
+            optional("returns", Schema),
+            optional("doc", String)
+        ]))),
+        required("models", OrderedMap(Struct([
+            optional("data_schema", Schema),
+            required("links", OrderedMap(Struct([
+                required(u"schema", Schema),
+                required(u"required", Boolean),
+                optional(u"doc", String)
+            ]))),
+            required("query_fields", OrderedMap(Struct([
+                required(u"schema", Schema),
+                required(u"required", Boolean),
+                optional(u"doc", String)
+            ]))),
+            required("methods", Struct([
+                required("get_by_id", Boolean),
+                required("get_list", Boolean),
+                required("create", Boolean),
+                required("update", Boolean),
+                required("delete", Boolean),
+            ])),
+            required("list_metadata", OrderedMap(Struct([
+                required(u"schema", Schema),
+                required(u"required", Boolean),
+                optional(u"doc", String)
+            ])))
+        ])))
     ])
 
     def __init__(self, name, homepage=None):
@@ -52,26 +84,22 @@ class API(BasicWrapper):
         self.server_hook = ServerHook()
 
         self._actions = OrderedDict()
-        self.actions = GetterNamespace(
-            get_item=self._actions.__getitem__,
-            get_all=self._actions.keys)
+        self.actions = Object()
 
         self._models = OrderedDict()
-        self.models = GetterNamespace(
-            get_item=self._models.__getitem__,
-            get_all=self._models.keys)
+        self.models = Object()
 
         cosmos.apis[self.name] = self
-
-    def _get_function_callable(self, name):
-        return self._actions[name]
 
     @staticmethod
     def assemble(datum):
         api = API(name=datum["name"], homepage=datum.get("homepage", None))
 
-        api._actions.update(datum["actions"])
+        #api._actions.update(datum["actions"])
         for name, action in datum["actions"].items():
+            action = Action(**action)
+            api._actions[name] = action
+            setattr(api.actions, name, action)
             action.api = api
             action.endpoint = ActionEndpoint(action, name)
 
@@ -115,12 +143,21 @@ class API(BasicWrapper):
             prep_model(M)
 
             api._models[name] = M
+            setattr(api.models, name, M)
 
         return api
 
     @staticmethod
     def disassemble(datum):
         models = OrderedDict()
+        actions = OrderedDict()
+        for name, action in datum._actions.items():
+            actions[name] = {
+                "accepts": action.accepts,
+                "returns": action.returns,
+                "doc": action.doc
+            }
+
         for model_cls in datum._models.values():
             models[unicode(model_cls.__name__)] = {
                 "data_schema": Struct(model_cls.properties),
@@ -138,7 +175,7 @@ class API(BasicWrapper):
         return {
             "name": datum.name,
             "homepage": datum.homepage,
-            "actions": datum._actions,
+            "actions": actions,
             "models": models
         }
 
@@ -273,6 +310,7 @@ class API(BasicWrapper):
             action.endpoint = ActionEndpoint(action, name)
 
             self._actions[name] = action
+            setattr(self.actions, name, action)
 
             return func
         return wrapper
@@ -305,8 +343,8 @@ class API(BasicWrapper):
         model_cls.type_name = "%s.%s" % (self.name, model_cls.__name__,)
         prep_model(model_cls)
 
-        # Add to namespace
         self._models[model_cls.__name__] = model_cls
+        setattr(self.models, model_cls.__name__, model_cls)
 
         return model_cls
 

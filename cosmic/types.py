@@ -13,10 +13,6 @@ def getter(name):
     from .models import M
     if name == "cosmic.API":
         return API
-    elif name == "cosmic.Action":
-        return Action
-    elif name == "cosmic.Model":
-        return Model
     elif '.' in name:
         return M(name)
     raise KeyError()
@@ -114,35 +110,3 @@ class Headers(BasicWrapper):
                 "value": value
             })
         return headers
-
-
-
-class Model(BasicWrapper):
-    schema = Struct([
-        optional("data_schema", Schema),
-        required("links", OrderedMap(Struct([
-            required(u"schema", Schema),
-            required(u"required", Boolean),
-            optional(u"doc", String)
-        ]))),
-        required("query_fields", OrderedMap(Struct([
-            required(u"schema", Schema),
-            required(u"required", Boolean),
-            optional(u"doc", String)
-        ]))),
-        required("methods", Struct([
-            required("get_by_id", Boolean),
-            required("get_list", Boolean),
-            required("create", Boolean),
-            required("update", Boolean),
-            required("delete", Boolean),
-        ])),
-        required("list_metadata", OrderedMap(Struct([
-            required(u"schema", Schema),
-            required(u"required", Boolean),
-            optional(u"doc", String)
-        ])))
-    ])
-
-
-
