@@ -9,7 +9,6 @@ from teleport import standard_types, ParametrizedWrapper, BasicWrapper, required
 
 def getter(name):
     from .api import API
-    from .actions import Action
     from .models import M
     if name == "cosmic.API":
         return API

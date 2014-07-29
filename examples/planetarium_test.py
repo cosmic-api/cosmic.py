@@ -111,34 +111,34 @@ class TestPlanitarium(TestCase):
 
                 self.remote_planetarium = API.load('http://example.com/spec.json')
 
-                class Retry(Exception):
-                    pass
+            class Retry(Exception):
+                pass
 
-                class Hook(SaveStackClientHookMixin, WerkzeugTestClientHook):
-                    token = None
+            class Hook(SaveStackClientHookMixin, WerkzeugTestClientHook):
+                token = None
 
-                    def build_request(self, endpoint, *args, **kwargs):
-                        request = super(Hook, self).build_request(endpoint, *args, **kwargs)
-                        if self.token is not None:
-                            request.headers["X-Danish"] = self.token
-                        return request
+                def build_request(self, endpoint, *args, **kwargs):
+                    request = super(Hook, self).build_request(endpoint, *args, **kwargs)
+                    if self.token is not None:
+                        request.headers["X-Danish"] = self.token
+                    return request
 
-                    def parse_response(self, endpoint, res):
-                        if res.status_code == 401:
-                            raise Retry()
-                        return super(Hook, self).parse_response(endpoint, res)
+                def parse_response(self, endpoint, res):
+                    if res.status_code == 401:
+                        raise Retry()
+                    return super(Hook, self).parse_response(endpoint, res)
 
-                    def call(self, endpoint, *args, **kwargs):
-                        while True:
-                            try:
-                                return super(Hook, self).call(endpoint, *args, **kwargs)
-                            except Retry:
-                                # Find token, e.g. through OAuth
-                                self.token = "poppyseed"
-                                continue
+                def call(self, endpoint, *args, **kwargs):
+                    while True:
+                        try:
+                            return super(Hook, self).call(endpoint, *args, **kwargs)
+                        except Retry:
+                            # Find token, e.g. through OAuth
+                            self.token = "poppyseed"
+                            continue
 
-                # Use the local API's HTTP client to simulate the remote API's calls
-                self.remote_planetarium.client_hook = Hook(self.d)
+            # Use the local API's HTTP client to simulate the remote API's calls
+            self.remote_planetarium.client_hook = Hook(self.d)
 
     def test_guess_methods(self):
         with self.cosmos1:

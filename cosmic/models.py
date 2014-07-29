@@ -5,7 +5,6 @@ from collections import OrderedDict
 from werkzeug.local import LocalStack, LocalProxy
 from flask.ctx import _AppCtxGlobals
 
-from .exceptions import ModelNotFound
 from .tools import GetterNamespace, validate_underscore_identifier
 
 from .types import *

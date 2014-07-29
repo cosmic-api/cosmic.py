@@ -95,7 +95,6 @@ class API(BasicWrapper):
     def assemble(datum):
         api = API(name=datum["name"], homepage=datum.get("homepage", None))
 
-        #api._actions.update(datum["actions"])
         for name, action in datum["actions"].items():
             action = Action(**action)
             api._actions[name] = action

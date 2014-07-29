@@ -129,14 +129,8 @@ def error_response(message, code):
 
 def error_to_response(err):
     is_remote = getattr(err, "remote", False)
-    if isinstance(err, HTTPException) and not is_remote:
-        if err.description != err.__class__.description:
-            text = err.description
-        else:
-            text = err.name
-        return error_response(text, err.code)
-    elif isinstance(err, SpecError):
-        return error_response(err.args[0], 400)
+    if isinstance(err, HTTPError) and not is_remote:
+        return error_response(err.args[1], err.args[0])
     elif isinstance(err, ValidationError):
         body = {
             "error": str(err),
@@ -202,7 +196,10 @@ class Endpoint(object):
             'headers': request.headers
         }
         if self.json_request:
-            req['json'] = get_payload_from_http_message(request)
+            try:
+                req['json'] = get_payload_from_http_message(request)
+            except SpecError as e:
+                raise HTTPError(400, e.args[0])
         else:
             req['data'] = request.data
 
