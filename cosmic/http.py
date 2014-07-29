@@ -128,15 +128,10 @@ def error_response(message, code):
     return make_response(body, code, {"Content-Type": "application/json"})
 
 def error_to_response(err):
-    is_remote = getattr(err, "remote", False)
-    if isinstance(err, HTTPError) and not is_remote:
-        return error_response(err.args[1], err.args[0])
+    if isinstance(err, HTTPError) and not err.remote:
+        return error_response(err.message, err.code)
     elif isinstance(err, ValidationError):
-        body = {
-            "error": str(err),
-            "is_validation_error": True
-        }
-        return make_response(json.dumps(body), 400, {"Content-Type": "application/json"})
+        return error_response(str(err), 400)
     else:
         return error_response("Internal Server Error", 500)
 
@@ -199,7 +194,7 @@ class Endpoint(object):
             try:
                 req['json'] = get_payload_from_http_message(request)
             except SpecError as e:
-                raise HTTPError(400, e.args[0])
+                raise HTTPError(code=400, message=e.args[0])
         else:
             req['data'] = request.data
 
@@ -207,7 +202,7 @@ class Endpoint(object):
 
         if ((self.request_must_be_empty == True and not is_empty) or
             (is_empty and self.request_can_be_empty == False)):
-            raise SpecError()
+            raise HTTPError(code=400, message="Invalid data")
 
         if self.query_schema != None:
             req['query'] = self.query_schema.from_multi_dict(request.args)
@@ -244,13 +239,11 @@ class Endpoint(object):
             headers=headers)
 
     def parse_response(self, res):
-        e = InternalServerError("Call returned an invalid value")
-        e.remote = True
 
         is_empty = res.text == ""
         if ((self.response_must_be_empty == True and not is_empty) or
                 (is_empty and self.response_can_be_empty == False)):
-            raise e
+            raise SpecError("Invalid response")
 
         r = {
             'code': res.status_code,
@@ -261,25 +254,17 @@ class Endpoint(object):
             try:
                 r['json'] = string_to_json(res.text)
             except ValueError:
-                raise e
+                raise SpecError("Unparseable response")
         else:
             r['data'] = res.text
 
         if r['code'] not in self.acceptable_response_codes:
             message = None
-            if 'json' in r and r['json'] and type(r['json'].datum) == dict:
-                if r['json'].datum.get('is_validation_error', False):
-                    raise ValidationError(r['json'].datum.get('error', ''))
-                if 'error' in r['json'].datum:
-                    message = r['json'].datum['error']
-            try:
-                abort(r['code'], message)
-            except Exception as e:
-                # Flag the exception to specify that it came from a remote
-                # API. If this exception bubbles up to the web layer, a
-                # generic 500 response will be returned
-                e.remote = True
-                raise
+            if 'json' in r and r['json'] and type(r['json'].datum) == dict and 'error' in r['json'].datum:
+                message = r['json'].datum['error']
+
+            raise HTTPError(code=r['code'], message=message, remote=True)
+
         return r
 
     def __call__(self, *args, **kwargs):

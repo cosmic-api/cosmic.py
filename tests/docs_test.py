@@ -230,7 +230,7 @@ class TestGuideSave(TestCase):
         places = self.remote_places
         with self.cosmos:
             city = places.models.City(name="moscow")
-            with self.assertRaisesRegexp(ValidationError, "must be capitalized"):
+            with self.assertRaisesRegexp(HTTPError, "must be capitalized"):
                 city.save()
 
 
@@ -368,5 +368,5 @@ class TestGuideAction(TestCase):
         self.assertEqual(self.remote_mathy.actions.divide(numerator=10, denominator=5), 2)
 
     def test_remote_action_validation_error(self):
-        with self.assertRaisesRegexp(ValidationError, "Invalid Integer"):
+        with self.assertRaisesRegexp(HTTPError, "Invalid Integer"):
             self.remote_mathy.actions.add([1, 2, True])
