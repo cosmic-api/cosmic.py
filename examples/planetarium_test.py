@@ -431,12 +431,16 @@ class TestPlanitarium(TestCase):
             self.assertEqual(res["status_code"], 204)
             self.assertEqual(res["data"], "")
 
-    def test_not_found(self):
+    def test_get_by_id_not_found(self):
         with self.cosmos1:
             with DBContext(planet_db):
                 res = self.d.get('/Sphere/4', headers={"X-Danish": "poppyseed"})
                 self.assertEqual(res.status_code, 404)
 
-
+    def test_delete_not_found(self):
+        with self.cosmos1:
+            with DBContext(planet_db):
+                res = self.d.delete('/Sphere/4', headers={"X-Danish": "poppyseed"})
+                self.assertEqual(res.status_code, 404)
 
 
