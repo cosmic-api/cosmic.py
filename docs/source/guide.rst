@@ -58,10 +58,10 @@ Let's serialize a trivial API. Note that :meth:`to_json` is a standard
 Teleport method::
 
     >>> from cosmic.api import API
-    >>> mathy = API("trivia", homepage="http://example.com")
-    >>> API.to_json(mathy)
+    >>> trivia = API("trivia", homepage="http://example.com")
+    >>> API.to_json(trivia)
     {
-        u'name': 'mathy',
+        u'name': 'trivia',
         u'homepage': 'http://example.com',
         u'actions': {u'map': {}, u'order': []},
         u'models': {u'map': {}, u'order': []}
@@ -79,11 +79,43 @@ for the API type:
 
 .. code:: python
 
-    Struct([
+    schema = Struct([
         required("name", String),
         optional("homepage", String),
-        required("actions", OrderedMap(Action)),
-        required("models", OrderedMap(Model))
+        required("actions", OrderedMap(Struct([
+            optional("accepts", Schema),
+            optional("returns", Schema),
+            optional("doc", String)
+        ]))),
+        required("models", OrderedMap(Struct([
+            required("properties", OrderedMap(Struct([
+                required(u"schema", Schema),
+                required(u"required", Boolean),
+                optional(u"doc", String)
+            ]))),
+            required("links", OrderedMap(Struct([
+                required(u"schema", Schema),
+                required(u"required", Boolean),
+                optional(u"doc", String)
+            ]))),
+            required("query_fields", OrderedMap(Struct([
+                required(u"schema", Schema),
+                required(u"required", Boolean),
+                optional(u"doc", String)
+            ]))),
+            required("methods", Struct([
+                required("get_by_id", Boolean),
+                required("get_list", Boolean),
+                required("create", Boolean),
+                required("update", Boolean),
+                required("delete", Boolean),
+            ])),
+            required("list_metadata", OrderedMap(Struct([
+                required(u"schema", Schema),
+                required(u"required", Boolean),
+                optional(u"doc", String)
+            ])))
+        ])))
     ])
 
 Client and Server
@@ -127,10 +159,10 @@ Actions are registered with the :meth:`~cosmic.API.action` decorator:
 
 .. code:: python
 
-    >>> from cosmic.types import Integer
-    >>> @mathy.action(accepts=Integer, returns=Integer)
-    ... def square(n):
-    ...     return n ** 2
+    >>> from cosmic.types import Array, Integer
+    >>> @mathy.action(accepts=Array(Integer), returns=Integer)
+    ... def add(numbers):
+    ...     return sum(numbers)
     ... 
     >>>
 
@@ -138,21 +170,21 @@ The function used in the action is perfectly usable:
 
 .. code:: python
 
-    >>> square(2)
-    4
+    >>> sum([1, 2, 3])
+    6
 
 But now there is another way of accessing it:
 
 .. code:: python
 
-    >>> mathy.actions.square(2)
-    4
+    >>> mathy.actions.sum([1, 2, 3])
+    6
 
 And from the client, it is accessed identically::
 
     >>> mathy = API.load('http://localhost:5000/spec.json')
-    >>> mathy.actions.square(2)
-    4
+    >>> mathy.actions.add([1, 2, 3])
+    6
 
 Now that the action has been registered, it becomes part of the spec:
 
@@ -204,35 +236,9 @@ Models as Data Types
 --------------------
 
 Models are data type definitions attached to an API, they use Teleport schemas
-to describe their data. In the API spec, a model is described with the following
-schema:
+to describe their data.
 
-.. code:: python
-
-    Struct([
-        optional(u"data_schema", Schema),
-        required(u"links", OrderedMap(Struct([
-            required(u"schema", Schema),
-            required(u"required", Boolean),
-            optional(u"doc", String)
-        ]))),
-        required(u"query_fields", OrderedMap(Struct([
-            required(u"schema", Schema),
-            required(u"required", Boolean),
-            optional(u"doc", String)
-        ])))
-    ])
-
-The first parameter, *data_schema* is the type definition that describes the
-model data. If your model represents a database table, the *data_schema* could
-be a struct with parameters that correspond to the table's columns. Currently,
-Cosmic expects it to be a struct, but this restriction may be lifted later.
-
-The *links* parameter describes relationships between models. The last
-parameter, *query_fields* is used to describe how a collection of objects can
-be filtered. Both of these are used by Cosmic to create REST endpoints.
-
-Before we get to linking and filtering, let's take a look at the model object:
+Let's take a look at the model object:
 
 .. code:: python
 
@@ -254,45 +260,6 @@ As you can see, a model class should inherit from
 must use the :meth:`~cosmic.api.API.model` decorator on it. Once a model has 
 been registered with an API, it becomes accessible as part of the
 :data:`~cosmic.api.API.models` namespace, for example ``places.models.Address``.
-
-If you try to serialize this API, you will see the model made it into the spec:
-
-.. code:: python
-
-    >>> API.to_json(places)
-    {
-        u'name': u'places',
-        u'actions': { u'map': {}, u'order': [] },
-        u"models": {
-            u"map": {
-                u"Address": {
-                    u"data_schema": {
-                        u'type': u"Struct",
-                        u"param": {
-                            u"map": {
-                                u"number": {
-                                    u"required": True,
-                                    u"schema": {u"type": u"Integer"}
-                                },
-                                u"street": {
-                                    u"required": True,
-                                    u"schema": {u"type": u"String"}
-                                },
-                                u"city": {
-                                    u"required": False,
-                                    u"schema": {u"type": u"String"}
-                                }
-                            },
-                            u"order": [u"number", u"street", u"city"]
-                        }
-                    },
-                    u"links": { u"map": {}, u"order": [] },
-                    u"query_fields": { u"map": {}, u"order": [] }
-                }
-            },
-            u"order": [u"Address"]
-        }
-    }
 
 There is a good reason model definitions are in the form of classes.
 In Cosmic, the objects that the model defines are represented by actual
@@ -400,6 +367,7 @@ parameter (an id is always a string) and returns a model class instance
 
     @places.model
     class City(BaseModel):
+        methods = ["get_by_id"]
         properties = [
             optional(u"name", String)
         ]
@@ -442,6 +410,7 @@ distinct HTTP endpoints.
 
     @places.model
     class City(BaseModel):
+        methods = ['create', 'update']
         properties = [
             optional(u"name", String)
         ]
@@ -512,6 +481,7 @@ returns nothing.
 
     @places.model
     class City(BaseModel):
+        methods = ['get_by_id', 'delete']
         properties = [
             optional(u"name", String)
         ]
@@ -555,6 +525,7 @@ serialize them into a URL query string with the help of
 
     @places.model
     class City(BaseModel):
+        methods = ['get_list']
         properties = [
             optional(u"name", String)
         ]
@@ -597,6 +568,7 @@ by including the :data:`list_metadata` attribute.
 
     @places.model
     class City(BaseModel):
+        methods = ['get_list']
         properties = [
             optional(u"name", String)
         ]
@@ -677,7 +649,7 @@ that needs it.
     class CustomClientHook(ClientHook):
 
         def build_request(self, endpoint, *args, **kwargs):
-            request = super(Hook, self).build_request(endpoint, *args, **kwargs)
+            request = super(ClientHook, self).build_request(endpoint, *args, **kwargs)
             request.headers["Authorization"] = "secret"
             return request
 

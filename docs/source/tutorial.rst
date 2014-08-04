@@ -173,6 +173,7 @@ Let's augment the model we defined above to allow Cosmic to expose it::
 
     @planetarium.model
     class Sphere(BaseModel):
+        methods = ['get_by_id']
         properties = [
             required("name", String)
         ]

@@ -56,10 +56,10 @@ Exceptions
 
 .. automodule:: cosmic.exceptions
 
-.. autoclass:: cosmic.exceptions.ModelNotFound
+.. autoclass:: cosmic.exceptions.SpecError
    :members:
 
-.. autoclass:: cosmic.exceptions.SpecError
+.. autoclass:: cosmic.exceptions.HTTPError
    :members:
 
 Tools and Helpers

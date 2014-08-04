@@ -81,7 +81,7 @@ def assert_is_compatible(schema, required, optional):
     """
     # No arguments
     if len(required + optional) == 0:
-        raise SpecError("Action needs to accept arguments")
+        raise SpecError("Function needs to accept arguments")
     # One argument can accept anything
     if len(required + optional) == 1:
         return

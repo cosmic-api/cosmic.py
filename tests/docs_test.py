@@ -9,6 +9,24 @@ from cosmic.api import API
 
 from cosmic.types import *
 
+class TestGuideWhatIsAPI(TestCase):
+    maxDiff = None
+
+    def setUp(self):
+        self.cosmos = Cosmos()
+        with self.cosmos:
+            self.mathy = API("trivia", homepage="http://example.com")
+
+    def test_to_json(self):
+        with self.cosmos:
+            self.assertEqual(API.to_json(self.mathy), {
+                u'name': 'trivia',
+                u'homepage': 'http://example.com',
+                u'actions': {u'map': {}, u'order': []},
+                u'models': {u'map': {}, u'order': []}
+            })
+
+
 class TestGuideModels(TestCase):
     maxDiff = None
 
