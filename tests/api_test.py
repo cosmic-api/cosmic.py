@@ -265,19 +265,3 @@ class TestAPI(TestCase):
     def test_schema(self):
         API.from_json(API.to_json(self.cookbook))
 
-
-class TestAuthentication(TestCase):
-
-    def setUp(self):
-        planetarium = API("planetarium")
-
-        @planetarium.authenticate
-        def authenticate(headers):
-            danish = headers.get('X-Danish', None)
-            if danish != "poppyseed":
-                abort(401)
-
-        @planetarium.action(accepts=Integer, returns=String)
-        def hello(sphere):
-            return "Hello, %s" % sphere.name
-
