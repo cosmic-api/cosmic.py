@@ -438,7 +438,7 @@ class GetByIdEndpoint(Endpoint):
     """
     :Request:
         :Method: ``GET``
-        :URL: ``/models/<model>/<id>`` where *model* is the model name.
+        :URL: ``/<model>/<id>`` where *model* is the model name.
     :Response:
         :Code: ``200`` or ``404`` if object is not found.
         :Body: The object as a JSON-encoded string or empty if the object
@@ -487,7 +487,7 @@ class UpdateEndpoint(Endpoint):
     """
     :Request:
         :Method: ``PUT``
-        :URL: ``/models/<model>/<id>`` where *model* is the model name.
+        :URL: ``/<model>/<id>`` where *model* is the model name.
         :Body: New model representation as a JSON-encoded string.
         :ContentType: ``application/json``
     :Response:
@@ -542,7 +542,7 @@ class CreateEndpoint(Endpoint):
     """
     :Request:
         :Method: ``POST``
-        :URL: ``/models/<model>`` where *model* is the model name.
+        :URL: ``/<model>`` where *model* is the model name.
         :Body: New model representation as a JSON-encoded string.
         :ContentType: ``application/json``
     :Response:
@@ -592,7 +592,7 @@ class DeleteEndpoint(Endpoint):
     """
     :Request:
         :Method: ``DELETE``
-        :URL: ``/models/<model>/<id>`` where *model* is the model name.
+        :URL: ``/<model>/<id>`` where *model* is the model name.
     :Response:
         :Code: ``204``
         :Body: Empty.
@@ -634,7 +634,7 @@ class GetListEndpoint(Endpoint):
     """
     :Request:
         :Method: ``GET``
-        :URL: ``/models/<model>`` where *model* is the model name.
+        :URL: ``/<model>`` where *model* is the model name.
         :Query: Query parameters serialized by the model's *query_schema*
     :Response:
         :Code: ``200``
