@@ -48,17 +48,14 @@ cookbook_spec = {
     u"models": {
         u"map": {
             u"Recipe": {
-                u"data_schema": {
-                    u'type': u"Struct",
-                    u"param": {
-                        u"map": {
-                            u"name": {
-                                u"required": True,
-                                u"schema": {u"type": u"String"}
-                            },
+                u"properties": {
+                    u"map": {
+                        u"name": {
+                            u"required": True,
+                            u"schema": {u"type": u"String"}
                         },
-                        u"order": [u"name"]
-                    }
+                    },
+                    u"order": [u"name"]
                 },
                 u"links": {
                     u"map": {},
@@ -81,17 +78,14 @@ cookbook_spec = {
                 },
             },
             u"Author": {
-                u"data_schema": {
-                    u'type': u"Struct",
-                    u"param": {
-                        u"map": {
-                            u"is_gordon_ramsay": {
-                                u"required": True,
-                                u"schema": {u"type": u"Boolean"}
-                            },
+                u"properties": {
+                    u"map": {
+                        u"is_gordon_ramsay": {
+                            u"required": True,
+                            u"schema": {u"type": u"Boolean"}
                         },
-                        u"order": [u"is_gordon_ramsay"]
-                    }
+                    },
+                    u"order": [u"is_gordon_ramsay"]
                 },
                 u"links": {
                     u"map": {},

@@ -36,25 +36,22 @@ class TestGuideModels(TestCase):
                 u"models": {
                     u"map": {
                         u"Address": {
-                            u"data_schema": {
-                                u'type': u"Struct",
-                                u"param": {
-                                    u"map": {
-                                        u"number": {
-                                            u"required": True,
-                                            u"schema": {u"type": u"Integer"}
-                                        },
-                                        u"street": {
-                                            u"required": True,
-                                            u"schema": {u"type": u"String"}
-                                        },
-                                        u"city": {
-                                            u"required": False,
-                                            u"schema": {u"type": u"String"}
-                                        }
+                            u"properties": {
+                                u"map": {
+                                    u"number": {
+                                        u"required": True,
+                                        u"schema": {u"type": u"Integer"}
                                     },
-                                    u"order": [u"number", u"street", u"city"]
-                                }
+                                    u"street": {
+                                        u"required": True,
+                                        u"schema": {u"type": u"String"}
+                                    },
+                                    u"city": {
+                                        u"required": False,
+                                        u"schema": {u"type": u"String"}
+                                    }
+                                },
+                                u"order": [u"number", u"street", u"city"]
                             },
                             u"links": { u"map": {}, u"order": [] },
                             u"query_fields": { u"map": {}, u"order": [] },

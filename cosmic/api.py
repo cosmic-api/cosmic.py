@@ -50,7 +50,11 @@ class API(BasicWrapper):
             optional("doc", String)
         ]))),
         required("models", OrderedMap(Struct([
-            optional("data_schema", Schema),
+            required("properties", OrderedMap(Struct([
+                required(u"schema", Schema),
+                required(u"required", Boolean),
+                optional(u"doc", String)
+            ]))),
             required("links", OrderedMap(Struct([
                 required(u"schema", Schema),
                 required(u"required", Boolean),
@@ -135,7 +139,7 @@ class API(BasicWrapper):
             M.__name__ = str(name)
 
             M.api = api
-            M.properties = modeldef["data_schema"].param.items()
+            M.properties = modeldef["properties"].items()
             M.query_fields = modeldef["query_fields"].items()
             M.list_metadata = modeldef["list_metadata"].items()
             M.links = modeldef["links"].items()
@@ -159,7 +163,7 @@ class API(BasicWrapper):
 
         for model_cls in datum._models.values():
             models[unicode(model_cls.__name__)] = {
-                "data_schema": Struct(model_cls.properties),
+                "properties": OrderedDict(model_cls.properties),
                 "links": OrderedDict(model_cls.links),
                 "query_fields": OrderedDict(model_cls.query_fields),
                 "list_metadata": OrderedDict(model_cls.list_metadata),

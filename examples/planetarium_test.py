@@ -21,17 +21,14 @@ json_spec = {
     u"models": {
         u"map": {
             u"Sphere": {
-                u"data_schema": {
-                    u'type': u"Struct",
-                    u"param": {
-                        u"map": {
-                            u"name": {
-                                u"required": True, 
-                                u"schema": {u"type": u"String"}
-                            },
+                u"properties": {
+                    u"map": {
+                        u"name": {
+                            u"required": True, 
+                            u"schema": {u"type": u"String"}
                         },
-                        u"order": [u"name"]
-                    }
+                    },
+                    u"order": [u"name"]
                 },
                 u"list_metadata": {
                     u"map": {
