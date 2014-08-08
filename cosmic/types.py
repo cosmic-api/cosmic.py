@@ -12,13 +12,16 @@ def getter(name):
     from .models import M
     if name == "cosmic.API":
         return API
-    if name == "cosmic.Model":
+    elif name == "cosmic.Model":
         return Model
-    if name == "cosmic.Link":
+    elif name == "cosmic.Link":
         return Link
+    elif name == "cosmic.Representation":
+        return Representation
     elif '.' in name:
         return M(name)
-    raise KeyError()
+    else:
+        raise KeyError()
 
 globals().update(standard_types(getter))
 
@@ -61,6 +64,33 @@ class Link(ParametrizedWrapper):
 
     def disassemble(self, datum):
         return {"href": datum.href}
+
+
+class Representation(ParametrizedWrapper):
+    type_name = "cosmic.Representation"
+    param_schema = Model
+
+    def __init__(self, param):
+        self.param = model_cls = param
+
+        links = [
+            ("self", {
+                "required": False,
+                "schema": Link(model_cls)
+            })
+        ]
+        for name, link in model_cls.links:
+            links.append((name, {
+                "required": link["required"],
+                "schema": Link(link["model"])
+            }))
+        props = [
+            optional("_links", Struct(links)),
+        ]
+        for name, field in model_cls.properties:
+            props.append((name, field))
+
+        self.schema = Struct(props)
 
 
 

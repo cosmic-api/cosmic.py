@@ -15,38 +15,17 @@ from teleport import BasicWrapper, ParametrizedWrapper
 def prep_model(model_cls):
     from .http import CreateEndpoint, GetListEndpoint, GetByIdEndpoint, UpdateEndpoint, DeleteEndpoint
 
-    link_schema = Struct([
-        required("href", String)
-    ])
-    links = [
-        ("self", {
-            "required": False,
-            "schema": Link(model_cls)
-        })
-    ]
-    link_names = set()
-    field_names = set()
-    for name, link in model_cls.links:
-        validate_underscore_identifier(name)
-        link_names.add(name)
-        links.append((name, {
-            "required": link["required"],
-            "schema": Link(link["model"])
-        }))
-    props = [
-        optional("_links", Struct(links)),
-    ]
-    for name, field in model_cls.properties:
-        validate_underscore_identifier(name)
-        field_names.add(name)
-        props.append((name, field))
+    link_names = set(dict(model_cls.links).keys())
+    field_names = set(dict(model_cls.properties).keys())
+
     if link_names & field_names:
         raise SpecError("Model cannot contain a field and link with the same name: %s" % model_cls.__name__)
+
+    for name in link_names | field_names:
+        validate_underscore_identifier(name)
+
     if 'id' in link_names | field_names:
         raise SpecError("'id' is a reserved name.")
-
-    if model_cls.methods is None:
-        model_cls.methods = []
 
     model_cls._list_poster = CreateEndpoint(model_cls)
     model_cls._list_getter = GetListEndpoint(model_cls)
@@ -54,14 +33,14 @@ def prep_model(model_cls):
     model_cls._model_putter = UpdateEndpoint(model_cls)
     model_cls._model_deleter = DeleteEndpoint(model_cls)
 
-    model_cls.schema = Struct(props)
+    model_cls.schema = Representation(model_cls)
 
 
 
 
 class BaseModel(BasicWrapper):
     """A data type definition attached to an API."""
-    methods = None
+    methods = []
     query_fields = []
     list_metadata = []
     links = []
@@ -85,23 +64,14 @@ class BaseModel(BasicWrapper):
         rep = {}
         links = datum.pop("_links", {})
         for name in OrderedDict(cls.links).keys():
-            if name in links:
-                rep[name] = links[name]
-            else:
-                rep[name] = None
+            rep[name] = links.get(name, None)
         for name in OrderedDict(cls.properties).keys():
-            if name in datum:
-                rep[name] = datum[name]
-            else:
-                rep[name] = None
-        if "self" in links:
-            id = links["self"].id
-        else:
-            id = None
+            rep[name] = datum.get(name, None)
         cls.validate(rep)
 
         inst._remote_representation = rep
-        inst.id = id
+        if "self" in links:
+            inst.id = links["self"].id
 
         return inst
 
