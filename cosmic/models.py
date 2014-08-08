@@ -9,11 +9,13 @@ from .tools import GetterNamespace, validate_underscore_identifier
 
 from .types import *
 
-from teleport import BasicWrapper
+from teleport import BasicWrapper, ParametrizedWrapper
 
 
 def prep_model(model_cls):
     from .http import CreateEndpoint, GetListEndpoint, GetByIdEndpoint, UpdateEndpoint, DeleteEndpoint
+
+    full_name = "{}.{}".format(model_cls.api.name, model_cls.__name__)
 
     link_schema = Struct([
         required("href", String)
@@ -21,7 +23,7 @@ def prep_model(model_cls):
     links = [
         ("self", {
             "required": False,
-            "schema": link_schema
+            "schema": Link(full_name)
         })
     ]
     link_names = set()
@@ -55,6 +57,8 @@ def prep_model(model_cls):
     model_cls._model_deleter = DeleteEndpoint(model_cls)
 
     model_cls.schema = Struct(props)
+
+
 
 
 class BaseModel(BasicWrapper):
@@ -96,7 +100,7 @@ class BaseModel(BasicWrapper):
             else:
                 rep[name] = None
         if "self" in links:
-            id = cls.id_from_url(links["self"]["href"])
+            id = links["self"].id
         else:
             id = None
         cls.validate(rep)
@@ -117,7 +121,7 @@ class BaseModel(BasicWrapper):
     def disassemble(cls, datum):
         links = OrderedDict()
         if datum.id:
-            links["self"] = {"href": datum.href}
+            links["self"] = datum
         for name, link in OrderedDict(cls.links).items():
             value = datum._get_item(name)
             if value != None:
