@@ -15,15 +15,13 @@ from teleport import BasicWrapper, ParametrizedWrapper
 def prep_model(model_cls):
     from .http import CreateEndpoint, GetListEndpoint, GetByIdEndpoint, UpdateEndpoint, DeleteEndpoint
 
-    full_name = "{}.{}".format(model_cls.api.name, model_cls.__name__)
-
     link_schema = Struct([
         required("href", String)
     ])
     links = [
         ("self", {
             "required": False,
-            "schema": Link(full_name)
+            "schema": Link(model_cls)
         })
     ]
     link_names = set()
@@ -33,7 +31,7 @@ def prep_model(model_cls):
         link_names.add(name)
         links.append((name, {
             "required": link["required"],
-            "schema": link_schema
+            "schema": Link(link["schema"])
         }))
     props = [
         optional("_links", Struct(links)),
@@ -88,10 +86,7 @@ class BaseModel(BasicWrapper):
         links = datum.pop("_links", {})
         for name in OrderedDict(cls.links).keys():
             if name in links:
-                url = links[name]["href"]
-                model_cls = OrderedDict(cls.links)[name]["schema"]
-                id = model_cls.id_from_url(url)
-                rep[name] = model_cls(id=id)
+                rep[name] = links[name]
             else:
                 rep[name] = None
         for name in OrderedDict(cls.properties).keys():
@@ -125,7 +120,7 @@ class BaseModel(BasicWrapper):
         for name, link in OrderedDict(cls.links).items():
             value = datum._get_item(name)
             if value != None:
-                links[name] = {"href": value.href}
+                links[name] = value
         d = {}
         if links:
             d["_links"] = links

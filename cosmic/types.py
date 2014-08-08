@@ -12,6 +12,8 @@ def getter(name):
     from .models import M
     if name == "cosmic.API":
         return API
+    if name == "cosmic.Model":
+        return Model
     if name == "cosmic.Link":
         return Link
     elif '.' in name:
@@ -21,20 +23,31 @@ def getter(name):
 globals().update(standard_types(getter))
 
 
+class Model(BasicWrapper):
+    schema = String
+
+    @classmethod
+    def assemble(cls, datum):
+        from .models import M
+        return M(datum)
+
+    @classmethod
+    def disassemble(cls, datum):
+        return "{}.{}".format(datum.api.name, datum.__name__)
+
+
 class Link(ParametrizedWrapper):
-    param_schema = String
+    param_schema = Model
 
     def __init__(self, param):
-        from .models import M
         self.param = param
-        self.model_cls = M(param)
         self.schema = Struct([
             required(u"href", String)
         ])
 
     def assemble(self, datum):
-        id = self.model_cls.id_from_url(datum['href'])
-        return self.model_cls(id=id)
+        id = self.param.id_from_url(datum['href'])
+        return self.param(id=id)
 
     def disassemble(self, datum):
         return {"href": datum.href}
