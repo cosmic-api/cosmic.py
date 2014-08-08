@@ -32,6 +32,7 @@ def optional_link(name, model, doc=None):
 
 
 class Model(BasicWrapper):
+    type_name = "cosmic.Model"
     schema = String
 
     @classmethod
@@ -45,6 +46,7 @@ class Model(BasicWrapper):
 
 
 class Link(ParametrizedWrapper):
+    type_name = "cosmic.Link"
     param_schema = Model
 
     def __init__(self, param):
