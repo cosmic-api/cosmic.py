@@ -31,7 +31,7 @@ def prep_model(model_cls):
         link_names.add(name)
         links.append((name, {
             "required": link["required"],
-            "schema": Link(link["schema"])
+            "schema": Link(link["model"])
         }))
     props = [
         optional("_links", Struct(links)),
@@ -186,11 +186,12 @@ class Cosmos(object):
 
 _ctx_stack = LocalStack()
 
+
 # Teleport reads param_schema, we don't want that to trigger local resolution
 class LocalProxyHack(LocalProxy):
     param_schema = None
 
+
 def M(name):
     from cosmic import cosmos
-    return LocalProxyHack(lambda: cosmos.M(name))
-
+    return LocalProxyHack(lambda: cosmos.M(name)) 

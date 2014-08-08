@@ -60,7 +60,7 @@ class Sphere(DBModel):
         required("name", String)
     ]
     links = [
-        optional("revolves_around", M('planetarium.Sphere'))
+        optional_link("revolves_around", M('planetarium.Sphere'))
     ]
     query_fields = [
         optional("name", String),

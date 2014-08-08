@@ -23,6 +23,14 @@ def getter(name):
 globals().update(standard_types(getter))
 
 
+def required_link(name, model, doc=None):
+    return (name, {"model": model, "required": True, "doc": doc})
+
+def optional_link(name, model, doc=None):
+    return (name, {"model": model, "required": False, "doc": doc})
+
+
+
 class Model(BasicWrapper):
     schema = String
 
@@ -33,7 +41,7 @@ class Model(BasicWrapper):
 
     @classmethod
     def disassemble(cls, datum):
-        return "{}.{}".format(datum.api.name, datum.__name__)
+        return datum.type_name
 
 
 class Link(ParametrizedWrapper):

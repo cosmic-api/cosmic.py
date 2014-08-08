@@ -56,7 +56,7 @@ json_spec = {
                 u"links": {
                     u"map": {
                         u"revolves_around": {
-                            u"schema": {u"type": u"planetarium.Sphere"},
+                            u"model": u"planetarium.Sphere",
                             u"required": False
                         }
                     },

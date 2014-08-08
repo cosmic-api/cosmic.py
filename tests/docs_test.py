@@ -129,7 +129,7 @@ class TestGuideModelLinks(TestCase):
                     required(u"street", String),
                 ]
                 links = [
-                    required(u"city", City)
+                    required_link(u"city", City)
                 ]
 
         self.cosmos2 = Cosmos()

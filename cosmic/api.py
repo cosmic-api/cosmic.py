@@ -56,7 +56,7 @@ class API(BasicWrapper):
                 optional(u"doc", String)
             ]))),
             required("links", OrderedMap(Struct([
-                required(u"schema", Schema),
+                required(u"model", Model),
                 required(u"required", Boolean),
                 optional(u"doc", String)
             ]))),
