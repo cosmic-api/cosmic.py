@@ -34,7 +34,7 @@ def prep_model(model_cls):
     model_cls._model_deleter = DeleteEndpoint(model_cls)
 
     model_cls.schema = Representation(model_cls)
-    # Make name visible through LocalProxyHack
+    # Make name visible through LocalProxy
     model_cls._name = model_cls.__name__
 
 
@@ -157,11 +157,7 @@ class Cosmos(object):
 _ctx_stack = LocalStack()
 
 
-# Teleport reads param_schema, we don't want that to trigger local resolution
-class LocalProxyHack(LocalProxy):
-    param_schema = None
-
 
 def M(name):
     from cosmic import cosmos
-    return LocalProxyHack(lambda: cosmos.M(name)) 
+    return LocalProxy(lambda: cosmos.M(name)) 
