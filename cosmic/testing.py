@@ -61,6 +61,7 @@ class DBModel(BaseModel):
 
         return id, inst._representation
 
-    def delete(self):
-        db[self.__class__.__name__][int(self.id)] = None
+    @classmethod
+    def delete(cls, id):
+        db[cls.__name__][int(id)] = None
 

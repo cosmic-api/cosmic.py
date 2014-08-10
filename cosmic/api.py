@@ -120,8 +120,9 @@ class API(BasicWrapper):
                 def update(cls, id, **rep):
                     return cls._model_putter(id, **rep)
 
-                def delete(self):
-                    return self.__class__._model_deleter(self)
+                @classmethod
+                def delete(cls, id):
+                    return cls._model_deleter(id)
 
                 @classmethod
                 def get_list(cls, **query):

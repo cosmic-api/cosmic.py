@@ -286,8 +286,9 @@ class TestGuideDelete(TestCase):
                     else:
                         return None
 
-                def delete(self):
-                    del cities[self.id]
+                @classmethod
+                def delete(cls, id):
+                    del cities[id]
 
             cities = {
                 "0": City(name="Toronto", id="0"),
@@ -298,7 +299,7 @@ class TestGuideDelete(TestCase):
         places = self.places
         with self.cosmos:
             city = places.models.City.get_by_id("0")
-            city.delete()
+            places.models.City.delete(city.id)
             self.assertEqual(places.models.City.get_by_id("0") is None, True)
 
 

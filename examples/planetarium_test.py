@@ -379,7 +379,6 @@ class TestPlanitarium(TestCase):
 
             self.assertEqual(id, "3")
 
-
             return
 
             pluto = Sphere(
@@ -418,7 +417,7 @@ class TestPlanitarium(TestCase):
         with DBContext(c):
             Sphere = M('planetarium.Sphere')
             earth = Sphere.get_by_id("1")
-            earth.delete()
+            Sphere.delete(earth.id)
             self.assertEqual(c['Sphere'][1], None)
 
     def test_local_delete(self):

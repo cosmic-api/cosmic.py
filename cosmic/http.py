@@ -609,19 +609,20 @@ class DeleteEndpoint(Endpoint):
         self.url = "/%s/<id>" % self.model_cls.__name__
         self.endpoint = "doc_delete_%s" % self.model_cls.__name__
 
-    def handler(self, inst):
-        inst.delete()
+    def handler(self, id):
+        self.model_cls.delete(id)
 
-    def build_request(self, inst):
+    def build_request(self, id):
         return super(DeleteEndpoint, self).build_request(
-            url_args={'id': inst.id})
+            url_args={'id': id})
 
     def parse_request(self, req, **url_args):
         req = super(DeleteEndpoint, self).parse_request(req, **url_args)
-        inst = self.model_cls.get_by_id(req['url_args']['id'])
-        if inst == None:
+        id = req['url_args']['id']
+        # TODO: delete method should be responsible for raising NotFound
+        if self.model_cls.get_by_id(id) == None:
             raise NotFound
-        return {'inst': inst}
+        return {'id': id}
 
     def parse_response(self, res):
         return
