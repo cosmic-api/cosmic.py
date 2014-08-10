@@ -372,6 +372,16 @@ class TestPlanitarium(TestCase):
         c = copy.deepcopy(planet_db)
         with DBContext(c):
             Sphere = M('planetarium.Sphere')
+
+            (id, rep) = Sphere.create(
+                name="Pluto",
+                revolves_around=Sphere(id="0"))
+
+            self.assertEqual(id, "3")
+
+
+            return
+
             pluto = Sphere(
                 name="Pluto",
                 revolves_around=Sphere(id="0"))

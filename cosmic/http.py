@@ -509,32 +509,30 @@ class UpdateEndpoint(Endpoint):
         self.url = "/%s/<id>" % self.model_cls.__name__
         self.endpoint = "doc_put_%s" % self.model_cls.__name__
 
-    def handler(self, id, inst):
+    def handler(self, id, **patch):
         if self.model_cls.get_by_id(id) == None:
             raise NotFound
-        assert inst.id == id
-        inst.save()
-        return inst
+        self.model_cls.validate(patch)
+        return self.model_cls.update(id, **patch)
 
-    def build_request(self, id, inst):
+    def build_request(self, id, **patch):
         return super(UpdateEndpoint, self).build_request(
-            json=Box(self.model_cls.to_json(inst)),
+            json=Box(Representation(self.model_cls).to_json((id, patch))),
             url_args={'id': id})
 
     def parse_request(self, req, **url_args):
         req = super(UpdateEndpoint, self).parse_request(req, **url_args)
-        return {
-            'id': req['url_args']['id'],
-            'inst': self.model_cls.from_json(req['json'].datum)
-        }
+        id, rep = Representation(self.model_cls).from_json(req['json'].datum)
+        rep['id'] = req['url_args']['id']
+        return rep
 
-    def build_response(self, inst):
-        body = json.dumps(self.model_cls.to_json(inst))
+    def build_response(self, tup):
+        body = json.dumps(Representation(self.model_cls).to_json(tup))
         return make_response(body, 200, {"Content-Type": "application/json"})
 
     def parse_response(self, res):
         res = super(UpdateEndpoint, self).parse_response(res)
-        return self.model_cls.from_json(res['json'].datum)
+        return Representation(self.model_cls).from_json(res['json'].datum)
 
 
 
@@ -564,26 +562,28 @@ class CreateEndpoint(Endpoint):
         self.url = "/%s" % self.model_cls.__name__
         self.endpoint = "list_post_%s" % self.model_cls.__name__
 
-    def handler(self, inst):
-        inst.save()
-        return inst
+    def handler(self, **patch):
+        self.model_cls.validate(patch)
+        return self.model_cls.create(**patch)
 
-    def build_request(self, inst):
+    def build_request(self, **patch):
         return super(CreateEndpoint, self).build_request(
-            json=Box(self.model_cls.to_json(inst)))
+            json=Box(Representation(self.model_cls).to_json((None, patch))))
 
     def parse_request(self, req, **url_args):
         req = super(CreateEndpoint, self).parse_request(req, **url_args)
-        return {'inst': self.model_cls.from_json(req['json'].datum)}
+        id, rep = Representation(self.model_cls).from_json(req['json'].datum)
+        return rep
 
     def parse_response(self, res):
         res = super(CreateEndpoint, self).parse_response(res)
-        return self.model_cls.from_json(res['json'].datum)
+        return Representation(self.model_cls).from_json(res['json'].datum)
 
-    def build_response(self, inst):
-        body = json.dumps(self.model_cls.to_json(inst))
+    def build_response(self, tup):
+        body = json.dumps(Representation(self.model_cls).to_json(tup))
+        href = "/%s/%s" % (self.model_cls.__name__, tup[0])
         return make_response(body, 201, {
-            "Location": inst.href,
+            "Location": href,
             "Content-Type": "application/json"
         })
 

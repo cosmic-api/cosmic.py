@@ -211,14 +211,20 @@ class TestGuideSave(TestCase):
 
                 @classmethod
                 def validate(cls, datum):
+                    #import pdb; pdb.set_trace()
                     if datum[u"name"][0].islower():
                         raise ValidationError("Name must be capitalized", datum["name"])
 
-                def save(self):
-                    if self.id is None:
-                        # Create new id
-                        self.id = str(len(cities))
-                    cities[self.id] = self
+                @classmethod
+                def create(cls, **patch):
+                    id = str(len(cities))
+                    cities[id] = cls(id=id, **patch)
+                    return id, cities[id]._representation
+
+                @classmethod
+                def update(cls, id, **patch):
+                    cities[id] = cls(id=id, **patch)
+                    return id, cities[id]._representation
 
         self.cosmos2 = Cosmos()
         with self.cosmos2:
@@ -233,7 +239,7 @@ class TestGuideSave(TestCase):
             "1": City(name="San Francisco", id="1"),
         }
 
-    def test_save(self):
+    def test_save_good(self):
         places = self.places
         with self.cosmos:
             city = places.models.City(name="Moscow")
@@ -241,10 +247,15 @@ class TestGuideSave(TestCase):
             city.save()
             self.assertEqual(city.id, "2")
 
-    def test_save(self):
-        places = self.remote_places
+    def test_local_save_validation_error(self):
         with self.cosmos:
-            city = places.models.City(name="moscow")
+            city = self.places.models.City(name="moscow")
+            with self.assertRaisesRegexp(ValidationError, "must be capitalized"):
+                city.save()
+
+    def test_remote_save_validation_error(self):
+        with self.cosmos2:
+            city = self.remote_places.models.City(name="moscow")
             with self.assertRaisesRegexp(HTTPError, "must be capitalized"):
                 city.save()
 

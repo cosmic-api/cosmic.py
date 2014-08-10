@@ -47,11 +47,15 @@ class BaseModel(BasicWrapper):
 
     def __init__(self, **kwargs):
         self.id = kwargs.pop('id', None)
-        if kwargs:
-            self._remote_representation = kwargs
+
+        if self.id is None:
+            self._representation = None
+            self._patch = kwargs
         else:
-            self._remote_representation = None
-        self._local_representation = {}
+            if not kwargs:
+                kwargs = None
+            self._representation = kwargs
+            self._patch = {}
 
     @property
     def href(self):
@@ -63,11 +67,38 @@ class BaseModel(BasicWrapper):
 
         inst = cls()
         inst.id = id
-        inst._remote_representation = rep
+        inst._representation = rep
 
         cls.validate(rep)
 
         return inst
+
+    def get_patch(self):
+        ret = {}
+        if self._representation is not None:
+            ret.update(self._representation)
+        ret.update(self._patch)
+        return ret
+
+    def save(self):
+        self.__class__.validate(self.get_patch())
+        if self.id:
+            (id, rep) = self.__class__.update(self.id, **self.get_patch())
+            self._representation = rep
+            self._patch = {}
+        else:
+            (id, rep) = self.__class__.create(**self.get_patch())
+            self.id = id
+            self._representation = rep
+            self._patch = {}
+
+    @classmethod
+    def create(cls, **rep):
+        raise NotImplementedError()
+
+    @classmethod
+    def update(cls, id, **rep):
+        raise NotImplementedError()
 
     @classmethod
     def id_from_url(cls, url):
@@ -91,18 +122,20 @@ class BaseModel(BasicWrapper):
         return (datum.id, rep)
 
     def _get_item(self, name):
-        if name in self._local_representation:
-            return self._local_representation[name]
-        if self._remote_representation is None:
+        if name in self._patch:
+            return self._patch[name]
+        if self._representation is None:
+            if self.id is None:
+                return None
             i = self.__class__.get_by_id(self.id)
-            self._remote_representation = i._remote_representation
-        return self._remote_representation.get(name, None)
+            self._representation = i._representation
+        return self._representation.get(name, None)
 
     def _set_item(self, name, value):
         if value is not None:
-            self._local_representation[name] = value
+            self._patch[name] = value
         else:
-            del self._local_representation[name]
+            del self._patch[name]
 
     def __getattr__(self, name):
         if name in OrderedDict(self.properties + self.links).keys():

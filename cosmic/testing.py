@@ -43,13 +43,23 @@ class DBModel(BaseModel):
                     ret.append(cls.from_json(row))
         return ret
 
-    def save(self):
-        table = db[self.__class__.__name__]
-        if not self.id:
-            self.id = str(len(table))
-            table.append(self.__class__.to_json(self))
-        else:
-            table[int(self.id)] = self.__class__.to_json(self)
+    @classmethod
+    def create(cls, **rep):
+        table = db[cls.__name__]
+
+        inst = cls(id=str(len(table)), **rep)
+        table.append(cls.to_json(inst))
+
+        return inst.id, inst._representation
+
+    @classmethod
+    def update(cls, id, **rep):
+        table = db[cls.__name__]
+
+        inst = cls(id=id, **rep)
+        table[int(inst.id)] = cls.to_json(inst)
+
+        return id, inst._representation
 
     def delete(self):
         db[self.__class__.__name__][int(self.id)] = None

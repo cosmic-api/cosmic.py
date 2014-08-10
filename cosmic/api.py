@@ -112,14 +112,13 @@ class API(BasicWrapper):
                 type_name = "{}.{}".format(api.name, name)
                 methods = []
 
-                def save(self):
-                    if self.id:
-                        inst = self.__class__._model_putter(self.id, self)
-                    else:
-                        inst = self.__class__._list_poster(self)
-                        self.id = inst.id
-                    self._remote_representation = inst._remote_representation
-                    self._local_representation = {}
+                @classmethod
+                def create(cls, **rep):
+                    return cls._list_poster(**rep)
+
+                @classmethod
+                def update(cls, id, **rep):
+                    return cls._model_putter(id, **rep)
 
                 def delete(self):
                     return self.__class__._model_deleter(self)
