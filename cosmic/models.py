@@ -59,19 +59,13 @@ class BaseModel(BasicWrapper):
 
     @classmethod
     def assemble(cls, datum):
+        (id, rep) = datum
+
         inst = cls()
-
-        rep = {}
-        links = datum.pop("_links", {})
-        for name in OrderedDict(cls.links).keys():
-            rep[name] = links.get(name, None)
-        for name in OrderedDict(cls.properties).keys():
-            rep[name] = datum.get(name, None)
-        cls.validate(rep)
-
+        inst.id = id
         inst._remote_representation = rep
-        if "self" in links:
-            inst.id = links["self"].id
+
+        cls.validate(rep)
 
         return inst
 
@@ -84,21 +78,17 @@ class BaseModel(BasicWrapper):
 
     @classmethod
     def disassemble(cls, datum):
-        links = OrderedDict()
-        if datum.id:
-            links["self"] = datum
+        rep = {}
         for name, link in OrderedDict(cls.links).items():
             value = datum._get_item(name)
             if value != None:
-                links[name] = value
-        d = {}
-        if links:
-            d["_links"] = links
+                rep[name] = value
         for name in OrderedDict(cls.properties).keys():
             value = datum._get_item(name)
             if value != None:
-                d[name] = value
-        return d
+                rep[name] = value
+
+        return (datum.id, rep)
 
     def _get_item(self, name):
         if name in self._local_representation:

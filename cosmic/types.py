@@ -92,6 +92,43 @@ class Representation(ParametrizedWrapper):
 
         self.schema = Struct(props)
 
+    def assemble(self, datum):
+
+        rep = {}
+        links = datum.pop("_links", {})
+        self_link = links.pop("self", None)
+
+        for name in OrderedDict(self.param.links).keys():
+            rep[name] = links.get(name, None)
+        for name in OrderedDict(self.param.properties).keys():
+            rep[name] = datum.get(name, None)
+
+        id = None
+        if self_link is not None:
+            id = self_link.id
+
+        return (id, rep)
+
+
+    def disassemble(self, datum):
+        (id, rep) = datum
+
+        links = {}
+        if id:
+            links["self"] = self.param(id=id)
+        for name, link in OrderedDict(self.param.links).items():
+            value = rep.get(name, None)
+            if value != None:
+                links[name] = value
+        d = {}
+        if links:
+            d["_links"] = links
+        for name in OrderedDict(self.param.properties).keys():
+            value = rep.get(name, None)
+            if value != None:
+                d[name] = value
+                
+        return d
 
 
 class URLParams(ParametrizedWrapper):
