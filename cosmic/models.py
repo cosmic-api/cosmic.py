@@ -12,36 +12,10 @@ from .types import *
 from teleport import BasicWrapper, ParametrizedWrapper
 
 
-def prep_model(model_cls):
-    from .http import CreateEndpoint, GetListEndpoint, GetByIdEndpoint, UpdateEndpoint, DeleteEndpoint
-
-    link_names = set(dict(model_cls.links).keys())
-    field_names = set(dict(model_cls.properties).keys())
-
-    if link_names & field_names:
-        raise SpecError("Model cannot contain a field and link with the same name: %s" % model_cls.__name__)
-
-    for name in link_names | field_names:
-        validate_underscore_identifier(name)
-
-    if 'id' in link_names | field_names:
-        raise SpecError("'id' is a reserved name.")
-
-    model_cls._list_poster = CreateEndpoint(model_cls)
-    model_cls._list_getter = GetListEndpoint(model_cls)
-    model_cls._model_getter = GetByIdEndpoint(model_cls)
-    model_cls._model_putter = UpdateEndpoint(model_cls)
-    model_cls._model_deleter = DeleteEndpoint(model_cls)
-
-    model_cls.schema = Representation(model_cls)
-    # Make name visible through LocalProxy
-    model_cls._name = model_cls.__name__
-
-
-
 
 class BaseModel(object):
-    """A data type definition attached to an API."""
+
+    properties = []
     methods = []
     query_fields = []
     list_metadata = []
@@ -93,15 +67,9 @@ class BaseModel(object):
     def validate(cls, datum):
         pass
 
-    @classmethod
-    def create(cls, **rep):
-        raise NotImplementedError()
-
-    @classmethod
-    def update(cls, id, **rep):
-        raise NotImplementedError()
-
-    def _get_item(self, name):
+    def __getitem__(self, name):
+        if name not in OrderedDict(self.properties + self.links).keys():
+            raise KeyError()
         if name in self._patch:
             return self._patch[name]
         if self._representation is None:
@@ -111,23 +79,13 @@ class BaseModel(object):
             self._representation = i._representation
         return self._representation.get(name, None)
 
-    def _set_item(self, name, value):
+    def __setitem__(self, name, value):
+        if name not in OrderedDict(self.properties + self.links).keys():
+            super(BaseModel, self).__setattr__(name, value)
         if value is not None:
             self._patch[name] = value
         else:
             del self._patch[name]
-
-    def __getattr__(self, name):
-        if name in OrderedDict(self.properties + self.links).keys():
-            return self._get_item(name)
-        else:
-            raise AttributeError()
-
-    def __setattr__(self, name, value):
-        if name in OrderedDict(self.properties + self.links).keys():
-            return self._set_item(name, value)
-        else:
-            super(BaseModel, self).__setattr__(name, value)
 
 
 

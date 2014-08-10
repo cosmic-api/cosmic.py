@@ -201,9 +201,9 @@ class TestPlanitarium(TestCase):
             Sphere = M('planetarium.Sphere')
             moon = Sphere.get_by_id("2")
             self.assertEqual(Sphere.get_by_id("5"), None)
-            self.assertEqual(moon.name, "Moon")
-            self.assertEqual(moon.revolves_around.name, "Earth")
-            self.assertEqual(moon.revolves_around.revolves_around.name, "Sun")
+            self.assertEqual(moon['name'], "Moon")
+            self.assertEqual(moon['revolves_around']['name'], "Earth")
+            self.assertEqual(moon['revolves_around']['revolves_around']['name'], "Sun")
 
     def test_local_follow_links(self):
         with self.cosmos1:
@@ -294,10 +294,10 @@ class TestPlanitarium(TestCase):
         with DBContext(c):
             Sphere = M('planetarium.Sphere')
             moon = Sphere.get_by_id("2")
-            moon.name = "Luna"
-            self.assertEqual(moon.name, "Luna")
+            moon['name'] = "Luna"
+            self.assertEqual(moon['name'], "Luna")
             moon.save()
-            self.assertEqual(moon.name, "Luna")
+            self.assertEqual(moon['name'], "Luna")
             self.assertEqual(c['Sphere'][2]["name"], "Luna")
 
     def test_local_save_property(self):
@@ -334,10 +334,10 @@ class TestPlanitarium(TestCase):
             Sphere = M('planetarium.Sphere')
             # Save property
             moon = Sphere.get_by_id("2")
-            self.assertEqual(moon.revolves_around.id, "1")
-            moon.revolves_around = Sphere.get_by_id("0")
+            self.assertEqual(moon['revolves_around'].id, "1")
+            moon['revolves_around'] = Sphere.get_by_id("0")
             moon.save()
-            self.assertEqual(moon.revolves_around.id, "0")
+            self.assertEqual(moon['revolves_around'].id, "0")
             self.assertEqual(c['Sphere'][2]["_links"]["revolves_around"]["href"], "/Sphere/0")
 
     def test_local_save_link(self):

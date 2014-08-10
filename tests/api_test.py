@@ -183,7 +183,7 @@ class TestAPI(TestCase):
         }
 
         pancake = R.from_json(d)
-        self.assertEqual(pancake.name, "pancake")
+        self.assertEqual(pancake['name'], "pancake")
         self.assertEqual(R.to_json(pancake), d)
 
     def test_guess_methods(self):
@@ -196,7 +196,7 @@ class TestAPI(TestCase):
             },
             "name": "turkey"
         }
-        self.assertEqual(self.cookbook.models.Recipe.from_json(d).name, "turkey")
+        self.assertEqual(self.cookbook.models.Recipe.from_json(d)['name'], "turkey")
 
     def test_subclassing_hook(self):
         self.assertEqual(set(self.cookbook.models.__dict__.keys()), set(["Recipe", "Author"]))

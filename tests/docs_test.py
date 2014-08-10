@@ -92,8 +92,8 @@ class TestGuideModels(TestCase):
         with self.cosmos:
             sesame31 = places.models.Address(number=31, street="Sesame")
 
-            self.assertEqual(sesame31.number, 31)
-            self.assertEqual(sesame31.street, "Sesame")
+            self.assertEqual(sesame31['number'], 31)
+            self.assertEqual(sesame31['street'], "Sesame")
 
     def test_serialize_model(self):
         places = self.places
@@ -149,7 +149,7 @@ class TestGuideModelLinks(TestCase):
                 street="Spadina",
                 city=toronto)
 
-            self.assertEqual(spadina147.city.name, "Toronto")
+            self.assertEqual(spadina147['city']['name'], "Toronto")
             self.assertEqual(spadina147.id is None, True)
 
     def remote_create_models(self):
@@ -189,7 +189,7 @@ class TestGuideGetById(TestCase):
         places = self.places
         with self.cosmos:
             city = places.models.City.get_by_id("0")
-            self.assertEqual(city.name, "Toronto")
+            self.assertEqual(city['name'], "Toronto")
             self.assertEqual(places.models.City.get_by_id("5") is None, True)
 
 class TestGuideSave(TestCase):
@@ -345,7 +345,7 @@ class TestGuideGetList(TestCase):
             self.assertEqual(len(l1), 2)
             l2 = places.models.City.get_list(country="Canada")
             self.assertEqual(len(l2), 1)
-            self.assertEqual(l2[0].name, "Toronto")
+            self.assertEqual(l2[0]['name'], "Toronto")
             l3 = places.models.City.get_list(country="Russia")
             self.assertEqual(l3, [])
 

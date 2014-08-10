@@ -11,7 +11,7 @@ from collections import OrderedDict
 from flask import Blueprint, Flask, request
 
 from .actions import Action
-from .models import BaseModel, prep_model, Cosmos
+from .models import BaseModel, Cosmos
 from .tools import GetterNamespace, get_args, assert_is_compatible, deserialize_json, validate_underscore_identifier
 from .types import *
 from .http import *
@@ -110,7 +110,12 @@ class API(BasicWrapper):
 
             class M(BaseModel):
                 type_name = "{}.{}".format(api.name, name)
-                methods = []
+
+                properties = modeldef["properties"].items()
+                query_fields = modeldef["query_fields"].items()
+                list_metadata = modeldef["list_metadata"].items()
+                links = modeldef["links"].items()
+                methods = filter(lambda m: modeldef["methods"][m], MODEL_METHODS)
 
                 @classmethod
                 def create(cls, **rep):
@@ -132,21 +137,9 @@ class API(BasicWrapper):
                 def get_by_id(cls, id):
                     return cls._model_getter(id)
 
-            for method in MODEL_METHODS:
-                if modeldef["methods"][method]:
-                    M.methods.append(method)
-
             M.__name__ = str(name)
 
-            M.api = api
-            M.properties = modeldef["properties"].items()
-            M.query_fields = modeldef["query_fields"].items()
-            M.list_metadata = modeldef["list_metadata"].items()
-            M.links = modeldef["links"].items()
-            prep_model(M)
-
-            api._models[name] = M
-            setattr(api.models, name, M)
+            api.model(M)
 
         return api
 
@@ -342,9 +335,31 @@ class API(BasicWrapper):
             u'dog'
 
         """
+        from .http import CreateEndpoint, GetListEndpoint, GetByIdEndpoint, UpdateEndpoint, DeleteEndpoint
+
         model_cls.api = self
         model_cls.type_name = "%s.%s" % (self.name, model_cls.__name__,)
-        prep_model(model_cls)
+
+        link_names = set(dict(model_cls.links).keys())
+        field_names = set(dict(model_cls.properties).keys())
+
+        if link_names & field_names:
+            raise SpecError("Model cannot contain a field and link with the same name: %s" % model_cls.__name__)
+
+        for name in link_names | field_names:
+            validate_underscore_identifier(name)
+
+        if 'id' in link_names | field_names:
+            raise SpecError("'id' is a reserved name.")
+
+        model_cls._list_poster = CreateEndpoint(model_cls)
+        model_cls._list_getter = GetListEndpoint(model_cls)
+        model_cls._model_getter = GetByIdEndpoint(model_cls)
+        model_cls._model_putter = UpdateEndpoint(model_cls)
+        model_cls._model_deleter = DeleteEndpoint(model_cls)
+
+        # Make name visible through LocalProxy
+        model_cls._name = model_cls.__name__
 
         self._models[model_cls.__name__] = model_cls
         setattr(self.models, model_cls.__name__, model_cls)
