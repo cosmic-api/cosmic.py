@@ -3,6 +3,9 @@ from __future__ import unicode_literals
 class SpecError(Exception):
     pass
 
+class NotFound(Exception):
+	pass
+
 class HTTPError(Exception):
 	def __init__(self, code, message, remote=False):
 		self.code = code

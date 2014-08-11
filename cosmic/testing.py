@@ -71,5 +71,8 @@ class DBModel(BaseModel):
 
     @classmethod
     def delete(cls, id):
+        from .exceptions import NotFound
+        if int(id) >= len(db[cls.__name__]):
+            raise NotFound
         db[cls.__name__][int(id)] = None
 

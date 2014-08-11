@@ -3,7 +3,7 @@ import copy
 import requests
 from requests.structures import CaseInsensitiveDict
 
-from werkzeug.exceptions import HTTPException, InternalServerError, NotFound, abort
+from werkzeug.exceptions import HTTPException, InternalServerError, abort
 from werkzeug.routing import Rule
 from werkzeug.routing import Map as RuleMap
 
@@ -601,7 +601,10 @@ class DeleteEndpoint(Endpoint):
         self.endpoint = "doc_delete_%s" % self.model_cls.__name__
 
     def handler(self, id):
-        self.model_cls.delete(id)
+        try:
+            self.model_cls.delete(id)
+        except NotFound:
+            return NotFound
 
     def build_request(self, id):
         return super(DeleteEndpoint, self).build_request(
@@ -609,17 +612,16 @@ class DeleteEndpoint(Endpoint):
 
     def parse_request(self, req, **url_args):
         req = super(DeleteEndpoint, self).parse_request(req, **url_args)
-        id = req['url_args']['id']
-        # TODO: delete method should be responsible for raising NotFound
-        if self.model_cls.get_by_id(id) == None:
-            raise NotFound
-        return {'id': id}
+        return {'id': req['url_args']['id']}
 
     def parse_response(self, res):
         return
 
-    def build_response(self, _):
-        return make_response("", 204, {})
+    def build_response(self, maybe_notfound):
+        if maybe_notfound is NotFound:
+            return make_response("", 404, {})
+        else:
+            return make_response("", 204, {})
 
 
 class GetListEndpoint(Endpoint):
