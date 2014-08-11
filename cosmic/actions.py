@@ -12,8 +12,3 @@ class Action(object):
         self.returns = returns
         self.doc = doc
 
-    def __call__(self, *args, **kwargs):
-        if hasattr(self, "func"):
-            return self.func(*args, **kwargs)
-        return self.endpoint(*args, **kwargs)
-

@@ -19,13 +19,6 @@ from .exceptions import *
 
 class BaseClientHook(object):
 
-    def get_callable(self, endpoint):
-
-        def call(*args, **kwargs):
-            return self.call(endpoint, *args, **kwargs)
-
-        return call
-
     def call(self, endpoint, *args, **kwargs):
         req = self.build_request(endpoint, *args, **kwargs)
         res = self.make_request(endpoint, req)
@@ -40,7 +33,7 @@ class BaseClientHook(object):
 
 class ClientHook(BaseClientHook):
 
-    def __init__(self, base_url, verify=True):
+    def __init__(self, base_url=None, verify=True):
         self.base_url = base_url
         self.verify = verify
         self.session = requests.sessions.Session()
@@ -278,8 +271,6 @@ class Endpoint(object):
 
         return r
 
-    def __call__(self, *args, **kwargs):
-        return self.api.client_hook.call(self, *args, **kwargs)
 
 
 
@@ -306,7 +297,6 @@ class ActionEndpoint(Endpoint):
 
     def __init__(self, action, name):
         self.action = action
-        self.api = action.api
         self.url = "/actions/%s" % name
 
     def handler(self, *args, **kwargs):
@@ -458,7 +448,6 @@ class GetByIdEndpoint(Endpoint):
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
-        self.api = model_cls.api
         self.url = "/%s/<id>" % self.model_cls.__name__
         self.endpoint = "doc_get_%s" % self.model_cls.__name__
 
@@ -509,7 +498,6 @@ class UpdateEndpoint(Endpoint):
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
-        self.api = model_cls.api
         self.url = "/%s/<id>" % self.model_cls.__name__
         self.endpoint = "doc_put_%s" % self.model_cls.__name__
 
@@ -562,7 +550,6 @@ class CreateEndpoint(Endpoint):
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
-        self.api = model_cls.api
         self.url = "/%s" % self.model_cls.__name__
         self.endpoint = "list_post_%s" % self.model_cls.__name__
 
@@ -609,7 +596,6 @@ class DeleteEndpoint(Endpoint):
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
-        self.api = model_cls.api
         self.url = "/%s/<id>" % self.model_cls.__name__
         self.endpoint = "doc_delete_%s" % self.model_cls.__name__
 
@@ -673,7 +659,6 @@ class GetListEndpoint(Endpoint):
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
-        self.api = model_cls.api
         if self.model_cls.query_fields != None:
             self.query_schema = URLParams(self.model_cls.query_fields)
         self.url = "/%s" % self.model_cls.__name__

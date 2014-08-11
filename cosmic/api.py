@@ -81,11 +81,11 @@ class API(BasicWrapper):
     ])
 
     def __init__(self, name, homepage=None):
-        from .http import ClientHook
 
         self.name = name
         self.homepage = homepage
         self.server_hook = ServerHook()
+        self.client_hook = ClientHook()
 
         self._actions = OrderedDict()
         self.actions = Object()
@@ -95,6 +95,11 @@ class API(BasicWrapper):
 
         cosmos.apis[self.name] = self
 
+    def get_client_callable(self, endpoint):
+        def call(*args, **kwargs):
+            return self.client_hook.call(endpoint, *args, **kwargs)
+        return call
+
     @staticmethod
     def assemble(datum):
         api = API(name=datum["name"], homepage=datum.get("homepage", None))
@@ -103,9 +108,10 @@ class API(BasicWrapper):
 
             action = Action(**action)
             api._actions[name] = action
-            setattr(api.actions, name, action)
             action.api = api
             action.endpoint = ActionEndpoint(action, name)
+
+            setattr(api.actions, name, api.get_client_callable(action.endpoint))
 
         for name, modeldef in datum["models"].items():
 
@@ -121,11 +127,11 @@ class API(BasicWrapper):
 
             api.model(M)
 
-            M.create = M._list_poster
-            M.update = M._model_putter
-            M.delete = M._model_deleter
-            M.get_list = M._list_getter
-            M.get_by_id = M._model_getter
+            M.create = staticmethod(api.get_client_callable(M._list_poster))
+            M.update = staticmethod(api.get_client_callable(M._model_putter))
+            M.delete = staticmethod(api.get_client_callable(M._model_deleter))
+            M.get_list = staticmethod(api.get_client_callable(M._list_getter))
+            M.get_by_id = staticmethod(api.get_client_callable(M._model_getter))
 
         return api
 
@@ -178,7 +184,7 @@ class API(BasicWrapper):
         res = requests.get(url, verify=verify)
         api = API.from_json(res.json())
         # Set the API url to be the spec URL, minus the /spec.json
-        api.client_hook = ClientHook(url[:-10])
+        api.client_hook.base_url = url[:-10]
         return api
 
 
@@ -296,7 +302,7 @@ class API(BasicWrapper):
             action.endpoint = ActionEndpoint(action, name)
 
             self._actions[name] = action
-            setattr(self.actions, name, action)
+            setattr(self.actions, name, action.func)
 
             return func
         return wrapper
