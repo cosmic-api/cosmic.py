@@ -308,7 +308,7 @@ class TestPlanitarium(TestCase):
             Sphere = M('planetarium.Sphere')
             moon = Sphere.get_by_id("2")
 
-            (id, rep) = Sphere.update("2",
+            rep = Sphere.update("2",
                 name="Luna",
                 revolves_around=moon['revolves_around'])
 
@@ -360,7 +360,7 @@ class TestPlanitarium(TestCase):
             moon = Sphere.get_by_id("2")
             self.assertEqual(moon['revolves_around'].id, "1")
 
-            (id, rep) = Sphere.update("2",
+            rep = Sphere.update("2",
                 name=moon['name'],
                 revolves_around=Sphere.get_by_id("0"))
 

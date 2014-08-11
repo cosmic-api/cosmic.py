@@ -68,7 +68,7 @@ class DBModel(BaseModel):
 
         table[int(id)] = Representation(cls).to_json((id, original_rep))
 
-        return id, original_rep
+        return original_rep
 
     @classmethod
     def delete(cls, id):
