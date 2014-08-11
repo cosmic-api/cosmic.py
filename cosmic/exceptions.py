@@ -14,8 +14,10 @@ class NotFound(Exception):
 	pass
 
 class HTTPError(Exception):
-	def __init__(self, code, message, remote=False):
+	def __init__(self, code, message):
 		self.code = code
 		self.message = message
-		self.remote = remote
-		super(HTTPError, self).__init__(code, message, remote)
+		super(HTTPError, self).__init__(code, message)
+
+class RemoteHTTPError(HTTPError):
+	pass

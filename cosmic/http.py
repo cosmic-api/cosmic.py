@@ -118,11 +118,15 @@ class ServerHook(object):
             func_input = self.parse_request(endpoint, request, **url_args)
             func_output = endpoint.handler(**func_input)
             return self.build_response(endpoint, func_input=func_input, func_output=func_output)
-        except Exception as err:
+        except HTTPError as err:
+            return error_response(err.message, err.code)
+        except ValidationError as err:
+            return error_response(str(err), 400)
+        except Exception:
             if current_app.debug:
                 raise
             else:
-                return error_to_response(err)
+                return error_response("Internal Server Error", 500)
 
     def parse_request(self, endpoint, request, **url_args):
         return endpoint.parse_request(request, **url_args)
@@ -136,14 +140,6 @@ class ServerHook(object):
 def error_response(message, code):
     body = json.dumps({"error": message})
     return make_response(body, code, {"Content-Type": "application/json"})
-
-def error_to_response(err):
-    if isinstance(err, HTTPError) and not err.remote:
-        return error_response(err.message, err.code)
-    elif isinstance(err, ValidationError):
-        return error_response(str(err), 400)
-    else:
-        return error_response("Internal Server Error", 500)
 
 
 def get_payload_from_http_message(req):
@@ -267,7 +263,7 @@ class Endpoint(object):
             if 'json' in r and r['json'] and type(r['json'].datum) == dict and 'error' in r['json'].datum:
                 message = r['json'].datum['error']
 
-            raise HTTPError(code=r['code'], message=message, remote=True)
+            raise RemoteHTTPError(code=r['code'], message=message)
 
         return r
 
