@@ -84,9 +84,9 @@ class Sphere(DBModel):
             raise ValidationError("Name must be capitalized", datum["name"])
 
 
-@planetarium.action(accepts=M('planetarium.Sphere'), returns=String)
+@planetarium.action(accepts=Representation(M('planetarium.Sphere')), returns=String)
 def hello(sphere):
-    return "Hello, %s" % sphere.name
+    return "Hello, %s" % sphere[1]['name']
 
 
 if __name__ == "__main__":

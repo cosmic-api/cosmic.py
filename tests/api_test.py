@@ -182,7 +182,6 @@ class TestAPI(TestCase):
             "name": "pancake"
         }
 
-        self.assertEqual(Schema.to_json(R), {"type": "cookbook.Recipe"})
         pancake = R.from_json(d)
         self.assertEqual(pancake.name, "pancake")
         self.assertEqual(R.to_json(pancake), d)
@@ -191,14 +190,13 @@ class TestAPI(TestCase):
         self.assertEqual(self.cookbook.models.Recipe.methods, [])
 
     def test_model_deserialize_okay(self):
-        s = Schema.from_json({"type": "cookbook.Recipe"})
         d = {
             "_links": {
                 "self": {"href": "/Recipe/14"}
             },
             "name": "turkey"
         }
-        self.assertEqual(s.from_json(d).name, "turkey")
+        self.assertEqual(self.cookbook.models.Recipe.from_json(d).name, "turkey")
 
     def test_subclassing_hook(self):
         self.assertEqual(set(self.cookbook.models.__dict__.keys()), set(["Recipe", "Author"]))

@@ -34,11 +34,13 @@ def prep_model(model_cls):
     model_cls._model_deleter = DeleteEndpoint(model_cls)
 
     model_cls.schema = Representation(model_cls)
+    # Make name visible through LocalProxyHack
+    model_cls._name = model_cls.__name__
 
 
 
 
-class BaseModel(BasicWrapper):
+class BaseModel(object):
     """A data type definition attached to an API."""
     methods = []
     query_fields = []
@@ -57,21 +59,16 @@ class BaseModel(BasicWrapper):
             self._representation = kwargs
             self._patch = {}
 
-    @property
-    def href(self):
-        return "/%s/%s" % (self.__class__.__name__, self.id)
+    @classmethod
+    def from_json(cls, datum):
+        (id, rep) = Representation(cls).from_json(datum)
+        cls.validate(rep)
+        return cls(id=id, **rep)
 
     @classmethod
-    def assemble(cls, datum):
-        (id, rep) = datum
-
-        inst = cls()
-        inst.id = id
-        inst._representation = rep
-
-        cls.validate(rep)
-
-        return inst
+    def to_json(cls, datum):
+        rep = datum.get_patch()
+        return Representation(cls).to_json((datum.id, rep))
 
     def get_patch(self):
         ret = {}
@@ -93,33 +90,16 @@ class BaseModel(BasicWrapper):
             self._patch = {}
 
     @classmethod
+    def validate(cls, datum):
+        pass
+
+    @classmethod
     def create(cls, **rep):
         raise NotImplementedError()
 
     @classmethod
     def update(cls, id, **rep):
         raise NotImplementedError()
-
-    @classmethod
-    def id_from_url(cls, url):
-        parts = url.split('/')
-        if parts[-2] != cls.__name__:
-            raise ValidationError("Invalid url for %s link: %s" % (cls.__name__, url))
-        return parts[-1]
-
-    @classmethod
-    def disassemble(cls, datum):
-        rep = {}
-        for name, link in OrderedDict(cls.links).items():
-            value = datum._get_item(name)
-            if value != None:
-                rep[name] = value
-        for name in OrderedDict(cls.properties).keys():
-            value = datum._get_item(name)
-            if value != None:
-                rep[name] = value
-
-        return (datum.id, rep)
 
     def _get_item(self, name):
         if name in self._patch:
@@ -149,9 +129,6 @@ class BaseModel(BasicWrapper):
         else:
             super(BaseModel, self).__setattr__(name, value)
 
-    @classmethod
-    def validate(cls, datum):
-        pass
 
 
 

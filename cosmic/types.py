@@ -9,7 +9,6 @@ from teleport import standard_types, ParametrizedWrapper, BasicWrapper, required
 
 def getter(name):
     from .api import API
-    from .models import M
     if name == "cosmic.API":
         return API
     elif name == "cosmic.Model":
@@ -18,8 +17,6 @@ def getter(name):
         return Link
     elif name == "cosmic.Representation":
         return Representation
-    elif '.' in name:
-        return M(name)
     else:
         raise KeyError()
 
@@ -59,11 +56,17 @@ class Link(ParametrizedWrapper):
         ])
 
     def assemble(self, datum):
-        id = self.param.id_from_url(datum['href'])
+        url = datum['href']
+        parts = url.split('/')
+        if parts[-2] != self.param._name:
+            raise ValidationError("Invalid url for %s link: %s" % (self.param._name, url))
+        id = parts[-1]
+
         return self.param(id=id)
 
     def disassemble(self, datum):
-        return {"href": datum.href}
+        href = "/%s/%s" % (datum.__class__.__name__, datum.id)
+        return {"href": href}
 
 
 class Representation(ParametrizedWrapper):
@@ -72,25 +75,32 @@ class Representation(ParametrizedWrapper):
 
     def __init__(self, param):
         self.param = model_cls = param
+        self._lazy_schema = None
 
-        links = [
-            ("self", {
-                "required": False,
-                "schema": Link(model_cls)
-            })
-        ]
-        for name, link in model_cls.links:
-            links.append((name, {
-                "required": link["required"],
-                "schema": Link(link["model"])
-            }))
-        props = [
-            optional("_links", Struct(links)),
-        ]
-        for name, field in model_cls.properties:
-            props.append((name, field))
+    @property
+    def schema(self):
+        if self._lazy_schema is None:
 
-        self.schema = Struct(props)
+            links = [
+                ("self", {
+                    "required": False,
+                    "schema": Link(self.param)
+                })
+            ]
+            for name, link in self.param.links:
+                links.append((name, {
+                    "required": link["required"],
+                    "schema": Link(link["model"])
+                }))
+            props = [
+                optional("_links", Struct(links)),
+            ]
+            for name, field in self.param.properties:
+                props.append((name, field))
+
+            self._lazy_schema = Struct(props)
+
+        return self._lazy_schema
 
     def assemble(self, datum):
 

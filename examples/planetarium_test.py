@@ -76,7 +76,7 @@ json_spec = {
     u"actions": {
         u"map": {
             u"hello": {
-                u"accepts": {u"type": u"planetarium.Sphere"},
+                u"accepts": {u"type": u"cosmic.Representation", u"param": u"planetarium.Sphere"},
                 u"returns": {u"type": u"String"}
             }
         },
@@ -190,11 +190,11 @@ class TestPlanitarium(TestCase):
 
     def test_local_call_action(self):
         pluto = self.planetarium.models.Sphere(name="Pluto")
-        self.assertEqual(self.planetarium.actions.hello(pluto), "Hello, Pluto")
+        self.assertEqual(self.planetarium.actions.hello((None, pluto.get_patch())), "Hello, Pluto")
 
     def test_remote_call_action(self):
         pluto = self.remote_planetarium.models.Sphere(name="Pluto")
-        self.assertEqual(self.remote_planetarium.actions.hello(pluto), "Hello, Pluto")
+        self.assertEqual(self.remote_planetarium.actions.hello((None, pluto.get_patch())), "Hello, Pluto")
 
     def _test_follow_links(self):
         with DBContext(planet_db):
@@ -392,7 +392,7 @@ class TestPlanitarium(TestCase):
             pluto.save()
 
             self.assertEqual(pluto.id, "4")
-            
+
             full = {
                 "name": "Pluto",
                 "_links": {
