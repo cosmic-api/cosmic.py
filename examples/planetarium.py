@@ -16,12 +16,14 @@ planet_db = {
     "Sphere": [
         {
             u"name": u"Sun",
+            u"temperature": 3000.0,
             u"_links": {
                 u"self": {u"href": u"/Sphere/0"},
             }
         },
         {
             u"name": u"Earth",
+            u"temperature": 30.0,
             u"_links": {
                 u"self": {u"href": u"/Sphere/1"},
                 u"revolves_around": {u"href": u"/Sphere/0"},
@@ -29,6 +31,7 @@ planet_db = {
         },
         {
             u"name": u"Moon",
+            u"temperature": -50.0,
             u"_links": {
                 u"self": {u"href": u"/Sphere/2"},
                 u"revolves_around": {u"href": u"/Sphere/1"},
@@ -56,8 +59,10 @@ planetarium.server_hook = SHook()
 class Sphere(DBModel):
 
     methods = ["get_list", "get_by_id", "create", "update", "delete"]
+
     properties = [
-        required("name", String)
+        required("name", String),
+        required("temperature", Float),
     ]
     links = [
         optional_link("revolves_around", M('planetarium.Sphere'))
@@ -80,9 +85,16 @@ class Sphere(DBModel):
 
     @classmethod
     def validate_patch(cls, datum):
+        if 'temperature' in datum:
+            raise ValidationError("Temperature is readonly")
+        if "name" not in datum:
+            raise ValidationError("Name is required")
         if datum["name"][0].islower():
             raise ValidationError("Name must be capitalized", datum["name"])
 
+    @classmethod
+    def create(cls, **rep):
+        return super(Sphere, cls).create(temperature=60, **rep)
 
 @planetarium.action(accepts=Representation(M('planetarium.Sphere')), returns=String)
 def hello(sphere):

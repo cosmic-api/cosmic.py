@@ -27,8 +27,12 @@ json_spec = {
                             u"required": True, 
                             u"schema": {u"type": u"String"}
                         },
+                        u"temperature": {
+                            u"required": True, 
+                            u"schema": {u"type": u"Float"}
+                        },
                     },
-                    u"order": [u"name"]
+                    u"order": [u"name", u"temperature"],
                 },
                 u"list_metadata": {
                     u"map": {
@@ -183,18 +187,25 @@ class TestPlanitarium(TestCase):
                 } in body["headers"])
                 self.assertEqual(json.loads(body["body"]), {
                     "name": "Saturn",
+                    "temperature": 60,
                     "_links": {
-                        "self": {"href": "/Sphere/3"}
+                        "self": {"href": "/Sphere/3"},
                     }
                 })
 
     def test_local_call_action(self):
-        pluto = self.planetarium.models.Sphere(name="Pluto")
-        self.assertEqual(self.planetarium.actions.hello((None, pluto.get_patch())), "Hello, Pluto")
+        pluto = {
+            "name": "Pluto",
+            "temperature": -120,
+        }
+        self.assertEqual(self.planetarium.actions.hello((None, pluto)), "Hello, Pluto")
 
     def test_remote_call_action(self):
-        pluto = self.remote_planetarium.models.Sphere(name="Pluto")
-        self.assertEqual(self.remote_planetarium.actions.hello((None, pluto.get_patch())), "Hello, Pluto")
+        pluto = {
+            "name": "Pluto",
+            "temperature": -120,
+        }
+        self.assertEqual(self.remote_planetarium.actions.hello((None, pluto)), "Hello, Pluto")
 
     def _test_follow_links(self):
         with DBContext(planet_db):
@@ -294,10 +305,12 @@ class TestPlanitarium(TestCase):
         with DBContext(c):
             Sphere = M('planetarium.Sphere')
             moon = Sphere.get_by_id("2")
-            moon['name'] = "Luna"
-            self.assertEqual(moon['name'], "Luna")
-            moon.save()
-            self.assertEqual(moon['name'], "Luna")
+
+            (id, rep) = Sphere.update("2",
+                name="Luna",
+                revolves_around=moon['revolves_around'])
+
+            self.assertEqual(rep['name'], "Luna")
             self.assertEqual(c['Sphere'][2]["name"], "Luna")
 
     def test_local_save_property(self):
@@ -310,17 +323,26 @@ class TestPlanitarium(TestCase):
 
             (req, res) = self.remote_planetarium.client_hook.stack.pop()
 
+            patch = {
+                u'_links': {
+                    u'self': {u'href': u'/Sphere/2'},
+                    u'revolves_around': {u'href': u'/Sphere/1'},
+                },
+                u'name': u'Luna',
+            }
+
             updated = {
                 u'_links': {
                     u'self': {u'href': u'/Sphere/2'},
-                    u'revolves_around': {u'href': u'/Sphere/1'}
+                    u'revolves_around': {u'href': u'/Sphere/1'},
                 },
-                u'name': u'Luna'
+                u'temperature': -50,
+                u'name': u'Luna',
             }
 
             self.assertEqual(req["method"], "PUT")
             self.assertEqual(req["url"], "/Sphere/2")
-            self.assertEqual(json.loads(req["data"]), updated)
+            self.assertEqual(json.loads(req["data"]), patch)
             self.assertEqual(req["headers"]["Content-Type"], "application/json")
 
             self.assertEqual(res["status_code"], 200)
@@ -335,9 +357,12 @@ class TestPlanitarium(TestCase):
             # Save property
             moon = Sphere.get_by_id("2")
             self.assertEqual(moon['revolves_around'].id, "1")
-            moon['revolves_around'] = Sphere.get_by_id("0")
-            moon.save()
-            self.assertEqual(moon['revolves_around'].id, "0")
+
+            (id, rep) = Sphere.update("2",
+                name=moon['name'],
+                revolves_around=Sphere.get_by_id("0"))
+
+            self.assertEqual(rep['revolves_around'].id, "0")
             self.assertEqual(c['Sphere'][2]["_links"]["revolves_around"]["href"], "/Sphere/0")
 
     def test_local_save_link(self):
@@ -350,17 +375,26 @@ class TestPlanitarium(TestCase):
 
             (req, res) = self.remote_planetarium.client_hook.stack.pop()
 
+            patch = {
+                u'_links': {
+                    u'self': {u'href': u'/Sphere/2'},
+                    u'revolves_around': {u'href': u'/Sphere/0'},
+                },
+                u'name': u'Moon',
+            }
+
             updated = {
                 u'_links': {
                     u'self': {u'href': u'/Sphere/2'},
-                    u'revolves_around': {u'href': u'/Sphere/0'}
+                    u'revolves_around': {u'href': u'/Sphere/0'},
                 },
-                u'name': u'Moon'
+                u'temperature': -50,
+                u'name': u'Moon',
             }
 
             self.assertEqual(req["method"], "PUT")
             self.assertEqual(req["url"], "/Sphere/2")
-            self.assertEqual(json.loads(req["data"]), updated)
+            self.assertEqual(json.loads(req["data"]), patch)
             self.assertEqual(req["headers"]["Content-Type"], "application/json")
 
             self.assertEqual(res["status_code"], 200)
@@ -379,29 +413,16 @@ class TestPlanitarium(TestCase):
 
             self.assertEqual(id, "3")
 
-            pluto = Sphere(
-                name="Pluto",
-                revolves_around=Sphere(id="0"))
-            self.assertEqual(pluto.id, None)
-            self.assertEqual(Representation(Sphere).to_json((pluto.id, pluto.get_patch())), {
-                "name": "Pluto",
-                "_links": {
-                    "revolves_around": {"href": "/Sphere/0"}
-                }
-            })
-            pluto.save()
-
-            self.assertEqual(pluto.id, "4")
-
             full = {
                 "name": "Pluto",
+                "temperature": 60,
                 "_links": {
-                    "self": {"href": "/Sphere/4"},
-                    "revolves_around": {"href": "/Sphere/0"}
+                    "self": {"href": "/Sphere/3"},
+                    "revolves_around": {"href": "/Sphere/0"},
                 }
             }
-            self.assertEqual(Representation(Sphere).to_json((pluto.id, pluto.get_patch())), full)
-            self.assertEqual(c['Sphere'][4], full)
+            self.assertEqual(Representation(Sphere).to_json((id, rep)), full)
+            self.assertEqual(c['Sphere'][3], full)
 
     def test_local_create_model(self):
         with self.cosmos1:

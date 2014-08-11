@@ -121,10 +121,8 @@ class BaseRepresentation(ParametrizedWrapper):
         links = datum.pop("_links", {})
         self_link = links.pop("self", None)
 
-        for name in OrderedDict(self.param.links).keys():
-            rep[name] = links.get(name, None)
-        for name in OrderedDict(self.param.properties).keys():
-            rep[name] = datum.get(name, None)
+        rep.update(links)
+        rep.update(datum)
 
         id = None
         if self_link is not None:

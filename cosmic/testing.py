@@ -51,20 +51,23 @@ class DBModel(BaseModel):
         return ret
 
     @classmethod
-    def create(cls, **rep):
+    def create(cls, **patch):
         table = db[cls.__name__]
 
         id = str(len(table))
-        table.append(Representation(cls).to_json((id, rep)))
+        table.append(Representation(cls).to_json((id, patch)))
 
-        return id, rep
+        return id, patch
 
     @classmethod
-    def update(cls, id, **rep):
+    def update(cls, id, **patch):
         table = db[cls.__name__]
-        table[int(id)] = Representation(cls).to_json((id, rep))
+        (id, original_rep) = Representation(cls).from_json(table[int(id)])
+        original_rep.update(patch)
 
-        return id, rep
+        table[int(id)] = Representation(cls).to_json((id, original_rep))
+
+        return id, original_rep
 
     @classmethod
     def delete(cls, id):

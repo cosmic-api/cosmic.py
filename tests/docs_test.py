@@ -98,12 +98,13 @@ class TestGuideModels(TestCase):
     def test_serialize_model(self):
         places = self.places
         with self.cosmos:
-            sesame31 = places.models.Address(number=31, street="Sesame")
 
-            self.assertEqual(Representation(places.models.Address).to_json((None, sesame31.get_patch())), {
-                u"number": 31,
-                u"street": "Sesame"
-            })
+            rep = {
+                "number": 31,
+                "street": "Sesame"
+            }
+
+            self.assertEqual(Representation(places.models.Address).to_json((None, rep)), rep)
 
 
 class TestGuideModelLinks(TestCase):
@@ -241,22 +242,19 @@ class TestGuideSave(TestCase):
     def test_save_good(self):
         places = self.places
         with self.cosmos:
-            city = places.models.City(name="Moscow")
-            self.assertEqual(city.id is None, True)
-            city.save()
-            self.assertEqual(city.id, "2")
+            (id, rep) = places.models.City.create(name="Moscow")
+            self.assertEqual(id, "2")
 
     def test_local_save_validation_error(self):
         with self.cosmos:
-            city = self.places.models.City(name="moscow")
             with self.assertRaisesRegexp(ValidationError, "must be capitalized"):
-                city.save()
+                self.places.models.City.validate_patch({"name": "moscow"})
+                self.places.models.City.create(name="moscow")
 
     def test_remote_save_validation_error(self):
         with self.cosmos2:
-            city = self.remote_places.models.City(name="moscow")
             with self.assertRaisesRegexp(HTTPError, "must be capitalized"):
-                city.save()
+                self.remote_places.models.City.create(name="moscow")
 
 
 class TestGuideDelete(TestCase):

@@ -465,7 +465,7 @@ class GetByIdEndpoint(Endpoint):
     def build_response(self, inst):
         if inst == None:
             return ("", 404, {})
-        body = json.dumps(Representation(self.model_cls).to_json((inst.id, inst.get_patch())))
+        body = json.dumps(Representation(self.model_cls).to_json((inst.id, inst._representation)))
         return make_response(body, 200, {"Content-Type": "application/json"})
 
     def parse_response(self, res):
@@ -712,7 +712,7 @@ class GetListEndpoint(Endpoint):
 
         body["_embedded"][self.model_cls._name] = []
         for inst in l:
-            jrep = Representation(self.model_cls).to_json((inst.id, inst.get_patch()))
+            jrep = Representation(self.model_cls).to_json((inst.id, inst._representation))
             body["_embedded"][self.model_cls._name].append(jrep)
 
         return make_response(json.dumps(body), 200, {"Content-Type": "application/json"})

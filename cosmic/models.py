@@ -31,25 +31,6 @@ class BaseModel(object):
             self._representation = kwargs
             self._patch = {}
 
-    def get_patch(self):
-        ret = {}
-        if self._representation is not None:
-            ret.update(self._representation)
-        ret.update(self._patch)
-        return ret
-
-    def save(self):
-        self.__class__.validate_patch(self.get_patch())
-        if self.id:
-            (id, rep) = self.__class__.update(self.id, **self.get_patch())
-            self._representation = rep
-            self._patch = {}
-        else:
-            (id, rep) = self.__class__.create(**self.get_patch())
-            self.id = id
-            self._representation = rep
-            self._patch = {}
-
     @classmethod
     def validate_patch(cls, datum):
         pass
