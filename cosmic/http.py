@@ -505,7 +505,7 @@ class UpdateEndpoint(Endpoint):
     def handler(self, id, **patch):
         if self.model_cls.get_by_id(id) == None:
             raise NotFound
-        self.model_cls.validate(patch)
+        self.model_cls.validate_patch(patch)
         return self.model_cls.update(id, **patch)
 
     def build_request(self, id, **patch):
@@ -555,7 +555,7 @@ class CreateEndpoint(Endpoint):
         self.endpoint = "list_post_%s" % self.model_cls.__name__
 
     def handler(self, **patch):
-        self.model_cls.validate(patch)
+        self.model_cls.validate_patch(patch)
         return self.model_cls.create(**patch)
 
     def build_request(self, **patch):
@@ -714,7 +714,7 @@ class GetListEndpoint(Endpoint):
         for inst in l:
             jrep = Representation(self.model_cls).to_json((inst.id, inst.get_patch()))
             body["_embedded"][self.model_cls._name].append(jrep)
-            
+
         return make_response(json.dumps(body), 200, {"Content-Type": "application/json"})
 
 

@@ -39,7 +39,7 @@ class BaseModel(object):
         return ret
 
     def save(self):
-        self.__class__.validate(self.get_patch())
+        self.__class__.validate_patch(self.get_patch())
         if self.id:
             (id, rep) = self.__class__.update(self.id, **self.get_patch())
             self._representation = rep
@@ -51,7 +51,7 @@ class BaseModel(object):
             self._patch = {}
 
     @classmethod
-    def validate(cls, datum):
+    def validate_patch(cls, datum):
         pass
 
     def __getitem__(self, name):

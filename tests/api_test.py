@@ -153,7 +153,7 @@ class TestAPI(TestCase):
             ]
 
             @classmethod
-            def validate(cls, datum):
+            def validate_patch(cls, datum):
                 if datum["name"] == "bacon":
                     raise ValidationError("Not kosher")
 
@@ -213,12 +213,13 @@ class TestAPI(TestCase):
 
     def test_model_custom_validation(self):
         with self.assertRaisesRegexp(ValidationError, "kosher"):
-            Representation(self.cookbook.models.Recipe).from_json({
+            (id, rep) = Representation(self.cookbook.models.Recipe).from_json({
                 "_links": {
                     "self": {"href": "/Recipe/123"}
                 },
                 "name": "bacon"
             })
+            self.cookbook.models.Recipe.validate_patch(rep)
         # When not overridden, custom validation passes
         self.cookbook.models.Author(is_gordon_ramsay=True)
 

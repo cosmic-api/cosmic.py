@@ -79,7 +79,7 @@ class Sphere(DBModel):
         return (l, metadata)
 
     @classmethod
-    def validate(cls, datum):
+    def validate_patch(cls, datum):
         if datum["name"][0].islower():
             raise ValidationError("Name must be capitalized", datum["name"])
 

@@ -210,8 +210,7 @@ class TestGuideSave(TestCase):
                 ]
 
                 @classmethod
-                def validate(cls, datum):
-                    #import pdb; pdb.set_trace()
+                def validate_patch(cls, datum):
                     if datum[u"name"][0].islower():
                         raise ValidationError("Name must be capitalized", datum["name"])
 
