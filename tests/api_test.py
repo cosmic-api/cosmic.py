@@ -182,21 +182,21 @@ class TestAPI(TestCase):
             "name": "pancake"
         }
 
-        pancake = R.from_json(d)
-        self.assertEqual(pancake['name'], "pancake")
-        self.assertEqual(R.to_json(pancake), d)
+        (id, rep) = Representation(R).from_json(d)
+        self.assertEqual(rep['name'], "pancake")
+        self.assertEqual(Representation(R).to_json((id, rep)), d)
 
     def test_guess_methods(self):
         self.assertEqual(self.cookbook.models.Recipe.methods, [])
 
     def test_model_deserialize_okay(self):
-        d = {
+        (id, rep) = Representation(self.cookbook.models.Recipe).from_json({
             "_links": {
                 "self": {"href": "/Recipe/14"}
             },
             "name": "turkey"
-        }
-        self.assertEqual(self.cookbook.models.Recipe.from_json(d)['name'], "turkey")
+        })
+        self.assertEqual(rep['name'], "turkey")
 
     def test_subclassing_hook(self):
         self.assertEqual(set(self.cookbook.models.__dict__.keys()), set(["Recipe", "Author"]))
@@ -209,11 +209,11 @@ class TestAPI(TestCase):
 
     def test_model_schema_validation(self):
         with self.assertRaises(ValidationError):
-            self.cookbook.models.Recipe.from_json(1.1)
+            Representation(self.cookbook.models.Recipe).from_json(1.1)
 
     def test_model_custom_validation(self):
         with self.assertRaisesRegexp(ValidationError, "kosher"):
-            self.cookbook.models.Recipe.from_json({
+            Representation(self.cookbook.models.Recipe).from_json({
                 "_links": {
                     "self": {"href": "/Recipe/123"}
                 },

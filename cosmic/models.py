@@ -31,17 +31,6 @@ class BaseModel(object):
             self._representation = kwargs
             self._patch = {}
 
-    @classmethod
-    def from_json(cls, datum):
-        (id, rep) = Representation(cls).from_json(datum)
-        cls.validate(rep)
-        return cls(id=id, **rep)
-
-    @classmethod
-    def to_json(cls, datum):
-        rep = datum.get_patch()
-        return Representation(cls).to_json((datum.id, rep))
-
     def get_patch(self):
         ret = {}
         if self._representation is not None:

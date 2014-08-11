@@ -117,6 +117,8 @@ class Representation(ParametrizedWrapper):
         if self_link is not None:
             id = self_link.id
 
+        self.param.validate(rep)
+
         return (id, rep)
 
 

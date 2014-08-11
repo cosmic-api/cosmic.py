@@ -465,7 +465,7 @@ class GetByIdEndpoint(Endpoint):
     def build_response(self, inst):
         if inst == None:
             return ("", 404, {})
-        body = json.dumps(self.model_cls.to_json(inst))
+        body = json.dumps(Representation(self.model_cls).to_json((inst.id, inst.get_patch())))
         return make_response(body, 200, {"Content-Type": "application/json"})
 
     def parse_response(self, res):
@@ -473,7 +473,8 @@ class GetByIdEndpoint(Endpoint):
         if res['code'] == 404:
             return None
         if res['code'] == 200:
-            return self.model_cls.from_json(res['json'].datum)
+            (id, rep) = Representation(self.model_cls).from_json(res['json'].datum)
+            return self.model_cls(id=id, **rep)
 
 
 class UpdateEndpoint(Endpoint):
@@ -677,7 +678,11 @@ class GetListEndpoint(Endpoint):
     def parse_response(self, res):
         res = super(GetListEndpoint, self).parse_response(res)
         j = res['json'].datum
-        l = map(self.model_cls.from_json, j["_embedded"][self.model_cls.__name__])
+        l = []
+        for jrep in j["_embedded"][self.model_cls._name]:
+            (id, rep) = Representation(self.model_cls).from_json(jrep)
+            l.append(self.model_cls(id=id, **rep))
+
         if self.model_cls.list_metadata:
             meta = j.copy()
             del meta['_embedded']
@@ -705,7 +710,11 @@ class GetListEndpoint(Endpoint):
         else:
             l = list_or_tuple
 
-        body["_embedded"][self.model_cls.__name__] = map(self.model_cls.to_json, l)
+        body["_embedded"][self.model_cls._name] = []
+        for inst in l:
+            jrep = Representation(self.model_cls).to_json((inst.id, inst.get_patch()))
+            body["_embedded"][self.model_cls._name].append(jrep)
+            
         return make_response(json.dumps(body), 200, {"Content-Type": "application/json"})
 
 

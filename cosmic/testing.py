@@ -1,4 +1,5 @@
 from .models import BaseModel
+from .types import *
 from werkzeug.local import LocalProxy, LocalStack
 
 _db_ctx_stack = LocalStack()
@@ -23,14 +24,19 @@ class DBModel(BaseModel):
     @classmethod
     def get_by_id(cls, id):
         try:
-            return cls.from_json(db[cls.__name__][int(id)])
+            (id, rep) = Representation(cls).from_json(db[cls.__name__][int(id)])
+            return cls(id=id, **rep)
         except IndexError:
             return None
 
     @classmethod
     def get_list(cls, **kwargs):
         if not kwargs:
-            return map(cls.from_json, db[cls.__name__])
+            ret = []
+            for row in db[cls.__name__]:
+                (id, rep) = Representation(cls).from_json(row)
+                ret.append(cls(id=id, **rep))
+            return ret
         ret = []
         for row in db[cls.__name__]:
             if row != None:
@@ -40,26 +46,25 @@ class DBModel(BaseModel):
                         keep = False
                         break
                 if keep:
-                    ret.append(cls.from_json(row))
+                    (id, rep) = Representation(cls).from_json(row)
+                    ret.append(cls(id=id, **rep))
         return ret
 
     @classmethod
     def create(cls, **rep):
         table = db[cls.__name__]
 
-        inst = cls(id=str(len(table)), **rep)
-        table.append(cls.to_json(inst))
+        id = str(len(table))
+        table.append(Representation(cls).to_json((id, rep)))
 
-        return inst.id, inst._representation
+        return id, rep
 
     @classmethod
     def update(cls, id, **rep):
         table = db[cls.__name__]
+        table[int(id)] = Representation(cls).to_json((id, rep))
 
-        inst = cls(id=id, **rep)
-        table[int(inst.id)] = cls.to_json(inst)
-
-        return id, inst._representation
+        return id, rep
 
     @classmethod
     def delete(cls, id):

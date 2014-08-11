@@ -100,7 +100,7 @@ class TestGuideModels(TestCase):
         with self.cosmos:
             sesame31 = places.models.Address(number=31, street="Sesame")
 
-            self.assertEqual(places.models.Address.to_json(sesame31), {
+            self.assertEqual(Representation(places.models.Address).to_json((None, sesame31.get_patch())), {
                 u"number": 31,
                 u"street": "Sesame"
             })
