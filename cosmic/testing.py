@@ -1,5 +1,6 @@
 from .models import BaseModel
 from .types import *
+from .exceptions import NotFound
 from werkzeug.local import LocalProxy, LocalStack
 
 _db_ctx_stack = LocalStack()
@@ -27,7 +28,7 @@ class DBModel(BaseModel):
             (id, rep) = Representation(cls).from_json(db[cls.__name__][int(id)])
             return cls(id=id, **rep)
         except IndexError:
-            return None
+            raise NotFound
 
     @classmethod
     def get_list(cls, **kwargs):

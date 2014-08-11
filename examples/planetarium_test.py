@@ -12,6 +12,7 @@ from cosmic.http import WerkzeugTestClientHook, SaveStackClientHookMixin
 from cosmic import cosmos
 from cosmic.testing import DBContext
 from cosmic.models import Cosmos, M
+from cosmic.exceptions import *
 
 from planetarium import *
 
@@ -211,7 +212,8 @@ class TestPlanitarium(TestCase):
         with DBContext(planet_db):
             Sphere = M('planetarium.Sphere')
             moon = Sphere.get_by_id("2")
-            self.assertEqual(Sphere.get_by_id("5"), None)
+            with self.assertRaises(NotFound):
+                self.assertEqual(Sphere.get_by_id("5"), None)
             self.assertEqual(moon['name'], "Moon")
             self.assertEqual(moon['revolves_around']['name'], "Earth")
             self.assertEqual(moon['revolves_around']['revolves_around']['name'], "Sun")

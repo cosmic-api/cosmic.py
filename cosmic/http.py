@@ -116,8 +116,8 @@ class ServerHook(object):
     def view(self, endpoint, request, **url_args):
         try:
             kwargs = self.parse_request(endpoint, request, **url_args)
-            r = endpoint.handler(**kwargs)
-            return self.build_response(endpoint, r)
+            either = endpoint.handler(**kwargs)
+            return self.build_response(endpoint, either)
         except Exception as err:
             if current_app.debug:
                 raise
@@ -452,7 +452,10 @@ class GetByIdEndpoint(Endpoint):
         self.endpoint = "doc_get_%s" % self.model_cls.__name__
 
     def handler(self, id):
-        return self.model_cls.get_by_id(id)
+        try:
+            return Either(value=self.model_cls.get_by_id(id))
+        except NotFound as e:
+            return Either(exception=e)
 
     def build_request(self, id):
         return super(GetByIdEndpoint, self).build_request(
@@ -462,16 +465,18 @@ class GetByIdEndpoint(Endpoint):
         req = super(GetByIdEndpoint, self).parse_request(req, **url_args)
         return {'id': req['url_args']['id']}
 
-    def build_response(self, inst):
-        if inst == None:
-            return ("", 404, {})
-        body = json.dumps(Representation(self.model_cls).to_json((inst.id, inst._representation)))
-        return make_response(body, 200, {"Content-Type": "application/json"})
+    def build_response(self, either):
+        if either.exception is not None:
+            return make_response("", 404, {})
+        else:
+            inst = either.value
+            body = json.dumps(Representation(self.model_cls).to_json((inst.id, inst._representation)))
+            return make_response(body, 200, {"Content-Type": "application/json"})
 
     def parse_response(self, res):
         res = super(GetByIdEndpoint, self).parse_response(res)
         if res['code'] == 404:
-            return None
+            raise NotFound
         if res['code'] == 200:
             (id, rep) = Representation(self.model_cls).from_json(res['json'].datum)
             return self.model_cls(id=id, **rep)
@@ -493,7 +498,7 @@ class UpdateEndpoint(Endpoint):
     method = "PUT"
     json_request = True
     json_response = True
-    acceptable_response_codes = [200]
+    acceptable_response_codes = [200, 404]
     response_can_be_empty = False
     request_can_be_empty = False
 
@@ -503,10 +508,11 @@ class UpdateEndpoint(Endpoint):
         self.endpoint = "doc_put_%s" % self.model_cls.__name__
 
     def handler(self, id, **patch):
-        if self.model_cls.get_by_id(id) == None:
-            raise NotFound
         self.model_cls.validate_patch(patch)
-        return self.model_cls.update(id, **patch)
+        try:
+            return Either(value=self.model_cls.update(id, **patch))
+        except NotFound as e:
+            return Either(exception=e)
 
     def build_request(self, id, **patch):
         return super(UpdateEndpoint, self).build_request(
@@ -519,14 +525,19 @@ class UpdateEndpoint(Endpoint):
         rep['id'] = req['url_args']['id']
         return rep
 
-    def build_response(self, tup):
-        body = json.dumps(Representation(self.model_cls).to_json(tup))
-        return make_response(body, 200, {"Content-Type": "application/json"})
+    def build_response(self, either):
+        if either.exception is not None:
+            return make_response("", 404, {})
+        else:
+            body = json.dumps(Representation(self.model_cls).to_json(either.value))
+            return make_response(body, 200, {"Content-Type": "application/json"})
 
     def parse_response(self, res):
         res = super(UpdateEndpoint, self).parse_response(res)
-        return Representation(self.model_cls).from_json(res['json'].datum)
-
+        if res['code'] == 200:
+            return Representation(self.model_cls).from_json(res['json'].datum)
+        if res['code'] == 404:
+            raise NotFound
 
 
 class CreateEndpoint(Endpoint):
@@ -591,7 +602,7 @@ class DeleteEndpoint(Endpoint):
 
     """
     method = "DELETE"
-    acceptable_response_codes = [204]
+    acceptable_response_codes = [204, 404]
     response_must_be_empty = True
     request_must_be_empty = True
 
@@ -602,9 +613,9 @@ class DeleteEndpoint(Endpoint):
 
     def handler(self, id):
         try:
-            self.model_cls.delete(id)
-        except NotFound:
-            return NotFound
+            return Either(value=self.model_cls.delete(id))
+        except NotFound as e:
+            return Either(exception=e)
 
     def build_request(self, id):
         return super(DeleteEndpoint, self).build_request(
@@ -615,10 +626,14 @@ class DeleteEndpoint(Endpoint):
         return {'id': req['url_args']['id']}
 
     def parse_response(self, res):
-        return
+        res = super(DeleteEndpoint, self).parse_response(res)
+        if res['code'] == 204:
+            return None
+        if res['code'] == 404:
+            raise NotFound
 
-    def build_response(self, maybe_notfound):
-        if maybe_notfound is NotFound:
+    def build_response(self, either):
+        if either.exception is not None:
             return make_response("", 404, {})
         else:
             return make_response("", 204, {})
