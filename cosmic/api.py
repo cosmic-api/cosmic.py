@@ -100,6 +100,7 @@ class API(BasicWrapper):
         api = API(name=datum["name"], homepage=datum.get("homepage", None))
 
         for name, action in datum["actions"].items():
+
             action = Action(**action)
             api._actions[name] = action
             setattr(api.actions, name, action)
@@ -109,7 +110,6 @@ class API(BasicWrapper):
         for name, modeldef in datum["models"].items():
 
             class M(BaseModel):
-                type_name = "{}.{}".format(api.name, name)
 
                 properties = modeldef["properties"].items()
                 query_fields = modeldef["query_fields"].items()
@@ -117,29 +117,15 @@ class API(BasicWrapper):
                 links = modeldef["links"].items()
                 methods = filter(lambda m: modeldef["methods"][m], MODEL_METHODS)
 
-                @classmethod
-                def create(cls, **rep):
-                    return cls._list_poster(**rep)
-
-                @classmethod
-                def update(cls, id, **rep):
-                    return cls._model_putter(id, **rep)
-
-                @classmethod
-                def delete(cls, id):
-                    return cls._model_deleter(id)
-
-                @classmethod
-                def get_list(cls, **query):
-                    return cls._list_getter(**query)
-
-                @classmethod
-                def get_by_id(cls, id):
-                    return cls._model_getter(id)
-
             M.__name__ = str(name)
 
             api.model(M)
+
+            M.create = M._list_poster
+            M.update = M._model_putter
+            M.delete = M._model_deleter
+            M.get_list = M._list_getter
+            M.get_by_id = M._model_getter
 
         return api
 
