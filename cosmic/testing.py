@@ -26,7 +26,7 @@ class DBModel(BaseModel):
     def get_by_id(cls, id):
         try:
             (id, rep) = Representation(cls).from_json(db[cls.__name__][int(id)])
-            return cls(id=id, **rep)
+            return rep
         except IndexError:
             raise NotFound
 

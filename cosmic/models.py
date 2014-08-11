@@ -33,8 +33,7 @@ class BaseModel(object):
 
     def _force_representation(self):
         if self._representation is None:
-            i = self.__class__.get_by_id(self.id)
-            self._representation = i._representation
+            self._representation = self.__class__.get_by_id(self.id)
 
     def __getitem__(self, name):
         self._force_representation()

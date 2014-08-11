@@ -362,7 +362,7 @@ class TestPlanitarium(TestCase):
 
             rep = Sphere.update("2",
                 name=moon['name'],
-                revolves_around=Sphere.get_by_id("0"))
+                revolves_around=Sphere(id="0"))
 
             self.assertEqual(rep['revolves_around'].id, "0")
             self.assertEqual(c['Sphere'][2]["_links"]["revolves_around"]["href"], "/Sphere/0")
@@ -439,8 +439,7 @@ class TestPlanitarium(TestCase):
         c = copy.deepcopy(planet_db)
         with DBContext(c):
             Sphere = M('planetarium.Sphere')
-            earth = Sphere.get_by_id("1")
-            Sphere.delete(earth.id)
+            Sphere.delete("1")
             self.assertEqual(c['Sphere'][1], None)
 
     def test_local_delete(self):

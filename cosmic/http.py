@@ -465,8 +465,9 @@ class GetByIdEndpoint(Endpoint):
         if func_output.exception is not None:
             return make_response("", 404, {})
         else:
-            inst = func_output.value
-            body = json.dumps(Representation(self.model_cls).to_json((inst.id, inst._representation)))
+            id = func_input['id']
+            rep = func_output.value
+            body = json.dumps(Representation(self.model_cls).to_json((id, rep)))
             return make_response(body, 200, {"Content-Type": "application/json"})
 
     def parse_response(self, res):
