@@ -17,6 +17,8 @@ def getter(name):
         return Link
     elif name == "cosmic.Representation":
         return Representation
+    elif name == "cosmic.Patch":
+        return Patch
     else:
         raise KeyError()
 
@@ -69,8 +71,7 @@ class Link(ParametrizedWrapper):
         return {"href": href}
 
 
-class Representation(ParametrizedWrapper):
-    type_name = "cosmic.Representation"
+class BaseRepresentation(ParametrizedWrapper):
     param_schema = Model
 
     def __init__(self, param):
@@ -88,15 +89,27 @@ class Representation(ParametrizedWrapper):
                 })
             ]
             for name, link in self.param.links:
+                required = False
+                if not self.all_fields_optional:
+                    required = link["required"]
+
                 links.append((name, {
-                    "required": link["required"],
-                    "schema": Link(link["model"])
+                    "required": required,
+                    "schema": Link(link["model"]),
                 }))
+
             props = [
                 optional("_links", Struct(links)),
             ]
             for name, field in self.param.properties:
-                props.append((name, field))
+                required = False
+                if not self.all_fields_optional:
+                    required = field["required"]
+
+                props.append((name, {
+                    "required": required,
+                    "schema": field['schema'],
+                }))
 
             self._lazy_schema = Struct(props)
 
@@ -139,6 +152,15 @@ class Representation(ParametrizedWrapper):
                 d[name] = value
                 
         return d
+
+class Representation(BaseRepresentation):
+    type_name = "cosmic.Representation"
+    all_fields_optional = False
+
+class Patch(BaseRepresentation):
+    type_name = "cosmic.Patch"
+    all_fields_optional = True
+
 
 
 class URLParams(ParametrizedWrapper):

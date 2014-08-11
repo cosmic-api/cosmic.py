@@ -510,12 +510,12 @@ class UpdateEndpoint(Endpoint):
 
     def build_request(self, id, **patch):
         return super(UpdateEndpoint, self).build_request(
-            json=Box(Representation(self.model_cls).to_json((id, patch))),
+            json=Box(Patch(self.model_cls).to_json((id, patch))),
             url_args={'id': id})
 
     def parse_request(self, req, **url_args):
         req = super(UpdateEndpoint, self).parse_request(req, **url_args)
-        id, rep = Representation(self.model_cls).from_json(req['json'].datum)
+        id, rep = Patch(self.model_cls).from_json(req['json'].datum)
         rep['id'] = req['url_args']['id']
         return rep
 
@@ -560,11 +560,11 @@ class CreateEndpoint(Endpoint):
 
     def build_request(self, **patch):
         return super(CreateEndpoint, self).build_request(
-            json=Box(Representation(self.model_cls).to_json((None, patch))))
+            json=Box(Patch(self.model_cls).to_json((None, patch))))
 
     def parse_request(self, req, **url_args):
         req = super(CreateEndpoint, self).parse_request(req, **url_args)
-        id, rep = Representation(self.model_cls).from_json(req['json'].datum)
+        id, rep = Patch(self.model_cls).from_json(req['json'].datum)
         return rep
 
     def parse_response(self, res):
