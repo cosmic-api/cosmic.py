@@ -19,6 +19,13 @@ from .exceptions import *
 
 class BaseClientHook(object):
 
+    def get_callable(self, endpoint):
+
+        def call(*args, **kwargs):
+            return self.call(endpoint, *args, **kwargs)
+
+        return call
+
     def call(self, endpoint, *args, **kwargs):
         req = self.build_request(endpoint, *args, **kwargs)
         res = self.make_request(endpoint, req)
@@ -103,6 +110,16 @@ class WerkzeugTestClientHook(BaseClientHook):
 
 class ServerHook(object):
 
+    def get_flask_view(self, endpoint):
+
+        def view(**url_args):
+            # Pull Request object out of Flask's magical local. From now
+            # on, we'll pass it explicitly.
+            r = request._get_current_object()
+            return self.view(endpoint, request, **url_args)
+
+        return view
+
     def view(self, endpoint, request, **url_args):
         try:
             kwargs = self.parse_request(endpoint, request, **url_args)
@@ -178,12 +195,6 @@ class Endpoint(object):
     request_must_be_empty = None
 
     query_schema = None
-
-    def view(self, **url_args):
-        # Pull Request object out of Flask's magical local. From now
-        # on, we'll pass it explicitly.
-        r = request._get_current_object()
-        return self.api.server_hook.view(self, r, **url_args)
 
     def parse_request(self, request, **url_args):
         req = {
@@ -270,13 +281,6 @@ class Endpoint(object):
     def __call__(self, *args, **kwargs):
         return self.api.client_hook.call(self, *args, **kwargs)
 
-    def get_url_rule(self):
-        return {
-            'rule': self.url,
-            'view_func': self.view,
-            'methods': [self.method],
-            'endpoint': self.endpoint
-        }
 
 
 class ActionEndpoint(Endpoint):

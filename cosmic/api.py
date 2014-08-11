@@ -189,13 +189,13 @@ class API(BasicWrapper):
 
         view_func = SpecEndpoint("/spec.json", self)
         app.add_url_rule(view_func.url,
-            view_func=view_func.view,
+            view_func=self.server_hook.get_flask_view(view_func),
             methods=[view_func.method],
             endpoint="spec")
 
         view_func = EnvelopeEndpoint(self)
         app.add_url_rule(view_func.url,
-            view_func=view_func.view,
+            view_func=self.server_hook.get_flask_view(view_func),
             methods=[view_func.method],
             endpoint="envelope")
 
@@ -203,7 +203,7 @@ class API(BasicWrapper):
             endpoint = "function_%s" % name
             view_func = action.endpoint
             app.add_url_rule(view_func.url,
-                view_func=view_func.view,
+                view_func=self.server_hook.get_flask_view(view_func),
                 methods=[view_func.method],
                 endpoint=endpoint)
 
@@ -217,8 +217,12 @@ class API(BasicWrapper):
             }
             for method, handler in handlers.items():
                 if method in model_cls.methods:
-                    args = handler.get_url_rule()
-                    args['view_func'] = args['view_func']
+                    args = {
+                        'rule': handler.url,
+                        'view_func': self.server_hook.get_flask_view(handler),
+                        'methods': [handler.method],
+                        'endpoint': handler.endpoint
+                    }
                     app.add_url_rule(**args)
 
         return app
