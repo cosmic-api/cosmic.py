@@ -21,40 +21,28 @@ class BaseModel(object):
 
     def __init__(self, **kwargs):
         self.id = kwargs.pop('id', None)
-
-        if self.id is None:
+        self._representation = kwargs
+        if self.id is not None and not kwargs:
             self._representation = None
-            self._patch = kwargs
         else:
-            if not kwargs:
-                kwargs = None
             self._representation = kwargs
-            self._patch = {}
 
     @classmethod
     def validate_patch(cls, datum):
         pass
 
-    def __getitem__(self, name):
-        if name not in OrderedDict(self.properties + self.links).keys():
-            raise KeyError()
-        if name in self._patch:
-            return self._patch[name]
+    def _force_representation(self):
         if self._representation is None:
-            if self.id is None:
-                return None
             i = self.__class__.get_by_id(self.id)
             self._representation = i._representation
-        return self._representation.get(name, None)
 
-    def __setitem__(self, name, value):
-        if name not in OrderedDict(self.properties + self.links).keys():
-            super(BaseModel, self).__setattr__(name, value)
-        if value is not None:
-            self._patch[name] = value
-        else:
-            del self._patch[name]
+    def __getitem__(self, name):
+        self._force_representation()
+        return self._representation[name]
 
+    def __contains__(self, name):
+        self._force_representation()
+        return name in self._representation
 
 
 
