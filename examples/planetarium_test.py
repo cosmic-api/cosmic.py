@@ -244,6 +244,44 @@ class TestPlanitarium(TestCase):
         m = self.remote_planetarium.models.Sphere(name="Neptune")
         self.assertRegexpMatches(str(m), 'cosmic.api.Sphere object at')
 
+    def _test_get_by_id(self):
+        with DBContext(planet_db):
+            Sphere = M('planetarium.Sphere')
+            with self.assertRaises(NotFound):
+                Sphere.get_by_id('100')
+            rep = Sphere.get_by_id('0')
+            self.assertEqual(rep['name'], "Sun")
+
+    def test_local_get_by_id(self):
+        with self.cosmos1:
+            self._test_get_by_id()
+
+    def test_remote_get_by_id(self):
+        with self.cosmos2:
+            self._test_get_by_id()
+
+            (req, res) = self.remote_planetarium.client_hook.stack.pop()
+
+            self.assertEqual(req["method"], "GET")
+            self.assertEqual(req["url"], "/Sphere/0")
+            self.assertEqual(req["data"], "")
+
+            self.assertEqual(res["status_code"], 200)
+            self.assertEqual(res["headers"]["Content-Type"], "application/json")
+            self.assertEqual(json.loads(res["data"]), {
+                u"name": u"Sun",
+                u"temperature": 3000.0,
+                "_links": {
+                    "self": {"href": "/Sphere/0"}
+                },
+            })
+
+            (req, res) = self.remote_planetarium.client_hook.stack.pop()
+
+            self.assertEqual(req["method"], "GET")
+            self.assertEqual(req["url"], "/Sphere/100")
+            self.assertEqual(req["data"], "")
+            self.assertEqual(res["status_code"], 404)
 
     def _test_get_list(self):
         with DBContext(planet_db):

@@ -479,7 +479,7 @@ class GetByIdEndpoint(Endpoint):
             raise NotFound
         if res['code'] == 200:
             (id, rep) = Representation(self.model_cls).from_json(res['json'].datum)
-            return self.model_cls(id=id, **rep)
+            return rep
 
 
 class UpdateEndpoint(Endpoint):
