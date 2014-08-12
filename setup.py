@@ -22,6 +22,6 @@ setup(
         "requests==2.0.0",
     ],
     classifiers=[
-        'Development Status :: 4 - Beta',
+        'Development Status :: 3 - Alpha',
     ],
 )

@@ -109,24 +109,27 @@ class ServerHook(object):
             from flask import request
             # Pull Request object out of Flask's magical local. From now
             # on, we'll pass it explicitly.
-            return self.view(endpoint, request._get_current_object(), **url_args)
+            try:
+                return self.view(endpoint, request._get_current_object(), **url_args)
+            except HTTPError as err:
+                return error_response(err.message, err.code)
+            except ValidationError as err:
+                return error_response(str(err), 400)
+            except Exception as exc:
+                return self.unhandled_exception_hook(exc)
 
         return view
 
     def view(self, endpoint, request, **url_args):
-        try:
-            func_input = self.parse_request(endpoint, request, **url_args)
-            func_output = endpoint.handler(**func_input)
-            return self.build_response(endpoint, func_input=func_input, func_output=func_output)
-        except HTTPError as err:
-            return error_response(err.message, err.code)
-        except ValidationError as err:
-            return error_response(str(err), 400)
-        except Exception:
-            if current_app.debug:
-                raise
-            else:
-                return error_response("Internal Server Error", 500)
+        func_input = self.parse_request(endpoint, request, **url_args)
+        func_output = endpoint.handler(**func_input)
+        return self.build_response(endpoint, func_input=func_input, func_output=func_output)
+
+    def unhandled_exception_hook(self, exc):
+        if current_app.debug:
+            raise
+        else:
+            return error_response("Internal Server Error", 500)
 
     def parse_request(self, endpoint, request, **url_args):
         return endpoint.parse_request(request, **url_args)
