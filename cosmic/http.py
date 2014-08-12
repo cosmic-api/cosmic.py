@@ -700,8 +700,7 @@ class GetListEndpoint(Endpoint):
         j = res['json'].datum
         l = []
         for jrep in j["_embedded"][self.model_cls._name]:
-            (id, rep) = Representation(self.model_cls).from_json(jrep)
-            l.append(self.model_cls(id=id, **rep))
+            l.append(Representation(self.model_cls).from_json(jrep))
 
         if self.model_cls.list_metadata:
             meta = j.copy()
@@ -732,7 +731,7 @@ class GetListEndpoint(Endpoint):
 
         body["_embedded"][self.model_cls._name] = []
         for inst in l:
-            jrep = Representation(self.model_cls).to_json((inst.id, inst._representation))
+            jrep = Representation(self.model_cls).to_json(inst)
             body["_embedded"][self.model_cls._name].append(jrep)
 
         return make_response(json.dumps(body), 200, {"Content-Type": "application/json"})

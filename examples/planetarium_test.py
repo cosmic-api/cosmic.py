@@ -252,7 +252,7 @@ class TestPlanitarium(TestCase):
             self.assertEqual(len(res[0]), 0)
             res = Sphere.get_list(name="Sun")
             self.assertEqual(len(res[0]), 1)
-            self.assertEqual(res[0][0].id, "0")
+            self.assertEqual(res[0][0][0], "0")
             res = Sphere.get_list()
             self.assertEqual(len(res[0]), 3)
 

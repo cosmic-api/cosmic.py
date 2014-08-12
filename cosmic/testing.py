@@ -35,8 +35,7 @@ class DBModel(BaseModel):
         if not kwargs:
             ret = []
             for row in db[cls.__name__]:
-                (id, rep) = Representation(cls).from_json(row)
-                ret.append(cls(id=id, **rep))
+                ret.append(Representation(cls).from_json(row))
             return ret
         ret = []
         for row in db[cls.__name__]:
@@ -47,8 +46,7 @@ class DBModel(BaseModel):
                         keep = False
                         break
                 if keep:
-                    (id, rep) = Representation(cls).from_json(row)
-                    ret.append(cls(id=id, **rep))
+                    ret.append(Representation(cls).from_json(row))
         return ret
 
     @classmethod
