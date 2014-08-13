@@ -17,9 +17,9 @@ setup(
     long_description = long_description,
     install_requires = [
         "teleport==0.2.1",
-        "Flask==0.10",
-        "Werkzeug==0.9.1",
-        "requests==2.0.0",
+        "Flask>=0.10",
+        "Werkzeug>=0.9.1",
+        "requests>=2.2.0",
     ],
     classifiers=[
         'Development Status :: 3 - Alpha',
