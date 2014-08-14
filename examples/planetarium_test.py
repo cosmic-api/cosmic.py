@@ -236,14 +236,6 @@ class TestPlanitarium(TestCase):
             self.assertEqual(json.loads(res["data"]), planet_db['Sphere'][0])
             self.assertEqual(res["headers"]["Content-Type"], "application/json")
 
-    def test_local_str_model(self):
-        m = self.planetarium.models.Sphere(name="Neptune")
-        self.assertRegexpMatches(str(m), 'examples.planetarium.Sphere object at')
-
-    def test_remote_str_model(self):
-        m = self.remote_planetarium.models.Sphere(name="Neptune")
-        self.assertRegexpMatches(str(m), 'cosmic.api.Sphere object at')
-
     def _test_get_by_id(self):
         with DBContext(planet_db):
             Sphere = M('planetarium.Sphere')

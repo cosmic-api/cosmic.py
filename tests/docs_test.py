@@ -87,14 +87,6 @@ class TestGuideModels(TestCase):
                 }
             })
 
-    def test_access_attributes(self):
-        places = self.places
-        with self.cosmos:
-            sesame31 = places.models.Address(number=31, street="Sesame")
-
-            self.assertEqual(sesame31['number'], 31)
-            self.assertEqual(sesame31['street'], "Sesame")
-
     def test_serialize_model(self):
         places = self.places
         with self.cosmos:
@@ -141,18 +133,6 @@ class TestGuideModelLinks(TestCase):
                 self.remote_places = API.load('http://example.com/spec.json')
                 self.remote_places.client_hook = WerkzeugTestClientHook(places.get_flask_app().test_client())
 
-    def test_access_links(self):
-        places = self.places
-        with self.cosmos1:
-            toronto = places.models.City(name="Toronto")
-            spadina147 = places.models.Address(
-                number=147,
-                street="Spadina",
-                city=toronto)
-
-            self.assertEqual(spadina147['city']['name'], "Toronto")
-            self.assertEqual(spadina147.id is None, True)
-
     def remote_create_models(self):
         with self.cosmos2:
             elm13 = self.remote_places.models.Address(number=13, street="Elm")
@@ -182,8 +162,8 @@ class TestGuideGetById(TestCase):
                         return None
 
             cities = {
-                "0": City(name="Toronto", id="0"),
-                "1": City(name="San Francisco", id="1"),
+                "0": {"name": "Toronto"},
+                "1": {"name": "San Francisco"},
             }
 
     def test_access_links(self):
@@ -218,13 +198,13 @@ class TestGuideSave(TestCase):
                 @classmethod
                 def create(cls, **patch):
                     id = str(len(cities))
-                    cities[id] = cls(id=id, **patch)
-                    return id, cities[id]._representation
+                    cities[id] = patch
+                    return id, patch
 
                 @classmethod
                 def update(cls, id, **patch):
-                    cities[id] = cls(id=id, **patch)
-                    return id, cities[id]._representation
+                    cities[id] = patch
+                    return patch
 
         self.cosmos2 = Cosmos()
         with self.cosmos2:
@@ -235,8 +215,8 @@ class TestGuideSave(TestCase):
                 self.remote_places.client_hook = WerkzeugTestClientHook(places.get_flask_app().test_client())
 
         cities = {
-            "0": City(name="Toronto", id="0"),
-            "1": City(name="San Francisco", id="1"),
+            "0": {"name": "Toronto"},
+            "1": {"name": "San Francisco"},
         }
 
     def test_save_good(self):
@@ -277,27 +257,25 @@ class TestGuideDelete(TestCase):
                 @classmethod
                 def get_by_id(cls, id):
                     if id in cities:
-                        city = cities[id]
-                        city.id = id
-                        return city
-                    else:
-                        return None
+                        return cities[id]
+                    raise NotFound
 
                 @classmethod
                 def delete(cls, id):
                     del cities[id]
 
             cities = {
-                "0": City(name="Toronto", id="0"),
-                "1": City(name="San Francisco", id="1"),
+                "0": {"name": "Toronto"},
+                "1": {"name": "San Francisco"},
             }
 
     def test_save(self):
         places = self.places
         with self.cosmos:
             city = places.models.City.get_by_id("0")
-            places.models.City.delete(city.id)
-            self.assertEqual(places.models.City.get_by_id("0") is None, True)
+            places.models.City.delete("0")
+            with self.assertRaises(NotFound):
+                places.models.City.get_by_id("0")
 
 
 class TestGuideGetList(TestCase):
@@ -322,17 +300,17 @@ class TestGuideGetList(TestCase):
                 @classmethod
                 def get_list(cls, country=None):
                     if country is None:
-                        return cities.values()
+                        return cities.items()
                     elif country == "Canada":
-                        return [cities["0"]]
+                        return [("0", cities["0"])]
                     elif country == "USA":
-                        return [cities["1"]]
+                        return [("1", cities["1"])]
                     else:
                         return []
 
             cities = {
-                "0": City(name="Toronto", id="0"),
-                "1": City(name="San Francisco", id="1"),
+                "0": {"name": "Toronto"},
+                "1": {"name": "San Francisco"},
             }
 
     def test_get_list(self):
@@ -342,7 +320,7 @@ class TestGuideGetList(TestCase):
             self.assertEqual(len(l1), 2)
             l2 = places.models.City.get_list(country="Canada")
             self.assertEqual(len(l2), 1)
-            self.assertEqual(l2[0]['name'], "Toronto")
+            self.assertEqual(l2[0][1]['name'], "Toronto")
             l3 = places.models.City.get_list(country="Russia")
             self.assertEqual(l3, [])
 
