@@ -208,34 +208,6 @@ class TestPlanitarium(TestCase):
         }
         self.assertEqual(self.remote_planetarium.actions.hello((None, pluto)), "Hello, Pluto")
 
-    def _test_follow_links(self):
-        with DBContext(planet_db):
-            Sphere = M('planetarium.Sphere')
-            moon = Sphere.get_by_id("2")
-            with self.assertRaises(NotFound):
-                self.assertEqual(Sphere.get_by_id("5"), None)
-            self.assertEqual(moon['name'], "Moon")
-            self.assertEqual(moon['revolves_around']['name'], "Earth")
-            self.assertEqual(moon['revolves_around']['revolves_around']['name'], "Sun")
-
-    def test_local_follow_links(self):
-        with self.cosmos1:
-            self._test_follow_links()
-
-    def test_remote_follow_links(self):
-        with self.cosmos2:
-            self._test_follow_links()
-
-            (req, res) = self.remote_planetarium.client_hook.stack.pop()
-
-            self.assertEqual(req["method"], "GET")
-            self.assertEqual(req["url"], "/Sphere/0")
-            self.assertEqual(req["data"], "")
-
-            self.assertEqual(res["status_code"], 200)
-            self.assertEqual(json.loads(res["data"]), planet_db['Sphere'][0])
-            self.assertEqual(res["headers"]["Content-Type"], "application/json")
-
     def _test_get_by_id(self):
         with DBContext(planet_db):
             Sphere = M('planetarium.Sphere')
@@ -388,13 +360,13 @@ class TestPlanitarium(TestCase):
             Sphere = M('planetarium.Sphere')
             # Save property
             moon = Sphere.get_by_id("2")
-            self.assertEqual(moon['revolves_around'].id, "1")
+            self.assertEqual(moon['revolves_around'], "1")
 
             rep = Sphere.update("2",
                 name=moon['name'],
-                revolves_around=Sphere(id="0"))
+                revolves_around="0")
 
-            self.assertEqual(rep['revolves_around'].id, "0")
+            self.assertEqual(rep['revolves_around'], "0")
             self.assertEqual(c['Sphere'][2]["_links"]["revolves_around"]["href"], "/Sphere/0")
 
     def test_local_save_link(self):
@@ -441,7 +413,7 @@ class TestPlanitarium(TestCase):
 
             (id, rep) = Sphere.create(
                 name="Pluto",
-                revolves_around=Sphere(id="0"))
+                revolves_around="0")
 
             self.assertEqual(id, "3")
 

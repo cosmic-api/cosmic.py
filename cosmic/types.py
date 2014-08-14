@@ -62,12 +62,10 @@ class Link(ParametrizedWrapper):
         parts = url.split('/')
         if parts[-2] != self.param._name:
             raise ValidationError("Invalid url for %s link: %s" % (self.param._name, url))
-        id = parts[-1]
-
-        return self.param(id=id)
+        return parts[-1]
 
     def disassemble(self, datum):
-        href = "/%s/%s" % (datum.__class__.__name__, datum.id)
+        href = "/%s/%s" % (self.param._name, datum)
         return {"href": href}
 
 
@@ -119,16 +117,12 @@ class BaseRepresentation(ParametrizedWrapper):
 
         rep = {}
         links = datum.pop("_links", {})
-        self_link = links.pop("self", None)
+        self_id = links.pop("self", None)
 
         rep.update(links)
         rep.update(datum)
 
-        id = None
-        if self_link is not None:
-            id = self_link.id
-
-        return (id, rep)
+        return (self_id, rep)
 
 
     def disassemble(self, datum):
@@ -136,7 +130,7 @@ class BaseRepresentation(ParametrizedWrapper):
 
         links = {}
         if id:
-            links["self"] = self.param(id=id)
+            links["self"] = id
         for name, link in OrderedDict(self.param.links).items():
             value = rep.get(name, None)
             if value != None:

@@ -220,8 +220,6 @@ class TestAPI(TestCase):
                 "name": "bacon"
             })
             self.cookbook.models.Recipe.validate_patch(rep)
-        # When not overridden, custom validation passes
-        self.cookbook.models.Author(is_gordon_ramsay=True)
 
     def test_serialize(self):
         self.assertEqual(API.to_json(self.cookbook), cookbook_spec)
