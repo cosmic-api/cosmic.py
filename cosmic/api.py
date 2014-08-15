@@ -78,6 +78,7 @@ class API(BasicWrapper):
     ])
 
     def __init__(self, name, homepage=None):
+        from werkzeug.routing import Map
 
         self.name = name
         self.homepage = homepage
@@ -89,6 +90,11 @@ class API(BasicWrapper):
 
         self._models = OrderedDict()
         self.models = Object()
+
+        self.endpoints = {}
+        self.url_map = Map([])
+        self.endpoints['spec'] = SpecEndpoint("/spec.json", self)
+        self.url_map.add(Rule('/spec.json', endpoint='spec', methods=['GET']))
 
         cosmos.apis[self.name] = self
 
@@ -184,54 +190,19 @@ class API(BasicWrapper):
         api.client_hook.base_url = url[:-10]
         return api
 
-    def get_wsgi_app(self):
-        from werkzeug.routing import Map, Rule
+    def wsgi_app(self, environ, start_response):
         from werkzeug.wrappers import Request, Response
         from werkzeug.exceptions import HTTPException
 
-        rules = []
-        endpoints = {}
+        request = Request(environ)
+        adapter = self.url_map.bind_to_environ(request.environ)
+        try:
+            endpoint, values = adapter.match()
+            response = self.server_hook.get_view(self.endpoints[endpoint])(request, **values)
+        except HTTPException, e:
+            response = e
 
-        endpoints['spec'] = SpecEndpoint("/spec.json", self)
-        rules.append(Rule('/spec.json', endpoint='spec', methods=['GET']))
-
-        for name, action in self._actions.items():
-            endpoint = "function_%s" % name
-            endpoints[endpoint] = action.endpoint
-            rules.append(Rule(action.endpoint.url,
-                endpoint=endpoint,
-                methods=[action.endpoint.method]))
-
-        for name, model_cls in self._models.items():
-            handlers = {
-                'create': model_cls._list_poster,
-                'get_list': model_cls._list_getter,
-                'get_by_id': model_cls._model_getter,
-                'update': model_cls._model_putter,
-                'delete': model_cls._model_deleter
-            }
-            for method, handler in handlers.items():
-                if method in model_cls.methods:
-                    endpoints[handler.endpoint] = handler
-                    rules.append(Rule(handler.url,
-                        endpoint=handler.endpoint,
-                        methods=[handler.method]))
-
-        url_map = Map(rules)
-
-        def app(environ, start_response):
-            request = Request(environ)
-
-            adapter = url_map.bind_to_environ(request.environ)
-            try:
-                endpoint, values = adapter.match()
-                response = self.server_hook.get_view(endpoints[endpoint])(request, **values)
-            except HTTPException, e:
-                response = e
-
-            return response(environ, start_response)
-
-        return app
+        return response(environ, start_response)
 
     def submit_spec(self, api_key, registry_url_override=None): # pragma: no cover
 
@@ -291,7 +262,14 @@ class API(BasicWrapper):
             self._actions[name] = action
             setattr(self.actions, name, action.func)
 
+            endpoint = "function_{}".format(name)
+            self.endpoints[endpoint] = action.endpoint
+            self.url_map.add(Rule(action.endpoint.url,
+                endpoint=endpoint,
+                methods=[action.endpoint.method]))
+
             return func
+
         return wrapper
 
     def model(self, model_cls):
@@ -319,6 +297,7 @@ class API(BasicWrapper):
 
         """
         from .http import CreateEndpoint, GetListEndpoint, GetByIdEndpoint, UpdateEndpoint, DeleteEndpoint
+        from werkzeug.routing import Rule
 
         model_cls.api = self
         model_cls.type_name = "%s.%s" % (self.name, model_cls.__name__,)
@@ -346,6 +325,20 @@ class API(BasicWrapper):
 
         self._models[model_cls.__name__] = model_cls
         setattr(self.models, model_cls.__name__, model_cls)
+
+        handlers = {
+            'create': model_cls._list_poster,
+            'get_list': model_cls._list_getter,
+            'get_by_id': model_cls._model_getter,
+            'update': model_cls._model_putter,
+            'delete': model_cls._model_deleter
+        }
+        for method, handler in handlers.items():
+            if method in model_cls.methods:
+                self.endpoints[handler.endpoint] = handler
+                self.url_map.add(Rule(handler.url,
+                    endpoint=handler.endpoint,
+                    methods=[handler.method]))
 
         return model_cls
 

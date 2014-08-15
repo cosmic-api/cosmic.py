@@ -134,7 +134,7 @@ class TestGuideModelLinks(TestCase):
                 mock_get.return_value.json = lambda: API.to_json(places)
                 mock_get.return_value.status_code = 200
                 self.remote_places = API.load('http://example.com/spec.json')
-                test_client = TestClient(places.get_wsgi_app(), response_wrapper=Response)
+                test_client = TestClient(places.wsgi_app, response_wrapper=Response)
                 self.remote_places.client_hook = WerkzeugTestClientHook(test_client)
 
     def remote_create_models(self):
@@ -216,7 +216,7 @@ class TestGuideSave(TestCase):
                 mock_get.return_value.json = lambda: API.to_json(places)
                 mock_get.return_value.status_code = 200
                 self.remote_places = API.load('http://example.com/spec.json')
-                test_client = TestClient(places.get_wsgi_app(), response_wrapper=Response)
+                test_client = TestClient(places.wsgi_app, response_wrapper=Response)
                 self.remote_places.client_hook = WerkzeugTestClientHook(test_client)
 
         cities = {
@@ -360,7 +360,7 @@ class TestGuideAction(TestCase):
                 mock_get.return_value.json = lambda: API.to_json(mathy)
                 mock_get.return_value.status_code = 200
                 self.remote_mathy = API.load('http://example.com/spec.json')
-                test_client = TestClient(mathy.get_wsgi_app(), response_wrapper=Response)
+                test_client = TestClient(mathy.wsgi_app, response_wrapper=Response)
                 self.remote_mathy.client_hook = WerkzeugTestClientHook(test_client)
 
     def test_call_as_function(self):

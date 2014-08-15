@@ -104,7 +104,7 @@ class TestPlanitarium(TestCase):
         with self.cosmos1:
             self.planetarium = planetarium
 
-            app = self.planetarium.get_wsgi_app()
+            app = self.planetarium.wsgi_app
             self.d = TestClient(app, response_wrapper=Response)
 
         with self.cosmos2:

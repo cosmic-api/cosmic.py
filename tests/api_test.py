@@ -161,7 +161,7 @@ class TestAPI(TestCase):
                 required(u"is_gordon_ramsay", Boolean)
             ]
 
-        self.app = self.cookbook.get_wsgi_app()
+        self.app = self.cookbook.wsgi_app
         self.cookbook.server_hook.debug = True
         self.client = TestClient(self.app, response_wrapper=Response)
 

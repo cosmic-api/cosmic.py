@@ -108,8 +108,6 @@ class ServerHook(object):
     def get_view(self, endpoint):
 
         def view(request, **url_args):
-            # Pull Request object out of Flask's magical local. From now
-            # on, we'll pass it explicitly.
             try:
                 return self.view(endpoint, request, **url_args)
             except HTTPError as err:
