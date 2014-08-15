@@ -3,13 +3,12 @@ import datetime
 from cosmic import cosmos
 from cosmic.models import M
 from cosmic.api import API
+from cosmic.exceptions import HTTPError
 from cosmic.testing import DBModel, DBContext
 from cosmic.types import *
 from cosmic.http import ServerHook
 
 from werkzeug.local import LocalProxy
-
-from flask import abort
 
 
 planet_db = {
@@ -49,7 +48,7 @@ class SHook(ServerHook):
     def parse_request(self, endpoint, request, **url_args):
         if not endpoint.never_authenticate:
             if request.headers.get('X-Danish', None) != "poppyseed":
-                abort(401)
+                raise HTTPError(401, "Unauthorized")
         return super(SHook, self).parse_request(endpoint, request, **url_args)
 
 planetarium.server_hook = SHook()

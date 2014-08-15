@@ -3,11 +3,11 @@ import copy
 import requests
 from requests.structures import CaseInsensitiveDict
 
-from werkzeug.exceptions import HTTPException, InternalServerError, abort
+from werkzeug.exceptions import HTTPException, InternalServerError
 from werkzeug.routing import Rule
 from werkzeug.routing import Map as RuleMap
 
-from flask import Flask, make_response, current_app
+from flask import make_response, current_app
 from .types import *
 
 from teleport import ParametrizedWrapper, BasicWrapper

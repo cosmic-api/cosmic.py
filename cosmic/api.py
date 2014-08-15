@@ -1,18 +1,17 @@
 from __future__ import unicode_literals
 
 import json
-from functools import wraps
 import inspect
 import requests
 from multiprocessing import Process
 from collections import OrderedDict
 
 
-from flask import Blueprint, Flask, request
+from flask import Flask
 
 from .actions import Action
-from .models import BaseModel, Cosmos
-from .tools import GetterNamespace, get_args, assert_is_compatible, deserialize_json, validate_underscore_identifier
+from .models import BaseModel
+from .tools import GetterNamespace, get_args, assert_is_compatible, validate_underscore_identifier
 from .types import *
 from .http import *
 from . import cosmos
@@ -186,7 +185,7 @@ class API(BasicWrapper):
         # Set the API url to be the spec URL, minus the /spec.json
         api.client_hook.base_url = url[:-10]
         return api
-
+ 
 
     def get_flask_app(self):
         """Returns a Flask application for the API."""
@@ -248,7 +247,6 @@ class API(BasicWrapper):
     def submit_spec(self, api_key, registry_url_override=None): # pragma: no cover
 
         def register_spec(url, api_key, spec):
-            import requests
             headers = {'Content-Type': 'application/json'}
             data = json.dumps({
                 "api_key": api_key,

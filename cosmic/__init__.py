@@ -1,5 +1,4 @@
 from werkzeug.local import LocalProxy, LocalStack
-from flask import request
 
 from .models import _ctx_stack, Cosmos
 

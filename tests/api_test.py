@@ -1,18 +1,14 @@
-import warnings
 import json
 import sys
 
 from unittest2 import TestCase
 from mock import patch
 
-import requests
 from cosmic.types import *
-from werkzeug.exceptions import Unauthorized
 
 from cosmic.exceptions import *
 from cosmic.api import API
 from cosmic.models import BaseModel, Cosmos
-from cosmic import api, request
 
 
 cookbook_spec = {

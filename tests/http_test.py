@@ -5,7 +5,6 @@ import requests
 from mock import patch
 
 from werkzeug.exceptions import Unauthorized, BadRequest, InternalServerError
-from flask import Flask
 
 from cosmic.models import Cosmos
 from cosmic.actions import *
