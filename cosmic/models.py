@@ -1,13 +1,12 @@
 import sys
-
 from collections import OrderedDict
 
 from werkzeug.local import LocalStack, LocalProxy
-from flask.ctx import _AppCtxGlobals
+
+from teleport import BasicWrapper, ParametrizedWrapper
 
 from .types import *
 
-from teleport import BasicWrapper, ParametrizedWrapper
 
 
 
@@ -29,7 +28,6 @@ class Cosmos(object):
 
     def __init__(self):
         self.apis = {}
-        self.g = _AppCtxGlobals()
 
     def clone(self):
         c = Cosmos()

@@ -4,10 +4,10 @@ import requests
 from requests.structures import CaseInsensitiveDict
 
 from werkzeug.exceptions import HTTPException, InternalServerError
+from werkzeug.wrappers import Response
 from werkzeug.routing import Rule
 from werkzeug.routing import Map as RuleMap
 
-from flask import make_response, current_app
 from .types import *
 
 from teleport import ParametrizedWrapper, BasicWrapper
@@ -15,6 +15,7 @@ from collections import OrderedDict
 
 from .tools import *
 from .exceptions import *
+
 
 
 class BaseClientHook(object):
@@ -102,15 +103,15 @@ class WerkzeugTestClientHook(BaseClientHook):
 
 
 class ServerHook(object):
+    debug = False
 
-    def get_flask_view(self, endpoint):
+    def get_view(self, endpoint):
 
-        def view(**url_args):
-            from flask import request
+        def view(request, **url_args):
             # Pull Request object out of Flask's magical local. From now
             # on, we'll pass it explicitly.
             try:
-                return self.view(endpoint, request._get_current_object(), **url_args)
+                return self.view(endpoint, request, **url_args)
             except HTTPError as err:
                 return error_response(err.message, err.code)
             except ValidationError as err:
@@ -126,7 +127,7 @@ class ServerHook(object):
         return self.build_response(endpoint, func_input=func_input, func_output=func_output)
 
     def unhandled_exception_hook(self, exc):
-        if current_app.debug:
+        if self.debug:
             raise
         else:
             return error_response("Internal Server Error", 500)
@@ -142,7 +143,7 @@ class ServerHook(object):
 
 def error_response(message, code):
     body = json.dumps({"error": message})
-    return make_response(body, code, {"Content-Type": "application/json"})
+    return Response(body, code, {"Content-Type": "application/json"})
 
 
 def get_payload_from_http_message(req):
@@ -330,10 +331,10 @@ class ActionEndpoint(Endpoint):
     def build_response(self, func_input, func_output):
         data = serialize_json(self.action.returns, func_output)
         if data == None:
-            return make_response("", 204, {})
+            return Response("", 204, {})
         else:
             body = json.dumps(data.datum)
-            return make_response(body, 200, {"Content-Type": "application/json"})
+            return Response(body, 200, {"Content-Type": "application/json"})
 
 
 class SpecEndpoint(Endpoint):
@@ -374,7 +375,7 @@ class SpecEndpoint(Endpoint):
     def build_response(self, func_input, func_output):
         from .api import API
         body = json.dumps(API.to_json(func_output))
-        return make_response(body, 200, {"Content-Type": "application/json"})
+        return Response(body, 200, {"Content-Type": "application/json"})
 
 
 
@@ -418,12 +419,12 @@ class GetByIdEndpoint(Endpoint):
 
     def build_response(self, func_input, func_output):
         if func_output.exception is not None:
-            return make_response("", 404, {})
+            return Response("", 404, {})
         else:
             id = func_input['id']
             rep = func_output.value
             body = json.dumps(Representation(self.model_cls).to_json((id, rep)))
-            return make_response(body, 200, {"Content-Type": "application/json"})
+            return Response(body, 200, {"Content-Type": "application/json"})
 
     def parse_response(self, res):
         res = super(GetByIdEndpoint, self).parse_response(res)
@@ -479,12 +480,12 @@ class UpdateEndpoint(Endpoint):
 
     def build_response(self, func_input, func_output):
         if func_output.exception is not None:
-            return make_response("", 404, {})
+            return Response("", 404, {})
         else:
             id = func_input['id']
             rep = func_output.value
             body = json.dumps(Representation(self.model_cls).to_json((id, rep)))
-            return make_response(body, 200, {"Content-Type": "application/json"})
+            return Response(body, 200, {"Content-Type": "application/json"})
 
     def parse_response(self, res):
         res = super(UpdateEndpoint, self).parse_response(res)
@@ -539,7 +540,7 @@ class CreateEndpoint(Endpoint):
     def build_response(self, func_input, func_output):
         body = json.dumps(Representation(self.model_cls).to_json(func_output))
         href = "/%s/%s" % (self.model_cls.__name__, func_output[0])
-        return make_response(body, 201, {
+        return Response(body, 201, {
             "Location": href,
             "Content-Type": "application/json"
         })
@@ -588,9 +589,9 @@ class DeleteEndpoint(Endpoint):
 
     def build_response(self, func_input, func_output):
         if func_output.exception is not None:
-            return make_response("", 404, {})
+            return Response("", 404, {})
         else:
-            return make_response("", 204, {})
+            return Response("", 204, {})
 
 
 class GetListEndpoint(Endpoint):
@@ -686,6 +687,6 @@ class GetListEndpoint(Endpoint):
             jrep = Representation(self.model_cls).to_json(inst)
             body["_embedded"][self.model_cls._name].append(jrep)
 
-        return make_response(json.dumps(body), 200, {"Content-Type": "application/json"})
+        return Response(json.dumps(body), 200, {"Content-Type": "application/json"})
 
 

@@ -4,11 +4,13 @@ import sys
 from unittest2 import TestCase
 from mock import patch
 
-from cosmic.types import *
+from werkzeug.test import Client as TestClient
+from werkzeug.wrappers import Response
 
 from cosmic.exceptions import *
 from cosmic.api import API
 from cosmic.models import BaseModel, Cosmos
+from cosmic.types import *
 
 
 cookbook_spec = {
@@ -159,12 +161,9 @@ class TestAPI(TestCase):
                 required(u"is_gordon_ramsay", Boolean)
             ]
 
-        self.app_debug = self.cookbook.get_flask_app()
-        self.app_debug.debug = True
-        self.client_debug = self.app_debug.test_client()
-
-        self.app = self.cookbook.get_flask_app()
-        self.client = self.app.test_client()
+        self.app = self.cookbook.get_wsgi_app()
+        self.cookbook.server_hook.debug = True
+        self.client = TestClient(self.app, response_wrapper=Response)
 
     def tearDown(self):
         self.cosmos.__exit__(None, None, None)
@@ -224,7 +223,7 @@ class TestAPI(TestCase):
         self.assertEqual(self.cookbook.actions.cabbage(spicy=False), "sauerkraut")
 
     def test_spec_endpoint(self):
-        res = self.client_debug.get('/spec.json')
+        res = self.client.get('/spec.json')
         self.assertEqual(json.loads(res.data), cookbook_spec)
 
     def test_spec_wrong_method(self):
@@ -240,12 +239,12 @@ class TestAPI(TestCase):
 
     def test_action_okay(self):
         data = json.dumps({"spicy": True})
-        res = self.client_debug.post('/actions/cabbage', data=data, content_type="application/json")
+        res = self.client.post('/actions/cabbage', data=data, content_type="application/json")
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.data, '"kimchi"')
 
     def test_noop_action_okay(self):
-        res = self.client_debug.post('/actions/noop', data='')
+        res = self.client.post('/actions/noop', data='')
         self.assertEqual(res.status_code, 204)
         self.assertEqual(res.data, '')
 

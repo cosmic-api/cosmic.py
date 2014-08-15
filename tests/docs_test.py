@@ -1,6 +1,9 @@
 from unittest2 import TestCase
 from mock import patch
 
+from werkzeug.test import Client as TestClient
+from werkzeug.wrappers import Response
+
 from cosmic.models import Cosmos, BaseModel
 from cosmic.actions import *
 from cosmic.tools import *
@@ -131,7 +134,8 @@ class TestGuideModelLinks(TestCase):
                 mock_get.return_value.json = lambda: API.to_json(places)
                 mock_get.return_value.status_code = 200
                 self.remote_places = API.load('http://example.com/spec.json')
-                self.remote_places.client_hook = WerkzeugTestClientHook(places.get_flask_app().test_client())
+                test_client = TestClient(places.get_wsgi_app(), response_wrapper=Response)
+                self.remote_places.client_hook = WerkzeugTestClientHook(test_client)
 
     def remote_create_models(self):
         with self.cosmos2:
@@ -212,7 +216,8 @@ class TestGuideSave(TestCase):
                 mock_get.return_value.json = lambda: API.to_json(places)
                 mock_get.return_value.status_code = 200
                 self.remote_places = API.load('http://example.com/spec.json')
-                self.remote_places.client_hook = WerkzeugTestClientHook(places.get_flask_app().test_client())
+                test_client = TestClient(places.get_wsgi_app(), response_wrapper=Response)
+                self.remote_places.client_hook = WerkzeugTestClientHook(test_client)
 
         cities = {
             "0": {"name": "Toronto"},
@@ -355,7 +360,8 @@ class TestGuideAction(TestCase):
                 mock_get.return_value.json = lambda: API.to_json(mathy)
                 mock_get.return_value.status_code = 200
                 self.remote_mathy = API.load('http://example.com/spec.json')
-                self.remote_mathy.client_hook = WerkzeugTestClientHook(mathy.get_flask_app().test_client())
+                test_client = TestClient(mathy.get_wsgi_app(), response_wrapper=Response)
+                self.remote_mathy.client_hook = WerkzeugTestClientHook(test_client)
 
     def test_call_as_function(self):
         self.assertEqual(self.add([1, 2, 3]), 6)

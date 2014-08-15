@@ -7,6 +7,9 @@ from mock import patch
 
 from unittest2 import TestCase
 
+from werkzeug.test import Client as TestClient
+from werkzeug.wrappers import Response
+
 from cosmic.api import API
 from cosmic.http import WerkzeugTestClientHook, SaveStackClientHookMixin
 from cosmic import cosmos
@@ -101,10 +104,8 @@ class TestPlanitarium(TestCase):
         with self.cosmos1:
             self.planetarium = planetarium
 
-            self.c = self.planetarium.get_flask_app().test_client()
-            app = self.planetarium.get_flask_app()
-            app.debug = True
-            self.d = app.test_client()
+            app = self.planetarium.get_wsgi_app()
+            self.d = TestClient(app, response_wrapper=Response)
 
         with self.cosmos2:
             with patch.object(requests, 'get') as mock_get:

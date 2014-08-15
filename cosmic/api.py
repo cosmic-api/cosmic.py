@@ -7,8 +7,6 @@ from multiprocessing import Process
 from collections import OrderedDict
 
 
-from flask import Flask
-
 from .actions import Action
 from .models import BaseModel
 from .tools import GetterNamespace, get_args, assert_is_compatible, validate_underscore_identifier
@@ -185,26 +183,24 @@ class API(BasicWrapper):
         # Set the API url to be the spec URL, minus the /spec.json
         api.client_hook.base_url = url[:-10]
         return api
- 
 
-    def get_flask_app(self):
-        """Returns a Flask application for the API."""
+    def get_wsgi_app(self):
+        from werkzeug.routing import Map, Rule
+        from werkzeug.wrappers import Request, Response
+        from werkzeug.exceptions import HTTPException
 
-        app = Flask(__name__, static_folder=None)
+        rules = []
+        endpoints = {}
 
-        view_func = SpecEndpoint("/spec.json", self)
-        app.add_url_rule(view_func.url,
-            view_func=self.server_hook.get_flask_view(view_func),
-            methods=[view_func.method],
-            endpoint="spec")
+        endpoints['spec'] = SpecEndpoint("/spec.json", self)
+        rules.append(Rule('/spec.json', endpoint='spec', methods=['GET']))
 
         for name, action in self._actions.items():
             endpoint = "function_%s" % name
-            view_func = action.endpoint
-            app.add_url_rule(view_func.url,
-                view_func=self.server_hook.get_flask_view(view_func),
-                methods=[view_func.method],
-                endpoint=endpoint)
+            endpoints[endpoint] = action.endpoint
+            rules.append(Rule(action.endpoint.url,
+                endpoint=endpoint,
+                methods=[action.endpoint.method]))
 
         for name, model_cls in self._models.items():
             handlers = {
@@ -216,27 +212,26 @@ class API(BasicWrapper):
             }
             for method, handler in handlers.items():
                 if method in model_cls.methods:
-                    args = {
-                        'rule': handler.url,
-                        'view_func': self.server_hook.get_flask_view(handler),
-                        'methods': [handler.method],
-                        'endpoint': handler.endpoint
-                    }
-                    app.add_url_rule(**args)
+                    endpoints[handler.endpoint] = handler
+                    rules.append(Rule(handler.url,
+                        endpoint=handler.endpoint,
+                        methods=[handler.method]))
+
+        url_map = Map(rules)
+
+        def app(environ, start_response):
+            request = Request(environ)
+
+            adapter = url_map.bind_to_environ(request.environ)
+            try:
+                endpoint, values = adapter.match()
+                response = self.server_hook.get_view(endpoints[endpoint])(request, **values)
+            except HTTPException, e:
+                response = e
+
+            return response(environ, start_response)
 
         return app
-
-    def run(self, api_key=None, registry_url_override=None, **kwargs): # pragma: no cover
-        """Runs the API as a Flask app. All keyword arguments are channelled
-        into :meth:`Flask.run`.
-        """
-        debug = kwargs.get('debug', False)
-        app = self.get_flask_app()
-        app.debug = debug
-
-        if api_key:
-            self.submit_spec(api_key, registry_url_override=None)
-        app.run(**kwargs)
 
     def submit_spec(self, api_key, registry_url_override=None): # pragma: no cover
 
