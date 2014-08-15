@@ -152,48 +152,6 @@ class TestPlanitarium(TestCase):
             res = self.d.get('/spec.json')
             self.assertEqual(json.loads(res.data), json_spec)
 
-    def test_envelope_endpoint(self):
-        with self.cosmos1:
-            c = copy.deepcopy(planet_db)
-            with DBContext(c):
-                Sphere = M('planetarium.Sphere')
-                res = self.d.post('/envelope', content_type="application/json", data=json.dumps({
-                    "method": "POST",
-                    "url": "/Sphere",
-                    "headers": [
-                        {
-                            "name": "Content-Type",
-                            "value": "application/json"
-                        },
-                        {
-                            "name": "X-Danish",
-                            "value": "poppyseed"
-                        }
-                    ],
-                    "body": json.dumps({
-                        "name": "Saturn"
-                    })
-                }))
-                self.assertEqual(res.status_code, 200)
-                self.assertEqual(res.headers["Content-Type"], "application/json")
-                body = json.loads(res.data)
-                self.assertEqual(body["code"], 201)
-                self.assertTrue({
-                    "name": "Content-Type",
-                    "value": "application/json"
-                } in body["headers"])
-                self.assertTrue({
-                    "name": "Location",
-                    "value": "/Sphere/3"
-                } in body["headers"])
-                self.assertEqual(json.loads(body["body"]), {
-                    "name": "Saturn",
-                    "temperature": 60,
-                    "_links": {
-                        "self": {"href": "/Sphere/3"},
-                    }
-                })
-
     def test_local_call_action(self):
         pluto = {
             "name": "Pluto",

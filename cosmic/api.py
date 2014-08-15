@@ -198,12 +198,6 @@ class API(BasicWrapper):
             methods=[view_func.method],
             endpoint="spec")
 
-        view_func = EnvelopeEndpoint(self)
-        app.add_url_rule(view_func.url,
-            view_func=self.server_hook.get_flask_view(view_func),
-            methods=[view_func.method],
-            endpoint="envelope")
-
         for name, action in self._actions.items():
             endpoint = "function_%s" % name
             view_func = action.endpoint

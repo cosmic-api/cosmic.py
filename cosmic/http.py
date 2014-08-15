@@ -377,54 +377,6 @@ class SpecEndpoint(Endpoint):
         return make_response(body, 200, {"Content-Type": "application/json"})
 
 
-class EnvelopeEndpoint(Endpoint):
-    method = "POST"
-    never_authenticate = True
-    json_request = True
-    json_response = True
-    request_can_be_empty = False
-    response_can_be_empty = False
-    acceptable_response_codes = [200]
-
-    request_schema = Struct([
-        required("url", String),
-        required("headers", Headers),
-        required("method", String),
-        required("body", String)
-    ])
-    response_schema = Struct([
-        required("headers", Headers),
-        required("code", Integer),
-        required("body", String)
-    ])
-
-    def __init__(self, api):
-        self.api = api
-        self.url = '/envelope'
-        self.endpoint = 'envelope'
-
-    def handler(self, url, method, headers, body):
-        content_type = headers.get("Content-Type", None)
-        with current_app.test_request_context(url,
-                method=method,
-                headers=headers,
-                content_type=content_type,
-                data=body):
-            response = current_app.full_dispatch_request()
-        return {
-            'code': response.status_code,
-            'headers': response.headers,
-            'body': response.data
-        }
-
-    def parse_request(self, req, **url_args):
-        req = super(EnvelopeEndpoint, self).parse_request(req, **url_args)
-        return self.request_schema.from_json(req['json'].datum)
-
-    def build_response(self, func_input, func_output):
-        body = json.dumps(self.response_schema.to_json(func_output))
-        return make_response(body, 200, {"Content-Type": "application/json"})
-
 
 
 class GetByIdEndpoint(Endpoint):
