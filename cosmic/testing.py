@@ -25,7 +25,7 @@ class DBModel(BaseModel):
     @classmethod
     def get_by_id(cls, id):
         try:
-            (id, rep) = Representation(cls).from_json(db[cls.__name__][int(id)])
+            (id, rep) = Representation(cls).from_json(db[cls.name][int(id)])
             return rep
         except IndexError:
             raise NotFound
@@ -34,11 +34,11 @@ class DBModel(BaseModel):
     def get_list(cls, **kwargs):
         if not kwargs:
             ret = []
-            for row in db[cls.__name__]:
+            for row in db[cls.name]:
                 ret.append(Representation(cls).from_json(row))
             return ret
         ret = []
-        for row in db[cls.__name__]:
+        for row in db[cls.name]:
             if row != None:
                 keep = True
                 for key, val in kwargs.items():
@@ -51,7 +51,7 @@ class DBModel(BaseModel):
 
     @classmethod
     def create(cls, **patch):
-        table = db[cls.__name__]
+        table = db[cls.name]
 
         id = str(len(table))
         table.append(Representation(cls).to_json((id, patch)))
@@ -60,7 +60,7 @@ class DBModel(BaseModel):
 
     @classmethod
     def update(cls, id, **patch):
-        table = db[cls.__name__]
+        table = db[cls.name]
         (id, original_rep) = Representation(cls).from_json(table[int(id)])
         original_rep.update(patch)
 
@@ -71,7 +71,7 @@ class DBModel(BaseModel):
     @classmethod
     def delete(cls, id):
         from .exceptions import NotFound
-        if int(id) >= len(db[cls.__name__]):
+        if int(id) >= len(db[cls.name]):
             raise NotFound
-        db[cls.__name__][int(id)] = None
+        db[cls.name][int(id)] = None
 

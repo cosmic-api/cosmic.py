@@ -4,7 +4,7 @@ import json
 import inspect
 import requests
 from multiprocessing import Process
-from collections import OrderedDict
+from collections import OrderedDict, namedtuple
 
 
 from .actions import Action
@@ -20,6 +20,7 @@ MODEL_METHODS = ['get_by_id', 'get_list', 'create', 'update', 'delete']
 
 class Object(object):
     pass
+
 
 
 class API(BasicWrapper):
@@ -91,30 +92,29 @@ class API(BasicWrapper):
         self._models = OrderedDict()
         self.models = Object()
 
-        self.endpoints = {}
-        self.url_map = Map([])
-        self.endpoints['spec'] = SpecEndpoint("/spec.json", self)
-        self.url_map.add(Rule('/spec.json', endpoint='spec', methods=['GET']))
+        self.url_map = Map([
+            Rule('/spec.json', endpoint=SpecEndpoint("/spec.json", self), methods=['GET'])
+        ])
 
         cosmos.apis[self.name] = self
 
-    def get_client_callable(self, endpoint):
-        def call(*args, **kwargs):
-            return self.client_hook.call(endpoint, *args, **kwargs)
-        return call
+    def call_remote(self, endpoint_cls, endpoint_arg, *args, **kwargs):
+        return self.client_hook.call(endpoint_cls(endpoint_arg), *args, **kwargs)
 
     @staticmethod
     def assemble(datum):
+        from functools import partial
+
         api = API(name=datum["name"], homepage=datum.get("homepage", None))
 
         for name, action in datum["actions"].items():
 
             action = Action(**action)
-            api._actions[name] = action
+            action.name = name
             action.api = api
-            action.endpoint = ActionEndpoint(action, name)
 
-            setattr(api.actions, name, api.get_client_callable(action.endpoint))
+            api._actions[name] = action
+            setattr(api.actions, name, partial(api.call_remote, ActionEndpoint, action))
 
         for name, modeldef in datum["models"].items():
 
@@ -126,15 +126,20 @@ class API(BasicWrapper):
                 links = modeldef["links"].items()
                 methods = filter(lambda m: modeldef["methods"][m], MODEL_METHODS)
 
-            M.__name__ = str(name)
+            M.name = str(name)
+            M.__name__ = M.name
+            M.api = api
 
-            api.model(M)
+            M.create = staticmethod(partial(api.call_remote, CreateEndpoint, M))
+            M.update = staticmethod(partial(api.call_remote, UpdateEndpoint, M))
+            M.delete = staticmethod(partial(api.call_remote, DeleteEndpoint, M))
+            M.get_list = staticmethod(partial(api.call_remote, GetListEndpoint, M))
+            M.get_by_id = staticmethod(partial(api.call_remote, GetByIdEndpoint, M))
 
-            M.create = staticmethod(api.get_client_callable(M._list_poster))
-            M.update = staticmethod(api.get_client_callable(M._model_putter))
-            M.delete = staticmethod(api.get_client_callable(M._model_deleter))
-            M.get_list = staticmethod(api.get_client_callable(M._list_getter))
-            M.get_by_id = staticmethod(api.get_client_callable(M._model_getter))
+            api.validate_model(M)
+
+            api._models[M.name] = M
+            setattr(api.models, M.name, M)
 
         return api
 
@@ -150,7 +155,7 @@ class API(BasicWrapper):
             }
 
         for model_cls in datum._models.values():
-            models[unicode(model_cls.__name__)] = {
+            models[unicode(model_cls.name)] = {
                 "properties": OrderedDict(model_cls.properties),
                 "links": OrderedDict(model_cls.links),
                 "query_fields": OrderedDict(model_cls.query_fields),
@@ -198,7 +203,7 @@ class API(BasicWrapper):
         adapter = self.url_map.bind_to_environ(request.environ)
         try:
             endpoint, values = adapter.match()
-            response = self.server_hook.get_view(self.endpoints[endpoint])(request, **values)
+            response = self.server_hook.get_view(endpoint)(request, **values)
         except HTTPException, e:
             response = e
 
@@ -256,17 +261,16 @@ class API(BasicWrapper):
             doc = inspect.getdoc(func)
             action = Action(accepts, returns, doc)
             action.api = self
+            action.name = name
             action.func = func
-            action.endpoint = ActionEndpoint(action, name)
+            endpoint = ActionEndpoint(action)
 
             self._actions[name] = action
             setattr(self.actions, name, action.func)
 
-            endpoint = "function_{}".format(name)
-            self.endpoints[endpoint] = action.endpoint
-            self.url_map.add(Rule(action.endpoint.url,
+            self.url_map.add(Rule(endpoint.url,
                 endpoint=endpoint,
-                methods=[action.endpoint.method]))
+                methods=[endpoint.method]))
 
             return func
 
@@ -296,17 +300,42 @@ class API(BasicWrapper):
             u'dog'
 
         """
+
+        model_cls.name = model_cls.__name__
+        model_cls.api = self
+
+        self.validate_model(model_cls)
+        self.create_endpoints_for_model(model_cls)
+
+        self._models[model_cls.name] = model_cls
+        setattr(self.models, model_cls.name, model_cls)
+
+        return model_cls
+
+    def create_endpoints_for_model(self, model_cls):
         from .http import CreateEndpoint, GetListEndpoint, GetByIdEndpoint, UpdateEndpoint, DeleteEndpoint
         from werkzeug.routing import Rule
+        handlers = {
+            'create': CreateEndpoint,
+            'get_list': GetListEndpoint,
+            'get_by_id': GetByIdEndpoint,
+            'update': UpdateEndpoint,
+            'delete': DeleteEndpoint,
+        }
+        for method, endpoint_cls in handlers.items():
+            if method in model_cls.methods:
+                endpoint = endpoint_cls(model_cls)
+                self.url_map.add(Rule(endpoint.url,
+                    endpoint=endpoint,
+                    methods=[endpoint.method]))
 
-        model_cls.api = self
-        model_cls.type_name = "%s.%s" % (self.name, model_cls.__name__,)
+    def validate_model(self, model_cls):
 
         link_names = set(dict(model_cls.links).keys())
         field_names = set(dict(model_cls.properties).keys())
 
         if link_names & field_names:
-            raise SpecError("Model cannot contain a field and link with the same name: %s" % model_cls.__name__)
+            raise SpecError("Model cannot contain a field and link with the same name: {}".format(model_cls.name))
 
         for name in link_names | field_names:
             validate_underscore_identifier(name)
@@ -314,32 +343,9 @@ class API(BasicWrapper):
         if 'id' in link_names | field_names:
             raise SpecError("'id' is a reserved name.")
 
-        model_cls._list_poster = CreateEndpoint(model_cls)
-        model_cls._list_getter = GetListEndpoint(model_cls)
-        model_cls._model_getter = GetByIdEndpoint(model_cls)
-        model_cls._model_putter = UpdateEndpoint(model_cls)
-        model_cls._model_deleter = DeleteEndpoint(model_cls)
 
-        # Make name visible through LocalProxy
-        model_cls._name = model_cls.__name__
-
-        self._models[model_cls.__name__] = model_cls
-        setattr(self.models, model_cls.__name__, model_cls)
-
-        handlers = {
-            'create': model_cls._list_poster,
-            'get_list': model_cls._list_getter,
-            'get_by_id': model_cls._model_getter,
-            'update': model_cls._model_putter,
-            'delete': model_cls._model_deleter
-        }
-        for method, handler in handlers.items():
-            if method in model_cls.methods:
-                self.endpoints[handler.endpoint] = handler
-                self.url_map.add(Rule(handler.url,
-                    endpoint=handler.endpoint,
-                    methods=[handler.method]))
-
-        return model_cls
-
-
+    def get_model_obj(self, model_cls):
+        props = {}
+        for prop in model_object_props:
+            props[prop] = getattr(model_cls, prop)
+        return ModelObject(**props)

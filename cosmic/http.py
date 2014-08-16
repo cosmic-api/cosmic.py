@@ -293,9 +293,9 @@ class ActionEndpoint(Endpoint):
     json_response = True
     acceptable_response_codes = [200, 204]
 
-    def __init__(self, action, name):
+    def __init__(self, action):
         self.action = action
-        self.url = "/actions/%s" % name
+        self.url = "/actions/%s" % action.name
 
     def handler(self, *args, **kwargs):
         return self.action.func(*args, **kwargs)
@@ -398,8 +398,8 @@ class GetByIdEndpoint(Endpoint):
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
-        self.url = "/%s/<id>" % self.model_cls.__name__
-        self.endpoint = "doc_get_%s" % self.model_cls.__name__
+        self.url = "/%s/<id>" % self.model_cls.name
+        self.endpoint = "doc_get_%s" % self.model_cls.name
 
     def handler(self, id):
         try:
@@ -455,8 +455,8 @@ class UpdateEndpoint(Endpoint):
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
-        self.url = "/%s/<id>" % self.model_cls.__name__
-        self.endpoint = "doc_put_%s" % self.model_cls.__name__
+        self.url = "/%s/<id>" % self.model_cls.name
+        self.endpoint = "doc_put_%s" % self.model_cls.name
 
     def handler(self, id, **patch):
         self.model_cls.validate_patch(patch)
@@ -515,8 +515,8 @@ class CreateEndpoint(Endpoint):
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
-        self.url = "/%s" % self.model_cls.__name__
-        self.endpoint = "list_post_%s" % self.model_cls.__name__
+        self.url = "/%s" % self.model_cls.name
+        self.endpoint = "list_post_%s" % self.model_cls.name
 
     def handler(self, **patch):
         self.model_cls.validate_patch(patch)
@@ -537,7 +537,7 @@ class CreateEndpoint(Endpoint):
 
     def build_response(self, func_input, func_output):
         body = json.dumps(Representation(self.model_cls).to_json(func_output))
-        href = "/%s/%s" % (self.model_cls.__name__, func_output[0])
+        href = "/%s/%s" % (self.model_cls.name, func_output[0])
         return Response(body, 201, {
             "Location": href,
             "Content-Type": "application/json"
@@ -561,8 +561,8 @@ class DeleteEndpoint(Endpoint):
 
     def __init__(self, model_cls):
         self.model_cls = model_cls
-        self.url = "/%s/<id>" % self.model_cls.__name__
-        self.endpoint = "doc_delete_%s" % self.model_cls.__name__
+        self.url = "/%s/<id>" % self.model_cls.name
+        self.endpoint = "doc_delete_%s" % self.model_cls.name
 
     def handler(self, id):
         try:
@@ -633,8 +633,8 @@ class GetListEndpoint(Endpoint):
         self.query_schema = None
         if self.model_cls.query_fields is not None:
             self.query_schema = URLParams(self.model_cls.query_fields)
-        self.url = "/%s" % self.model_cls.__name__
-        self.endpoint = "list_get_%s" % self.model_cls.__name__
+        self.url = "/%s" % self.model_cls.name
+        self.endpoint = "list_get_%s" % self.model_cls.name
 
     def handler(self, **query):
         return self.model_cls.get_list(**query)
@@ -650,7 +650,7 @@ class GetListEndpoint(Endpoint):
         res = super(GetListEndpoint, self).parse_response(res)
         j = res['json'].datum
         l = []
-        for jrep in j["_embedded"][self.model_cls._name]:
+        for jrep in j["_embedded"][self.model_cls.name]:
             l.append(Representation(self.model_cls).from_json(jrep))
 
         if self.model_cls.list_metadata:
@@ -662,7 +662,7 @@ class GetListEndpoint(Endpoint):
         return l
 
     def build_response(self, func_input, func_output):
-        self_link = "/%s" % self.model_cls.__name__
+        self_link = "/%s" % self.model_cls.name
         if self.query_schema and func_input:
             self_link += '?' + self.query_schema.to_json(func_input)
 
@@ -680,10 +680,10 @@ class GetListEndpoint(Endpoint):
         else:
             l = func_output
 
-        body["_embedded"][self.model_cls._name] = []
+        body["_embedded"][self.model_cls.name] = []
         for inst in l:
             jrep = Representation(self.model_cls).to_json(inst)
-            body["_embedded"][self.model_cls._name].append(jrep)
+            body["_embedded"][self.model_cls.name].append(jrep)
 
         return Response(json.dumps(body), 200, {"Content-Type": "application/json"})
 

@@ -44,7 +44,7 @@ class Model(BasicWrapper):
 
     @classmethod
     def disassemble(cls, datum):
-        return datum.type_name
+        return "{}.{}".format(datum.api.name, datum.name)
 
 
 class Link(ParametrizedWrapper):
@@ -60,12 +60,12 @@ class Link(ParametrizedWrapper):
     def assemble(self, datum):
         url = datum['href']
         parts = url.split('/')
-        if parts[-2] != self.param._name:
-            raise ValidationError("Invalid url for %s link: %s" % (self.param._name, url))
+        if parts[-2] != self.param.name:
+            raise ValidationError("Invalid url for %s link: %s" % (self.param.name, url))
         return parts[-1]
 
     def disassemble(self, datum):
-        href = "/%s/%s" % (self.param._name, datum)
+        href = "/%s/%s" % (self.param.name, datum)
         return {"href": href}
 
 
