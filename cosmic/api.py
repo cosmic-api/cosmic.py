@@ -83,7 +83,6 @@ class API(BasicWrapper):
 
         self.name = name
         self.homepage = homepage
-        self.server_hook = ServerHook()
         self.client_hook = ClientHook()
 
         self._actions = OrderedDict()
@@ -91,10 +90,6 @@ class API(BasicWrapper):
 
         self._models = OrderedDict()
         self.models = Object()
-
-        self.url_map = Map([
-            Rule('/spec.json', endpoint=SpecEndpoint("/spec.json", self), methods=['GET'])
-        ])
 
         cosmos.apis[self.name] = self
 
@@ -195,20 +190,6 @@ class API(BasicWrapper):
         api.client_hook.base_url = url[:-10]
         return api
 
-    def wsgi_app(self, environ, start_response):
-        from werkzeug.wrappers import Request, Response
-        from werkzeug.exceptions import HTTPException
-
-        request = Request(environ)
-        adapter = self.url_map.bind_to_environ(request.environ)
-        try:
-            endpoint, values = adapter.match()
-            response = self.server_hook.get_view(endpoint)(request, **values)
-        except HTTPException, e:
-            response = e
-
-        return response(environ, start_response)
-
     def submit_spec(self, api_key, registry_url_override=None): # pragma: no cover
 
         def register_spec(url, api_key, spec):
@@ -263,14 +244,9 @@ class API(BasicWrapper):
             action.api = self
             action.name = name
             action.func = func
-            endpoint = ActionEndpoint(action)
 
             self._actions[name] = action
             setattr(self.actions, name, action.func)
-
-            self.url_map.add(Rule(endpoint.url,
-                endpoint=endpoint,
-                methods=[endpoint.method]))
 
             return func
 
@@ -305,29 +281,11 @@ class API(BasicWrapper):
         model_cls.api = self
 
         self.validate_model(model_cls)
-        self.create_endpoints_for_model(model_cls)
 
         self._models[model_cls.name] = model_cls
         setattr(self.models, model_cls.name, model_cls)
 
         return model_cls
-
-    def create_endpoints_for_model(self, model_cls):
-        from .http import CreateEndpoint, GetListEndpoint, GetByIdEndpoint, UpdateEndpoint, DeleteEndpoint
-        from werkzeug.routing import Rule
-        handlers = {
-            'create': CreateEndpoint,
-            'get_list': GetListEndpoint,
-            'get_by_id': GetByIdEndpoint,
-            'update': UpdateEndpoint,
-            'delete': DeleteEndpoint,
-        }
-        for method, endpoint_cls in handlers.items():
-            if method in model_cls.methods:
-                endpoint = endpoint_cls(model_cls)
-                self.url_map.add(Rule(endpoint.url,
-                    endpoint=endpoint,
-                    methods=[endpoint.method]))
 
     def validate_model(self, model_cls):
 

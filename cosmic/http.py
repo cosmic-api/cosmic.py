@@ -4,7 +4,7 @@ import requests
 from requests.structures import CaseInsensitiveDict
 
 from werkzeug.exceptions import HTTPException, InternalServerError
-from werkzeug.wrappers import Response
+from werkzeug.wrappers import Request, Response
 from werkzeug.routing import Rule
 from werkzeug.routing import Map as RuleMap
 
@@ -15,6 +15,87 @@ from collections import OrderedDict
 
 from .tools import *
 from .exceptions import *
+
+
+
+class Server(object):
+    debug = False
+
+    def __init__(self, api):
+        self.api = api
+        self.url_map = RuleMap([
+            Rule('/spec.json', endpoint='spec', methods=['GET']),
+            Rule('/actions/<action>', endpoint='action', methods=['POST']),
+            Rule('/<model>/<id>', endpoint='get_by_id', methods=['GET']),
+            Rule('/<model>/<id>', endpoint='update', methods=['PUT']),
+            Rule('/<model>/<id>', endpoint='delete', methods=['DELETE']),
+            Rule('/<model>', endpoint='create', methods=['POST']),
+            Rule('/<model>', endpoint='get_list', methods=['GET']),
+        ])
+
+    def dispatch_request(self, request):
+        from werkzeug.exceptions import NotFound as WerkzeugNotFound
+        adapter = self.url_map.bind_to_environ(request.environ)
+        try:
+            endpoint_name, values = adapter.match()
+            if endpoint_name == 'spec':
+                endpoint = SpecEndpoint("/spec.json", self.api)
+            elif endpoint_name == 'action' and values['action'] in self.api._actions:
+                endpoint = ActionEndpoint(self.api._actions[values['action']])
+            elif endpoint_name == 'get_by_id' and values['model'] in self.api._models:
+                endpoint = GetByIdEndpoint(self.api._models[values['model']])
+            elif endpoint_name == 'update' and values['model'] in self.api._models:
+                endpoint = UpdateEndpoint(self.api._models[values['model']])
+            elif endpoint_name == 'delete' and values['model'] in self.api._models:
+                endpoint = DeleteEndpoint(self.api._models[values['model']])
+            elif endpoint_name == 'create' and values['model'] in self.api._models:
+                endpoint = CreateEndpoint(self.api._models[values['model']])
+            elif endpoint_name == 'get_list' and values['model'] in self.api._models:
+                endpoint = GetListEndpoint(self.api._models[values['model']])
+            else:
+                raise WerkzeugNotFound()
+
+            return self.get_view(endpoint)(request, **values)
+        except HTTPException, e:
+            return e
+
+    def get_view(self, endpoint):
+
+        def view(request, **url_args):
+            try:
+                return self.view(endpoint, request, **url_args)
+            except HTTPError as err:
+                return error_response(err.message, err.code)
+            except ValidationError as err:
+                return error_response(str(err), 400)
+            except Exception as exc:
+                return self.unhandled_exception_hook(exc)
+
+        return view
+
+    def wsgi_app(self, environ, start_response):
+        request = Request(environ)
+        response = self.dispatch_request(request)
+        return response(environ, start_response)
+
+    def unhandled_exception_hook(self, exc):
+        if self.debug:
+            raise
+        else:
+            return error_response("Internal Server Error", 500)
+
+    def view(self, endpoint, request, **url_args):
+        func_input = self.parse_request(endpoint, request, **url_args)
+        func_output = endpoint.handler(**func_input)
+        return self.build_response(endpoint, func_input=func_input, func_output=func_output)
+
+    def parse_request(self, endpoint, request, **url_args):
+        return endpoint.parse_request(request, **url_args)
+
+    def build_response(self, endpoint, func_input, func_output):
+        return endpoint.build_response(func_input=func_input, func_output=func_output)
+
+
 
 
 
@@ -102,39 +183,6 @@ class WerkzeugTestClientHook(BaseClientHook):
         return resp
 
 
-class ServerHook(object):
-    debug = False
-
-    def get_view(self, endpoint):
-
-        def view(request, **url_args):
-            try:
-                return self.view(endpoint, request, **url_args)
-            except HTTPError as err:
-                return error_response(err.message, err.code)
-            except ValidationError as err:
-                return error_response(str(err), 400)
-            except Exception as exc:
-                return self.unhandled_exception_hook(exc)
-
-        return view
-
-    def view(self, endpoint, request, **url_args):
-        func_input = self.parse_request(endpoint, request, **url_args)
-        func_output = endpoint.handler(**func_input)
-        return self.build_response(endpoint, func_input=func_input, func_output=func_output)
-
-    def unhandled_exception_hook(self, exc):
-        if self.debug:
-            raise
-        else:
-            return error_response("Internal Server Error", 500)
-
-    def parse_request(self, endpoint, request, **url_args):
-        return endpoint.parse_request(request, **url_args)
-
-    def build_response(self, endpoint, func_input, func_output):
-        return endpoint.build_response(func_input=func_input, func_output=func_output)
 
 
 

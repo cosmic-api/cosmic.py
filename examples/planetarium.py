@@ -6,7 +6,7 @@ from cosmic.api import API
 from cosmic.exceptions import HTTPError
 from cosmic.testing import DBModel, DBContext
 from cosmic.types import *
-from cosmic.http import ServerHook
+from cosmic.http import Server
 
 from werkzeug.local import LocalProxy
 
@@ -43,15 +43,16 @@ planet_db = {
 planetarium = API("planetarium")
 
 
-class SHook(ServerHook):
+class PlanetariumServer(Server):
 
     def parse_request(self, endpoint, request, **url_args):
         if not endpoint.never_authenticate:
             if request.headers.get('X-Danish', None) != "poppyseed":
                 raise HTTPError(401, "Unauthorized")
-        return super(SHook, self).parse_request(endpoint, request, **url_args)
+        return super(PlanetariumServer, self).parse_request(endpoint, request, **url_args)
 
-planetarium.server_hook = SHook()
+
+planetarium_server = PlanetariumServer(planetarium)
 
 
 @planetarium.model

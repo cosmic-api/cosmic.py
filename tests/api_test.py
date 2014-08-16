@@ -9,6 +9,7 @@ from werkzeug.wrappers import Response
 
 from cosmic.exceptions import *
 from cosmic.api import API
+from cosmic.http import Server
 from cosmic.models import BaseModel, Cosmos
 from cosmic.types import *
 
@@ -161,8 +162,9 @@ class TestAPI(TestCase):
                 required(u"is_gordon_ramsay", Boolean)
             ]
 
-        self.app = self.cookbook.wsgi_app
-        self.cookbook.server_hook.debug = True
+        self.server = Server(self.cookbook)
+        self.server.debug = True
+        self.app = self.server.wsgi_app
         self.client = TestClient(self.app, response_wrapper=Response)
 
     def tearDown(self):
@@ -228,9 +230,9 @@ class TestAPI(TestCase):
 
     def test_spec_wrong_method(self):
         res = self.client.get('/actions/noop')
-        self.assertEqual(res.status_code, 405)
+        self.assertEqual(res.status_code, 404)
         res = self.client.post('/spec.json')
-        self.assertEqual(res.status_code, 405)
+        self.assertEqual(res.status_code, 404)
 
     def test_wrong_content_type(self):
         res = self.client.post('/actions/cabbage', data="1", content_type="application/xml")

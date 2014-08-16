@@ -11,7 +11,7 @@ from werkzeug.test import Client as TestClient
 from werkzeug.wrappers import Response
 
 from cosmic.api import API
-from cosmic.http import WerkzeugTestClientHook, SaveStackClientHookMixin
+from cosmic.http import WerkzeugTestClientHook, SaveStackClientHookMixin, Server
 from cosmic import cosmos
 from cosmic.testing import DBContext
 from cosmic.models import Cosmos, M
@@ -104,7 +104,7 @@ class TestPlanitarium(TestCase):
         with self.cosmos1:
             self.planetarium = planetarium
 
-            app = self.planetarium.wsgi_app
+            app = planetarium_server.wsgi_app
             self.d = TestClient(app, response_wrapper=Response)
 
         with self.cosmos2:
