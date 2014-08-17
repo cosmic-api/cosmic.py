@@ -1,9 +1,6 @@
 from unittest2 import TestCase
 from mock import patch
 
-from werkzeug.test import Client as TestClient
-from werkzeug.wrappers import Response
-
 from cosmic.models import Cosmos, BaseModel
 from cosmic.actions import *
 from cosmic.tools import *
@@ -134,8 +131,7 @@ class TestGuideModelLinks(TestCase):
                 mock_get.return_value.json = lambda: API.to_json(places)
                 mock_get.return_value.status_code = 200
                 self.remote_places = API.load('http://example.com/spec.json')
-                test_client = TestClient(Server(places).wsgi_app, response_wrapper=Response)
-                self.remote_places.client_hook = WerkzeugTestClientHook(test_client)
+                self.remote_places.client_hook = WsgiClientHook(TestClient(Server(places).wsgi_app))
 
     def remote_create_models(self):
         with self.cosmos2:
@@ -216,8 +212,7 @@ class TestGuideSave(TestCase):
                 mock_get.return_value.json = lambda: API.to_json(places)
                 mock_get.return_value.status_code = 200
                 self.remote_places = API.load('http://example.com/spec.json')
-                test_client = TestClient(Server(places).wsgi_app, response_wrapper=Response)
-                self.remote_places.client_hook = WerkzeugTestClientHook(test_client)
+                self.remote_places.client_hook = WsgiClientHook(Server(places).wsgi_app)
 
         cities = {
             "0": {"name": "Toronto"},
@@ -360,8 +355,7 @@ class TestGuideAction(TestCase):
                 mock_get.return_value.json = lambda: API.to_json(mathy)
                 mock_get.return_value.status_code = 200
                 self.remote_mathy = API.load('http://example.com/spec.json')
-                test_client = TestClient(Server(mathy).wsgi_app, response_wrapper=Response)
-                self.remote_mathy.client_hook = WerkzeugTestClientHook(test_client)
+                self.remote_mathy.client_hook = WsgiClientHook(Server(mathy).wsgi_app)
 
     def test_call_as_function(self):
         self.assertEqual(self.add([1, 2, 3]), 6)

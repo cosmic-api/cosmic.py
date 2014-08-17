@@ -7,6 +7,7 @@ from werkzeug.exceptions import HTTPException, InternalServerError
 from werkzeug.wrappers import Request, Response
 from werkzeug.routing import Rule
 from werkzeug.routing import Map as RuleMap
+from werkzeug.test import Client as WerkzeugTestClient
 
 from .types import *
 
@@ -165,10 +166,11 @@ class SaveStackClientHookMixin(object):
         return super(SaveStackClientHookMixin, self).parse_response(endpoint, res)
 
 
-class WerkzeugTestClientHook(BaseClientHook):
 
-    def __init__(self, client):
-        self.client = client
+class WsgiClientHook(BaseClientHook):
+
+    def __init__(self, wsgi_app):
+        self.client = WerkzeugTestClient(wsgi_app, response_wrapper=Response)
 
     def make_request(self, endpoint, request):
         kwargs = {
@@ -187,7 +189,6 @@ class WerkzeugTestClientHook(BaseClientHook):
         resp.status_code = r.status_code
 
         return resp
-
 
 
 

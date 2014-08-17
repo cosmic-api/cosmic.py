@@ -4,7 +4,6 @@ import sys
 from unittest2 import TestCase
 from mock import patch
 
-from werkzeug.test import Client as TestClient
 from werkzeug.wrappers import Response
 
 from cosmic.exceptions import *

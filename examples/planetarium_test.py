@@ -7,11 +7,10 @@ from mock import patch
 
 from unittest2 import TestCase
 
-from werkzeug.test import Client as TestClient
 from werkzeug.wrappers import Response
 
 from cosmic.api import API
-from cosmic.http import WerkzeugTestClientHook, SaveStackClientHookMixin, Server
+from cosmic.http import WsgiClientHook, SaveStackClientHookMixin, Server
 from cosmic import cosmos
 from cosmic.testing import DBContext
 from cosmic.models import Cosmos, M
@@ -117,7 +116,7 @@ class TestPlanitarium(TestCase):
             class Retry(Exception):
                 pass
 
-            class Hook(SaveStackClientHookMixin, WerkzeugTestClientHook):
+            class Hook(SaveStackClientHookMixin, WsgiClientHook):
                 token = None
 
                 def build_request(self, endpoint, *args, **kwargs):
@@ -141,7 +140,7 @@ class TestPlanitarium(TestCase):
                             continue
 
             # Use the local API's HTTP client to simulate the remote API's calls
-            self.remote_planetarium.client_hook = Hook(self.d)
+            self.remote_planetarium.client_hook = Hook(app)
 
     def test_guess_methods(self):
         with self.cosmos1:
