@@ -3,6 +3,8 @@ from werkzeug.local import LocalProxy, LocalStack
 from .models import _ctx_stack, Cosmos
 
 
+MODEL_METHODS = ['get_by_id', 'get_list', 'create', 'update', 'delete']
+
 _global_cosmos = Cosmos()
 
 def _get_current_cosmos():

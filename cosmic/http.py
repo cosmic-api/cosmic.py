@@ -13,65 +13,71 @@ from .types import *
 from teleport import ParametrizedWrapper, BasicWrapper
 from collections import OrderedDict
 
+from . import MODEL_METHODS
 from .tools import *
 from .exceptions import *
 
 
 
 class Server(object):
-    debug = False
 
-    def __init__(self, api):
+    url_map = RuleMap([
+        Rule('/spec.json', endpoint='spec', methods=['GET']),
+        Rule('/actions/<action>', endpoint='action', methods=['POST']),
+        Rule('/<model>/<id>', endpoint='get_by_id', methods=['GET']),
+        Rule('/<model>/<id>', endpoint='update', methods=['PUT']),
+        Rule('/<model>/<id>', endpoint='delete', methods=['DELETE']),
+        Rule('/<model>', endpoint='create', methods=['POST']),
+        Rule('/<model>', endpoint='get_list', methods=['GET']),
+    ])
+
+    def __init__(self, api, debug=False):
         self.api = api
-        self.url_map = RuleMap([
-            Rule('/spec.json', endpoint='spec', methods=['GET']),
-            Rule('/actions/<action>', endpoint='action', methods=['POST']),
-            Rule('/<model>/<id>', endpoint='get_by_id', methods=['GET']),
-            Rule('/<model>/<id>', endpoint='update', methods=['PUT']),
-            Rule('/<model>/<id>', endpoint='delete', methods=['DELETE']),
-            Rule('/<model>', endpoint='create', methods=['POST']),
-            Rule('/<model>', endpoint='get_list', methods=['GET']),
-        ])
+        self.debug = debug
 
     def dispatch_request(self, request):
+        from .api import API
         from werkzeug.exceptions import NotFound as WerkzeugNotFound
+
         adapter = self.url_map.bind_to_environ(request.environ)
         try:
             endpoint_name, values = adapter.match()
-            if endpoint_name == 'spec':
-                endpoint = SpecEndpoint("/spec.json", self.api)
-            elif endpoint_name == 'action' and values['action'] in self.api._actions:
-                endpoint = ActionEndpoint(self.api._actions[values['action']])
-            elif endpoint_name == 'get_by_id' and values['model'] in self.api._models:
-                endpoint = GetByIdEndpoint(self.api._models[values['model']])
-            elif endpoint_name == 'update' and values['model'] in self.api._models:
-                endpoint = UpdateEndpoint(self.api._models[values['model']])
-            elif endpoint_name == 'delete' and values['model'] in self.api._models:
-                endpoint = DeleteEndpoint(self.api._models[values['model']])
-            elif endpoint_name == 'create' and values['model'] in self.api._models:
-                endpoint = CreateEndpoint(self.api._models[values['model']])
-            elif endpoint_name == 'get_list' and values['model'] in self.api._models:
-                endpoint = GetListEndpoint(self.api._models[values['model']])
-            else:
-                raise WerkzeugNotFound()
+        except WerkzeugNotFound:
+            return error_response("Not Found", 404)
 
-            return self.get_view(endpoint)(request, **values)
-        except HTTPException, e:
-            return e
+        if endpoint_name == 'spec':
+            body = json.dumps(API.to_json(self.api))
+            return Response(body, 200, {"Content-Type": "application/json"})
 
-    def get_view(self, endpoint):
+        if endpoint_name == 'action':
+            action_name = values.pop('action')
+            if action_name not in self.api._actions:
+                return error_response("Not Found", 404)
+            action = self.api._actions[action_name]
+            endpoint = ActionEndpoint(action)
+        else:
+            model_name = values.pop('model')
+            if model_name not in self.api._models:
+                return error_response("Not Found", 404)
+            model_cls = self.api._models[model_name]
+            if endpoint_name not in model_cls.methods:
+                return error_response("Method Not Allowed", 405)
+            endpoint = {
+                'get_by_id': GetByIdEndpoint,
+                'update': UpdateEndpoint,
+                'delete': DeleteEndpoint,
+                'create': CreateEndpoint,
+                'get_list': GetListEndpoint,
+            }[endpoint_name](model_cls)
 
-        def view(request, **url_args):
-            try:
-                return self.view(endpoint, request, **url_args)
-            except HTTPError as err:
-                return error_response(err.message, err.code)
-            except ValidationError as err:
-                return error_response(str(err), 400)
-            except Exception as exc:
-                return self.unhandled_exception_hook(exc)
-
-        return view
+        try:
+            return self.view(endpoint, request, **values)
+        except HTTPError as err:
+            return error_response(err.message, err.code)
+        except ValidationError as err:
+            return error_response(str(err), 400)
+        except Exception as exc:
+            return self.unhandled_exception_hook(exc)
 
     def wsgi_app(self, environ, start_response):
         request = Request(environ)
@@ -181,8 +187,6 @@ class WerkzeugTestClientHook(BaseClientHook):
         resp.status_code = r.status_code
 
         return resp
-
-
 
 
 
@@ -382,46 +386,6 @@ class ActionEndpoint(Endpoint):
             body = json.dumps(data.datum)
             return Response(body, 200, {"Content-Type": "application/json"})
 
-
-class SpecEndpoint(Endpoint):
-    """
-    :Request:
-        :Method: ``GET``
-        :URL: ``/spec.json``
-
-    :Response:
-        :Code: ``200``
-        :Body: The API spec as a JSON-encoded string.
-        :ContentType: ``application/json``
-
-    """
-    method = "GET"
-    never_authenticate = True
-    json_response = True
-    acceptable_response_codes = [200]
-
-    def __init__(self, url, api):
-        self.url = url
-        self.api = api
-
-    def handler(self):
-        return self.api
-
-    def parse_request(self, req, **url_args):
-        return {}
-
-    def build_request(self, *args, **kwargs):
-        return super(SpecEndpoint, self).build_request()
-
-    def parse_response(self, res):
-        res = super(SpecEndpoint, self).parse_response(res)
-        from .api import API
-        return API.from_json(res['json'].datum)
-
-    def build_response(self, func_input, func_output):
-        from .api import API
-        body = json.dumps(API.to_json(func_output))
-        return Response(body, 200, {"Content-Type": "application/json"})
 
 
 

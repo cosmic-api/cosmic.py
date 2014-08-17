@@ -12,10 +12,8 @@ from .models import BaseModel
 from .tools import GetterNamespace, get_args, assert_is_compatible, validate_underscore_identifier
 from .types import *
 from .http import *
-from . import cosmos
+from . import cosmos, MODEL_METHODS
 
-
-MODEL_METHODS = ['get_by_id', 'get_list', 'create', 'update', 'delete']
 
 
 class Object(object):
@@ -300,10 +298,3 @@ class API(BasicWrapper):
 
         if 'id' in link_names | field_names:
             raise SpecError("'id' is a reserved name.")
-
-
-    def get_model_obj(self, model_cls):
-        props = {}
-        for prop in model_object_props:
-            props[prop] = getattr(model_cls, prop)
-        return ModelObject(**props)
