@@ -28,11 +28,11 @@ json_spec = {
                 u"properties": {
                     u"map": {
                         u"name": {
-                            u"required": True, 
+                            u"required": True,
                             u"schema": {u"type": u"String"}
                         },
                         u"temperature": {
-                            u"required": True, 
+                            u"required": True,
                             u"schema": {u"type": u"Float"}
                         },
                     },
@@ -94,7 +94,6 @@ json_spec = {
 
 
 class TestPlanitarium(TestCase):
-
     def setUp(self):
         self.maxDiff = None
 
@@ -270,8 +269,8 @@ class TestPlanitarium(TestCase):
             moon = Sphere.get_by_id("2")
 
             rep = Sphere.update("2",
-                name="Luna",
-                revolves_around=moon['revolves_around'])
+                                name="Luna",
+                                revolves_around=moon['revolves_around'])
 
             self.assertEqual(rep['name'], "Luna")
             self.assertEqual(c['Sphere'][2]["name"], "Luna")
@@ -322,8 +321,8 @@ class TestPlanitarium(TestCase):
             self.assertEqual(moon['revolves_around'], "1")
 
             rep = Sphere.update("2",
-                name=moon['name'],
-                revolves_around="0")
+                                name=moon['name'],
+                                revolves_around="0")
 
             self.assertEqual(rep['revolves_around'], "0")
             self.assertEqual(c['Sphere'][2]["_links"]["revolves_around"]["href"], "/Sphere/0")

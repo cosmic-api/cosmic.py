@@ -112,9 +112,7 @@ cookbook_spec = {
 }
 
 
-
 class TestAPI(TestCase):
-
     def setUp(self):
         self.maxDiff = None
 
@@ -202,6 +200,7 @@ class TestAPI(TestCase):
         @self.cookbook.model
         class ChocolateAuthor(self.cookbook.models.Author):
             pass
+
         self.assertEqual(set(self.cookbook.models.__dict__.keys()), set(["Recipe", "Author", "ChocolateAuthor"]))
 
     def test_model_schema_validation(self):

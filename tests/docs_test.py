@@ -9,6 +9,7 @@ from cosmic.api import API
 
 from cosmic.types import *
 
+
 class TestGuideWhatIsAPI(TestCase):
     maxDiff = None
 
@@ -31,10 +32,8 @@ class TestGuideModels(TestCase):
     maxDiff = None
 
     def setUp(self):
-
         self.cosmos = Cosmos()
         with self.cosmos:
-
             self.places = places = API('places')
 
             @places.model
@@ -50,7 +49,7 @@ class TestGuideModels(TestCase):
         with self.cosmos:
             self.assertEqual(API.to_json(places), {
                 u'name': u'places',
-                u'actions': { u'map': {}, u'order': [] },
+                u'actions': {u'map': {}, u'order': []},
                 u"models": {
                     u"map": {
                         u"Address": {
@@ -71,9 +70,9 @@ class TestGuideModels(TestCase):
                                 },
                                 u"order": [u"number", u"street", u"city"]
                             },
-                            u"links": { u"map": {}, u"order": [] },
-                            u"query_fields": { u"map": {}, u"order": [] },
-                            u"list_metadata": { u"map": {}, u"order": [] },
+                            u"links": {u"map": {}, u"order": []},
+                            u"query_fields": {u"map": {}, u"order": []},
+                            u"list_metadata": {u"map": {}, u"order": []},
                             u'methods': {
                                 u'get_by_id': False,
                                 u'get_list': False,
@@ -90,7 +89,6 @@ class TestGuideModels(TestCase):
     def test_serialize_model(self):
         places = self.places
         with self.cosmos:
-
             rep = {
                 "number": 31,
                 "street": "Sesame"
@@ -103,10 +101,8 @@ class TestGuideModelLinks(TestCase):
     maxDiff = None
 
     def setUp(self):
-
         self.cosmos1 = Cosmos()
         with self.cosmos1:
-
             self.places = places = API('places')
 
             @places.model
@@ -173,14 +169,13 @@ class TestGuideGetById(TestCase):
             self.assertEqual(city['name'], "Toronto")
             self.assertEqual(places.models.City.get_by_id("5") is None, True)
 
+
 class TestGuideSave(TestCase):
     maxDiff = None
 
     def setUp(self):
-
         self.cosmos = Cosmos()
         with self.cosmos:
-
             self.places = places = API('places')
 
             @places.model
@@ -241,10 +236,8 @@ class TestGuideDelete(TestCase):
     maxDiff = None
 
     def setUp(self):
-
         self.cosmos = Cosmos()
         with self.cosmos:
-
             self.places = places = API('places')
 
             @places.model
@@ -329,10 +322,8 @@ class TestGuideAction(TestCase):
     maxDiff = None
 
     def setUp(self):
-
         self.cosmos1 = Cosmos()
         with self.cosmos1:
-
             self.mathy = mathy = API("mathy")
 
             @mathy.action(accepts=Array(Integer), returns=Integer)

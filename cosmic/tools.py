@@ -111,6 +111,7 @@ def deserialize_json(schema, datum):
         return schema.from_json(datum.datum)
     return None
 
+
 def serialize_json(schema, datum):
     if schema is not None and datum is None:
         raise ValidationError("Expected data, found None")
@@ -120,11 +121,13 @@ def serialize_json(schema, datum):
         return Box(schema.to_json(datum))
     return None
 
+
 def string_to_json(s):
     if s == "":
         return None
     else:
         return Box(json.loads(s))
+
 
 def json_to_string(box):
     if box == None:
@@ -139,6 +142,7 @@ def validate_underscore_identifier(id):
         raise SpecError("Identifier cannot start or end with an underscore: %s" % id)
     if '__' in id:
         raise SpecError("Identifier cannot have consecutive underscores: %s" % id)
+
 
 def is_string_type(serializer):
     if Schema.to_json(serializer)['type'] == 'String':

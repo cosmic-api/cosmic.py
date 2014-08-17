@@ -13,10 +13,9 @@ from cosmic.http import *
 
 from cosmic.types import *
 
+
 class TestURLParams(TestCase):
-
     def setUp(self):
-
         self.schema = URLParams([
             optional("foo", String),
             required("bars", Array(Integer))

@@ -1,11 +1,9 @@
 from __future__ import unicode_literals
-
 import json
 import inspect
 import requests
 from multiprocessing import Process
 from collections import OrderedDict, namedtuple
-
 
 from .actions import Action
 from .models import BaseModel
@@ -15,10 +13,8 @@ from .http import *
 from . import cosmos, MODEL_METHODS
 
 
-
 class Object(object):
     pass
-
 
 
 class API(BasicWrapper):
@@ -99,7 +95,6 @@ class API(BasicWrapper):
         api = API(name=datum["name"], homepage=datum.get("homepage", None))
 
         for name, action in datum["actions"].items():
-
             action = Action(**action)
             action.name = name
             action.api = api
@@ -108,9 +103,7 @@ class API(BasicWrapper):
             setattr(api.actions, name, partial(api.call_remote, ActionEndpoint, action))
 
         for name, modeldef in datum["models"].items():
-
             class M(BaseModel):
-
                 properties = modeldef["properties"].items()
                 query_fields = modeldef["query_fields"].items()
                 list_metadata = modeldef["list_metadata"].items()
@@ -186,7 +179,7 @@ class API(BasicWrapper):
         api.client_hook.base_url = url[:-10]
         return api
 
-    def submit_spec(self, api_key, registry_url_override=None): # pragma: no cover
+    def submit_spec(self, api_key, registry_url_override=None):  # pragma: no cover
 
         def register_spec(url, api_key, spec):
             headers = {'Content-Type': 'application/json'}
@@ -228,6 +221,7 @@ class API(BasicWrapper):
             9
 
         """
+
         def wrapper(func):
             name = unicode(func.__name__)
             validate_underscore_identifier(name)

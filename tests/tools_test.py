@@ -9,38 +9,43 @@ from cosmic.types import *
 
 
 class TestGetArgs(TestCase):
-
     def test_try_splats(self):
         def f(*arg): pass
+
         with self.assertRaisesRegexp(SpecError, "splats"):
             get_args(f)
 
     def test_no_args(self):
         def f(): pass
+
         self.assertEqual(get_args(f), ((), (),))
 
     def test_one_arg(self):
         def f(x): pass
+
         self.assertEqual(get_args(f), (("x",), (),))
+
         def f(x=1): pass
+
         self.assertEqual(get_args(f), ((), ("x",),))
 
     def test_multiple_args(self):
         def f(x, y): pass
+
         self.assertEqual(get_args(f), (("x", "y",), (),))
 
     def test_multiple_args_and_kwargs(self):
         def f(x, y=1): pass
+
         self.assertEqual(get_args(f), (("x",), ("y",),))
 
     def test_multiple_kwargs(self):
         def f(x=0, y=1): pass
+
         self.assertEqual(get_args(f), ((), ("x", "y",),))
 
 
-
 class TestArgsToDatum(TestCase):
-
     def test_one_arg(self):
         res = args_to_datum("universe")
         self.assertEqual(res, "universe")
@@ -66,7 +71,6 @@ class TestArgsToDatum(TestCase):
 
 
 class TestAssertIsCompatible(TestCase):
-
     def test_base_cases(self):
         with self.assertRaisesRegexp(SpecError, "needs to accept"):
             assert_is_compatible(JSON, (), ())
@@ -99,13 +103,12 @@ class TestAssertIsCompatible(TestCase):
             optional("c", Integer)
         ])
         with self.assertRaisesRegexp(SpecError, "function argument"):
-            assert_is_compatible(s, ("a","b",), ())
+            assert_is_compatible(s, ("a", "b",), ())
         with self.assertRaisesRegexp(SpecError, "function argument"):
             assert_is_compatible(s, ("a",), ("b",))
 
 
 class TestGetterNamespace(TestCase):
-
     def setUp(self):
         self.d = OrderedDict([('a', 1,), ('b', 2,), ('c', 3,)])
         self.dispatcher = GetterNamespace(
@@ -124,7 +127,6 @@ class TestGetterNamespace(TestCase):
 
 
 class TestSchemaHelpers(TestCase):
-
     def test_deserialize_json(self):
         with self.assertRaisesRegexp(ValidationError, "Expected Box, found None"):
             deserialize_json(Integer, None)
@@ -151,7 +153,6 @@ class TestSchemaHelpers(TestCase):
 
 
 class TestUnderscoreIdentifier(TestCase):
-
     def test_okay(self):
         validate_underscore_identifier('hello_world')
 
@@ -178,7 +179,6 @@ class TestUnderscoreIdentifier(TestCase):
 
 
 class TestSerializeJSON(TestCase):
-
     def test_falsy(self):
         self.assertEqual(serialize_json(Integer, 0).datum, 0)
 

@@ -39,12 +39,10 @@ planet_db = {
     ]
 }
 
-
 planetarium = API("planetarium")
 
 
 class PlanetariumServer(Server):
-
     def parse_request(self, endpoint, request, **url_args):
         if not endpoint.never_authenticate:
             if request.headers.get('X-Danish', None) != "poppyseed":
@@ -57,7 +55,6 @@ planetarium_server = PlanetariumServer(planetarium)
 
 @planetarium.model
 class Sphere(DBModel):
-
     methods = ["get_list", "get_by_id", "create", "update", "delete"]
 
     properties = [
@@ -95,6 +92,7 @@ class Sphere(DBModel):
     @classmethod
     def create(cls, **rep):
         return super(Sphere, cls).create(temperature=60, **rep)
+
 
 @planetarium.action(accepts=Representation(M('planetarium.Sphere')), returns=String)
 def hello(sphere):

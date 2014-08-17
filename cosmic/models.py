@@ -1,16 +1,7 @@
-from collections import OrderedDict
-
 from werkzeug.local import LocalStack, LocalProxy
-
-from teleport import BasicWrapper, ParametrizedWrapper
-
-from .types import *
-
-
 
 
 class BaseModel(object):
-
     properties = []
     methods = []
     query_fields = []
@@ -22,9 +13,7 @@ class BaseModel(object):
         pass
 
 
-
 class Cosmos(object):
-
     def __init__(self):
         self.apis = {}
 
@@ -47,7 +36,7 @@ class Cosmos(object):
 _ctx_stack = LocalStack()
 
 
-
 def M(name):
     from cosmic import cosmos
-    return LocalProxy(lambda: cosmos.M(name)) 
+
+    return LocalProxy(lambda: cosmos.M(name))

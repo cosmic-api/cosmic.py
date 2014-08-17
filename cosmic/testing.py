@@ -7,8 +7,8 @@ _db_ctx_stack = LocalStack()
 
 db = LocalProxy(lambda: _db_ctx_stack.top)
 
-class DBContext(object):
 
+class DBContext(object):
     def __init__(self, db):
         self.db = db
 
@@ -21,7 +21,6 @@ class DBContext(object):
 
 
 class DBModel(BaseModel):
-
     @classmethod
     def get_by_id(cls, id):
         try:
@@ -71,6 +70,7 @@ class DBModel(BaseModel):
     @classmethod
     def delete(cls, id):
         from .exceptions import NotFound
+
         if int(id) >= len(db[cls.name]):
             raise NotFound
         db[cls.name][int(id)] = None

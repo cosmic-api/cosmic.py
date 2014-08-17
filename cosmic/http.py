@@ -1,9 +1,8 @@
-import json
 import copy
 import requests
 from requests.structures import CaseInsensitiveDict
 
-from werkzeug.exceptions import HTTPException, InternalServerError
+from werkzeug.exceptions import NotFound as WerkzeugNotFound
 from werkzeug.wrappers import Request, Response
 from werkzeug.routing import Rule
 from werkzeug.routing import Map as RuleMap
@@ -11,17 +10,11 @@ from werkzeug.test import Client as WerkzeugTestClient
 
 from .types import *
 
-from teleport import ParametrizedWrapper, BasicWrapper
-from collections import OrderedDict
-
-from . import MODEL_METHODS
 from .tools import *
 from .exceptions import *
 
 
-
 class Server(object):
-
     url_map = RuleMap([
         Rule('/spec.json', endpoint='spec', methods=['GET']),
         Rule('/actions/<action>', endpoint='action', methods=['POST']),
@@ -38,7 +31,6 @@ class Server(object):
 
     def dispatch_request(self, request):
         from .api import API
-        from werkzeug.exceptions import NotFound as WerkzeugNotFound
 
         adapter = self.url_map.bind_to_environ(request.environ)
         try:
@@ -103,11 +95,7 @@ class Server(object):
         return endpoint.build_response(func_input=func_input, func_output=func_output)
 
 
-
-
-
 class BaseClientHook(object):
-
     def call(self, endpoint, *args, **kwargs):
         req = self.build_request(endpoint, *args, **kwargs)
         res = self.make_request(endpoint, req)
@@ -121,7 +109,6 @@ class BaseClientHook(object):
 
 
 class ClientHook(BaseClientHook):
-
     def __init__(self, base_url=None, verify=True):
         self.base_url = base_url
         self.verify = verify
@@ -131,16 +118,15 @@ class ClientHook(BaseClientHook):
         request.url = self.base_url + request.url
         prepared = self.session.prepare_request(request)
         return self.session.send(prepared,
-            stream=False,
-            timeout=None,
-            verify=self.verify,
-            cert=None,
-            proxies={},
-            allow_redirects=True)
+                                 stream=False,
+                                 timeout=None,
+                                 verify=self.verify,
+                                 cert=None,
+                                 proxies={},
+                                 allow_redirects=True)
 
 
-class ClientHookLoggingMixin(object):
-
+class ClientHookLoggingMixin(BaseClientHook):
     def __init__(self, *args, **kwargs):
         self.log = []
         self.__last_request = None
@@ -166,9 +152,7 @@ class ClientHookLoggingMixin(object):
         return super(ClientHookLoggingMixin, self).parse_response(endpoint, res)
 
 
-
 class WsgiClientHook(BaseClientHook):
-
     def __init__(self, wsgi_app):
         self.client = WerkzeugTestClient(wsgi_app, response_wrapper=Response)
 
@@ -191,7 +175,6 @@ class WsgiClientHook(BaseClientHook):
         return resp
 
 
-
 def error_response(message, code):
     body = json.dumps({"error": message})
     return Response(body, code, {"Content-Type": "application/json"})
@@ -208,22 +191,21 @@ def get_payload_from_http_message(req):
         raise SpecError('Content-Type charset must be "utf-8" got %s instead' % charset)
     try:
         data = bytes.decode('utf-8')
-    except UnicodeDecodeError as e:
+    except UnicodeDecodeError:
         raise SpecError("Unicode Decode Error")
     try:
         return string_to_json(data)
     except ValueError:
         raise SpecError("Invalid JSON")
 
+
 def reverse_werkzeug_url(url, values):
     rule = Rule(url)
     # Rule needs to be bound before building
-    m = RuleMap([rule])
+    RuleMap([rule])
     # Note: this seems to be changing in Werkzeug master
     domain_part, url = rule.build(values)
     return url
-
-
 
 
 class Endpoint(object):
@@ -256,10 +238,10 @@ class Endpoint(object):
         is_empty = request.data == ""
 
         if ((self.request_must_be_empty == True and not is_empty) or
-            (is_empty and self.request_can_be_empty == False)):
+                (is_empty and self.request_can_be_empty == False)):
             raise HTTPError(code=400, message="Invalid data")
 
-        if self.query_schema != None:
+        if self.query_schema is not None:
             req['query'] = self.query_schema.from_multi_dict(request.args)
 
         return req
@@ -268,11 +250,11 @@ class Endpoint(object):
         raise NotImplementedError()
 
     def build_request(self,
-            json=None,
-            data="",
-            url_args={},
-            headers={},
-            query={}):
+                      json=None,
+                      data="",
+                      url_args={},
+                      headers={},
+                      query={}):
 
         if self.json_request:
             data = json_to_string(json)
@@ -282,7 +264,7 @@ class Endpoint(object):
         if self.json_request and data:
             headers["Content-Type"] = "application/json"
 
-        if self.query_schema != None and query:
+        if self.query_schema is not None and query:
             query_string = self.query_schema.to_json(query)
             if query_string:
                 url += "?%s" % query_string
@@ -323,8 +305,6 @@ class Endpoint(object):
         return r
 
 
-
-
 class ActionEndpoint(Endpoint):
     """
     :Request:
@@ -363,11 +343,10 @@ class ActionEndpoint(Endpoint):
         data = deserialize_json(self.action.accepts, req['json'])
         kwargs = {}
         if data is not None:
-            required, optional = get_args(self.action.func)
+            required_args, optional_args = get_args(self.action.func)
             # If only one argument, take the whole object
-            if len(required + optional) == 1:
-                kwargs = {}
-                kwargs[required[0]] = data
+            if len(required_args + optional_args) == 1:
+                kwargs = {required_args[0]: data}
             else:
                 kwargs = data
         return kwargs
@@ -381,14 +360,11 @@ class ActionEndpoint(Endpoint):
 
     def build_response(self, func_input, func_output):
         data = serialize_json(self.action.returns, func_output)
-        if data == None:
+        if data is None:
             return Response("", 204, {})
         else:
             body = json.dumps(data.datum)
             return Response(body, 200, {"Content-Type": "application/json"})
-
-
-
 
 
 class GetByIdEndpoint(Endpoint):

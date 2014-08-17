@@ -7,8 +7,10 @@ from werkzeug.datastructures import Headers as WerkzeugHeaders
 
 from teleport import standard_types, ParametrizedWrapper, BasicWrapper, required, optional, Box, ValidationError
 
+
 def getter(name):
     from .api import API
+
     if name == "cosmic.API":
         return API
     elif name == "cosmic.Model":
@@ -22,15 +24,16 @@ def getter(name):
     else:
         raise KeyError()
 
+
 globals().update(standard_types(getter))
 
 
 def required_link(name, model, doc=None):
     return (name, {"model": model, "required": True, "doc": doc})
 
+
 def optional_link(name, model, doc=None):
     return (name, {"model": model, "required": False, "doc": doc})
-
 
 
 class Model(BasicWrapper):
@@ -47,6 +50,7 @@ class Model(BasicWrapper):
     @classmethod
     def assemble(cls, datum):
         from .models import M
+
         return M(datum)
 
     @classmethod
@@ -157,17 +161,18 @@ class BaseRepresentation(ParametrizedWrapper):
             value = rep.get(name, None)
             if value != None:
                 d[name] = value
-                
+
         return d
+
 
 class Representation(BaseRepresentation):
     type_name = "cosmic.Representation"
     all_fields_optional = False
 
+
 class Patch(BaseRepresentation):
     type_name = "cosmic.Patch"
     all_fields_optional = True
-
 
 
 class URLParams(ParametrizedWrapper):
@@ -226,6 +231,7 @@ class URLParams(ParametrizedWrapper):
 
     def to_multi_dict(self, datum):
         from .tools import is_string_type
+
         d = Struct(self.param).to_json(datum)
         md = MultiDict()
         for name, field in self.param.items():
@@ -235,7 +241,6 @@ class URLParams(ParametrizedWrapper):
                 else:
                     md[name] = json.dumps(d[name])
         return md
-
 
 
 class Headers(BasicWrapper):
