@@ -1,4 +1,4 @@
-from werkzeug.local import LocalProxy, LocalStack
+from werkzeug.local import LocalProxy
 
 from .models import _ctx_stack, Cosmos
 

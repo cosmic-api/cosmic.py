@@ -1,13 +1,9 @@
 import json
-import sys
-
 from unittest2 import TestCase
-from mock import patch
 
 from werkzeug.wrappers import Response
 from werkzeug.test import Client as TestClient
 
-from cosmic.exceptions import *
 from cosmic.api import API
 from cosmic.http import Server
 from cosmic.models import BaseModel, Cosmos

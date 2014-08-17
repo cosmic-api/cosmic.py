@@ -2,11 +2,8 @@ from unittest2 import TestCase
 from mock import patch
 
 from cosmic.models import Cosmos, BaseModel
-from cosmic.actions import *
-from cosmic.tools import *
 from cosmic.http import *
 from cosmic.api import API
-
 from cosmic.types import *
 
 

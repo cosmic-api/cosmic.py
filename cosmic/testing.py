@@ -1,7 +1,9 @@
+from werkzeug.local import LocalProxy, LocalStack
+
 from .models import BaseModel
 from .types import *
 from .exceptions import NotFound
-from werkzeug.local import LocalProxy, LocalStack
+
 
 _db_ctx_stack = LocalStack()
 

@@ -1,15 +1,18 @@
 from __future__ import unicode_literals
 import json
 import inspect
-import requests
 from multiprocessing import Process
-from collections import OrderedDict, namedtuple
+from collections import OrderedDict
+
+import requests
+from teleport import BasicWrapper
 
 from .actions import Action
 from .models import BaseModel
-from .tools import GetterNamespace, get_args, assert_is_compatible, validate_underscore_identifier
+from .tools import get_args, assert_is_compatible, validate_underscore_identifier
 from .types import *
-from .http import *
+from .http import ClientHook, CreateEndpoint, DeleteEndpoint, GetByIdEndpoint, GetListEndpoint, UpdateEndpoint, \
+    ActionEndpoint
 from . import cosmos, MODEL_METHODS
 
 

@@ -1,14 +1,11 @@
 import datetime
 
-from cosmic import cosmos
 from cosmic.models import M
 from cosmic.api import API
 from cosmic.exceptions import HTTPError
 from cosmic.testing import DBModel, DBContext
 from cosmic.types import *
 from cosmic.http import Server
-
-from werkzeug.local import LocalProxy
 
 
 planet_db = {

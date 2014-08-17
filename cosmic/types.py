@@ -4,8 +4,12 @@ from collections import OrderedDict
 from werkzeug.urls import url_decode, url_encode
 from werkzeug.datastructures import MultiDict
 from werkzeug.datastructures import Headers as WerkzeugHeaders
-
 from teleport import standard_types, ParametrizedWrapper, BasicWrapper, required, optional, Box, ValidationError
+
+
+__all__ = ['Integer', 'Float', 'Boolean', 'String', 'Binary', 'DateTime', 'JSON', 'Array', 'Map', 'OrderedMap',
+           'Struct', 'Schema', 'Model', 'Link', 'Representation', 'Patch', 'URLParams', 'Headers', 'Box',
+           'required', 'optional', 'required_link', 'optional_link', 'ValidationError']
 
 
 def getter(name):
@@ -24,7 +28,19 @@ def getter(name):
     else:
         raise KeyError()
 
-
+# Explicit definitions for static analyzers
+Integer = None
+Float = None
+Boolean = None
+String = None
+Binary = None
+DateTime = None
+JSON = None
+Array = None
+Map = None
+OrderedMap = None
+Struct = None
+Schema = None
 globals().update(standard_types(getter))
 
 

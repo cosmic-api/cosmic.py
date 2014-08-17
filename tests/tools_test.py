@@ -1,11 +1,8 @@
 from unittest2 import TestCase
-from mock import patch, Mock
-from collections import OrderedDict
 
-from cosmic.exceptions import *
 from cosmic.tools import *
-
 from cosmic.types import *
+from cosmic.exceptions import SpecError
 
 
 class TestGetArgs(TestCase):
@@ -106,24 +103,6 @@ class TestAssertIsCompatible(TestCase):
             assert_is_compatible(s, ("a", "b",), ())
         with self.assertRaisesRegexp(SpecError, "function argument"):
             assert_is_compatible(s, ("a",), ("b",))
-
-
-class TestGetterNamespace(TestCase):
-    def setUp(self):
-        self.d = OrderedDict([('a', 1,), ('b', 2,), ('c', 3,)])
-        self.dispatcher = GetterNamespace(
-            get_item=self.d.__getitem__,
-            get_all=self.d.keys)
-
-    def test_get_item(self):
-        self.assertEqual(self.dispatcher.a, 1)
-        self.assertEqual(self.dispatcher.b, 2)
-        self.assertEqual(self.dispatcher.c, 3)
-        with self.assertRaises(KeyError):
-            self.dispatcher.d
-
-    def test_all(self):
-        self.assertEqual(self.dispatcher.__all__, ['a', 'b', 'c'])
 
 
 class TestSchemaHelpers(TestCase):

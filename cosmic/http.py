@@ -1,7 +1,8 @@
 import copy
+import json
+
 import requests
 from requests.structures import CaseInsensitiveDict
-
 from werkzeug.exceptions import NotFound as WerkzeugNotFound
 from werkzeug.wrappers import Request, Response
 from werkzeug.routing import Rule
@@ -9,8 +10,7 @@ from werkzeug.routing import Map as RuleMap
 from werkzeug.test import Client as WerkzeugTestClient
 
 from .types import *
-
-from .tools import *
+from .tools import get_args, string_to_json, args_to_datum, deserialize_json, serialize_json, json_to_string
 from .exceptions import *
 
 
@@ -55,13 +55,14 @@ class Server(object):
             model_cls = self.api._models[model_name]
             if endpoint_name not in model_cls.methods:
                 return error_response("Method Not Allowed", 405)
-            endpoint = {
+            endpoints = {
                 'get_by_id': GetByIdEndpoint,
                 'update': UpdateEndpoint,
                 'delete': DeleteEndpoint,
                 'create': CreateEndpoint,
                 'get_list': GetListEndpoint,
-            }[endpoint_name](model_cls)
+            }
+            endpoint = endpoints[endpoint_name](model_cls)
 
         try:
             return self.view(endpoint, request, **values)

@@ -1,15 +1,6 @@
-from unittest2 import TestCase
 from datetime import datetime
 
-import requests
-from mock import patch
-
-from werkzeug.exceptions import Unauthorized, BadRequest, InternalServerError
-
-from cosmic.models import Cosmos
-from cosmic.actions import *
-from cosmic.tools import *
-from cosmic.http import *
+from unittest2 import TestCase
 
 from cosmic.types import *
 

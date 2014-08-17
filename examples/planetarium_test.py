@@ -1,22 +1,16 @@
-import json
-import time
 import copy
+import json
+
 import requests
-
 from mock import patch
-
 from unittest2 import TestCase
-
 from werkzeug.wrappers import Response
 from werkzeug.test import Client as TestClient
 
-from cosmic.api import API
-from cosmic.http import WsgiClientHook, ClientHookLoggingMixin, Server
+from cosmic.http import WsgiClientHook, ClientHookLoggingMixin
 from cosmic import cosmos
-from cosmic.testing import DBContext
-from cosmic.models import Cosmos, M
+from cosmic.models import Cosmos
 from cosmic.exceptions import *
-
 from planetarium import *
 
 

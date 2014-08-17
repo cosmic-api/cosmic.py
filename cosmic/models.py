@@ -1,5 +1,7 @@
 from werkzeug.local import LocalStack, LocalProxy
 
+__all__ = ['BaseModel', 'Cosmos', 'M']
+
 
 class BaseModel(object):
     properties = []
