@@ -34,6 +34,13 @@ def optional_link(name, model, doc=None):
 
 
 class Model(BasicWrapper):
+    """A Teleport type representing an API model. Its JSON form is
+    a dotted string, the native form is the model object::
+
+        >>> Model.to_json(places.models.City)
+        "places.City"
+
+    """
     type_name = "cosmic.Model"
     schema = String
 
@@ -48,6 +55,14 @@ class Model(BasicWrapper):
 
 
 class Link(ParametrizedWrapper):
+    """A Teleport type representing a link to an object. Its
+    native form is simply a resource id. It takes a :class:`~cosmic.types.Model`
+    as parameter::
+
+        >>> Link(places.models.City).to_json("3")
+        {"href": "/City/3"}
+
+    """
     type_name = "cosmic.Link"
     param_schema = Model
 

@@ -11,6 +11,11 @@ class SpecError(Exception):
     pass
 
 class NotFound(Exception):
+	"""Expected to be raised by :meth:`get_by_id`, :meth:`update` and 
+	:meth:`delete` when the resource is not found. Cosmic will convert 
+	it to a 404 response on the server, and on the client, it will 
+	interpret this response by reraisin the exception.
+	"""
 	pass
 
 class HTTPError(Exception):

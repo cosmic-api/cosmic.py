@@ -77,8 +77,6 @@ class API(BasicWrapper):
     ])
 
     def __init__(self, name, homepage=None):
-        from werkzeug.routing import Map
-
         self.name = name
         self.homepage = homepage
         self.client_hook = ClientHook()
@@ -129,7 +127,7 @@ class API(BasicWrapper):
             M.get_list = staticmethod(partial(api.call_remote, GetListEndpoint, M))
             M.get_by_id = staticmethod(partial(api.call_remote, GetByIdEndpoint, M))
 
-            api.validate_model(M)
+            api._validate_model(M)
 
             api._models[M.name] = M
             setattr(api.models, M.name, M)
@@ -213,7 +211,8 @@ class API(BasicWrapper):
 
         The *accepts* parameter is a schema that describes the input of the
         function, *returns* is a schema that describes the output of the
-        function. The name of the function becomes the name of the action.
+        function. The name of the function becomes the name of the action and
+        the docstring serves as the action's documentation.
 
         Once registered, an action will become accessible as an attribute of
         the :data:`~cosmic.api.API.actions` object.
@@ -266,26 +265,19 @@ class API(BasicWrapper):
 
         Once registered, a model will become accessible as an attribute of the
         :data:`~cosmic.api.API.models` object.
-
-        .. code:: python
-
-            >>> w = dictionary.models.Word.from_json({"text": "dog"})
-            >>> w.text
-            u'dog'
-
         """
 
         model_cls.name = model_cls.__name__
         model_cls.api = self
 
-        self.validate_model(model_cls)
+        self._validate_model(model_cls)
 
         self._models[model_cls.name] = model_cls
         setattr(self.models, model_cls.name, model_cls)
 
         return model_cls
 
-    def validate_model(self, model_cls):
+    def _validate_model(self, model_cls):
 
         link_names = set(dict(model_cls.links).keys())
         field_names = set(dict(model_cls.properties).keys())

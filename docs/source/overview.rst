@@ -3,51 +3,6 @@ Overview
 
 Before we dig in, here is a high-level overview of Cosmic.
 
-Motivation
-----------
-
-We believe that using web APIs should be as easy as using native libraries.
-Cosmic builds a native communication bridge across all supported languages,
-while providing a well-documented, clean HTTP structure as a fallback.
-
-We are tired of discussing HTTP, of arguments around how to structure URLs,
-how to serialize query parameters, which headers to include and which codes to
-return. We believe that these questions are simply not worth your time. Cosmic
-attempts to gather the best conventions of HTTP APIs and abstracts them away.
-
-When you write your API server using Cosmic, developers can use it in their
-favorite language as if it was a locally installed library. In addition to
-this, we are working on the Cosmic Registry, a centralized hub of richly
-integrated Cosmic APIs with beautiful auto-generated documentation.
-
-The Universal Client
---------------------
-
-You cannot escape writing API clients. On the provider side, the API library
-or framework serves as glue between business code and HTTP. On the consumer
-side, the burden of gluing HTTP to business logic lies on the shoulders of the
-developer.
-
-Writing a client for every API/language combination is a tremendous amount of
-work (``O(n^2)``), only the most popular APIs and the most popular languages
-have clients written for them. Cosmic brings the amount of work down to
-``O(n)`` by specifying a way of building universal clients. Such a client is
-built from the description of an API in the form of a JSON spec.
-
-If you port Cosmic to a new language, you do the equivalent of writing a
-client for every existing Cosmic API. If you use Cosmic to build an API, you
-get a number of clients for free. New client ports should motivate developers
-to pick Cosmic as a server-side API framework. New Cosmic APIs should motivate
-developers to write new clients.
-
-As for the API spec, our approach differs from something like `Swagger
-<https://developers.helloreverb.com/swagger/>`_ as we are not trying to
-describe an API in low-level detail. Instead, the JSON spec of a Cosmic API
-tries to be high-level and semantic. For instance, in Swagger, every REST-ful
-endpoint of a collection needs to be described separately, including the
-method, URL format and response code. In Cosmic, these details are decided by
-the framework, so the API spec only describes the data structure of the model.
-
 REST and RPC
 ------------
 
@@ -133,26 +88,6 @@ The Teleport docs will teach you to import from the :mod:`teleport` module::
 In Cosmic, you should import from :mod:`cosmic.types`::
 
     from cosmic.types import *
-
-Apart from providing the standard Teleport types, this will give you custom
-types defined by the Cosmic library as well as access to Cosmic models by
-using the ``<api>.<model>`` syntax. For instance::
-
-    >>> from cosmic.types import Schema
-    >>> from myapi import MyModel
-    >>> Schema.to_json(MyModel)
-    {u'type': u'myapi.MyModel'}
-
-Built on Flask
---------------
-
-For the server component, Cosmic relies on `Flask <http://flask.pocoo.org/>`_,
-a great Python web microframework. A Cosmic API server creates a complete
-Flask application from scratch. Running this application means running your
-API. When working on a Cosmic API, some knowledge of Flask may be necessary.
-In particular, Flask provides some objects that could be useful to import:
-`request <http://flask.pocoo.org/docs/api/#flask.request>`_ and `g
-<http://flask.pocoo.org/docs/api/#flask.g>`_.
 
 .. _hal:
 

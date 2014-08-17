@@ -34,10 +34,27 @@ APIs
 .. autoclass:: cosmic.models.BaseModel
    :members:
 
+Types
+-----
+
+.. autoclass:: cosmic.types.Model
+   :show-inheritance:
+
+.. autoclass:: cosmic.types.Link
+   :show-inheritance:
+
+.. autoclass:: cosmic.types.Representation
+   :show-inheritance:
+
+.. autoclass:: cosmic.types.Patch
+   :show-inheritance:
+
+.. autoclass:: cosmic.types.URLParams
+   :show-inheritance:
+
+
 HTTP Endpoints
 --------------
-
-.. autoclass:: cosmic.http.SpecEndpoint
 
 .. autoclass:: cosmic.http.ActionEndpoint
 
@@ -59,7 +76,13 @@ Exceptions
 .. autoclass:: cosmic.exceptions.SpecError
    :members:
 
+.. autoclass:: cosmic.exceptions.NotFound
+   :members:
+
 .. autoclass:: cosmic.exceptions.HTTPError
+   :members:
+
+.. autoclass:: cosmic.exceptions.RemoteHTTPError
    :members:
 
 Tools and Helpers
@@ -69,5 +92,3 @@ Tools and Helpers
    :members:
    :undoc-members:
 
-.. autoclass:: cosmic.types.URLParams
-   :show-inheritance:
