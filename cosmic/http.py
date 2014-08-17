@@ -139,15 +139,15 @@ class ClientHook(BaseClientHook):
             allow_redirects=True)
 
 
-class SaveStackClientHookMixin(object):
+class ClientHookLoggingMixin(object):
 
     def __init__(self, *args, **kwargs):
-        self.stack = []
+        self.log = []
         self.__last_request = None
-        super(SaveStackClientHookMixin, self).__init__(*args, **kwargs)
+        super(ClientHookLoggingMixin, self).__init__(*args, **kwargs)
 
     def build_request(self, endpoint, *args, **kwargs):
-        request = super(SaveStackClientHookMixin, self).build_request(endpoint, *args, **kwargs)
+        request = super(ClientHookLoggingMixin, self).build_request(endpoint, *args, **kwargs)
         self.__last_request = {
             "method": request.method,
             "data": request.data,
@@ -162,8 +162,8 @@ class SaveStackClientHookMixin(object):
             "headers": res.headers,
             "status_code": res.status_code
         }
-        self.stack.append((self.__last_request, saved_resp))
-        return super(SaveStackClientHookMixin, self).parse_response(endpoint, res)
+        self.log.append((self.__last_request, saved_resp))
+        return super(ClientHookLoggingMixin, self).parse_response(endpoint, res)
 
 
 

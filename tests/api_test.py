@@ -5,6 +5,7 @@ from unittest2 import TestCase
 from mock import patch
 
 from werkzeug.wrappers import Response
+from werkzeug.test import Client as TestClient
 
 from cosmic.exceptions import *
 from cosmic.api import API
