@@ -7,9 +7,11 @@ from werkzeug.datastructures import Headers as WerkzeugHeaders
 from teleport import standard_types, ParametrizedWrapper, BasicWrapper, required, optional, Box, ValidationError
 
 
-__all__ = ['Integer', 'Float', 'Boolean', 'String', 'Binary', 'DateTime', 'JSON', 'Array', 'Map', 'OrderedMap',
-           'Struct', 'Schema', 'Model', 'Link', 'Representation', 'Patch', 'URLParams', 'Headers', 'Box',
-           'required', 'optional', 'required_link', 'optional_link', 'ValidationError']
+__all__ = ['Integer', 'Float', 'Boolean', 'String', 'Binary', 'DateTime',
+           'JSON', 'Array', 'Map', 'OrderedMap', 'Struct', 'Schema', 'Model',
+           'Link', 'Representation', 'Patch', 'URLParams', 'Headers', 'Box',
+           'required', 'optional', 'required_link', 'optional_link',
+           'ValidationError']
 
 
 def getter(name):
@@ -54,7 +56,9 @@ def optional_link(name, model, doc=None):
 
 class Model(BasicWrapper):
     """A Teleport type representing an API model. Its JSON form is
-    a dotted string, the native form is the model object::
+    a dotted string, the native form is the model object:
+
+    .. code:: python
 
         >>> Model.to_json(places.models.City)
         "places.City"
@@ -75,12 +79,16 @@ class Model(BasicWrapper):
 
 
 class Link(ParametrizedWrapper):
-    """A Teleport type representing a link to an object. Its
-    native form is simply a resource id. It takes a :class:`~cosmic.types.Model`
-    as parameter::
+    """A Teleport type representing a link to an object. Its native form is
+    simply a resource id. It takes a :class:`~cosmic.types.Model` as
+    parameter:
+
+    .. code:: python
 
         >>> Link(places.models.City).to_json("3")
         {"href": "/City/3"}
+        >>> Link(places.models.City).from_json({"href": "/City/3"})
+        "3"
 
     """
     type_name = "cosmic.Link"
@@ -182,18 +190,34 @@ class BaseRepresentation(ParametrizedWrapper):
 
 
 class Representation(BaseRepresentation):
+    """A Teleport type representing a model representation. Its native form is
+    a dict as defined by :data:`~cosmic.models.BaseModel.properties` and
+    :data:`~cosmic.models.BaseModel.links`. Links are represented by plain
+    string ids.
+
+    It takes a :class:`~cosmic.types.Model` as  parameter.
+    """
     type_name = "cosmic.Representation"
     all_fields_optional = False
 
 
 class Patch(BaseRepresentation):
+    """A Teleport type representing a model patch. Its native form is similar
+    to that of :class:`~cosmic.types.Representation`, except all fields are
+    optional. To make a field required, use
+    :meth:`~cosmic.models.BaseModel.validate_patch`.
+
+    It takes a :class:`~cosmic.types.Model` as  parameter.
+    """
     type_name = "cosmic.Patch"
     all_fields_optional = True
 
 
 class URLParams(ParametrizedWrapper):
     """A Teleport type that behaves mostly like the :class:`Struct`
-    type, except it serializes the data into a query string::
+    type, except it serializes the data into a query string:
+
+    .. code:: python
 
         >>> p = URLParams([
         ...     required("foo", Boolean),
@@ -207,6 +231,8 @@ class URLParams(ParametrizedWrapper):
 
     A string parameter or a parameter whose type is a wrapper over string will
     not require quotes:
+
+    .. code:: python
 
         >>> from cosmic.types import DateTime
         >>> schema = URLParams([
