@@ -15,8 +15,8 @@ Contents:
    :maxdepth: 3
 
    overview
-   guide
    tutorial
+   guide
    reference
 
 Indices and tables

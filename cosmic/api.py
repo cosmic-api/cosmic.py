@@ -1,7 +1,6 @@
 from __future__ import unicode_literals
 import json
 import inspect
-from multiprocessing import Process
 from collections import OrderedDict
 
 import requests
@@ -9,10 +8,11 @@ from teleport import BasicWrapper
 
 from .actions import Action
 from .models import BaseModel
-from .tools import get_args, assert_is_compatible, validate_underscore_identifier
+from .tools import get_args, assert_is_compatible, \
+    validate_underscore_identifier
 from .types import *
-from .http import ClientHook, CreateEndpoint, DeleteEndpoint, GetByIdEndpoint, GetListEndpoint, UpdateEndpoint, \
-    ActionEndpoint
+from .http import ClientHook, CreateEndpoint, DeleteEndpoint, \
+    GetByIdEndpoint, GetListEndpoint, UpdateEndpoint, ActionEndpoint
 from . import cosmos, MODEL_METHODS
 
 
@@ -32,7 +32,8 @@ class API(BasicWrapper):
     as similarly as possible.
 
     :param name: The API name is required, and should be unique
-    :param homepage: If you like, the API spec may include a link to your homepage
+    :param homepage: If you like, the API spec may include a link to your
+        homepage
     """
     type_name = "cosmic.API"
 
@@ -81,15 +82,50 @@ class API(BasicWrapper):
         self.client_hook = ClientHook()
 
         self._actions = OrderedDict()
+
+        # : In the :class:`cosmic.api.API` object, the actions are stored in
+        # : an :class:`OrderedDict` in a private :data:`_actions` property:
+        #:
+        #: .. code:: python
+        #:
+        #:     >>> mathy._actions
+        #:     OrderedDict([(u'add', <cosmic.actions.Action object at 0x9ca18ec>)])
+        #:
+        #: The standard way of accessing them, however, is through a proxy
+        #: property :data:`actions`. Like so:
+        #:
+        #: .. code:: python
+        #:
+        #:     >>> mathy.actions.add(1, 2)
+        #:     3
         self.actions = Object()
 
         self._models = OrderedDict()
+
+        #: Models are stored in the :data:`_models` property, but accessed
+        #: through a proxy like so:
+        #:
+        #: .. code:: python
+        #:
+        #:     >>> mathy.models.Number
+        #:     <class '__main__.Number'>
         self.models = Object()
 
         cosmos.apis[self.name] = self
 
+    def run(self, port=5000, **kwargs):
+        """Simple way to run the API in development. Uses Werkzeug's
+        :meth:`werkzeug.serving.run_simple` internally.
+        """
+        from werkzeug.serving import run_simple
+        from .http import Server
+
+        server = Server(self)
+        run_simple('127.0.0.1', port, server.wsgi_app, **kwargs)
+
     def call_remote(self, endpoint_cls, endpoint_arg, *args, **kwargs):
-        return self.client_hook.call(endpoint_cls(endpoint_arg), *args, **kwargs)
+        return self.client_hook.call(endpoint_cls(endpoint_arg), *args,
+                                     **kwargs)
 
     @staticmethod
     def assemble(datum):
@@ -103,7 +139,8 @@ class API(BasicWrapper):
             action.api = api
 
             api._actions[name] = action
-            setattr(api.actions, name, partial(api.call_remote, ActionEndpoint, action))
+            setattr(api.actions, name,
+                    partial(api.call_remote, ActionEndpoint, action))
 
         for name, modeldef in datum["models"].items():
             class M(BaseModel):
@@ -111,17 +148,23 @@ class API(BasicWrapper):
                 query_fields = modeldef["query_fields"].items()
                 list_metadata = modeldef["list_metadata"].items()
                 links = modeldef["links"].items()
-                methods = filter(lambda m: modeldef["methods"][m], MODEL_METHODS)
+                methods = filter(lambda m: modeldef["methods"][m],
+                                 MODEL_METHODS)
 
             M.name = str(name)
             M.__name__ = M.name
             M.api = api
 
-            M.create = staticmethod(partial(api.call_remote, CreateEndpoint, M))
-            M.update = staticmethod(partial(api.call_remote, UpdateEndpoint, M))
-            M.delete = staticmethod(partial(api.call_remote, DeleteEndpoint, M))
-            M.get_list = staticmethod(partial(api.call_remote, GetListEndpoint, M))
-            M.get_by_id = staticmethod(partial(api.call_remote, GetByIdEndpoint, M))
+            M.create = staticmethod(
+                partial(api.call_remote, CreateEndpoint, M))
+            M.update = staticmethod(
+                partial(api.call_remote, UpdateEndpoint, M))
+            M.delete = staticmethod(
+                partial(api.call_remote, DeleteEndpoint, M))
+            M.get_list = staticmethod(
+                partial(api.call_remote, GetListEndpoint, M))
+            M.get_by_id = staticmethod(
+                partial(api.call_remote, GetByIdEndpoint, M))
 
             api._validate_model(M)
 
@@ -171,7 +214,7 @@ class API(BasicWrapper):
 
             >>> planetarium = API.load("http://localhost:5000/spec.json") # doctest: +SKIP
             >>> planetarium.models.Sphere.get_by_id("0") # doctest: +SKIP
-            <cosmic.models.Sphere object at 0x8f9ebcc>
+            {"name": "Earth"}
 
         :param url: The API spec url, including ``/spec.json``
         :rtype: :class:`API` instance
@@ -181,25 +224,6 @@ class API(BasicWrapper):
         # Set the API url to be the spec URL, minus the /spec.json
         api.client_hook.base_url = url[:-10]
         return api
-
-    def submit_spec(self, api_key, registry_url_override=None):  # pragma: no cover
-
-        def register_spec(url, api_key, spec):
-            headers = {'Content-Type': 'application/json'}
-            data = json.dumps({
-                "api_key": api_key,
-                "spec": spec
-            })
-            requests.post(url, data=data, headers=headers)
-
-        spec = API.to_json(self)
-
-        url = "https://registry.cosmic-api.com/actions/register_spec"
-        if registry_url_override:
-            url = registry_url_override
-        p = Process(target=register_spec, args=(url, api_key, spec,))
-        p.start()
-        return p
 
     def action(self, accepts=None, returns=None):
         """A decorator for creating actions out of functions and registering
@@ -280,7 +304,9 @@ class API(BasicWrapper):
         field_names = set(dict(model_cls.properties).keys())
 
         if link_names & field_names:
-            raise SpecError("Model cannot contain a field and link with the same name: {}".format(model_cls.name))
+            raise SpecError(
+                "Model cannot contain a field and link with the same name: {}".format(
+                    model_cls.name))
 
         for name in link_names | field_names:
             validate_underscore_identifier(name)
