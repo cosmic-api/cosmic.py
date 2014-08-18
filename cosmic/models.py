@@ -4,10 +4,38 @@ __all__ = ['BaseModel', 'Cosmos', 'M']
 
 
 class BaseModel(object):
+    """Subclasses of this class are fed into the :meth:`~cosmic.api.API.model`
+    decorator to attach models to an API.
+    """
+    #: A list of properties which, along with
+    #: :data:`~cosmic.models.BaseModel.links` below, will be used for the
+    #: model's representation and patch, defined in the same way Teleport
+    #: Struct fields are defined:
+    #:
+    #: .. code:: python
+    #:
+    #:     properties = [
+    #:         required('name', String),
+    #:         optional('age', Integer),
+    #:     ]
+    #:
+    #: See :class:`~cosmic.types.Representation` and
+    #: :class:`~cosmic.types.Patch`.
     properties = []
+    #: A list of methods that this model supports. Possible values are
+    #: 'get_by_id', 'create', 'update', 'delete' and 'get_list'.
     methods = []
+    #: A list of properties for the :meth:`get_list` handler. They are defined
+    #: in the same way as :data:`properties` above.
     query_fields = []
+    #: A list of properties that can be returned along with the usual response
+    #: for :meth:`~cosmic.models.BaseModel.get_list`. These can be used for
+    #: things like pagination.
     list_metadata = []
+    #: Similar to properties, but encodes a relationship between this model
+    #: and another. In database terms this would be a foreign key. Use
+    #: :func:`~cosmic.types.required_link` and
+    #: :func:`~cosmic.types.optional_link` to specify them.
     links = []
 
     @classmethod

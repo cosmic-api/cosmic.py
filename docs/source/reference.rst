@@ -9,7 +9,6 @@ APIs
 .. autoclass:: cosmic.api.API
    :members:
 
-.. data:: cosmic.api.API.models
 .. autoclass:: cosmic.models.BaseModel
    :members:
 

@@ -375,8 +375,7 @@ class GetByIdEndpoint(Endpoint):
         :URL: ``/<model>/<id>`` where *model* is the model name.
     :Response:
         :Code: ``200`` or ``404`` if object is not found.
-        :Body: The object as a JSON-encoded string or empty if the object
-            with the provided id does not exist.
+        :Body: The object representation as a JSON-encoded string.
         :ContentType: ``application/json`` if body is not empty.
 
     """
@@ -428,10 +427,10 @@ class UpdateEndpoint(Endpoint):
     :Request:
         :Method: ``PUT``
         :URL: ``/<model>/<id>`` where *model* is the model name.
-        :Body: New model representation as a JSON-encoded string.
+        :Body: A corresponding model patch as a JSON-encoded string.
         :ContentType: ``application/json``
     :Response:
-        :Code: ``200``
+        :Code: ``200`` or ``404`` if object is not found.
         :Body: New model representation as a JSON-encoded string.
         :ContentType: ``application/json``
 
@@ -488,7 +487,7 @@ class CreateEndpoint(Endpoint):
     :Request:
         :Method: ``POST``
         :URL: ``/<model>`` where *model* is the model name.
-        :Body: New model representation as a JSON-encoded string.
+        :Body: Corresponding model patch as a JSON-encoded string.
         :ContentType: ``application/json``
     :Response:
         :Code: ``201``
@@ -540,7 +539,7 @@ class DeleteEndpoint(Endpoint):
         :Method: ``DELETE``
         :URL: ``/<model>/<id>`` where *model* is the model name.
     :Response:
-        :Code: ``204``
+        :Code: ``204`` or ``404`` if object is not found.
         :Body: Empty.
 
     """
@@ -604,13 +603,16 @@ class GetListEndpoint(Endpoint):
                     },
                     "_embedded": {
                         <model>: [<repr>*]
-                    }
+                    },
+                    <metadata>*
                 }
 
             In the above, *self* is the request URL, *model* is the name of
-            the model that was requested and *repr* is a JSON representation
-            of an instance of that model which was matched by the query.
-            
+            the model that was requested and *repr* is a JSON-encoded
+            representation of an object matched by the query. *Metadata* is
+            defined according to
+            :data:`~cosmic.models.BaseModel.list_metadata`.
+
     """
     method = "GET"
     json_response = True

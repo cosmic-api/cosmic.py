@@ -83,8 +83,8 @@ class API(BasicWrapper):
 
         self._actions = OrderedDict()
 
-        # : In the :class:`cosmic.api.API` object, the actions are stored in
-        # : an :class:`OrderedDict` in a private :data:`_actions` property:
+        #: In the :class:`cosmic.api.API` object, the actions are stored in
+        #: an :class:`OrderedDict` in a private :data:`_actions` property:
         #:
         #: .. code:: python
         #:
@@ -115,7 +115,8 @@ class API(BasicWrapper):
 
     def run(self, port=5000, **kwargs):
         """Simple way to run the API in development. Uses Werkzeug's
-        :meth:`werkzeug.serving.run_simple` internally.
+        :meth:`werkzeug.serving.run_simple` internally. See
+        :ref:`guide-serving` for more options.
         """
         from werkzeug.serving import run_simple
         from .http import Server

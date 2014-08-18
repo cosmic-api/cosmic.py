@@ -55,8 +55,6 @@ responsibility for it, leaving you with natively-behaving functions.
 
 ..  TODO [endpoint diagram]
 
-.. _teleport:
-
 Built on Teleport
 -----------------
 
