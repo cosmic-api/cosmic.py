@@ -5,7 +5,9 @@ Step 1: Single-function API
 ---------------------------
 
 Before we get into the features, let's create a blank API to see how an API
-is served and consumed. Here it is::
+is served and consumed. Here it is
+
+.. code:: python
 
     from cosmic.api import API
     from cosmic.types import *
@@ -50,10 +52,12 @@ Did you notice the type definitions above? They help validate the data:
 
     {"error": "Invalid String: 1"}
 
-Step 2: Defining a Custom Data Type
------------------------------------
+Step 2: Making a REST Model
+---------------------------
 
-Here's a simple model::
+Here's a simple model:
+
+.. code:: python
 
     from cosmic.models import BaseModel
     from cosmic.exceptions import NotFound
@@ -84,7 +88,7 @@ Here's a simple model::
     $ curl -i -H 'Content-Type: application/json' http://127.0.0.1:5000/Word/1
     HTTP/1.0 404 NOT FOUND
 
-Step 4: Authenticating
+Step 3: Authenticating
 ----------------------
 
 By default, all models and actions are accessible to all clients. To restrict

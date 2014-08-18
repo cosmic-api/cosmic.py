@@ -1,4 +1,5 @@
 from cosmic.api import API
+from cosmic.http import Server
 from cosmic.types import *
 from cosmic.models import BaseModel
 from cosmic.exceptions import NotFound
@@ -26,6 +27,8 @@ class Word(BaseModel):
             return {"letters": "hello"}
         else:
             raise NotFound
+
+wsgi_app = Server(words).wsgi_app
 
 if __name__ == "__main__":
     words.run(use_reloader=True)

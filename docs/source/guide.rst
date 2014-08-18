@@ -124,7 +124,9 @@ Client and Server
 In Cosmic, the same :class:`~cosmic.api.API` class is used for the API server
 and the API client. In fact, the server and the client objects behave almost
 identically. After you run your server component, you can build the client in
-a single line of code::
+a single line of code
+
+.. code:: python
 
     >>> myapi = API.load('http://localhost:5000/spec.json')
 
@@ -170,7 +172,7 @@ The function used in the action is perfectly usable:
 
 .. code:: python
 
-    >>> sum([1, 2, 3])
+    >>> add([1, 2, 3])
     6
 
 But now there is another way of accessing it:
@@ -180,31 +182,14 @@ But now there is another way of accessing it:
     >>> mathy.actions.sum([1, 2, 3])
     6
 
-And from the client, it is accessed identically::
+And from the client, it is accessed identically:
+
+.. code:: python
 
     >>> mathy = API.load('http://localhost:5000/spec.json')
     >>> mathy.actions.add([1, 2, 3])
     6
 
-Now that the action has been registered, it becomes part of the spec:
-
-.. code:: python
-
-    >>> API.to_json(mathy)
-    {
-        u'name': 'mathy',
-        u'homepage': 'http://example.com',
-        u'actions': {
-            u'map': {
-                u'square': {
-                    u'returns': {'type': 'Integer'},
-                    u'accepts': {'type': 'Integer'}
-                }
-            },
-            u'order': [u'square']
-        },
-        u'models': {u'map': {}, u'order': []}
-    }
 
 If you are not yet familiar with Teleport, you might be wondering what is the
 purpose of the ``name`` and ``order`` items in the ``actions`` object above.
@@ -217,7 +202,9 @@ the action will return nothing when it completes.
 
 Normally, the action function is expected to take a single non-keyword
 argument. If your action needs to take multiple arguments, use the Teleport
-:class:`~teleport.Struct` type::
+:class:`~teleport.Struct` type:
+
+.. code:: python
 
     @mathy.action(accepts=Struct([
         required(u'numerator', Integer),
@@ -226,14 +213,16 @@ argument. If your action needs to take multiple arguments, use the Teleport
     def divide(numerator, denominator):
         return numerator / denominator
 
-This may be called remotely as::
+This may be called remotely as:
+
+.. code:: python
 
     >>> mathy = API.load('http://localhost:5000/spec.json')
     >>> mathy.actions.divide(numerator=10, denominator=5)
     2
 
-Models as Data Types
---------------------
+REST via Models
+---------------
 
 Models are data type definitions attached to an API, they use Teleport schemas
 to describe their data.
@@ -251,8 +240,8 @@ Let's take a look at the model object:
     class Address(BaseModel):
         properties = [
             required(u"number", Integer),
-            required(u"street", String),
-            required(u"city", String)
+            optional(u"street", String),
+            optional(u"city", String)
         ]
 
 As you can see, a model class should inherit from
@@ -261,44 +250,9 @@ must use the :meth:`~cosmic.api.API.model` decorator on it. Once a model has
 been registered with an API, it becomes accessible as part of the
 :data:`~cosmic.api.API.models` namespace, for example ``places.models.Address``.
 
-There is a good reason model definitions are in the form of classes.
-In Cosmic, the objects that the model defines are represented by actual
-instances of the model class::
-
-    >>> sesame31 = Address(number=31, street="Sesame")
-    >>> sesame31.number
-    31
-    >>> sesame31.street
-    "Sesame"
-
-This means that you can easily add methods to your models.
-
-Furthermore, a model is actually a Teleport type::
-
-    >>> Address.to_json(sesame31)
-    {
-        u"number": 31,
-        u"street": "Sesame"
-    }
-
-:class:`~cosmic.models.BaseModel` inherits from Teleport's
-:class:`~teleport.BasicWrapper`. If you have existing classes that you want to
-turn into Cosmic models, you can do so quite easily. (See `Creating Custom
-Types </docs/teleport/python/latest/index.html#creating-custom-types>`_ in
-Teleport.)
-
 Once registered with an API, a model becomes available in the
 :data:`~cosmic.api.API.models` namespace. The beauty of this namespace
-is that it is identical on the client and server. Here is how to create
-an :class:`Address` on the client::
-
-    >>> places = API.load('http://localhost:5000/spec.json')
-    >>> elm13 = places.models.Address(number=13, street="Elm")
-    >>> elm13.number
-    13
-
-REST via Models
----------------
+is that it is identical on the client and server.
 
 Models can be used to create REST-ful endpoints. A model roughly corresponds
 to a database table. If you want to give clients access to *objects* of the
@@ -308,7 +262,9 @@ that Cosmic will turn into HTTP endpoints.
 The *links* parameter describes relationships between models. A link from one
 model to another is similar to a foreign key in a relational database.
 
-Links are defined similarly to properties::
+Links are defined similarly to properties:
+
+.. code:: python
 
     places = API('places')
 
@@ -328,28 +284,13 @@ Links are defined similarly to properties::
             required(u"city", City)
         ]
 
-And referenced similarly to properties::
-
-    >>> toronto = places.models.City(name="Toronto")
-    >>> spadina147 = self.places.models.Address(
-    ...     number=147,
-    ...     street="Spadina",
-    ...     city=toronto)
-    >>> spadina147.city.name
-    "Toronto"
-
 These models are merely data type definitions, they do not have REST endpoints
-because they are not connected to any database. How do you know? You can try
-this::
-
-    >> spadina147.id is None
-    True
+because they are not connected to any database.
 
 If apart from defining a data type we also want to provide access to a
-collection of objects of this data type, there are 4 methods that Cosmic
-allows us to override. These methods correspond to 5 HTTP endpoints. Cosmic
-decides whether the endpoints should be created or not based on whether the
-methods have been defined. This behavior can be overridden by setting the
+collection of objects of this data type, there are 5 methods that Cosmic
+allows us to override. These methods correspond to 5 HTTP endpoints.
+Methods must be declared by adding their name to the
 :data:`~cosmic.models.BaseModel.methods` property on the model class.
 
 get_by_id
@@ -360,112 +301,81 @@ get_by_id
     :class:`~cosmic.http.GetByIdEndpoint` for HTTP spec.
 
 The simplest method to implement is :meth:`get_by_id`. It takes a single
-parameter (an id is always a string) and returns a model class instance
-(or ``None``, if no model is found)::
+parameter (an id is always a string) and returns a dict representing the
+object. If the object doesn't exist, it must raise
+:exc:`~cosmic.exceptions.NotFound`.
+
+.. code:: python
+
+    from cosmic.exceptions import NotFound
 
     places = API('places')
 
     @places.model
     class City(BaseModel):
-        methods = ["get_by_id"]
+        methods = ["get_by_id", "create", "update", "delete", "get_list"]
         properties = [
             optional(u"name", String)
         ]
 
         @classmethod
         def get_by_id(cls, id):
-            if id in cities:
+            try:
                 return cities[id]
-            else:
-                return None
+            except KeyError:
+                raise NotFound
 
     cities = {
-        "0": City(name="Toronto", id="0"),
-        "1": City(name="San Francisco", id="1"),
+        "0": {"name": "Toronto"},
+        "1": {"name": "San Francisco"},
     }
 
 As you can see, Cosmic doesn't care what kind of database you use, as long as
 the method returns the right value. Now if we want to use this method, we can
-do::
+do, on the client or server:
+
+.. code:: python
 
     >>> city = places.models.City.get_by_id("1")
-    >>> city.name
-    "San Francisco"
-    >>> places.models.City.get_by_id("5") is None
-    True
+    {"name": "San Francisco"}
 
-save
-````
+create
+``````
 
 .. seealso::
 
-    :class:`~cosmic.http.CreateEndpoint` and
+    :class:`~cosmic.http.CreateEndpoint` for HTTP spec.
+
+Create method takes a *patch* (a model representation where every field is
+optional) and returns a tuple with the new id and representation:
+
+.. code:: python
+
+    @classmethod
+    def create(cls, patch):
+        new_id = str(len(cities))
+        cities[new_id] = patch
+        return new_id, cities[new_id]
+
+update
+``````
+
+.. seealso::
+
     :class:`~cosmic.http.UpdateEndpoint` for HTTP spec.
 
-The :meth:`~cosmic.models.BaseModel.save` method is actually used for two
-different operations: saving and updating. On the HTTP level they are two
-distinct HTTP endpoints.
+The update method takes an id and patch and either applies the patch,
+returning the new representation, or raises
+:exc:`~cosmic.exceptions.NotFound`.
 
 .. code::
 
-    @places.model
-    class City(BaseModel):
-        methods = ['create', 'update']
-        properties = [
-            optional(u"name", String)
-        ]
-
-        def save(self):
-            if self.id is None:
-                # Create new id
-                self.id = str(len(cities))
-            cities[self.id] = self
-
-When implementing this function on the server side, you should check for the
-model's *id* property. If set, you should update, if not set, you should save,
-creating a new id in the process. On the client side, whether id is set will
-determine which HTTP call to make. If :meth:`save` is called on a model with
-no id, then if the call completes successfully, an id will be set::
-
-    >>> city = City(name="Moscow")
-    >>> city.id is None
-    True
-    >>> city.save()
-    >>> city.id
-    "2"
-
-To add extra validation to a model, you can override the
-:meth:`~class.model.BaseModel.validate` method. This method gets called after
-the model schema has been used to deserialize the data and before the
-model object gets instantiated. Here is a :meth:`validate` method for
-:class:`City`::
-
     @classmethod
-    def validate(cls, datum):
-        if datum[u"name"][0].islower():
-            raise ValidationError("Name must be capitalized", datum["name"])
-
-A :exc:`ValidationError` will be raised if you try to save an invalid model
-from a remote client:
-
-    >>> places = API.load('http://localhost:5000/spec.json')
-    >>> moscow = places.models.City(name="moscow")
-    >>> moscow.save()
-    Traceback (most recent call last):
-      File "<stdin>", line 1, in <module>
-      File "cosmic/api.py", line 85, in save
-        inst = self.__class__._list_poster(self)
-      File "cosmic/http.py", line 287, in __call__
-        return self.api.client_hook.call(self, *args, **kwargs)
-      File "cosmic/http.py", line 27, in call
-        return self.parse_response(endpoint, res)
-      File "cosmic/http.py", line 33, in parse_response
-        return endpoint.parse_response(res)
-      File "cosmic/http.py", line 596, in parse_response
-        res = super(CreateEndpoint, self).parse_response(res)
-      File "cosmic/http.py", line 273, in parse_response
-        raise ValidationError(r['json'].datum.get('error', ''))
-    teleport.ValidationError: Name must be capitalized: u'moscow'
+    def update(cls, id, patch):
+        if id not in cities:
+            raise NotFound
+        cities[id] = patch
+        return cities[id]
 
 delete
 ``````
@@ -475,37 +385,16 @@ delete
     :class:`~cosmic.http.DeleteEndpoint` for HTTP spec.
 
 The :meth:`~cosmic.models.BaseModel.delete` method, upon deleting the object,
-returns nothing.
+returns nothing. It raises  :exc:`~cosmic.exceptions.NotFound` if the object
+does not exist:
 
 .. code::
 
-    @places.model
-    class City(BaseModel):
-        methods = ['get_by_id', 'delete']
-        properties = [
-            optional(u"name", String)
-        ]
-
-        @classmethod
-        def get_by_id(cls, id):
-            if id in cities:
-                return cities[id]
-            else:
-                return None
-
-        def delete(self):
-            del cities[self.id]
-
-After being called, the instance will still be there but it should be
-considered invalid. If you try to fetch the object with the deleted id using
-:meth:`~cosmic.models.BaseModel.get_by_id`, ``None`` will be returned.
-
-.. code::
-
-    >>> city = places.models.City.get_by_id("0")
-    >>> city.delete()
-    >>> places.models.City.get_by_id("0") is None
-    True
+    @classmethod
+    def delete(cls, id):
+        if id not in cities:
+            raise NotFound
+        del cities[id]
 
 .. _get_list:
 
@@ -523,78 +412,78 @@ serialize them into a URL query string with the help of
 
 .. code::
 
-    @places.model
-    class City(BaseModel):
-        methods = ['get_list']
-        properties = [
-            optional(u"name", String)
-        ]
-        query_fields = [
-            optional(u"country", String)
-        ]
+    query_fields = [
+        optional(u"country", String)
+    ]
 
-        @classmethod
-        def get_list(cls, country=None):
-            if country is None:
-                return cities.values()
-            elif country == "Canada":
-                return [cities[0]]
-            elif country == "USA":
-                return [cities[1]]
-            else:
-                return []
+    @classmethod
+    def get_list(cls, country=None):
+        if country is None:
+            return cities.items()
+        elif country == "Canada":
+            return [("0", cities["0"])]
+        elif country == "USA":
+            return [("1", cities["1"])]
+        else:
+            return []
 
-The return value of this function is a (possibly empty) list of model
-instances::
-
-    >>> l = places.models.City.get_list()
-    >>> len(l)
-    2
-    >>> l = places.models.City.get_list(country="Canada")
-    >>> len(l)
-    1
-    >>> l[0].name
-    "Toronto"
-    >>> places.models.City.get_list(country="Russia")
-    []
+The return value of this function is a (possibly empty) list of tuples where
+the first element is the object id and the second is the object representation.
 
 You are free to invent your own pagination schemes using custom query fields.
 
-Often it will be useful to return metadata along with the items, for example, 
+Often it will be useful to return metadata along with the items, for example,
 the total count if the list is paginated, or a timestamp. You can specify this
 by including the :data:`list_metadata` attribute.
 
-.. code::
+.. code:: python
 
-    @places.model
-    class City(BaseModel):
-        methods = ['get_list']
-        properties = [
-            optional(u"name", String)
-        ]
-        query_fields = [
-            optional(u"country", String)
-        ]
-        list_metadata = [
-            required(u"last_updated", DateTime)
-        ]
+    list_metadata = [
+        required(u"last_updated", DateTime)
+    ]
 
-        @classmethod
-        def get_list(cls, country=None):
-            metadata = {"last_updated": datetime.datetime.now()}
-            if country is None:
-                return (cities.values(), metadata)
-            elif country == "Canada":
-                return ([cities[0]], metadata)
-            elif country == "USA":
-                return ([cities[1]], metadata)
-            else:
-                return ([], metadata)
+    @classmethod
+    def get_list(cls):
+        metadata = {"last_updated": datetime.datetime.now()}
+        return (cities.items(), metadata)
 
 As you can see, when :data:`list_metadata` is specified, the return value
 of :meth:`get_list` is a tuple, where the first item is the list, and the
 second is a dict containing the metadata.
 
+.. _guide-serving:
+
+Serving
+-------
+
+For development, :meth:`~cosmic.api.API.run` is fine, but for production, you
+should use a WSGI server such as `Gunicorn <http://gunicorn.org/>`_. In order
+to do this, use :class:`~cosmic.http.Server` to expose the raw WSGI
+application.
+
+.. code:: python
+
+    from cosmic.api import API
+    from cosmic.http import Server
+    from cosmic.types import *
+
+    words = API('words')
+
+
+    @words.action(accepts=String, returns=String)
+    def pluralize(word):
+        if word.endswith('y'):
+            return word[:-1] + 'ies'
+        else:
+            return word + 's'
+
+    wsgi_app = Server(words).wsgi_app
+
+Now you can run it in your favorite web server:
+
+.. code:: bash
+
+    $ gunicorn -b 127.0.0.1:5001 words:wsgi_app
 
 .. _guide-authentication:
 
@@ -605,41 +494,30 @@ Currently, Cosmic does not provide a standard authentication mechanism. It
 does provide powerful HTTP hooks which can be used to implement different
 authentication schemes.
 
-On the server, you can override your API's :data:`~cosmic.API.server_hook`
-property with an instance of a custom subclass
-:class:`~cosmic.http.ServerHook`. On the client, you can override
-:data:`~cosmic.API.client_hook` with an instance of a subclass of
-:class:`~cosmic.http.ClientHook`. These classes are symmetrically similar,
-each of them provides three methods to override. Let's override the
-:meth:`~cosmic.http.ServerHook.view` method of
-:class:`~cosmic.http.ServerHook` to enable our API to verify user credentials.
+On the server, you can use standard WSGI middleware, and you can subclass
+:class:`~cosmic.http.Server`:
 
-.. code::
+.. code:: python
 
     from flask import make_response
     from cosmic.api import API
-    from cosmic.http import ServerHook
+    from cosmic.http import Server, error_response
 
     planetarium = API("planetarium")
 
-    class CustomServerHook(ServerHook):
+    class CustomServer(Server):
 
         def view(self, endpoint, request, **url_args):
-            if not endpoint.never_authenticate:
-                if request.headers.get('Authorization', None) != 'secret':
-                    return make_response("", 401, {'WWW-Authenticate': 'MyAuth'})
-            return super(CustomServerHook, self).view(endpoint, request, **url_args)
+            if request.headers.get('Authorization', None) != 'secret':
+                return error_response("Unauthorized", 401)
+            return super(CustomServer, self).view(endpoint, request, **url_args)
 
-    planetarium.server_hook = CustomServerHook()
+    wsgi_app = CustomServer(planetarium)
 
-In this example, we check for credentials provided in the *Authorization*
-header. If they are missing or wrong, we return a 401 response, asking for
-authentication via the *WWW-Authenticate* header.
+On the client, we can subclass :class:`~cosmic.http.ClientHook` to add
+authentication info to each request:
 
-Now let's implement a hook on the client to add credentials to every request
-that needs it.
-
-.. code::
+.. code:: python
 
     from cosmic.api import API
     from cosmic.http import ClientHook
@@ -653,5 +531,6 @@ that needs it.
             request.headers["Authorization"] = "secret"
             return request
 
-This should be enough to get authentication working between client and server.
+    planetarium.client_hook = CustomClientHook(base_url="https://api.planetarium.com")
+
 

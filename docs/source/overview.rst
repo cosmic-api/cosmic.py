@@ -81,11 +81,15 @@ serialize the API.
 
 Teleport makes it easy to define custom types, a feature used by Cosmic.
 
-The Teleport docs will teach you to import from the :mod:`teleport` module::
+The Teleport docs will teach you to import from the :mod:`teleport` module:
+
+.. code:: python
 
     from teleport import *
 
-In Cosmic, you should import from :mod:`cosmic.types`::
+In Cosmic, you should import from :mod:`cosmic.types`:
+
+.. code:: python
 
     from cosmic.types import *
 
