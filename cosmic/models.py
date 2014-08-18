@@ -39,9 +39,66 @@ class BaseModel(object):
     links = []
 
     @classmethod
-    def validate_patch(cls, datum):
+    def validate_patch(cls, patch):
+        """
+        :param patch: The model patch
+        :raises cosmic.exceptions.ValidationError:
+
+        Run before any :meth:`~cosmic.models.BaseModel.create` or
+        :meth:`~cosmic.models.BaseModel.update` call to validate the patch.
+        All fields are made optional for the patch, so this method is a chance
+        to ensure that the expected values were indeed passed in.
+        """
         pass
 
+    @classmethod
+    def get_by_id(cls, id):
+        """
+        :param id:
+        :return: Model representation
+        :raises cosmic.exceptions.NotFound:
+        """
+        raise NotImplementedError()
+
+    @classmethod
+    def get_list(cls, **kwargs):
+        """
+        :param kwargs: Defined by \
+            :data:`~cosmic.models.BaseModel.query_fields`
+        :return: If model does not define \
+            :data:`~cosmic.models.BaseModel.list_metadata`, returns a list of
+            tuples of models ids and representations. Otherwise returns a
+            tuple where the first element is the above list, and the second is
+            a dict as specified by \
+            :data:`~cosmic.models.BaseModel.list_metadata`.
+        """
+        raise NotImplementedError()
+
+    @classmethod
+    def create(cls, **validated_patch):
+        """
+        :param validated_patch: The model patch.
+        :return: A tuple of model id and model representation.
+        """
+        raise NotImplementedError()
+
+    @classmethod
+    def update(cls, id, **validated_patch):
+        """
+        :param id:
+        :param validated_patch:
+        :return: The model representation after patch has been applied.
+        :raises cosmic.exceptions.NotFound:
+        """
+        raise NotImplementedError()
+
+    @classmethod
+    def delete(cls, id):
+        """
+        :param id:
+        :raises cosmic.exceptions.NotFound:
+        """
+        raise NotImplementedError()
 
 class Cosmos(object):
     def __init__(self):

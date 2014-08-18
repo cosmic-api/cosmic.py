@@ -300,10 +300,10 @@ get_by_id
 
     :class:`~cosmic.http.GetByIdEndpoint` for HTTP spec.
 
-The simplest method to implement is :meth:`get_by_id`. It takes a single
-parameter (an id is always a string) and returns a dict representing the
-object. If the object doesn't exist, it must raise
-:exc:`~cosmic.exceptions.NotFound`.
+The simplest method to implement is
+:meth:`~cosmic.models.BaseModel.get_by_id`. It takes a single parameter (an id
+is always a string) and returns a dict representing the object. If the object
+doesn't exist, it must raise :exc:`~cosmic.exceptions.NotFound`.
 
 .. code:: python
 
@@ -346,8 +346,9 @@ create
 
     :class:`~cosmic.http.CreateEndpoint` for HTTP spec.
 
-Create method takes a *patch* (a model representation where every field is
-optional) and returns a tuple with the new id and representation:
+The :meth:`~cosmic.models.BaseModel.create` method takes a *patch* (a model
+representation where every field is optional) and returns a tuple with the new
+id and representation:
 
 .. code:: python
 
@@ -364,8 +365,8 @@ update
 
     :class:`~cosmic.http.UpdateEndpoint` for HTTP spec.
 
-The update method takes an id and patch and either applies the patch,
-returning the new representation, or raises
+The :meth:`~cosmic.models.BaseModel.update` method takes an id and patch and
+either applies the patch, returning the new representation, or raises
 :exc:`~cosmic.exceptions.NotFound`.
 
 .. code::
@@ -439,12 +440,12 @@ by including the :data:`list_metadata` attribute.
 .. code:: python
 
     list_metadata = [
-        required(u"last_updated", DateTime)
+        required(u"total_count", Integer)
     ]
 
     @classmethod
     def get_list(cls):
-        metadata = {"last_updated": datetime.datetime.now()}
+        metadata = {"total_count": len(cities)}
         return (cities.items(), metadata)
 
 As you can see, when :data:`list_metadata` is specified, the return value
@@ -512,7 +513,7 @@ On the server, you can use standard WSGI middleware, and you can subclass
                 return error_response("Unauthorized", 401)
             return super(CustomServer, self).view(endpoint, request, **url_args)
 
-    wsgi_app = CustomServer(planetarium)
+    wsgi_app = CustomServer(planetarium).wsgi_app
 
 On the client, we can subclass :class:`~cosmic.http.ClientHook` to add
 authentication info to each request:
