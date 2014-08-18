@@ -20,7 +20,7 @@ If you would like to work on the bleeding edge of Cosmic development, you
 can clone the repo using git:
 
 .. code:: bash
-
+    
     git clone https://github.com/cosmic-api/cosmic.py.git cosmic-py
 
 Then to install the current version (ideally you want to do this in a

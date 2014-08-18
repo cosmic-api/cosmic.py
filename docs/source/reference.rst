@@ -7,7 +7,7 @@ APIs
 .. module:: cosmic.api
 
 .. autoclass:: cosmic.api.API
-:members:
+   :members:
 
 .. data:: cosmic.api.API.actions
 
@@ -32,25 +32,25 @@ APIs
         <class '__main__.Number'>
 
 .. autoclass:: cosmic.models.BaseModel
-:members:
+   :members:
 
 Types
 -----
 
 .. autoclass:: cosmic.types.Model
-:show-inheritance:
+   :show-inheritance:
 
 .. autoclass:: cosmic.types.Link
-:show-inheritance:
+   :show-inheritance:
 
 .. autoclass:: cosmic.types.Representation
-:show-inheritance:
+   :show-inheritance:
 
 .. autoclass:: cosmic.types.Patch
-:show-inheritance:
+   :show-inheritance:
 
 .. autoclass:: cosmic.types.URLParams
-:show-inheritance:
+   :show-inheritance:
 
 
 HTTP Endpoints
@@ -74,21 +74,21 @@ Exceptions
 .. automodule:: cosmic.exceptions
 
 .. autoclass:: cosmic.exceptions.SpecError
-:members:
+   :members:
 
 .. autoclass:: cosmic.exceptions.NotFound
-:members:
+   :members:
 
 .. autoclass:: cosmic.exceptions.HTTPError
-:members:
+   :members:
 
 .. autoclass:: cosmic.exceptions.RemoteHTTPError
-:members:
+   :members:
 
 Tools and Helpers
 -----------------
 
 .. automodule:: cosmic.tools
-:members:
-       :undoc-members:
+   :members:
+   :undoc-members:
 
