@@ -64,11 +64,10 @@ class Model(BasicWrapper):
         "places.City"
 
     Note that when deserializing this type, the returned value isn't exactly
-    a model object, but a :class:`~cosmic.types.LazyModel` object, a proxy
-    that behaves identically to the model. The reason for this is that
-    sometimes a reference to the model is needed before the model exists.
-
-    See also :func:`~cosmic.models.M`.
+    a model object, but a :class:`~cosmic.models.M` object, a proxy that
+    behaves identically to the model. The reason for this is that sometimes
+    a reference to the model is needed before the model exists, for example,
+    when defining links.
     """
     type_name = "cosmic.Model"
     schema = String

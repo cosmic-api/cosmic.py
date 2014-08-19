@@ -109,7 +109,7 @@ class Cosmos(object):
         c.apis = dict(self.apis.items())
         return c
 
-    def M(self, name):
+    def get_model(self, name):
         api_name, model_name = name.split('.', 1)
         return self.apis[api_name]._models[model_name]
 
@@ -123,12 +123,7 @@ class Cosmos(object):
 _ctx_stack = LocalStack()
 
 
-class LazyModel(LocalProxy):
-    def __repr__(self):
-        pass
-
-
-def M(name):
+class M(LocalProxy):
     """Creates a lazy reference to a model, useful for defining links.
 
     .. code:: python
@@ -140,5 +135,13 @@ def M(name):
                 optional_link('father', M('familytree.Person')),
             ]
     """
-    from cosmic import cosmos
-    return LazyModel(lambda: cosmos.M(name))
+
+    def __init__(self, model_name):
+        object.__setattr__(self, '_M__model_name', model_name)
+
+    def __repr__(self):
+        return "M('{}')".format(self.__model_name)
+
+    def _LocalProxy__local(self):
+        from cosmic import cosmos
+        return cosmos.get_model(self.__model_name)
