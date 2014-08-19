@@ -534,4 +534,46 @@ authentication info to each request:
 
     planetarium.client_hook = CustomClientHook(base_url="https://api.planetarium.com")
 
+Storing Global Data
+-------------------
+
+In every web application some data must be available globally during request
+processing, for example, the database connection or the currently
+authenticated user. Some frameworks, like
+`Django <https://www.djangoproject.com/>`_, attach this data to the request
+object which gets passed around explicitly. Others, like
+`Flask <http://flask.pocoo.org/>`_, store it in a thread-local object. Cosmic
+borrows the latter approach, offering you a simple dictionary-like class for
+this purpose: :class:`~cosmic.globals.SafeGlobal`.
+
+.. code:: python
+
+    from cosmic.globals import SafeGlobal
+
+    g = SafeGlobal()
+
+Now we can use it to store the current user:
+
+.. code:: python
+
+    class CustomServer(Server):
+
+        def view(self, endpoint, request, **url_args):
+            secret = request.headers.get('Authorization', None)
+            if secret == '12345':
+                g['current_user'] = 'bob@example.com'
+            elif secret == 'qwert':
+                g['current_user'] = 'alice@example.com'
+            else:
+                return error_response("Unauthorized", 401)
+            return super(CustomServer, self).view(endpoint, request, **url_args)
+
+For testing, it may be necessary to call some functions with a predefined
+*context*, for example, call a function on behalf of Bob. For this, use the
+:meth:`~cosmic.globals.SafeGlobal.scope` method:
+
+.. code:: python
+
+    with g.scope({'current_user': 'bob@example.com'}):
+        assert get_account_balance() == 100
 

@@ -20,7 +20,6 @@ class SafeGlobal(UserDict):
         self.stack.pop()
 
 
-
 cosmos = SafeGlobal()
 
 
