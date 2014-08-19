@@ -156,6 +156,8 @@ class TestAPI(TestCase):
                 required(u"is_gordon_ramsay", Boolean)
             ]
 
+        self.Author = Author
+
         self.server = Server(self.cookbook)
         self.server.debug = True
         self.app = self.server.wsgi_app
@@ -176,9 +178,6 @@ class TestAPI(TestCase):
         self.assertEqual(rep['name'], "pancake")
         self.assertEqual(Representation('cookbook.Recipe').to_json((id, rep)), d)
 
-    def test_guess_methods(self):
-        self.assertEqual(self.cookbook.models.Recipe.methods, [])
-
     def test_model_deserialize_okay(self):
         (id, rep) = Representation('cookbook.Recipe').from_json({
             "_links": {
@@ -193,7 +192,7 @@ class TestAPI(TestCase):
 
     def test_recursive_subclassing_hook(self):
         @self.cookbook.model
-        class ChocolateAuthor(self.cookbook.models.Author):
+        class ChocolateAuthor(self.Author):
             pass
 
         self.assertEqual(set(self.cookbook.models.__dict__.keys()), set(["Recipe", "Author", "ChocolateAuthor"]))

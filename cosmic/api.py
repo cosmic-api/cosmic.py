@@ -105,9 +105,6 @@ class API(object):
         }
         self.client_hook = ClientHook()
 
-        self.action_funcs = {}
-        self.model_funcs = {}
-
         self.models = Object()
         self.actions = Object()
 
@@ -164,7 +161,6 @@ class API(object):
 
         for name, modeldef in spec["models"].items():
             m = Object()
-
             m.create = partial(api.call_remote, CreateEndpoint, [spec, name])
             m.update = partial(api.call_remote, UpdateEndpoint, [spec, name])
             m.delete = partial(api.call_remote, DeleteEndpoint, [spec, name])
@@ -228,7 +224,6 @@ class API(object):
                 assert_is_compatible(accepts, required_args, optional_args)
 
             doc = inspect.getdoc(func)
-            self.action_funcs[name] = func
             self.api_spec['actions'][name] = {
                 "accepts": accepts,
                 "returns": returns,
@@ -259,17 +254,15 @@ class API(object):
         :data:`~cosmic.api.API.models` object.
         """
 
-        model_cls.name = name = model_cls.__name__
-        model_cls.api = self
+        name = model_cls.__name__
+
+        m = Object()
+        m.validate_patch = model_cls.validate_patch
 
         methods = {}
-        self.model_funcs[name] = {}
         for method in MODEL_METHODS:
             methods[method] = method in model_cls.methods
-            self.model_funcs[name][method] = getattr(model_cls, method)
-
-        self.model_funcs[name]['validate_patch'] = \
-            getattr(model_cls, 'validate_patch')
+            setattr(m, method, getattr(model_cls, method))
 
         self.api_spec['models'][unicode(name)] = {
             "properties": OrderedDict(model_cls.properties),
@@ -279,7 +272,7 @@ class API(object):
             "methods": methods,
         }
         APISpec.assemble(self.api_spec)
-        setattr(self.models, name, model_cls)
+        setattr(self.models, name, m)
 
         return model_cls
 

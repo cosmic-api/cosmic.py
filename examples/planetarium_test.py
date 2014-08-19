@@ -136,11 +136,6 @@ class TestPlanitarium(TestCase):
             # Use the local API's HTTP client to simulate the remote API's calls
             self.remote_planetarium.client_hook = Hook(app)
 
-    def test_guess_methods(self):
-        with cosmos.scope(self.cosmos1):
-            all_methods = set(['get_list', 'get_by_id', 'create', 'update', 'delete'])
-            self.assertEqual(set(M('planetarium.Sphere').methods), all_methods)
-
     def test_spec_endpoint(self):
         with cosmos.scope(self.cosmos1):
             res = self.d.get('/spec.json')

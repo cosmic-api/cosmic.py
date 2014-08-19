@@ -10,16 +10,16 @@ class DBModel(BaseModel):
     @classmethod
     def get_by_id(cls, id):
         try:
-            return db[cls.name][id]
+            return db[cls.table_name][id]
         except KeyError:
             raise NotFound
 
     @classmethod
     def get_list(cls, **kwargs):
         if not kwargs:
-            return sorted(db[cls.name].items())
+            return sorted(db[cls.table_name].items())
         ret = []
-        for id, rep in db[cls.name].items():
+        for id, rep in db[cls.table_name].items():
             keep = True
             for key, val in kwargs.items():
                 if rep[key] != val:
@@ -31,19 +31,19 @@ class DBModel(BaseModel):
 
     @classmethod
     def create(cls, **patch):
-        id = str(len(db[cls.name]))
-        db[cls.name][id] = patch
+        id = str(len(db[cls.table_name]))
+        db[cls.table_name][id] = patch
         return id, patch
 
     @classmethod
     def update(cls, id, **patch):
-        rep = db[cls.name][id]
+        rep = db[cls.table_name][id]
         rep.update(patch)
         return rep
 
     @classmethod
     def delete(cls, id):
-        if id not in db[cls.name]:
+        if id not in db[cls.table_name]:
             raise NotFound
-        del db[cls.name][id]
+        del db[cls.table_name][id]
 

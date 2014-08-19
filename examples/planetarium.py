@@ -42,6 +42,7 @@ planetarium_server = PlanetariumServer(planetarium)
 
 @planetarium.model
 class Sphere(DBModel):
+    table_name = 'Sphere'
     methods = ["get_list", "get_by_id", "create", "update", "delete"]
 
     properties = [

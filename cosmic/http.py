@@ -50,7 +50,7 @@ class Server(object):
             endpoint = ActionEndpoint(
                 self.api.api_spec,
                 action_name,
-                self.api.action_funcs[action_name])
+                getattr(self.api.actions, action_name))
         else:
             model_name = values.pop('model')
             if model_name not in self.api.api_spec['models'].keys():
@@ -58,6 +58,7 @@ class Server(object):
             model_spec = self.api.api_spec['models'][model_name]
             if not model_spec['methods'][endpoint_name]:
                 return error_response("Method Not Allowed", 405)
+            model_obj = getattr(self.api.models, model_name)
             endpoints = {
                 'get_by_id': GetByIdEndpoint,
                 'create': CreateEndpoint,
@@ -68,10 +69,10 @@ class Server(object):
             args = {
                 "api_spec": self.api.api_spec,
                 "model_name": model_name,
-                "func": self.api.model_funcs[model_name][endpoint_name],
+                "func": getattr(model_obj, endpoint_name),
             }
             if endpoint_name in ['create', 'update']:
-                args['patch_validator'] = self.api.model_funcs[model_name]['validate_patch']
+                args['patch_validator'] = getattr(model_obj, 'validate_patch')
             endpoint = endpoints[endpoint_name](**args)
 
         try:
