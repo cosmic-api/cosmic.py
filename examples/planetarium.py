@@ -8,32 +8,24 @@ from cosmic.http import Server
 
 
 planet_db = {
-    "Sphere": [
-        {
+    "Sphere": {
+        "0": {
             u"name": u"Sun",
             u"temperature": 3000.0,
-            u"_links": {
-                u"self": {u"href": u"/Sphere/0"},
-            }
         },
-        {
+        "1": {
             u"name": u"Earth",
             u"temperature": 30.0,
-            u"_links": {
-                u"self": {u"href": u"/Sphere/1"},
-                u"revolves_around": {u"href": u"/Sphere/0"},
-            }
+            u"revolves_around": "0",
         },
-        {
+        "2": {
             u"name": u"Moon",
             u"temperature": -50.0,
-            u"_links": {
-                u"self": {u"href": u"/Sphere/2"},
-                u"revolves_around": {u"href": u"/Sphere/1"},
-            }
-        }
-    ]
+            u"revolves_around": "1",
+        },
+    }
 }
+
 planetarium = API("planetarium")
 
 

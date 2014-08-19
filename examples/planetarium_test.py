@@ -230,7 +230,29 @@ class TestPlanitarium(TestCase):
                     "self": {"href": "/Sphere"}
                 },
                 "_embedded": {
-                    "Sphere": planet_db['Sphere']
+                    "Sphere": [
+                        {
+                            '_links': {'self': {'href': '/Sphere/0'}},
+                            'name': 'Sun',
+                            'temperature': 3000.0,
+                        },
+                        {
+                            '_links': {
+                                'revolves_around': {'href': '/Sphere/0'},
+                                'self': {'href': '/Sphere/1'}
+                            },
+                            'name': 'Earth',
+                            'temperature': 30.0,
+                        },
+                        {
+                            '_links': {
+                                'revolves_around': {'href': '/Sphere/1'},
+                                'self': {'href': '/Sphere/2'}
+                            },
+                            'name': 'Moon',
+                            'temperature': -50.0,
+                        },
+                    ]
                 },
                 'last_updated': '2014-01-01T00:00:00'
             })
@@ -246,10 +268,16 @@ class TestPlanitarium(TestCase):
             self.assertEqual(res["status_code"], 200)
             self.assertEqual(json.loads(res["data"]), {
                 "_links": {
-                    "self": {"href": url}
+                    "self": {"href": "/Sphere?name=Sun"}
                 },
                 "_embedded": {
-                    "Sphere": [planet_db['Sphere'][0]]
+                    "Sphere": [
+                        {
+                            '_links': {'self': {'href': '/Sphere/0'}},
+                            'name': 'Sun',
+                            'temperature': 3000.0,
+                        },
+                    ]
                 },
                 'last_updated': '2014-01-01T00:00:00'
             })
@@ -257,8 +285,7 @@ class TestPlanitarium(TestCase):
 
 
     def _test_save_property(self):
-        c = copy.deepcopy(planet_db)
-        with db.scope(c):
+        with db.scope(copy.deepcopy(planet_db)):
             Sphere = M('planetarium.Sphere')
             moon = Sphere.get_by_id("2")
 
@@ -267,7 +294,11 @@ class TestPlanitarium(TestCase):
                                 revolves_around=moon['revolves_around'])
 
             self.assertEqual(rep['name'], "Luna")
-            self.assertEqual(c['Sphere'][2]["name"], "Luna")
+            self.assertEqual(db['Sphere']['2'], {
+                'name': 'Luna',
+                'temperature': -50,
+                'revolves_around': moon['revolves_around'],
+            })
 
     def test_local_save_property(self):
         with cosmos.scope(self.cosmos1):
@@ -307,8 +338,7 @@ class TestPlanitarium(TestCase):
 
 
     def _test_save_link(self):
-        c = copy.deepcopy(planet_db)
-        with db.scope(c):
+        with db.scope(copy.deepcopy(planet_db)):
             Sphere = M('planetarium.Sphere')
             # Save property
             moon = Sphere.get_by_id("2")
@@ -319,7 +349,11 @@ class TestPlanitarium(TestCase):
                                 revolves_around="0")
 
             self.assertEqual(rep['revolves_around'], "0")
-            self.assertEqual(c['Sphere'][2]["_links"]["revolves_around"]["href"], "/Sphere/0")
+            self.assertEqual(db['Sphere']['2'], {
+                'name': moon['name'],
+                'temperature': -50,
+                'revolves_around': '0',
+            })
 
     def test_local_save_link(self):
         with cosmos.scope(self.cosmos1):
@@ -359,8 +393,7 @@ class TestPlanitarium(TestCase):
 
 
     def _test_create_model(self):
-        c = copy.deepcopy(planet_db)
-        with db.scope(c):
+        with db.scope(copy.deepcopy(planet_db)):
             Sphere = M('planetarium.Sphere')
 
             (id, rep) = Sphere.create(
@@ -378,7 +411,11 @@ class TestPlanitarium(TestCase):
                 }
             }
             self.assertEqual(Representation('planetarium.Sphere').to_json((id, rep)), full)
-            self.assertEqual(c['Sphere'][3], full)
+            self.assertEqual(db['Sphere']['3'], {
+                'name': 'Pluto',
+                'temperature': 60,
+                'revolves_around': '0',
+            })
 
     def test_local_create_model(self):
         with cosmos.scope(self.cosmos1):
@@ -390,11 +427,10 @@ class TestPlanitarium(TestCase):
 
 
     def _test_delete(self):
-        c = copy.deepcopy(planet_db)
-        with db.scope(c):
+        with db.scope(copy.deepcopy(planet_db)):
             Sphere = M('planetarium.Sphere')
             Sphere.delete("1")
-            self.assertEqual(c['Sphere'][1], None)
+            self.assertTrue('1' not in db['Sphere'])
 
     def test_local_delete(self):
         with cosmos.scope(self.cosmos1):
