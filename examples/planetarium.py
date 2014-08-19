@@ -2,7 +2,7 @@ import datetime
 
 from cosmic.api import API
 from cosmic.exceptions import HTTPError
-from cosmic.testing import DBModel, DBContext
+from cosmic.testing import DBModel, db
 from cosmic.types import *
 from cosmic.http import Server
 
@@ -34,7 +34,6 @@ planet_db = {
         }
     ]
 }
-
 planetarium = API("planetarium")
 
 
@@ -96,5 +95,5 @@ def hello(sphere):
 
 
 if __name__ == "__main__":
-    with DBContext(planet_db):
+    with db.scope(planet_db):
         planetarium.run()

@@ -1,25 +1,10 @@
-from werkzeug.local import LocalProxy, LocalStack
-
 from .models import BaseModel
 from .types import *
 from .exceptions import NotFound
+from .globals import SafeGlobal
 
 
-_db_ctx_stack = LocalStack()
-
-db = LocalProxy(lambda: _db_ctx_stack.top)
-
-
-class DBContext(object):
-    def __init__(self, db):
-        self.db = db
-
-    def __enter__(self):
-        _db_ctx_stack.push(self.db)
-        return self.db
-
-    def __exit__(self, *args, **kwargs):
-        _db_ctx_stack.pop()
+db = SafeGlobal()
 
 
 class DBModel(BaseModel):

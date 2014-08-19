@@ -10,7 +10,8 @@ from werkzeug.routing import Map as RuleMap
 from werkzeug.test import Client as WerkzeugTestClient
 
 from .types import *
-from .tools import get_args, string_to_json, args_to_datum, deserialize_json, serialize_json, json_to_string
+from .tools import get_args, string_to_json, args_to_datum, deserialize_json, \
+    serialize_json, json_to_string
 from .exceptions import *
 
 
@@ -47,7 +48,7 @@ class Server(object):
             if action_name not in self.api.api_spec['actions'].keys():
                 return error_response("Not Found", 404)
             endpoint = ActionEndpoint(
-                self.api,
+                self.api.api_spec,
                 action_name,
                 self.api.action_funcs[action_name])
         else:
@@ -64,17 +65,14 @@ class Server(object):
                 'delete': DeleteEndpoint,
                 'get_list': GetListEndpoint,
             }
+            args = {
+                "api_spec": self.api.api_spec,
+                "model_name": model_name,
+                "func": self.api.model_funcs[model_name][endpoint_name],
+            }
             if endpoint_name in ['create', 'update']:
-                endpoint = endpoints[endpoint_name](
-                    self.api,
-                    model_name,
-                    self.api.model_funcs[model_name][endpoint_name],
-                    patch_validator=self.api.model_funcs[model_name]['validate_patch'])
-            else:
-                endpoint = endpoints[endpoint_name](
-                    self.api,
-                    model_name,
-                    self.api.model_funcs[model_name][endpoint_name])
+                args['patch_validator'] = self.api.model_funcs[model_name]['validate_patch']
+            endpoint = endpoints[endpoint_name](**args)
 
         try:
             return self.view(endpoint, request, **values)
@@ -99,13 +97,16 @@ class Server(object):
     def view(self, endpoint, request, **url_args):
         func_input = self.parse_request(endpoint, request, **url_args)
         func_output = endpoint.handler(**func_input)
-        return self.build_response(endpoint, func_input=func_input, func_output=func_output)
+        return self.build_response(endpoint,
+                                   func_input=func_input,
+                                   func_output=func_output)
 
     def parse_request(self, endpoint, request, **url_args):
         return endpoint.parse_request(request, **url_args)
 
     def build_response(self, endpoint, func_input, func_output):
-        return endpoint.build_response(func_input=func_input, func_output=func_output)
+        return endpoint.build_response(func_input=func_input,
+                                       func_output=func_output)
 
 
 class BaseClientHook(object):
@@ -339,10 +340,10 @@ class ActionEndpoint(Endpoint):
     json_response = True
     acceptable_response_codes = [200, 204]
 
-    def __init__(self, api, action_name, func=None):
+    def __init__(self, api_spec, action_name, func=None):
         self.func = func
         self.action_name = action_name
-        self.action_spec = api.api_spec['actions'][action_name]
+        self.action_spec = api_spec['actions'][action_name]
         self.accepts = self.action_spec['accepts']
         self.returns = self.action_spec['returns']
         self.url = "/actions/%s" % action_name
@@ -401,9 +402,9 @@ class GetByIdEndpoint(Endpoint):
     response_can_be_empty = True
     request_must_be_empty = True
 
-    def __init__(self, api, model_name, func=None):
+    def __init__(self, api_spec, model_name, func=None):
         self.model_name = model_name
-        self.full_model_name = "{}.{}".format(api.name, model_name)
+        self.full_model_name = "{}.{}".format(api_spec['name'], model_name)
         self.func = func
         self.url = "/%s/<id>" % model_name
 
@@ -459,10 +460,10 @@ class UpdateEndpoint(Endpoint):
     response_can_be_empty = False
     request_can_be_empty = False
 
-    def __init__(self, api, model_name, func=None, patch_validator=None):
+    def __init__(self, api_spec, model_name, func=None, patch_validator=None):
         self.model_name = model_name
         self.patch_validator = patch_validator
-        self.full_model_name = "{}.{}".format(api.name, model_name)
+        self.full_model_name = "{}.{}".format(api_spec['name'], model_name)
         self.func = func
         self.url = "/%s/<id>" % model_name
 
@@ -521,10 +522,10 @@ class CreateEndpoint(Endpoint):
     response_can_be_empty = False
     request_can_be_empty = False
 
-    def __init__(self, api, model_name, func=None, patch_validator=None):
+    def __init__(self, api_spec, model_name, func=None, patch_validator=None):
         self.model_name = model_name
         self.patch_validator = patch_validator
-        self.full_model_name = "{}.{}".format(api.name, model_name)
+        self.full_model_name = "{}.{}".format(api_spec['name'], model_name)
         self.func = func
         self.url = "/%s" % model_name
 
@@ -569,9 +570,9 @@ class DeleteEndpoint(Endpoint):
     response_must_be_empty = True
     request_must_be_empty = True
 
-    def __init__(self, api, model_name, func=None):
+    def __init__(self, api_spec, model_name, func=None):
         self.model_name = model_name
-        self.full_model_name = "{}.{}".format(api.name, model_name)
+        self.full_model_name = "{}.{}".format(api_spec['name'], model_name)
         self.func = func
         self.url = "/%s/<id>" % model_name
 
@@ -642,10 +643,10 @@ class GetListEndpoint(Endpoint):
     response_can_be_empty = False
     request_must_be_empty = True
 
-    def __init__(self, api, model_name, func=None):
+    def __init__(self, api_spec, model_name, func=None):
         self.model_name = model_name
-        self.full_model_name = "{}.{}".format(api.name, model_name)
-        self.model_spec = api.api_spec['models'][model_name]
+        self.full_model_name = "{}.{}".format(api_spec['name'], model_name)
+        self.model_spec = api_spec['models'][model_name]
         self.list_metadata = self.model_spec['list_metadata']
         self.func = func
         self.query_schema = None

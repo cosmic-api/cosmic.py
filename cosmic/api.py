@@ -6,7 +6,6 @@ from collections import OrderedDict
 import requests
 from teleport import BasicWrapper
 
-from .models import BaseModel
 from .tools import get_args, assert_is_compatible, \
     validate_underscore_identifier
 from .types import *
@@ -62,6 +61,24 @@ class APISpec(BasicWrapper):
         ])))
     ])
 
+    @classmethod
+    def assemble(cls, datum):
+
+        for model_name, model_spec in datum['models'].items():
+            link_names = set(model_spec['links'].keys())
+            field_names = set(model_spec['properties'].keys())
+
+            if link_names & field_names:
+                raise ValidationError(
+                    "Model cannot contain a field and link with the same name: {}".format(model_name))
+
+            for name in link_names | field_names:
+                validate_underscore_identifier(name)
+
+            if 'id' in link_names | field_names:
+                raise ValidationError("'id' is a reserved name.")
+
+        return datum
 
 class API(object):
     """An instance of this class represents a Cosmic API, whether it's your
@@ -135,43 +152,26 @@ class API(object):
         return cls.assemble_from_spec(APISpec.from_json(datum))
 
     @staticmethod
-    def assemble_from_spec(datum):
+    def assemble_from_spec(spec):
         from functools import partial
 
-        api = API(name=datum["name"], homepage=datum.get("homepage", None))
-        api.api_spec = datum
+        api = API(name=spec["name"])
+        api.api_spec = spec
 
-        for name, action in datum["actions"].items():
+        for name, action in spec["actions"].items():
             setattr(api.actions, name,
-                    partial(api.call_remote, ActionEndpoint, [api, name]))
+                    partial(api.call_remote, ActionEndpoint, [spec, name]))
 
-        for name, modeldef in datum["models"].items():
-            class M(BaseModel):
-                properties = modeldef["properties"].items()
-                query_fields = modeldef["query_fields"].items()
-                list_metadata = modeldef["list_metadata"].items()
-                links = modeldef["links"].items()
-                methods = filter(lambda m: modeldef["methods"][m],
-                                 MODEL_METHODS)
+        for name, modeldef in spec["models"].items():
+            m = Object()
 
-            M.name = str(name)
-            M.__name__ = M.name
-            M.api = api
+            m.create = partial(api.call_remote, CreateEndpoint, [spec, name])
+            m.update = partial(api.call_remote, UpdateEndpoint, [spec, name])
+            m.delete = partial(api.call_remote, DeleteEndpoint, [spec, name])
+            m.get_list = partial(api.call_remote, GetListEndpoint, [spec, name])
+            m.get_by_id = partial(api.call_remote, GetByIdEndpoint, [spec, name])
 
-            M.create = staticmethod(
-                partial(api.call_remote, CreateEndpoint, [api, name]))
-            M.update = staticmethod(
-                partial(api.call_remote, UpdateEndpoint, [api, name]))
-            M.delete = staticmethod(
-                partial(api.call_remote, DeleteEndpoint, [api, name]))
-            M.get_list = staticmethod(
-                partial(api.call_remote, GetListEndpoint, [api, name]))
-            M.get_by_id = staticmethod(
-                partial(api.call_remote, GetByIdEndpoint, [api, name]))
-
-            api._validate_model(M)
-
-            setattr(api.models, M.name, M)
+            setattr(api.models, name, m)
 
         return api
 
@@ -222,10 +222,10 @@ class API(object):
         def wrapper(func):
             name = unicode(func.__name__)
             validate_underscore_identifier(name)
-            required, optional = get_args(func)
+            required_args, optional_args = get_args(func)
 
             if accepts:
-                assert_is_compatible(accepts, required, optional)
+                assert_is_compatible(accepts, required_args, optional_args)
 
             doc = inspect.getdoc(func)
             self.action_funcs[name] = func
@@ -262,13 +262,12 @@ class API(object):
         model_cls.name = name = model_cls.__name__
         model_cls.api = self
 
-        self._validate_model(model_cls)
-
         methods = {}
         self.model_funcs[name] = {}
         for method in MODEL_METHODS:
             methods[method] = method in model_cls.methods
             self.model_funcs[name][method] = getattr(model_cls, method)
+
         self.model_funcs[name]['validate_patch'] = \
             getattr(model_cls, 'validate_patch')
 
@@ -279,22 +278,8 @@ class API(object):
             "list_metadata": OrderedDict(model_cls.list_metadata),
             "methods": methods,
         }
+        APISpec.assemble(self.api_spec)
         setattr(self.models, name, model_cls)
 
         return model_cls
 
-    def _validate_model(self, model_cls):
-
-        link_names = set(dict(model_cls.links).keys())
-        field_names = set(dict(model_cls.properties).keys())
-
-        if link_names & field_names:
-            raise SpecError(
-                "Model cannot contain a field and link with the same name: {}".format(
-                    model_cls.name))
-
-        for name in link_names | field_names:
-            validate_underscore_identifier(name)
-
-        if 'id' in link_names | field_names:
-            raise SpecError("'id' is a reserved name.")

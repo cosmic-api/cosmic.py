@@ -161,7 +161,7 @@ class TestPlanitarium(TestCase):
         self.assertEqual(self.remote_planetarium.actions.hello((None, pluto)), "Hello, Pluto")
 
     def _test_get_by_id(self):
-        with DBContext(planet_db):
+        with db.scope(planet_db):
             Sphere = M('planetarium.Sphere')
             with self.assertRaises(NotFound):
                 Sphere.get_by_id('100')
@@ -200,7 +200,7 @@ class TestPlanitarium(TestCase):
             self.assertEqual(res["status_code"], 404)
 
     def _test_get_list(self):
-        with DBContext(planet_db):
+        with db.scope(planet_db):
             Sphere = M('planetarium.Sphere')
             res = Sphere.get_list(name="Oops")
             self.assertEqual(len(res[0]), 0)
@@ -258,7 +258,7 @@ class TestPlanitarium(TestCase):
 
     def _test_save_property(self):
         c = copy.deepcopy(planet_db)
-        with DBContext(c):
+        with db.scope(c):
             Sphere = M('planetarium.Sphere')
             moon = Sphere.get_by_id("2")
 
@@ -308,7 +308,7 @@ class TestPlanitarium(TestCase):
 
     def _test_save_link(self):
         c = copy.deepcopy(planet_db)
-        with DBContext(c):
+        with db.scope(c):
             Sphere = M('planetarium.Sphere')
             # Save property
             moon = Sphere.get_by_id("2")
@@ -360,7 +360,7 @@ class TestPlanitarium(TestCase):
 
     def _test_create_model(self):
         c = copy.deepcopy(planet_db)
-        with DBContext(c):
+        with db.scope(c):
             Sphere = M('planetarium.Sphere')
 
             (id, rep) = Sphere.create(
@@ -391,7 +391,7 @@ class TestPlanitarium(TestCase):
 
     def _test_delete(self):
         c = copy.deepcopy(planet_db)
-        with DBContext(c):
+        with db.scope(c):
             Sphere = M('planetarium.Sphere')
             Sphere.delete("1")
             self.assertEqual(c['Sphere'][1], None)
@@ -415,13 +415,13 @@ class TestPlanitarium(TestCase):
 
     def test_get_by_id_not_found(self):
         with cosmos.scope(self.cosmos1):
-            with DBContext(planet_db):
+            with db.scope(planet_db):
                 res = self.d.get('/Sphere/4', headers={"X-Danish": "poppyseed"})
                 self.assertEqual(res.status_code, 404)
 
     def test_delete_not_found(self):
         with cosmos.scope(self.cosmos1):
-            with DBContext(planet_db):
+            with db.scope(planet_db):
                 res = self.d.delete('/Sphere/4', headers={"X-Danish": "poppyseed"})
                 self.assertEqual(res.status_code, 404)
 
