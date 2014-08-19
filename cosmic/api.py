@@ -6,7 +6,6 @@ from collections import OrderedDict
 import requests
 from teleport import BasicWrapper
 
-from .actions import Action
 from .models import BaseModel
 from .tools import get_args, assert_is_compatible, \
     validate_underscore_identifier
@@ -21,22 +20,8 @@ class Object(object):
     pass
 
 
-class API(BasicWrapper):
-    """An instance of this class represents a Cosmic API, whether it's your
-    own API being served or a third-party API being consumed. In the former
-    case, the API object is instantiated by the constructor and is bound to a
-    database ORM and other user-defined functions. In the latter case, it is
-    instantiated by the :meth:`API.load` method and these functions are
-    replaced by automatically generated HTTP calls.
-
-    One of the primary goals of Cosmic is to make local and remote APIs behave
-    as similarly as possible.
-
-    :param name: The API name is required, and should be unique
-    :param homepage: If you like, the API spec may include a link to your
-        homepage
-    """
-    type_name = "cosmic.API"
+class APISpec(BasicWrapper):
+    type_name = "cosmic.APISpec"
 
     schema = Struct([
         required("name", String),
@@ -68,7 +53,7 @@ class API(BasicWrapper):
                 required("create", Boolean),
                 required("update", Boolean),
                 required("delete", Boolean),
-            ])),
+                ])),
             required("list_metadata", OrderedMap(Struct([
                 required(u"schema", Schema),
                 required(u"required", Boolean),
@@ -77,42 +62,61 @@ class API(BasicWrapper):
         ])))
     ])
 
+
+class API(BasicWrapper):
+    """An instance of this class represents a Cosmic API, whether it's your
+    own API being served or a third-party API being consumed. In the former
+    case, the API object is instantiated by the constructor and is bound to a
+    database ORM and other user-defined functions. In the latter case, it is
+    instantiated by the :meth:`API.load` method and these functions are
+    replaced by automatically generated HTTP calls.
+
+    One of the primary goals of Cosmic is to make local and remote APIs behave
+    as similarly as possible.
+
+    :param name: The API name is required, and should be unique
+    :param homepage: If you like, the API spec may include a link to your
+        homepage
+    """
+    type_name = "cosmic.API"
+
+    schema = APISpec
+
     def __init__(self, name, homepage=None):
-        self.name = name
-        self.homepage = homepage
+        self.api_spec = {
+            "name": name,
+            "homepage": homepage,
+            "actions": OrderedDict(),
+            "models": OrderedDict(),
+        }
         self.client_hook = ClientHook()
 
-        self._actions = OrderedDict()
+        self.action_funcs = {}
+        self.model_funcs = {}
 
-        #: In the :class:`cosmic.api.API` object, the actions are stored in
-        #: an :class:`OrderedDict` in a private :data:`_actions` property:
-        #:
-        #: .. code:: python
-        #:
-        #:     >>> mathy._actions
-        #:     OrderedDict([(u'add', <cosmic.actions.Action object at 0x9ca18ec>)])
-        #:
-        #: The standard way of accessing them, however, is through a proxy
-        #: property :data:`actions`. Like so:
-        #:
-        #: .. code:: python
-        #:
-        #:     >>> mathy.actions.add(1, 2)
-        #:     3
-        self.actions = Object()
 
         self._models = OrderedDict()
 
-        #: Models are stored in the :data:`_models` property, but accessed
-        #: through a proxy like so:
-        #:
-        #: .. code:: python
-        #:
-        #:     >>> mathy.models.Number
-        #:     <class '__main__.Number'>
         self.models = Object()
+        self.actions = Object()
 
         cosmos[self.name] = self
+
+    @property
+    def name(self):
+        return self.api_spec['name']
+
+    @name.setter
+    def name(self, name):
+        self.api_spec['name'] = name
+
+    @property
+    def homepage(self):
+        return self.api_spec['homepage']
+
+    @homepage.setter
+    def homepage(self, name):
+        self.api_spec['homepage'] = name
 
     def run(self, port=5000, **kwargs):
         """Simple way to run the API in development. Uses Werkzeug's
@@ -125,8 +129,8 @@ class API(BasicWrapper):
         server = Server(self)
         run_simple('127.0.0.1', port, server.wsgi_app, **kwargs)
 
-    def call_remote(self, endpoint_cls, endpoint_arg, *args, **kwargs):
-        return self.client_hook.call(endpoint_cls(endpoint_arg), *args,
+    def call_remote(self, endpoint_cls, endpoint_args, *args, **kwargs):
+        return self.client_hook.call(endpoint_cls(*endpoint_args), *args,
                                      **kwargs)
 
     @staticmethod
@@ -134,15 +138,11 @@ class API(BasicWrapper):
         from functools import partial
 
         api = API(name=datum["name"], homepage=datum.get("homepage", None))
+        api.api_spec = datum
 
         for name, action in datum["actions"].items():
-            action = Action(**action)
-            action.name = name
-            action.api = api
-
-            api._actions[name] = action
             setattr(api.actions, name,
-                    partial(api.call_remote, ActionEndpoint, action))
+                    partial(api.call_remote, ActionEndpoint, [api, name]))
 
         for name, modeldef in datum["models"].items():
             class M(BaseModel):
@@ -158,15 +158,15 @@ class API(BasicWrapper):
             M.api = api
 
             M.create = staticmethod(
-                partial(api.call_remote, CreateEndpoint, M))
+                partial(api.call_remote, CreateEndpoint, [api, name]))
             M.update = staticmethod(
-                partial(api.call_remote, UpdateEndpoint, M))
+                partial(api.call_remote, UpdateEndpoint, [api, name]))
             M.delete = staticmethod(
-                partial(api.call_remote, DeleteEndpoint, M))
+                partial(api.call_remote, DeleteEndpoint, [api, name]))
             M.get_list = staticmethod(
-                partial(api.call_remote, GetListEndpoint, M))
+                partial(api.call_remote, GetListEndpoint, [api, name]))
             M.get_by_id = staticmethod(
-                partial(api.call_remote, GetByIdEndpoint, M))
+                partial(api.call_remote, GetByIdEndpoint, [api, name]))
 
             api._validate_model(M)
 
@@ -177,35 +177,7 @@ class API(BasicWrapper):
 
     @staticmethod
     def disassemble(datum):
-        models = OrderedDict()
-        actions = OrderedDict()
-        for name, action in datum._actions.items():
-            actions[name] = {
-                "accepts": action.accepts,
-                "returns": action.returns,
-                "doc": action.doc
-            }
-
-        for model_cls in datum._models.values():
-            models[unicode(model_cls.name)] = {
-                "properties": OrderedDict(model_cls.properties),
-                "links": OrderedDict(model_cls.links),
-                "query_fields": OrderedDict(model_cls.query_fields),
-                "list_metadata": OrderedDict(model_cls.list_metadata),
-                "methods": {
-                    "get_by_id": "get_by_id" in model_cls.methods,
-                    "get_list": "get_list" in model_cls.methods,
-                    "create": "create" in model_cls.methods,
-                    "update": "update" in model_cls.methods,
-                    "delete": "delete" in model_cls.methods,
-                }
-            }
-        return {
-            "name": datum.name,
-            "homepage": datum.homepage,
-            "actions": actions,
-            "models": models
-        }
+        return datum.api_spec
 
     @staticmethod
     def load(url, verify=True):
@@ -260,13 +232,14 @@ class API(BasicWrapper):
                 assert_is_compatible(accepts, required, optional)
 
             doc = inspect.getdoc(func)
-            action = Action(accepts, returns, doc)
-            action.api = self
-            action.name = name
-            action.func = func
+            self.action_funcs[name] = func
+            self.api_spec['actions'][name] = {
+                "accepts": accepts,
+                "returns": returns,
+                "doc": doc,
+            }
 
-            self._actions[name] = action
-            setattr(self.actions, name, action.func)
+            setattr(self.actions, name, func)
 
             return func
 
@@ -290,13 +263,27 @@ class API(BasicWrapper):
         :data:`~cosmic.api.API.models` object.
         """
 
-        model_cls.name = model_cls.__name__
+        model_cls.name = name = model_cls.__name__
         model_cls.api = self
 
         self._validate_model(model_cls)
 
-        self._models[model_cls.name] = model_cls
-        setattr(self.models, model_cls.name, model_cls)
+        self._models[name] = model_cls
+
+        methods = {}
+        self.model_funcs[name] = {}
+        for method in MODEL_METHODS:
+            methods[method] = method in model_cls.methods
+            self.model_funcs[name][method] = getattr(model_cls, method)
+
+        self.api_spec['models'][unicode(name)] = {
+            "properties": OrderedDict(model_cls.properties),
+            "links": OrderedDict(model_cls.links),
+            "query_fields": OrderedDict(model_cls.query_fields),
+            "list_metadata": OrderedDict(model_cls.list_metadata),
+            "methods": methods,
+        }
+        setattr(self.models, name, model_cls)
 
         return model_cls
 

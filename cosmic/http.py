@@ -44,25 +44,30 @@ class Server(object):
 
         if endpoint_name == 'action':
             action_name = values.pop('action')
-            if action_name not in self.api._actions:
+            if action_name not in self.api.api_spec['actions'].keys():
                 return error_response("Not Found", 404)
-            action = self.api._actions[action_name]
-            endpoint = ActionEndpoint(action)
+            endpoint = ActionEndpoint(
+                self.api,
+                action_name,
+                self.api.action_funcs[action_name])
         else:
             model_name = values.pop('model')
-            if model_name not in self.api._models:
+            if model_name not in self.api.api_spec['models'].keys():
                 return error_response("Not Found", 404)
             model_cls = self.api._models[model_name]
             if endpoint_name not in model_cls.methods:
                 return error_response("Method Not Allowed", 405)
             endpoints = {
                 'get_by_id': GetByIdEndpoint,
+                'create': CreateEndpoint,
                 'update': UpdateEndpoint,
                 'delete': DeleteEndpoint,
-                'create': CreateEndpoint,
                 'get_list': GetListEndpoint,
             }
-            endpoint = endpoints[endpoint_name](model_cls)
+            endpoint = endpoints[endpoint_name](
+                self.api,
+                model_name,
+                self.api.model_funcs[model_name][endpoint_name])
 
         try:
             return self.view(endpoint, request, **values)
@@ -327,24 +332,28 @@ class ActionEndpoint(Endpoint):
     json_response = True
     acceptable_response_codes = [200, 204]
 
-    def __init__(self, action):
-        self.action = action
-        self.url = "/actions/%s" % action.name
+    def __init__(self, api, action_name, func=None):
+        self.func = func
+        self.action_name = action_name
+        self.action_spec = api.api_spec['actions'][action_name]
+        self.accepts = self.action_spec['accepts']
+        self.returns = self.action_spec['returns']
+        self.url = "/actions/%s" % action_name
 
     def handler(self, *args, **kwargs):
-        return self.action.func(*args, **kwargs)
+        return self.func(*args, **kwargs)
 
     def build_request(self, *args, **kwargs):
         packed = args_to_datum(*args, **kwargs)
-        json = serialize_json(self.action.accepts, packed)
+        json = serialize_json(self.accepts, packed)
         return super(ActionEndpoint, self).build_request(json=json)
 
     def parse_request(self, req, **url_args):
         req = super(ActionEndpoint, self).parse_request(req, **url_args)
-        data = deserialize_json(self.action.accepts, req['json'])
+        data = deserialize_json(self.accepts, req['json'])
         kwargs = {}
         if data is not None:
-            required_args, optional_args = get_args(self.action.func)
+            required_args, optional_args = get_args(self.func)
             # If only one argument, take the whole object
             if len(required_args + optional_args) == 1:
                 kwargs = {required_args[0]: data}
@@ -354,13 +363,13 @@ class ActionEndpoint(Endpoint):
 
     def parse_response(self, res):
         res = super(ActionEndpoint, self).parse_response(res)
-        if self.action.returns and res['json']:
-            return self.action.returns.from_json(res['json'].datum)
+        if self.returns and res['json']:
+            return self.returns.from_json(res['json'].datum)
         else:
             return None
 
     def build_response(self, func_input, func_output):
-        data = serialize_json(self.action.returns, func_output)
+        data = serialize_json(self.returns, func_output)
         if data is None:
             return Response("", 204, {})
         else:
@@ -385,14 +394,15 @@ class GetByIdEndpoint(Endpoint):
     response_can_be_empty = True
     request_must_be_empty = True
 
-    def __init__(self, model_cls):
-        self.model_cls = model_cls
+    def __init__(self, api, model_name, func=None):
+        self.model_cls = api._models[model_name]
+        self.func = func
         self.url = "/%s/<id>" % self.model_cls.name
         self.endpoint = "doc_get_%s" % self.model_cls.name
 
     def handler(self, id):
         try:
-            return Either(value=self.model_cls.get_by_id(id))
+            return Either(value=self.func(id))
         except NotFound as e:
             return Either(exception=e)
 
@@ -442,15 +452,16 @@ class UpdateEndpoint(Endpoint):
     response_can_be_empty = False
     request_can_be_empty = False
 
-    def __init__(self, model_cls):
-        self.model_cls = model_cls
+    def __init__(self, api, model_name, func=None):
+        self.model_cls = api._models[model_name]
+        self.func = func
         self.url = "/%s/<id>" % self.model_cls.name
         self.endpoint = "doc_put_%s" % self.model_cls.name
 
     def handler(self, id, **patch):
         self.model_cls.validate_patch(patch)
         try:
-            return Either(value=self.model_cls.update(id, **patch))
+            return Either(value=self.func(id, **patch))
         except NotFound as e:
             return Either(exception=e)
 
@@ -502,14 +513,15 @@ class CreateEndpoint(Endpoint):
     response_can_be_empty = False
     request_can_be_empty = False
 
-    def __init__(self, model_cls):
-        self.model_cls = model_cls
+    def __init__(self, api, model_name, func=None):
+        self.model_cls = api._models[model_name]
+        self.func = func
         self.url = "/%s" % self.model_cls.name
         self.endpoint = "list_post_%s" % self.model_cls.name
 
     def handler(self, **patch):
         self.model_cls.validate_patch(patch)
-        return self.model_cls.create(**patch)
+        return self.func(**patch)
 
     def build_request(self, **patch):
         return super(CreateEndpoint, self).build_request(
@@ -548,14 +560,15 @@ class DeleteEndpoint(Endpoint):
     response_must_be_empty = True
     request_must_be_empty = True
 
-    def __init__(self, model_cls):
-        self.model_cls = model_cls
+    def __init__(self, api, model_name, func=None):
+        self.model_cls = api._models[model_name]
+        self.func = func
         self.url = "/%s/<id>" % self.model_cls.name
         self.endpoint = "doc_delete_%s" % self.model_cls.name
 
     def handler(self, id):
         try:
-            return Either(value=self.model_cls.delete(id))
+            return Either(value=self.func(id))
         except NotFound as e:
             return Either(exception=e)
 
@@ -620,8 +633,9 @@ class GetListEndpoint(Endpoint):
     response_can_be_empty = False
     request_must_be_empty = True
 
-    def __init__(self, model_cls):
-        self.model_cls = model_cls
+    def __init__(self, api, model_name, func=None):
+        self.model_cls = api._models[model_name]
+        self.func = func
         self.query_schema = None
         if self.model_cls.query_fields is not None:
             self.query_schema = URLParams(self.model_cls.query_fields)
@@ -629,7 +643,7 @@ class GetListEndpoint(Endpoint):
         self.endpoint = "list_get_%s" % self.model_cls.name
 
     def handler(self, **query):
-        return self.model_cls.get_list(**query)
+        return self.func(**query)
 
     def build_request(self, **query):
         return super(GetListEndpoint, self).build_request(query=query)

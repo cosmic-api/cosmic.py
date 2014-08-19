@@ -15,9 +15,11 @@ __all__ = ['Integer', 'Float', 'Boolean', 'String', 'Binary', 'DateTime',
 
 
 def getter(name):
-    from .api import API
+    from .api import API, APISpec
 
-    if name == "cosmic.API":
+    if name == "cosmic.APISpec":
+        return APISpec
+    elif name == "cosmic.API":
         return API
     elif name == "cosmic.Model":
         return Model
