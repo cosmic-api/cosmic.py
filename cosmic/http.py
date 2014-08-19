@@ -397,8 +397,7 @@ class GetByIdEndpoint(Endpoint):
     def __init__(self, api, model_name, func=None):
         self.model_cls = api._models[model_name]
         self.func = func
-        self.url = "/%s/<id>" % self.model_cls.name
-        self.endpoint = "doc_get_%s" % self.model_cls.name
+        self.url = "/%s/<id>" % model_name
 
     def handler(self, id):
         try:
@@ -455,8 +454,7 @@ class UpdateEndpoint(Endpoint):
     def __init__(self, api, model_name, func=None):
         self.model_cls = api._models[model_name]
         self.func = func
-        self.url = "/%s/<id>" % self.model_cls.name
-        self.endpoint = "doc_put_%s" % self.model_cls.name
+        self.url = "/%s/<id>" % model_name
 
     def handler(self, id, **patch):
         self.model_cls.validate_patch(patch)
@@ -516,8 +514,7 @@ class CreateEndpoint(Endpoint):
     def __init__(self, api, model_name, func=None):
         self.model_cls = api._models[model_name]
         self.func = func
-        self.url = "/%s" % self.model_cls.name
-        self.endpoint = "list_post_%s" % self.model_cls.name
+        self.url = "/%s" % model_name
 
     def handler(self, **patch):
         self.model_cls.validate_patch(patch)
@@ -563,8 +560,7 @@ class DeleteEndpoint(Endpoint):
     def __init__(self, api, model_name, func=None):
         self.model_cls = api._models[model_name]
         self.func = func
-        self.url = "/%s/<id>" % self.model_cls.name
-        self.endpoint = "doc_delete_%s" % self.model_cls.name
+        self.url = "/%s/<id>" % model_name
 
     def handler(self, id):
         try:
@@ -639,8 +635,7 @@ class GetListEndpoint(Endpoint):
         self.query_schema = None
         if self.model_cls.query_fields is not None:
             self.query_schema = URLParams(self.model_cls.query_fields)
-        self.url = "/%s" % self.model_cls.name
-        self.endpoint = "list_get_%s" % self.model_cls.name
+        self.url = "/%s" % model_name
 
     def handler(self, **query):
         return self.func(**query)

@@ -275,6 +275,8 @@ class API(BasicWrapper):
         for method in MODEL_METHODS:
             methods[method] = method in model_cls.methods
             self.model_funcs[name][method] = getattr(model_cls, method)
+        self.model_funcs[name]['validate_patch'] = \
+            getattr(model_cls, 'validate_patch')
 
         self.api_spec['models'][unicode(name)] = {
             "properties": OrderedDict(model_cls.properties),
