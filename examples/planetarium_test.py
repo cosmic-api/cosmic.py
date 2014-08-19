@@ -7,6 +7,7 @@ from unittest2 import TestCase
 from werkzeug.wrappers import Response
 from werkzeug.test import Client as TestClient
 
+from cosmic.models import M
 from cosmic.http import WsgiClientHook, ClientHookLoggingMixin
 from cosmic.globals import cosmos
 from cosmic.exceptions import *

@@ -123,4 +123,4 @@ class M(LocalProxy):
     def _LocalProxy__local(self):
         from cosmic.globals import cosmos
         api_name, model_name = self.__model_name.split('.', 1)
-        return cosmos[api_name]._models[model_name]
+        return getattr(cosmos[api_name].models, model_name)

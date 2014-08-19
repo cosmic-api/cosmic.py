@@ -54,8 +54,8 @@ class Server(object):
             model_name = values.pop('model')
             if model_name not in self.api.api_spec['models'].keys():
                 return error_response("Not Found", 404)
-            model_cls = self.api._models[model_name]
-            if endpoint_name not in model_cls.methods:
+            model_spec = self.api.api_spec['models'][model_name]
+            if not model_spec['methods'][endpoint_name]:
                 return error_response("Method Not Allowed", 405)
             endpoints = {
                 'get_by_id': GetByIdEndpoint,
@@ -64,10 +64,17 @@ class Server(object):
                 'delete': DeleteEndpoint,
                 'get_list': GetListEndpoint,
             }
-            endpoint = endpoints[endpoint_name](
-                self.api,
-                model_name,
-                self.api.model_funcs[model_name][endpoint_name])
+            if endpoint_name in ['create', 'update']:
+                endpoint = endpoints[endpoint_name](
+                    self.api,
+                    model_name,
+                    self.api.model_funcs[model_name][endpoint_name],
+                    patch_validator=self.api.model_funcs[model_name]['validate_patch'])
+            else:
+                endpoint = endpoints[endpoint_name](
+                    self.api,
+                    model_name,
+                    self.api.model_funcs[model_name][endpoint_name])
 
         try:
             return self.view(endpoint, request, **values)
@@ -397,7 +404,6 @@ class GetByIdEndpoint(Endpoint):
     def __init__(self, api, model_name, func=None):
         self.model_name = model_name
         self.full_model_name = "{}.{}".format(api.name, model_name)
-        self.model_cls = api._models[model_name]
         self.func = func
         self.url = "/%s/<id>" % model_name
 
@@ -453,15 +459,15 @@ class UpdateEndpoint(Endpoint):
     response_can_be_empty = False
     request_can_be_empty = False
 
-    def __init__(self, api, model_name, func=None):
+    def __init__(self, api, model_name, func=None, patch_validator=None):
         self.model_name = model_name
+        self.patch_validator = patch_validator
         self.full_model_name = "{}.{}".format(api.name, model_name)
-        self.model_cls = api._models[model_name]
         self.func = func
         self.url = "/%s/<id>" % model_name
 
     def handler(self, id, **patch):
-        self.model_cls.validate_patch(patch)
+        self.patch_validator(patch)
         try:
             return Either(value=self.func(id, **patch))
         except NotFound as e:
@@ -515,15 +521,15 @@ class CreateEndpoint(Endpoint):
     response_can_be_empty = False
     request_can_be_empty = False
 
-    def __init__(self, api, model_name, func=None):
+    def __init__(self, api, model_name, func=None, patch_validator=None):
         self.model_name = model_name
+        self.patch_validator = patch_validator
         self.full_model_name = "{}.{}".format(api.name, model_name)
-        self.model_cls = api._models[model_name]
         self.func = func
         self.url = "/%s" % model_name
 
     def handler(self, **patch):
-        self.model_cls.validate_patch(patch)
+        self.patch_validator(patch)
         return self.func(**patch)
 
     def build_request(self, **patch):
@@ -541,7 +547,7 @@ class CreateEndpoint(Endpoint):
 
     def build_response(self, func_input, func_output):
         body = json.dumps(Representation(self.full_model_name).to_json(func_output))
-        href = "/%s/%s" % (self.model_cls.name, func_output[0])
+        href = "/%s/%s" % (self.model_name, func_output[0])
         return Response(body, 201, {
             "Location": href,
             "Content-Type": "application/json"
@@ -566,7 +572,6 @@ class DeleteEndpoint(Endpoint):
     def __init__(self, api, model_name, func=None):
         self.model_name = model_name
         self.full_model_name = "{}.{}".format(api.name, model_name)
-        self.model_cls = api._models[model_name]
         self.func = func
         self.url = "/%s/<id>" % model_name
 
@@ -640,11 +645,12 @@ class GetListEndpoint(Endpoint):
     def __init__(self, api, model_name, func=None):
         self.model_name = model_name
         self.full_model_name = "{}.{}".format(api.name, model_name)
-        self.model_cls = api._models[model_name]
+        self.model_spec = api.api_spec['models'][model_name]
+        self.list_metadata = self.model_spec['list_metadata']
         self.func = func
         self.query_schema = None
-        if self.model_cls.query_fields is not None:
-            self.query_schema = URLParams(self.model_cls.query_fields)
+        if self.model_spec['query_fields']:
+            self.query_schema = URLParams(self.model_spec['query_fields'])
         self.url = "/%s" % model_name
 
     def handler(self, **query):
@@ -661,19 +667,19 @@ class GetListEndpoint(Endpoint):
         res = super(GetListEndpoint, self).parse_response(res)
         j = res['json'].datum
         l = []
-        for jrep in j["_embedded"][self.model_cls.name]:
+        for jrep in j["_embedded"][self.model_name]:
             l.append(Representation(self.full_model_name).from_json(jrep))
 
-        if self.model_cls.list_metadata:
+        if self.list_metadata:
             meta = j.copy()
             del meta['_embedded']
             del meta['_links']
-            meta = Struct(self.model_cls.list_metadata).from_json(meta)
+            meta = Struct(self.list_metadata).from_json(meta)
             return l, meta
         return l
 
     def build_response(self, func_input, func_output):
-        self_link = "/%s" % self.model_cls.name
+        self_link = "/%s" % self.model_name
         if self.query_schema and func_input:
             self_link += '?' + self.query_schema.to_json(func_input)
 
@@ -684,17 +690,17 @@ class GetListEndpoint(Endpoint):
             "_embedded": {}
         }
 
-        if self.model_cls.list_metadata:
+        if self.list_metadata:
             l, meta = func_output
-            meta = Struct(self.model_cls.list_metadata).to_json(meta)
+            meta = Struct(self.list_metadata).to_json(meta)
             body.update(meta)
         else:
             l = func_output
 
-        body["_embedded"][self.model_cls.name] = []
+        body["_embedded"][self.model_name] = []
         for inst in l:
             jrep = Representation(self.full_model_name).to_json(inst)
-            body["_embedded"][self.model_cls.name].append(jrep)
+            body["_embedded"][self.model_name].append(jrep)
 
         return Response(json.dumps(body), 200, {"Content-Type": "application/json"})
 

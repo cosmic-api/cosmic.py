@@ -91,8 +91,6 @@ class API(object):
         self.action_funcs = {}
         self.model_funcs = {}
 
-        self._models = OrderedDict()
-
         self.models = Object()
         self.actions = Object()
 
@@ -173,7 +171,6 @@ class API(object):
 
             api._validate_model(M)
 
-            api._models[M.name] = M
             setattr(api.models, M.name, M)
 
         return api
@@ -266,8 +263,6 @@ class API(object):
         model_cls.api = self
 
         self._validate_model(model_cls)
-
-        self._models[name] = model_cls
 
         methods = {}
         self.model_funcs[name] = {}

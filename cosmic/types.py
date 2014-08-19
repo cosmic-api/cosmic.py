@@ -98,9 +98,8 @@ class Link(ParametrizedWrapper):
     param_schema = Model
 
     def __init__(self, param):
-        from .models import M
         self.param = param
-        self.model_cls = M(param)
+        self.api_name, self.model_name = param.split('.', 1)
         self.schema = Struct([
             required(u"href", String)
         ])
@@ -108,12 +107,12 @@ class Link(ParametrizedWrapper):
     def assemble(self, datum):
         url = datum['href']
         parts = url.split('/')
-        if parts[-2] != self.model_cls.name:
-            raise ValidationError("Invalid url for %s link: %s" % (self.model_cls.name, url))
+        if parts[-2] != self.model_name:
+            raise ValidationError("Invalid url for %s link: %s" % (self.model_name, url))
         return parts[-1]
 
     def disassemble(self, datum):
-        href = "/%s/%s" % (self.model_cls.name, datum)
+        href = "/%s/%s" % (self.model_name, datum)
         return {"href": href}
 
 
@@ -121,10 +120,14 @@ class BaseRepresentation(ParametrizedWrapper):
     param_schema = Model
 
     def __init__(self, param):
-        from .models import M
         self.param = param
-        self.model_cls = M(param)
         self._lazy_schema = None
+
+    @property
+    def model_spec(self):
+        from .globals import cosmos
+        api_name, model_name = self.param.split('.', 1)
+        return cosmos[api_name].api_spec['models'][model_name]
 
     @property
     def schema(self):
@@ -136,7 +139,7 @@ class BaseRepresentation(ParametrizedWrapper):
                     "schema": Link(self.param)
                 })
             ]
-            for name, link in self.model_cls.links:
+            for name, link in self.model_spec['links'].items():
                 required = False
                 if not self.all_fields_optional:
                     required = link["required"]
@@ -149,7 +152,7 @@ class BaseRepresentation(ParametrizedWrapper):
             props = [
                 optional("_links", Struct(links)),
             ]
-            for name, field in self.model_cls.properties:
+            for name, field in self.model_spec['properties'].items():
                 required = False
                 if not self.all_fields_optional:
                     required = field["required"]
@@ -181,14 +184,14 @@ class BaseRepresentation(ParametrizedWrapper):
         links = {}
         if id:
             links["self"] = id
-        for name, link in OrderedDict(self.model_cls.links).items():
+        for name, link in self.model_spec['links'].items():
             value = rep.get(name, None)
             if value != None:
                 links[name] = value
         d = {}
         if links:
             d["_links"] = links
-        for name in OrderedDict(self.model_cls.properties).keys():
+        for name in self.model_spec['properties'].keys():
             value = rep.get(name, None)
             if value != None:
                 d[name] = value

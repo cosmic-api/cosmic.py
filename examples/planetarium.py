@@ -1,6 +1,5 @@
 import datetime
 
-from cosmic.models import M
 from cosmic.api import API
 from cosmic.exceptions import HTTPError
 from cosmic.testing import DBModel, DBContext
