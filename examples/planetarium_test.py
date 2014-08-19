@@ -8,8 +8,7 @@ from werkzeug.wrappers import Response
 from werkzeug.test import Client as TestClient
 
 from cosmic.http import WsgiClientHook, ClientHookLoggingMixin
-from cosmic import cosmos
-from cosmic.models import Cosmos
+from cosmic.globals import cosmos
 from cosmic.exceptions import *
 from planetarium import *
 
@@ -91,16 +90,16 @@ class TestPlanitarium(TestCase):
     def setUp(self):
         self.maxDiff = None
 
-        self.cosmos1 = cosmos.clone()
-        self.cosmos2 = Cosmos()
+        self.cosmos1 = dict(cosmos.items())
+        self.cosmos2 = dict()
 
-        with self.cosmos1:
+        with cosmos.scope(self.cosmos1):
             self.planetarium = planetarium
 
             app = planetarium_server.wsgi_app
             self.d = TestClient(app, response_wrapper=Response)
 
-        with self.cosmos2:
+        with cosmos.scope(self.cosmos2):
             with patch.object(requests, 'get') as mock_get:
                 mock_get.return_value.json = lambda: json_spec
                 mock_get.return_value.status_code = 200
@@ -137,12 +136,12 @@ class TestPlanitarium(TestCase):
             self.remote_planetarium.client_hook = Hook(app)
 
     def test_guess_methods(self):
-        with self.cosmos1:
+        with cosmos.scope(self.cosmos1):
             all_methods = set(['get_list', 'get_by_id', 'create', 'update', 'delete'])
             self.assertEqual(set(M('planetarium.Sphere').methods), all_methods)
 
     def test_spec_endpoint(self):
-        with self.cosmos1:
+        with cosmos.scope(self.cosmos1):
             res = self.d.get('/spec.json')
             self.assertEqual(json.loads(res.data), json_spec)
 
@@ -169,11 +168,11 @@ class TestPlanitarium(TestCase):
             self.assertEqual(rep['name'], "Sun")
 
     def test_local_get_by_id(self):
-        with self.cosmos1:
+        with cosmos.scope(self.cosmos1):
             self._test_get_by_id()
 
     def test_remote_get_by_id(self):
-        with self.cosmos2:
+        with cosmos.scope(self.cosmos2):
             self._test_get_by_id()
 
             (req, res) = self.remote_planetarium.client_hook.log.pop()
@@ -211,11 +210,11 @@ class TestPlanitarium(TestCase):
             self.assertEqual(len(res[0]), 3)
 
     def test_local_get_list(self):
-        with self.cosmos1:
+        with cosmos.scope(self.cosmos1):
             self._test_get_list()
 
     def test_remote_get_list(self):
-        with self.cosmos2:
+        with cosmos.scope(self.cosmos2):
             self._test_get_list()
 
             (req, res) = self.remote_planetarium.client_hook.log.pop()
@@ -270,11 +269,11 @@ class TestPlanitarium(TestCase):
             self.assertEqual(c['Sphere'][2]["name"], "Luna")
 
     def test_local_save_property(self):
-        with self.cosmos1:
+        with cosmos.scope(self.cosmos1):
             self._test_save_property()
 
     def test_remote_save_property(self):
-        with self.cosmos2:
+        with cosmos.scope(self.cosmos2):
             self._test_save_property()
 
             (req, res) = self.remote_planetarium.client_hook.log.pop()
@@ -322,11 +321,11 @@ class TestPlanitarium(TestCase):
             self.assertEqual(c['Sphere'][2]["_links"]["revolves_around"]["href"], "/Sphere/0")
 
     def test_local_save_link(self):
-        with self.cosmos1:
+        with cosmos.scope(self.cosmos1):
             self._test_save_link()
 
     def test_remote_save_link(self):
-        with self.cosmos2:
+        with cosmos.scope(self.cosmos2):
             self._test_save_link()
 
             (req, res) = self.remote_planetarium.client_hook.log.pop()
@@ -381,11 +380,11 @@ class TestPlanitarium(TestCase):
             self.assertEqual(c['Sphere'][3], full)
 
     def test_local_create_model(self):
-        with self.cosmos1:
+        with cosmos.scope(self.cosmos1):
             self._test_create_model()
 
     def test_remote_create_model(self):
-        with self.cosmos2:
+        with cosmos.scope(self.cosmos2):
             self._test_create_model()
 
 
@@ -397,11 +396,11 @@ class TestPlanitarium(TestCase):
             self.assertEqual(c['Sphere'][1], None)
 
     def test_local_delete(self):
-        with self.cosmos1:
+        with cosmos.scope(self.cosmos1):
             self._test_delete()
 
     def test_remote_delete(self):
-        with self.cosmos2:
+        with cosmos.scope(self.cosmos2):
             self._test_delete()
 
             (req, res) = self.remote_planetarium.client_hook.log.pop()
@@ -414,13 +413,13 @@ class TestPlanitarium(TestCase):
             self.assertEqual(res["data"], "")
 
     def test_get_by_id_not_found(self):
-        with self.cosmos1:
+        with cosmos.scope(self.cosmos1):
             with DBContext(planet_db):
                 res = self.d.get('/Sphere/4', headers={"X-Danish": "poppyseed"})
                 self.assertEqual(res.status_code, 404)
 
     def test_delete_not_found(self):
-        with self.cosmos1:
+        with cosmos.scope(self.cosmos1):
             with DBContext(planet_db):
                 res = self.d.delete('/Sphere/4', headers={"X-Danish": "poppyseed"})
                 self.assertEqual(res.status_code, 404)

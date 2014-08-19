@@ -1,6 +1,6 @@
-from werkzeug.local import LocalStack, LocalProxy
+from werkzeug.local import LocalProxy
 
-__all__ = ['BaseModel', 'Cosmos', 'M']
+__all__ = ['BaseModel', 'M']
 
 
 class BaseModel(object):
@@ -100,28 +100,6 @@ class BaseModel(object):
         """
         raise NotImplementedError()
 
-class Cosmos(object):
-    def __init__(self):
-        self.apis = {}
-
-    def clone(self):
-        c = Cosmos()
-        c.apis = dict(self.apis.items())
-        return c
-
-    def get_model(self, name):
-        api_name, model_name = name.split('.', 1)
-        return self.apis[api_name]._models[model_name]
-
-    def __enter__(self):
-        _ctx_stack.push(self)
-
-    def __exit__(self, *args, **kwargs):
-        _ctx_stack.pop()
-
-
-_ctx_stack = LocalStack()
-
 
 class M(LocalProxy):
     """Creates a lazy reference to a model, useful for defining links.
@@ -143,5 +121,6 @@ class M(LocalProxy):
         return "M('{}')".format(self.__model_name)
 
     def _LocalProxy__local(self):
-        from cosmic import cosmos
-        return cosmos.get_model(self.__model_name)
+        from cosmic.globals import cosmos
+        api_name, model_name = self.__model_name.split('.', 1)
+        return cosmos[api_name]._models[model_name]

@@ -3,16 +3,14 @@ from werkzeug.wrappers import Response
 from werkzeug.test import Client as TestClient
 
 from cosmic.http import Server
-from cosmic.models import Cosmos
+from cosmic.globals import cosmos
 from words import words
 
 
 class TestWords(TestCase):
 
     def setUp(self):
-
-        self.cosmos = Cosmos()
-        self.cosmos.__enter__()
+        cosmos.stack.push({})
 
         app = Server(words).wsgi_app
         self.client = TestClient(app, response_wrapper=Response)
@@ -22,4 +20,7 @@ class TestWords(TestCase):
                                 content_type='application/json', data='"pony"')
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.data, '"ponies"')
+
+    def tearDown(self):
+        cosmos.stack.pop()
 

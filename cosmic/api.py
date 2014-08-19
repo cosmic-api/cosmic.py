@@ -13,7 +13,8 @@ from .tools import get_args, assert_is_compatible, \
 from .types import *
 from .http import ClientHook, CreateEndpoint, DeleteEndpoint, \
     GetByIdEndpoint, GetListEndpoint, UpdateEndpoint, ActionEndpoint
-from . import cosmos, MODEL_METHODS
+from .globals import cosmos
+from . import MODEL_METHODS
 
 
 class Object(object):
@@ -111,7 +112,7 @@ class API(BasicWrapper):
         #:     <class '__main__.Number'>
         self.models = Object()
 
-        cosmos.apis[self.name] = self
+        cosmos[self.name] = self
 
     def run(self, port=5000, **kwargs):
         """Simple way to run the API in development. Uses Werkzeug's

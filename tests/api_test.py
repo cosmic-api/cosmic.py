@@ -6,7 +6,8 @@ from werkzeug.test import Client as TestClient
 
 from cosmic.api import API
 from cosmic.http import Server
-from cosmic.models import BaseModel, Cosmos
+from cosmic.models import BaseModel
+from cosmic.globals import cosmos
 from cosmic.types import *
 
 
@@ -112,8 +113,7 @@ class TestAPI(TestCase):
     def setUp(self):
         self.maxDiff = None
 
-        self.cosmos = Cosmos()
-        self.cosmos.__enter__()
+        cosmos.stack.push({})
 
         self.cookbook = cookbook = API(u'cookbook')
 
@@ -162,7 +162,7 @@ class TestAPI(TestCase):
         self.client = TestClient(self.app, response_wrapper=Response)
 
     def tearDown(self):
-        self.cosmos.__exit__(None, None, None)
+        cosmos.stack.pop()
 
     def test_model(self):
         R = self.cookbook.models.Recipe
