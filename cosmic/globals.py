@@ -7,10 +7,11 @@ class SafeGlobal(UserDict):
 
     def __init__(self):
         self.stack = LocalStack()
-        self.stack.push({})
 
     @property
     def data(self):
+        if self.stack.top is None:
+            self.stack.push({})
         return self.stack.top
 
     @contextmanager
@@ -18,7 +19,6 @@ class SafeGlobal(UserDict):
         self.stack.push(data)
         yield
         self.stack.pop()
-
 
 cosmos = SafeGlobal()
 
