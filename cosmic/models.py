@@ -123,7 +123,22 @@ class Cosmos(object):
 _ctx_stack = LocalStack()
 
 
-def M(name):
-    from cosmic import cosmos
+class LazyModel(LocalProxy):
+    def __repr__(self):
+        pass
 
-    return LocalProxy(lambda: cosmos.M(name))
+
+def M(name):
+    """Creates a lazy reference to a model, useful for defining links.
+
+    .. code:: python
+
+        @familytree.model
+        class Person(BaseModel):
+            links = [
+                optional_link('mother', M('familytree.Person')),
+                optional_link('father', M('familytree.Person')),
+            ]
+    """
+    from cosmic import cosmos
+    return LazyModel(lambda: cosmos.M(name))

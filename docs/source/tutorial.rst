@@ -5,7 +5,7 @@ Step 1: Single-function API
 ---------------------------
 
 Before we get into the features, let's create a blank API to see how an API
-is served and consumed. Here it is
+is served and consumed. Here it is:
 
 .. code:: python
 

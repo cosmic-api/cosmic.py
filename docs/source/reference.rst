@@ -12,7 +12,7 @@ APIs
 Models
 ------
 
-.. autoclass:: cosmic.models.BaseModel
+.. automodule:: cosmic.models
    :members:
 
 Types

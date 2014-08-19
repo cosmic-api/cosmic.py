@@ -63,6 +63,12 @@ class Model(BasicWrapper):
         >>> Model.to_json(places.models.City)
         "places.City"
 
+    Note that when deserializing this type, the returned value isn't exactly
+    a model object, but a :class:`~cosmic.types.LazyModel` object, a proxy
+    that behaves identically to the model. The reason for this is that
+    sometimes a reference to the model is needed before the model exists.
+
+    See also :func:`~cosmic.models.M`.
     """
     type_name = "cosmic.Model"
     schema = String
@@ -70,7 +76,6 @@ class Model(BasicWrapper):
     @classmethod
     def assemble(cls, datum):
         from .models import M
-
         return M(datum)
 
     @classmethod
