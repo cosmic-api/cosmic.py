@@ -92,7 +92,7 @@ class TestGuideModels(TestCase):
                 "street": "Sesame"
             }
 
-            self.assertEqual(Representation(places.models.Address).to_json((None, rep)), rep)
+            self.assertEqual(Representation('places.Address').to_json((None, rep)), rep)
 
 
 class TestGuideModelLinks(TestCase):

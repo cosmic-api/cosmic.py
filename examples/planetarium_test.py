@@ -376,7 +376,7 @@ class TestPlanitarium(TestCase):
                     "revolves_around": {"href": "/Sphere/0"},
                 }
             }
-            self.assertEqual(Representation(Sphere).to_json((id, rep)), full)
+            self.assertEqual(Representation('planetarium.Sphere').to_json((id, rep)), full)
             self.assertEqual(c['Sphere'][3], full)
 
     def test_local_create_model(self):

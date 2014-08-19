@@ -15,12 +15,10 @@ __all__ = ['Integer', 'Float', 'Boolean', 'String', 'Binary', 'DateTime',
 
 
 def getter(name):
-    from .api import API, APISpec
+    from .api import APISpec
 
     if name == "cosmic.APISpec":
         return APISpec
-    elif name == "cosmic.API":
-        return API
     elif name == "cosmic.Model":
         return Model
     elif name == "cosmic.Link":
@@ -76,12 +74,11 @@ class Model(BasicWrapper):
 
     @classmethod
     def assemble(cls, datum):
-        from .models import M
-        return M(datum)
+        return datum
 
     @classmethod
     def disassemble(cls, datum):
-        return "{}.{}".format(datum.api.name, datum.name)
+        return datum
 
 
 class Link(ParametrizedWrapper):
@@ -101,7 +98,9 @@ class Link(ParametrizedWrapper):
     param_schema = Model
 
     def __init__(self, param):
+        from .models import M
         self.param = param
+        self.model_cls = M(param)
         self.schema = Struct([
             required(u"href", String)
         ])
@@ -109,12 +108,12 @@ class Link(ParametrizedWrapper):
     def assemble(self, datum):
         url = datum['href']
         parts = url.split('/')
-        if parts[-2] != self.param.name:
-            raise ValidationError("Invalid url for %s link: %s" % (self.param.name, url))
+        if parts[-2] != self.model_cls.name:
+            raise ValidationError("Invalid url for %s link: %s" % (self.model_cls.name, url))
         return parts[-1]
 
     def disassemble(self, datum):
-        href = "/%s/%s" % (self.param.name, datum)
+        href = "/%s/%s" % (self.model_cls.name, datum)
         return {"href": href}
 
 
@@ -122,7 +121,9 @@ class BaseRepresentation(ParametrizedWrapper):
     param_schema = Model
 
     def __init__(self, param):
-        self.param = model_cls = param
+        from .models import M
+        self.param = param
+        self.model_cls = M(param)
         self._lazy_schema = None
 
     @property
@@ -135,7 +136,7 @@ class BaseRepresentation(ParametrizedWrapper):
                     "schema": Link(self.param)
                 })
             ]
-            for name, link in self.param.links:
+            for name, link in self.model_cls.links:
                 required = False
                 if not self.all_fields_optional:
                     required = link["required"]
@@ -148,7 +149,7 @@ class BaseRepresentation(ParametrizedWrapper):
             props = [
                 optional("_links", Struct(links)),
             ]
-            for name, field in self.param.properties:
+            for name, field in self.model_cls.properties:
                 required = False
                 if not self.all_fields_optional:
                     required = field["required"]
@@ -180,14 +181,14 @@ class BaseRepresentation(ParametrizedWrapper):
         links = {}
         if id:
             links["self"] = id
-        for name, link in OrderedDict(self.param.links).items():
+        for name, link in OrderedDict(self.model_cls.links).items():
             value = rep.get(name, None)
             if value != None:
                 links[name] = value
         d = {}
         if links:
             d["_links"] = links
-        for name in OrderedDict(self.param.properties).keys():
+        for name in OrderedDict(self.model_cls.properties).keys():
             value = rep.get(name, None)
             if value != None:
                 d[name] = value

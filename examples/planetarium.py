@@ -59,7 +59,7 @@ class Sphere(DBModel):
         required("temperature", Float),
     ]
     links = [
-        optional_link("revolves_around", M('planetarium.Sphere'))
+        optional_link("revolves_around", 'planetarium.Sphere'),
     ]
     query_fields = [
         optional("name", String),
@@ -91,7 +91,7 @@ class Sphere(DBModel):
         return super(Sphere, cls).create(temperature=60, **rep)
 
 
-@planetarium.action(accepts=Representation(M('planetarium.Sphere')), returns=String)
+@planetarium.action(accepts=Representation('planetarium.Sphere'), returns=String)
 def hello(sphere):
     return "Hello, %s" % sphere[1]['name']
 

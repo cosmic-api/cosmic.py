@@ -395,6 +395,8 @@ class GetByIdEndpoint(Endpoint):
     request_must_be_empty = True
 
     def __init__(self, api, model_name, func=None):
+        self.model_name = model_name
+        self.full_model_name = "{}.{}".format(api.name, model_name)
         self.model_cls = api._models[model_name]
         self.func = func
         self.url = "/%s/<id>" % model_name
@@ -419,7 +421,7 @@ class GetByIdEndpoint(Endpoint):
         else:
             id = func_input['id']
             rep = func_output.value
-            body = json.dumps(Representation(self.model_cls).to_json((id, rep)))
+            body = json.dumps(Representation(self.full_model_name).to_json((id, rep)))
             return Response(body, 200, {"Content-Type": "application/json"})
 
     def parse_response(self, res):
@@ -427,7 +429,7 @@ class GetByIdEndpoint(Endpoint):
         if res['code'] == 404:
             raise NotFound
         if res['code'] == 200:
-            (id, rep) = Representation(self.model_cls).from_json(res['json'].datum)
+            (id, rep) = Representation(self.full_model_name).from_json(res['json'].datum)
             return rep
 
 
@@ -452,6 +454,8 @@ class UpdateEndpoint(Endpoint):
     request_can_be_empty = False
 
     def __init__(self, api, model_name, func=None):
+        self.model_name = model_name
+        self.full_model_name = "{}.{}".format(api.name, model_name)
         self.model_cls = api._models[model_name]
         self.func = func
         self.url = "/%s/<id>" % model_name
@@ -465,12 +469,12 @@ class UpdateEndpoint(Endpoint):
 
     def build_request(self, id, **patch):
         return super(UpdateEndpoint, self).build_request(
-            json=Box(Patch(self.model_cls).to_json((id, patch))),
+            json=Box(Patch(self.full_model_name).to_json((id, patch))),
             url_args={'id': id})
 
     def parse_request(self, req, **url_args):
         req = super(UpdateEndpoint, self).parse_request(req, **url_args)
-        id, rep = Patch(self.model_cls).from_json(req['json'].datum)
+        id, rep = Patch(self.full_model_name).from_json(req['json'].datum)
         rep['id'] = req['url_args']['id']
         return rep
 
@@ -480,13 +484,13 @@ class UpdateEndpoint(Endpoint):
         else:
             id = func_input['id']
             rep = func_output.value
-            body = json.dumps(Representation(self.model_cls).to_json((id, rep)))
+            body = json.dumps(Representation(self.full_model_name).to_json((id, rep)))
             return Response(body, 200, {"Content-Type": "application/json"})
 
     def parse_response(self, res):
         res = super(UpdateEndpoint, self).parse_response(res)
         if res['code'] == 200:
-            return Representation(self.model_cls).from_json(res['json'].datum)[1]
+            return Representation(self.full_model_name).from_json(res['json'].datum)[1]
         if res['code'] == 404:
             raise NotFound
 
@@ -512,6 +516,8 @@ class CreateEndpoint(Endpoint):
     request_can_be_empty = False
 
     def __init__(self, api, model_name, func=None):
+        self.model_name = model_name
+        self.full_model_name = "{}.{}".format(api.name, model_name)
         self.model_cls = api._models[model_name]
         self.func = func
         self.url = "/%s" % model_name
@@ -522,19 +528,19 @@ class CreateEndpoint(Endpoint):
 
     def build_request(self, **patch):
         return super(CreateEndpoint, self).build_request(
-            json=Box(Patch(self.model_cls).to_json((None, patch))))
+            json=Box(Patch(self.full_model_name).to_json((None, patch))))
 
     def parse_request(self, req, **url_args):
         req = super(CreateEndpoint, self).parse_request(req, **url_args)
-        id, rep = Patch(self.model_cls).from_json(req['json'].datum)
+        id, rep = Patch(self.full_model_name).from_json(req['json'].datum)
         return rep
 
     def parse_response(self, res):
         res = super(CreateEndpoint, self).parse_response(res)
-        return Representation(self.model_cls).from_json(res['json'].datum)
+        return Representation(self.full_model_name).from_json(res['json'].datum)
 
     def build_response(self, func_input, func_output):
-        body = json.dumps(Representation(self.model_cls).to_json(func_output))
+        body = json.dumps(Representation(self.full_model_name).to_json(func_output))
         href = "/%s/%s" % (self.model_cls.name, func_output[0])
         return Response(body, 201, {
             "Location": href,
@@ -558,6 +564,8 @@ class DeleteEndpoint(Endpoint):
     request_must_be_empty = True
 
     def __init__(self, api, model_name, func=None):
+        self.model_name = model_name
+        self.full_model_name = "{}.{}".format(api.name, model_name)
         self.model_cls = api._models[model_name]
         self.func = func
         self.url = "/%s/<id>" % model_name
@@ -630,6 +638,8 @@ class GetListEndpoint(Endpoint):
     request_must_be_empty = True
 
     def __init__(self, api, model_name, func=None):
+        self.model_name = model_name
+        self.full_model_name = "{}.{}".format(api.name, model_name)
         self.model_cls = api._models[model_name]
         self.func = func
         self.query_schema = None
@@ -652,7 +662,7 @@ class GetListEndpoint(Endpoint):
         j = res['json'].datum
         l = []
         for jrep in j["_embedded"][self.model_cls.name]:
-            l.append(Representation(self.model_cls).from_json(jrep))
+            l.append(Representation(self.full_model_name).from_json(jrep))
 
         if self.model_cls.list_metadata:
             meta = j.copy()
@@ -683,7 +693,7 @@ class GetListEndpoint(Endpoint):
 
         body["_embedded"][self.model_cls.name] = []
         for inst in l:
-            jrep = Representation(self.model_cls).to_json(inst)
+            jrep = Representation(self.full_model_name).to_json(inst)
             body["_embedded"][self.model_cls.name].append(jrep)
 
         return Response(json.dumps(body), 200, {"Content-Type": "application/json"})

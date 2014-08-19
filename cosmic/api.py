@@ -63,7 +63,7 @@ class APISpec(BasicWrapper):
     ])
 
 
-class API(BasicWrapper):
+class API(object):
     """An instance of this class represents a Cosmic API, whether it's your
     own API being served or a third-party API being consumed. In the former
     case, the API object is instantiated by the constructor and is bound to a
@@ -78,11 +78,8 @@ class API(BasicWrapper):
     :param homepage: If you like, the API spec may include a link to your
         homepage
     """
-    type_name = "cosmic.API"
 
-    schema = APISpec
-
-    def __init__(self, name, homepage=None):
+    def __init__(self, name=None, homepage=None):
         self.api_spec = {
             "name": name,
             "homepage": homepage,
@@ -93,7 +90,6 @@ class API(BasicWrapper):
 
         self.action_funcs = {}
         self.model_funcs = {}
-
 
         self._models = OrderedDict()
 
@@ -133,8 +129,15 @@ class API(BasicWrapper):
         return self.client_hook.call(endpoint_cls(*endpoint_args), *args,
                                      **kwargs)
 
+    def to_json(self):
+        return APISpec.to_json(self.api_spec)
+
+    @classmethod
+    def from_json(cls, datum):
+        return cls.assemble_from_spec(APISpec.from_json(datum))
+
     @staticmethod
-    def assemble(datum):
+    def assemble_from_spec(datum):
         from functools import partial
 
         api = API(name=datum["name"], homepage=datum.get("homepage", None))
@@ -174,10 +177,6 @@ class API(BasicWrapper):
             setattr(api.models, M.name, M)
 
         return api
-
-    @staticmethod
-    def disassemble(datum):
-        return datum.api_spec
 
     @staticmethod
     def load(url, verify=True):
