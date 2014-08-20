@@ -20,9 +20,6 @@ class BaseAPIClient(BaseAPI):
         super(BaseAPIClient, self).__init__(*args, **kwargs)
         self._generate_handler_objects()
 
-    def call_remote(self, endpoint_cls, endpoint_args, *args, **kwargs):
-        return self.call(endpoint_cls(*endpoint_args), *args, **kwargs)
-
     def call(self, endpoint, *args, **kwargs):
         req = self.build_request(endpoint, *args, **kwargs)
         res = self.make_request(endpoint, req)
@@ -48,15 +45,15 @@ class BaseAPIClient(BaseAPI):
 
         for name, action in spec["actions"].items():
             setattr(self.actions, name,
-                    partial(self.call_remote, ActionEndpoint, [spec, name]))
+                    partial(self.call, ActionEndpoint(spec, name)))
 
         for name, modeldef in spec["models"].items():
             m = Object()
-            m.create = partial(self.call_remote, CreateEndpoint, [spec, name])
-            m.update = partial(self.call_remote, UpdateEndpoint, [spec, name])
-            m.delete = partial(self.call_remote, DeleteEndpoint, [spec, name])
-            m.get_list = partial(self.call_remote, GetListEndpoint, [spec, name])
-            m.get_by_id = partial(self.call_remote, GetByIdEndpoint, [spec, name])
+            m.create = partial(self.call, CreateEndpoint(spec, name))
+            m.update = partial(self.call, UpdateEndpoint(spec, name))
+            m.delete = partial(self.call, DeleteEndpoint(spec, name))
+            m.get_list = partial(self.call, GetListEndpoint(spec, name))
+            m.get_by_id = partial(self.call, GetByIdEndpoint(spec, name))
 
             setattr(self.models, name, m)
 
