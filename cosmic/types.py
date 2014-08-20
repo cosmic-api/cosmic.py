@@ -126,7 +126,7 @@ class BaseRepresentation(ParametrizedWrapper):
     def model_spec(self):
         from .globals import cosmos
         api_name, model_name = self.param.split('.', 1)
-        return cosmos[api_name].api_spec['models'][model_name]
+        return cosmos[api_name].spec['models'][model_name]
 
     @property
     def schema(self):

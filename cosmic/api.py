@@ -17,14 +17,10 @@ class Object(object):
 class BaseAPI(object):
 
     def __init__(self, spec):
-        self.api_spec = spec
+        self.spec = spec
         self.models = Object()
         self.actions = Object()
-        cosmos[self.name] = self
-
-    @property
-    def name(self):
-        return self.api_spec['name']
+        cosmos[self.spec['name']] = self
 
 
 
@@ -51,10 +47,6 @@ class API(BaseAPI):
             "actions": OrderedDict(),
             "models": OrderedDict(),
         })
-
-    @property
-    def name(self):
-        return self.api_spec['name']
 
     def run(self, port=5000, **kwargs):
         """Simple way to run the API in development. Uses Werkzeug's
@@ -101,7 +93,7 @@ class API(BaseAPI):
                 assert_is_compatible(accepts, required_args, optional_args)
 
             doc = inspect.getdoc(func)
-            self.api_spec['actions'][name] = {
+            self.spec['actions'][name] = {
                 "accepts": accepts,
                 "returns": returns,
                 "doc": doc,
@@ -141,14 +133,14 @@ class API(BaseAPI):
             methods[method] = method in model_cls.methods
             setattr(m, method, getattr(model_cls, method))
 
-        self.api_spec['models'][unicode(name)] = {
+        self.spec['models'][unicode(name)] = {
             "properties": OrderedDict(model_cls.properties),
             "links": OrderedDict(model_cls.links),
             "query_fields": OrderedDict(model_cls.query_fields),
             "list_metadata": OrderedDict(model_cls.list_metadata),
             "methods": methods,
         }
-        APISpec.assemble(self.api_spec)
+        APISpec.assemble(self.spec)
         setattr(self.models, name, m)
 
         return model_cls

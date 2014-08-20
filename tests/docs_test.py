@@ -18,7 +18,7 @@ class TestGuideWhatIsAPI(TestCase):
 
     def test_to_json(self):
         with cosmos.scope(self.cosmos):
-            self.assertEqual(APISpec.to_json(self.mathy.api_spec), {
+            self.assertEqual(APISpec.to_json(self.mathy.spec), {
                 u'name': 'trivia',
                 u'homepage': 'http://example.com',
                 u'actions': {u'map': {}, u'order': []},
@@ -45,7 +45,7 @@ class TestGuideModels(TestCase):
     def test_to_json(self):
         places = self.places
         with cosmos.scope(self.cosmos):
-            self.assertEqual(APISpec.to_json(places.api_spec), {
+            self.assertEqual(APISpec.to_json(places.spec), {
                 u'name': u'places',
                 u'actions': {u'map': {}, u'order': []},
                 u"models": {

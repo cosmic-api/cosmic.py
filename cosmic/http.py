@@ -35,22 +35,22 @@ class Server(object):
             return error_response("Not Found", 404)
 
         if endpoint_name == 'spec':
-            body = json.dumps(APISpec.to_json(self.api.api_spec))
+            body = json.dumps(APISpec.to_json(self.api.spec))
             return Response(body, 200, {"Content-Type": "application/json"})
 
         if endpoint_name == 'action':
             action_name = values.pop('action')
-            if action_name not in self.api.api_spec['actions'].keys():
+            if action_name not in self.api.spec['actions'].keys():
                 return error_response("Not Found", 404)
             endpoint = ActionEndpoint(
-                self.api.api_spec,
+                self.api.spec,
                 action_name,
                 getattr(self.api.actions, action_name))
         else:
             model_name = values.pop('model')
-            if model_name not in self.api.api_spec['models'].keys():
+            if model_name not in self.api.spec['models'].keys():
                 return error_response("Not Found", 404)
-            model_spec = self.api.api_spec['models'][model_name]
+            model_spec = self.api.spec['models'][model_name]
             if not model_spec['methods'][endpoint_name]:
                 return error_response("Method Not Allowed", 405)
             model_obj = getattr(self.api.models, model_name)
@@ -62,7 +62,7 @@ class Server(object):
                 'get_list': GetListEndpoint,
             }
             args = {
-                "api_spec": self.api.api_spec,
+                "api_spec": self.api.spec,
                 "model_name": model_name,
                 "func": getattr(model_obj, endpoint_name),
             }

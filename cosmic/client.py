@@ -41,7 +41,7 @@ class BaseAPIClient(BaseAPI):
     def _generate_handler_objects(self):
         from functools import partial
 
-        spec = self.api_spec
+        spec = self.spec
 
         for name, action in spec["actions"].items():
             setattr(self.actions, name,

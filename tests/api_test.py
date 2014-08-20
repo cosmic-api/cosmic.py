@@ -212,7 +212,7 @@ class TestAPI(TestCase):
             self.cookbook.models.Recipe.validate_patch(rep)
 
     def test_serialize(self):
-        self.assertEqual(APISpec.to_json(self.cookbook.api_spec), cookbook_spec)
+        self.assertEqual(APISpec.to_json(self.cookbook.spec), cookbook_spec)
 
     def test_call_action_with_args(self):
         self.assertEqual(self.cookbook.actions.cabbage(spicy=False), "sauerkraut")
@@ -244,5 +244,5 @@ class TestAPI(TestCase):
         self.assertEqual(res.data, '')
 
     def test_schema(self):
-        APISpec.from_json(APISpec.to_json(self.cookbook.api_spec))
+        APISpec.from_json(APISpec.to_json(self.cookbook.spec))
 
