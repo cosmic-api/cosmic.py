@@ -148,6 +148,21 @@ class Endpoint(object):
 
     query_schema = None
 
+    acceptable_exceptions = []
+
+
+    def handler(self, *args, **kwargs):
+        if not self.acceptable_exceptions:
+            return self.func(*args, **kwargs)
+
+        try:
+            return Either(value=self.func(*args, **kwargs))
+        except Exception as e:
+            for exc_class in self.acceptable_exceptions:
+                if isinstance(e, exc_class):
+                    return Either(exception=e)
+            raise e
+
     def parse_request(self, request, **url_args):
         req = {
             'url_args': url_args,
@@ -254,9 +269,6 @@ class ActionEndpoint(Endpoint):
         self.returns = self.action_spec['returns']
         self.url = "/actions/%s" % action_name
 
-    def handler(self, *args, **kwargs):
-        return self.func(*args, **kwargs)
-
     def build_request(self, *args, **kwargs):
         packed = args_to_datum(*args, **kwargs)
         data = serialize_json(self.accepts, packed)
@@ -306,18 +318,13 @@ class GetByIdEndpoint(Endpoint):
     acceptable_response_codes = [404, 200]
     response_can_be_empty = True
     request_must_be_empty = True
+    acceptable_exceptions = [NotFound]
 
     def __init__(self, api_spec, model_name, func=None):
         self.model_name = model_name
         self.full_model_name = "{}.{}".format(api_spec['name'], model_name)
         self.func = func
         self.url = "/%s/<id>" % model_name
-
-    def handler(self, id):
-        try:
-            return Either(value=self.func(id))
-        except NotFound as e:
-            return Either(exception=e)
 
     def build_request(self, id):
         return super(GetByIdEndpoint, self).build_request(
@@ -362,18 +369,13 @@ class UpdateEndpoint(Endpoint):
     acceptable_response_codes = [200, 404]
     response_can_be_empty = False
     request_can_be_empty = False
+    acceptable_exceptions = [NotFound]
 
     def __init__(self, api_spec, model_name, func=None):
         self.model_name = model_name
         self.full_model_name = "{}.{}".format(api_spec['name'], model_name)
         self.func = func
         self.url = "/%s/<id>" % model_name
-
-    def handler(self, id, **patch):
-        try:
-            return Either(value=self.func(id, **patch))
-        except NotFound as e:
-            return Either(exception=e)
 
     def build_request(self, id, **patch):
         return super(UpdateEndpoint, self).build_request(
@@ -427,9 +429,6 @@ class CreateEndpoint(Endpoint):
         self.func = func
         self.url = "/%s" % model_name
 
-    def handler(self, **patch):
-        return self.func(**patch)
-
     def build_request(self, **patch):
         return super(CreateEndpoint, self).build_request(
             data=Box(Patch(self.full_model_name).to_json((None, patch))))
@@ -466,18 +465,13 @@ class DeleteEndpoint(Endpoint):
     acceptable_response_codes = [204, 404]
     response_must_be_empty = True
     request_must_be_empty = True
+    acceptable_exceptions = [NotFound]
 
     def __init__(self, api_spec, model_name, func=None):
         self.model_name = model_name
         self.full_model_name = "{}.{}".format(api_spec['name'], model_name)
         self.func = func
         self.url = "/%s/<id>" % model_name
-
-    def handler(self, id):
-        try:
-            return Either(value=self.func(id))
-        except NotFound as e:
-            return Either(exception=e)
 
     def build_request(self, id):
         return super(DeleteEndpoint, self).build_request(
@@ -549,9 +543,6 @@ class GetListEndpoint(Endpoint):
         if self.model_spec['query_fields']:
             self.query_schema = URLParams(self.model_spec['query_fields'])
         self.url = "/%s" % model_name
-
-    def handler(self, **query):
-        return self.func(**query)
 
     def build_request(self, **query):
         return super(GetListEndpoint, self).build_request(query=query)
