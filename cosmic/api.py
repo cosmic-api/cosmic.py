@@ -3,14 +3,9 @@ import json
 import inspect
 from collections import OrderedDict
 
-import requests
-from teleport import BasicWrapper
-
 from .tools import get_args, assert_is_compatible, \
     validate_underscore_identifier
 from .types import *
-from .http import ClientHook, CreateEndpoint, DeleteEndpoint, \
-    GetByIdEndpoint, GetListEndpoint, UpdateEndpoint, ActionEndpoint
 from .globals import cosmos
 from . import MODEL_METHODS
 
@@ -19,68 +14,21 @@ class Object(object):
     pass
 
 
-class APISpec(BasicWrapper):
-    type_name = "cosmic.APISpec"
+class BaseAPI(object):
 
-    schema = Struct([
-        required("name", String),
-        optional("homepage", String),
-        required("actions", OrderedMap(Struct([
-            optional("accepts", Schema),
-            optional("returns", Schema),
-            optional("doc", String)
-        ]))),
-        required("models", OrderedMap(Struct([
-            required("properties", OrderedMap(Struct([
-                required(u"schema", Schema),
-                required(u"required", Boolean),
-                optional(u"doc", String)
-            ]))),
-            required("links", OrderedMap(Struct([
-                required(u"model", Model),
-                required(u"required", Boolean),
-                optional(u"doc", String)
-            ]))),
-            required("query_fields", OrderedMap(Struct([
-                required(u"schema", Schema),
-                required(u"required", Boolean),
-                optional(u"doc", String)
-            ]))),
-            required("methods", Struct([
-                required("get_by_id", Boolean),
-                required("get_list", Boolean),
-                required("create", Boolean),
-                required("update", Boolean),
-                required("delete", Boolean),
-                ])),
-            required("list_metadata", OrderedMap(Struct([
-                required(u"schema", Schema),
-                required(u"required", Boolean),
-                optional(u"doc", String)
-            ])))
-        ])))
-    ])
+    def __init__(self, spec):
+        self.api_spec = spec
+        self.models = Object()
+        self.actions = Object()
+        cosmos[self.name] = self
 
-    @classmethod
-    def assemble(cls, datum):
+    @property
+    def name(self):
+        return self.api_spec['name']
 
-        for model_name, model_spec in datum['models'].items():
-            link_names = set(model_spec['links'].keys())
-            field_names = set(model_spec['properties'].keys())
 
-            if link_names & field_names:
-                raise ValidationError(
-                    "Model cannot contain a field and link with the same name: {}".format(model_name))
 
-            for name in link_names | field_names:
-                validate_underscore_identifier(name)
-
-            if 'id' in link_names | field_names:
-                raise ValidationError("'id' is a reserved name.")
-
-        return datum
-
-class API(object):
+class API(BaseAPI):
     """An instance of this class represents a Cosmic API, whether it's your
     own API being served or a third-party API being consumed. In the former
     case, the API object is instantiated by the constructor and is bound to a
@@ -96,35 +44,17 @@ class API(object):
         homepage
     """
 
-    def __init__(self, name=None, homepage=None):
-        self.api_spec = {
+    def __init__(self, name, homepage=None):
+        super(API, self).__init__({
             "name": name,
             "homepage": homepage,
             "actions": OrderedDict(),
             "models": OrderedDict(),
-        }
-        self.client_hook = ClientHook()
-
-        self.models = Object()
-        self.actions = Object()
-
-        cosmos[self.name] = self
+        })
 
     @property
     def name(self):
         return self.api_spec['name']
-
-    @name.setter
-    def name(self, name):
-        self.api_spec['name'] = name
-
-    @property
-    def homepage(self):
-        return self.api_spec['homepage']
-
-    @homepage.setter
-    def homepage(self, name):
-        self.api_spec['homepage'] = name
 
     def run(self, port=5000, **kwargs):
         """Simple way to run the API in development. Uses Werkzeug's
@@ -137,59 +67,6 @@ class API(object):
         server = Server(self)
         run_simple('127.0.0.1', port, server.wsgi_app, **kwargs)
 
-    def call_remote(self, endpoint_cls, endpoint_args, *args, **kwargs):
-        return self.client_hook.call(endpoint_cls(*endpoint_args), *args,
-                                     **kwargs)
-
-    def to_json(self):
-        return APISpec.to_json(self.api_spec)
-
-    @classmethod
-    def from_json(cls, datum):
-        return cls.assemble_from_spec(APISpec.from_json(datum))
-
-    @staticmethod
-    def assemble_from_spec(spec):
-        from functools import partial
-
-        api = API(name=spec["name"])
-        api.api_spec = spec
-
-        for name, action in spec["actions"].items():
-            setattr(api.actions, name,
-                    partial(api.call_remote, ActionEndpoint, [spec, name]))
-
-        for name, modeldef in spec["models"].items():
-            m = Object()
-            m.create = partial(api.call_remote, CreateEndpoint, [spec, name])
-            m.update = partial(api.call_remote, UpdateEndpoint, [spec, name])
-            m.delete = partial(api.call_remote, DeleteEndpoint, [spec, name])
-            m.get_list = partial(api.call_remote, GetListEndpoint, [spec, name])
-            m.get_by_id = partial(api.call_remote, GetByIdEndpoint, [spec, name])
-
-            setattr(api.models, name, m)
-
-        return api
-
-    @staticmethod
-    def load(url, verify=True):
-        """Given a URL to a Cosmic API, fetch the API spec and build an API
-        client:
-
-        .. code:: python
-
-            >>> planetarium = API.load("http://localhost:5000/spec.json") # doctest: +SKIP
-            >>> planetarium.models.Sphere.get_by_id("0") # doctest: +SKIP
-            {"name": "Earth"}
-
-        :param url: The API spec url, including ``/spec.json``
-        :rtype: :class:`API` instance
-        """
-        res = requests.get(url, verify=verify)
-        api = API.from_json(res.json())
-        # Set the API url to be the spec URL, minus the /spec.json
-        api.client_hook.base_url = url[:-10]
-        return api
 
     def action(self, accepts=None, returns=None):
         """A decorator for creating actions out of functions and registering

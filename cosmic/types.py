@@ -4,19 +4,18 @@ from collections import OrderedDict
 from werkzeug.urls import url_decode, url_encode
 from werkzeug.datastructures import MultiDict
 from werkzeug.datastructures import Headers as WerkzeugHeaders
-from teleport import standard_types, ParametrizedWrapper, BasicWrapper, required, optional, Box, ValidationError
+from teleport import standard_types, ParametrizedWrapper, BasicWrapper, \
+    required, optional, Box, ValidationError
 
 
 __all__ = ['Integer', 'Float', 'Boolean', 'String', 'Binary', 'DateTime',
            'JSON', 'Array', 'Map', 'OrderedMap', 'Struct', 'Schema', 'Model',
-           'Link', 'Representation', 'Patch', 'URLParams', 'Headers', 'Box',
-           'required', 'optional', 'required_link', 'optional_link',
-           'ValidationError']
+           'Link', 'Representation', 'Patch', 'APISpec', 'URLParams',
+           'Headers', 'Box', 'required', 'optional', 'required_link',
+           'optional_link', 'ValidationError']
 
 
 def getter(name):
-    from .api import APISpec
-
     if name == "cosmic.APISpec":
         return APISpec
     elif name == "cosmic.Model":
@@ -47,11 +46,11 @@ globals().update(standard_types(getter))
 
 
 def required_link(name, model, doc=None):
-    return (name, {"model": model, "required": True, "doc": doc})
+    return name, {"model": model, "required": True, "doc": doc}
 
 
 def optional_link(name, model, doc=None):
-    return (name, {"model": model, "required": False, "doc": doc})
+    return name, {"model": model, "required": False, "doc": doc}
 
 
 class Model(BasicWrapper):
@@ -317,3 +316,68 @@ class Headers(BasicWrapper):
                 "value": value
             })
         return headers
+
+
+class APISpec(BasicWrapper):
+    type_name = "cosmic.APISpec"
+
+    schema = Struct([
+        required("name", String),
+        optional("homepage", String),
+        required("actions", OrderedMap(Struct([
+            optional("accepts", Schema),
+            optional("returns", Schema),
+            optional("doc", String)
+        ]))),
+        required("models", OrderedMap(Struct([
+            required("properties", OrderedMap(Struct([
+                required(u"schema", Schema),
+                required(u"required", Boolean),
+                optional(u"doc", String)
+            ]))),
+            required("links", OrderedMap(Struct([
+                required(u"model", Model),
+                required(u"required", Boolean),
+                optional(u"doc", String)
+            ]))),
+            required("query_fields", OrderedMap(Struct([
+                required(u"schema", Schema),
+                required(u"required", Boolean),
+                optional(u"doc", String)
+            ]))),
+            required("methods", Struct([
+                required("get_by_id", Boolean),
+                required("get_list", Boolean),
+                required("create", Boolean),
+                required("update", Boolean),
+                required("delete", Boolean),
+                ])),
+            required("list_metadata", OrderedMap(Struct([
+                required(u"schema", Schema),
+                required(u"required", Boolean),
+                optional(u"doc", String)
+            ])))
+        ])))
+    ])
+
+    @classmethod
+    def assemble(cls, datum):
+        from .tools import validate_underscore_identifier
+
+        for model_name, model_spec in datum['models'].items():
+            link_names = set(model_spec['links'].keys())
+            field_names = set(model_spec['properties'].keys())
+
+            if link_names & field_names:
+                raise ValidationError(
+                    "Model cannot contain a field and link with the same name: {}".format(model_name))
+
+            for name in link_names | field_names:
+                validate_underscore_identifier(name)
+
+            if 'id' in link_names | field_names:
+                raise ValidationError("'id' is a reserved name.")
+
+        return datum
+
+

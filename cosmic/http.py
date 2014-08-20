@@ -1,13 +1,10 @@
-import copy
 import json
 
 import requests
-from requests.structures import CaseInsensitiveDict
 from werkzeug.exceptions import NotFound as WerkzeugNotFound
 from werkzeug.wrappers import Request, Response
 from werkzeug.routing import Rule
 from werkzeug.routing import Map as RuleMap
-from werkzeug.test import Client as WerkzeugTestClient
 
 from .types import *
 from .tools import get_args, string_to_json, args_to_datum, deserialize_json, \
@@ -31,8 +28,6 @@ class Server(object):
         self.debug = debug
 
     def dispatch_request(self, request):
-        from .api import API
-
         adapter = self.url_map.bind_to_environ(request.environ)
         try:
             endpoint_name, values = adapter.match()
@@ -40,7 +35,7 @@ class Server(object):
             return error_response("Not Found", 404)
 
         if endpoint_name == 'spec':
-            body = json.dumps(API.to_json(self.api))
+            body = json.dumps(APISpec.to_json(self.api.api_spec))
             return Response(body, 200, {"Content-Type": "application/json"})
 
         if endpoint_name == 'action':
@@ -110,84 +105,7 @@ class Server(object):
                                        func_output=func_output)
 
 
-class BaseClientHook(object):
-    def call(self, endpoint, *args, **kwargs):
-        req = self.build_request(endpoint, *args, **kwargs)
-        res = self.make_request(endpoint, req)
-        return self.parse_response(endpoint, res)
 
-    def build_request(self, endpoint, *args, **kwargs):
-        return endpoint.build_request(*args, **kwargs)
-
-    def parse_response(self, endpoint, res):
-        return endpoint.parse_response(res)
-
-
-class ClientHook(BaseClientHook):
-    def __init__(self, base_url=None, verify=True):
-        self.base_url = base_url
-        self.verify = verify
-        self.session = requests.sessions.Session()
-
-    def make_request(self, endpoint, request):
-        request.url = self.base_url + request.url
-        prepared = self.session.prepare_request(request)
-        return self.session.send(prepared,
-                                 stream=False,
-                                 timeout=None,
-                                 verify=self.verify,
-                                 cert=None,
-                                 proxies={},
-                                 allow_redirects=True)
-
-
-class ClientHookLoggingMixin(BaseClientHook):
-    def __init__(self, *args, **kwargs):
-        self.log = []
-        self.__last_request = None
-        super(ClientHookLoggingMixin, self).__init__(*args, **kwargs)
-
-    def build_request(self, endpoint, *args, **kwargs):
-        request = super(ClientHookLoggingMixin, self).build_request(endpoint, *args, **kwargs)
-        self.__last_request = {
-            "method": request.method,
-            "data": request.data,
-            "headers": copy.deepcopy(request.headers),
-            "url": request.url,
-        }
-        return request
-
-    def parse_response(self, endpoint, res):
-        saved_resp = {
-            "data": res.text,
-            "headers": res.headers,
-            "status_code": res.status_code
-        }
-        self.log.append((self.__last_request, saved_resp))
-        return super(ClientHookLoggingMixin, self).parse_response(endpoint, res)
-
-
-class WsgiClientHook(BaseClientHook):
-    def __init__(self, wsgi_app):
-        self.client = WerkzeugTestClient(wsgi_app, response_wrapper=Response)
-
-    def make_request(self, endpoint, request):
-        kwargs = {
-            "method": request.method,
-            "data": request.data,
-            "headers": request.headers
-        }
-        # Content-Type should be provided as kwarg because otherwise we can't
-        # access request.mimetype
-        if 'Content-Type' in request.headers:
-            kwargs['content_type'] = request.headers.pop('Content-Type')
-        r = self.client.open(path=request.url, **kwargs)
-        resp = requests.Response()
-        resp._content = r.data
-        resp.headers = CaseInsensitiveDict(r.headers)
-        resp.status_code = r.status_code
-
-        return resp
 
 
 def error_response(message, code):

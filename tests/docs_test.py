@@ -1,10 +1,10 @@
 from unittest2 import TestCase
-from mock import patch
 
 from cosmic.models import BaseModel
 from cosmic.globals import cosmos
 from cosmic.http import *
 from cosmic.api import API
+from cosmic.client import WsgiAPIClient
 from cosmic.types import *
 
 
@@ -18,7 +18,7 @@ class TestGuideWhatIsAPI(TestCase):
 
     def test_to_json(self):
         with cosmos.scope(self.cosmos):
-            self.assertEqual(API.to_json(self.mathy), {
+            self.assertEqual(APISpec.to_json(self.mathy.api_spec), {
                 u'name': 'trivia',
                 u'homepage': 'http://example.com',
                 u'actions': {u'map': {}, u'order': []},
@@ -45,7 +45,7 @@ class TestGuideModels(TestCase):
     def test_to_json(self):
         places = self.places
         with cosmos.scope(self.cosmos):
-            self.assertEqual(API.to_json(places), {
+            self.assertEqual(APISpec.to_json(places.api_spec), {
                 u'name': u'places',
                 u'actions': {u'map': {}, u'order': []},
                 u"models": {
@@ -121,11 +121,11 @@ class TestGuideModelLinks(TestCase):
 
         self.cosmos2 = {}
         with cosmos.scope(self.cosmos2):
-            with patch.object(requests, 'get') as mock_get:
-                mock_get.return_value.json = lambda: API.to_json(places)
-                mock_get.return_value.status_code = 200
-                self.remote_places = API.load('http://example.com/spec.json')
-                self.remote_places.client_hook = WsgiClientHook(TestClient(Server(places).wsgi_app))
+
+            class PlacesClient(WsgiAPIClient):
+                wsgi_app = Server(places).wsgi_app
+
+            self.remote_places = PlacesClient()
 
     def remote_create_models(self):
         with cosmos.scope(self.cosmos2):
@@ -201,11 +201,11 @@ class TestGuideSave(TestCase):
 
         self.cosmos2 = {}
         with cosmos.scope(self.cosmos2):
-            with patch.object(requests, 'get') as mock_get:
-                mock_get.return_value.json = lambda: API.to_json(places)
-                mock_get.return_value.status_code = 200
-                self.remote_places = API.load('http://example.com/spec.json')
-                self.remote_places.client_hook = WsgiClientHook(Server(places).wsgi_app)
+
+            class PlacesClient(WsgiAPIClient):
+                wsgi_app = Server(places).wsgi_app
+
+            self.remote_places = PlacesClient()
 
         cities = {
             "0": {"name": "Toronto"},
@@ -340,11 +340,11 @@ class TestGuideAction(TestCase):
 
         self.cosmos2 = {}
         with cosmos.scope(self.cosmos2):
-            with patch.object(requests, 'get') as mock_get:
-                mock_get.return_value.json = lambda: API.to_json(mathy)
-                mock_get.return_value.status_code = 200
-                self.remote_mathy = API.load('http://example.com/spec.json')
-                self.remote_mathy.client_hook = WsgiClientHook(Server(mathy).wsgi_app)
+
+            class MathyClient(WsgiAPIClient):
+                wsgi_app = Server(mathy).wsgi_app
+
+            self.remote_mathy = MathyClient()
 
     def test_call_as_function(self):
         self.assertEqual(self.add([1, 2, 3]), 6)

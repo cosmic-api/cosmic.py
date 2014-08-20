@@ -8,7 +8,7 @@ from werkzeug.wrappers import Response
 from werkzeug.test import Client as TestClient
 
 from cosmic.models import M
-from cosmic.http import WsgiClientHook, ClientHookLoggingMixin
+from cosmic.client import WsgiAPIClient, ClientLoggingMixin
 from cosmic.globals import cosmos
 from cosmic.exceptions import *
 from planetarium import *
@@ -101,20 +101,16 @@ class TestPlanitarium(TestCase):
             self.d = TestClient(app, response_wrapper=Response)
 
         with cosmos.scope(self.cosmos2):
-            with patch.object(requests, 'get') as mock_get:
-                mock_get.return_value.json = lambda: json_spec
-                mock_get.return_value.status_code = 200
-
-                self.remote_planetarium = API.load('http://example.com/spec.json')
 
             class Retry(Exception):
                 pass
 
-            class Hook(ClientHookLoggingMixin, WsgiClientHook):
+            class PlanetariumClient(ClientLoggingMixin, WsgiAPIClient):
                 token = None
+                wsgi_app = app
 
                 def build_request(self, endpoint, *args, **kwargs):
-                    request = super(Hook, self).build_request(endpoint, *args, **kwargs)
+                    request = super(PlanetariumClient, self).build_request(endpoint, *args, **kwargs)
                     if self.token is not None:
                         request.headers["X-Danish"] = self.token
                     return request
@@ -122,19 +118,18 @@ class TestPlanitarium(TestCase):
                 def parse_response(self, endpoint, res):
                     if res.status_code == 401:
                         raise Retry()
-                    return super(Hook, self).parse_response(endpoint, res)
+                    return super(PlanetariumClient, self).parse_response(endpoint, res)
 
                 def call(self, endpoint, *args, **kwargs):
                     while True:
                         try:
-                            return super(Hook, self).call(endpoint, *args, **kwargs)
+                            return super(PlanetariumClient, self).call(endpoint, *args, **kwargs)
                         except Retry:
                             # Find token, e.g. through OAuth
                             self.token = "poppyseed"
                             continue
 
-            # Use the local API's HTTP client to simulate the remote API's calls
-            self.remote_planetarium.client_hook = Hook(app)
+            self.remote_planetarium = PlanetariumClient()
 
     def test_spec_endpoint(self):
         with cosmos.scope(self.cosmos1):
@@ -171,7 +166,7 @@ class TestPlanitarium(TestCase):
         with cosmos.scope(self.cosmos2):
             self._test_get_by_id()
 
-            (req, res) = self.remote_planetarium.client_hook.log.pop()
+            (req, res) = self.remote_planetarium.log.pop()
 
             self.assertEqual(req["method"], "GET")
             self.assertEqual(req["url"], "/Sphere/0")
@@ -187,7 +182,7 @@ class TestPlanitarium(TestCase):
                 },
             })
 
-            (req, res) = self.remote_planetarium.client_hook.log.pop()
+            (req, res) = self.remote_planetarium.log.pop()
 
             self.assertEqual(req["method"], "GET")
             self.assertEqual(req["url"], "/Sphere/100")
@@ -213,7 +208,7 @@ class TestPlanitarium(TestCase):
         with cosmos.scope(self.cosmos2):
             self._test_get_list()
 
-            (req, res) = self.remote_planetarium.client_hook.log.pop()
+            (req, res) = self.remote_planetarium.log.pop()
 
             self.assertEqual(req["method"], "GET")
             self.assertEqual(req["url"], "/Sphere")
@@ -253,7 +248,7 @@ class TestPlanitarium(TestCase):
             })
             self.assertEqual(res["headers"]["Content-Type"], "application/json")
 
-            (req, res) = self.remote_planetarium.client_hook.log.pop()
+            (req, res) = self.remote_planetarium.log.pop()
 
             url = "/Sphere?name=Sun"
             self.assertEqual(req["method"], "GET")
@@ -303,7 +298,7 @@ class TestPlanitarium(TestCase):
         with cosmos.scope(self.cosmos2):
             self._test_save_property()
 
-            (req, res) = self.remote_planetarium.client_hook.log.pop()
+            (req, res) = self.remote_planetarium.log.pop()
 
             patch = {
                 u'_links': {
@@ -358,7 +353,7 @@ class TestPlanitarium(TestCase):
         with cosmos.scope(self.cosmos2):
             self._test_save_link()
 
-            (req, res) = self.remote_planetarium.client_hook.log.pop()
+            (req, res) = self.remote_planetarium.log.pop()
 
             patch = {
                 u'_links': {
@@ -435,7 +430,7 @@ class TestPlanitarium(TestCase):
         with cosmos.scope(self.cosmos2):
             self._test_delete()
 
-            (req, res) = self.remote_planetarium.client_hook.log.pop()
+            (req, res) = self.remote_planetarium.log.pop()
 
             self.assertEqual(req["method"], "DELETE")
             self.assertEqual(req["url"], "/Sphere/1")
