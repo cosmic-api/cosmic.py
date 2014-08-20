@@ -12,7 +12,7 @@ from .api import BaseAPI, Object
 from .types import *
 from .globals import cosmos
 from .http import CreateEndpoint, DeleteEndpoint, GetByIdEndpoint, \
-    GetListEndpoint, UpdateEndpoint, ActionEndpoint
+    GetListEndpoint, UpdateEndpoint, ActionEndpoint, SpecEndpoint
 
 
 class BaseAPIClient(BaseAPI):
@@ -62,7 +62,8 @@ class APIClient(BaseAPIClient):
 
     def __init__(self, *args, **kwargs):
         self.session = Session()
-        super(APIClient, self).__init__(*args, **kwargs)
+        spec = self.call(SpecEndpoint())
+        super(APIClient, self).__init__(*args, spec=spec, **kwargs)
 
     def make_request(self, endpoint, request):
         request.url = self.base_url + request.url
@@ -82,7 +83,7 @@ class WsgiAPIClient(BaseAPIClient):
 
     def __init__(self, *args, **kwargs):
         self.client = WerkzeugTestClient(self.wsgi_app, response_wrapper=Response)
-        spec = APISpec.from_json(json.loads(self.client.get('/spec.json').data))
+        spec = self.call(SpecEndpoint())
         super(WsgiAPIClient, self).__init__(*args, spec=spec, **kwargs)
 
     def make_request(self, endpoint, request):

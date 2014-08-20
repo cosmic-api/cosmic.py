@@ -35,10 +35,9 @@ class Server(object):
             return error_response("Not Found", 404)
 
         if endpoint_name == 'spec':
-            body = json.dumps(APISpec.to_json(self.api.spec))
-            return Response(body, 200, {"Content-Type": "application/json"})
+            endpoint = SpecEndpoint(self.api.spec)
 
-        if endpoint_name == 'action':
+        elif endpoint_name == 'action':
             action_name = values.pop('action')
             if action_name not in self.api.spec['actions'].keys():
                 return error_response("Not Found", 404)
@@ -240,6 +239,43 @@ class Endpoint(object):
             raise RemoteHTTPError(code=r['code'], message=message)
 
         return r
+
+
+class SpecEndpoint(Endpoint):
+    """
+    :Request:
+        :Method: ``GET``
+        :URL: ``/spec.json``
+
+    :Response:
+        :Code: ``200``
+        :Body: The API spec as a JSON-encoded string.
+        :ContentType: ``application/json``
+
+    """
+    method = "GET"
+    acceptable_response_codes = [200]
+
+    def __init__(self, api_spec=None):
+        self.url = '/spec.json'
+        self.api_spec = api_spec
+
+    def parse_request(self, req, **url_args):
+        return {}
+
+    def build_request(self, *args, **kwargs):
+        return super(SpecEndpoint, self).build_request()
+
+    def handler(self):
+        return self.api_spec
+
+    def parse_response(self, res):
+        res = super(SpecEndpoint, self).parse_response(res)
+        return APISpec.from_json(res['json'].datum)
+
+    def build_response(self, func_input, func_output):
+        body = json.dumps(APISpec.to_json(func_output))
+        return Response(body, 200, {"Content-Type": "application/json"})
 
 
 class ActionEndpoint(Endpoint):

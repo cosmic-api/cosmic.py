@@ -2,7 +2,6 @@ import copy
 import json
 
 import requests
-from mock import patch
 from unittest2 import TestCase
 from werkzeug.wrappers import Response
 from werkzeug.test import Client as TestClient
@@ -133,7 +132,7 @@ class TestPlanitarium(TestCase):
 
     def test_spec_endpoint(self):
         with cosmos.scope(self.cosmos1):
-            res = self.d.get('/spec.json')
+            res = self.d.get('/spec.json', headers={'X-Danish': 'poppyseed'})
             self.assertEqual(json.loads(res.data), json_spec)
 
     def test_local_call_action(self):

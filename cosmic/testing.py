@@ -1,6 +1,9 @@
+from multiprocessing import Process
+from contextlib import contextmanager
+
 from .models import BaseModel
 from .exceptions import NotFound
-from .globals import SafeGlobal
+from .globals import SafeGlobal, cosmos
 
 
 db = SafeGlobal()
@@ -47,3 +50,16 @@ class DBModel(BaseModel):
             raise NotFound
         del db[cls.table_name][id]
 
+
+@contextmanager
+def served_api(api, port):
+    p = Process(target=api.run, args=(port,))
+    p.start()
+
+    try:
+        with cosmos.scope({}):
+            yield
+    except Exception as e:
+        raise e
+    finally:
+        p.terminate()

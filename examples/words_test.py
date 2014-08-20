@@ -1,9 +1,13 @@
 from unittest2 import TestCase
+
 from werkzeug.wrappers import Response
 from werkzeug.test import Client as TestClient
 
 from cosmic.http import Server
 from cosmic.globals import cosmos
+from cosmic.client import APIClient
+from cosmic.testing import served_api
+from cosmic.types import *
 from words import words
 
 
@@ -24,3 +28,14 @@ class TestWords(TestCase):
     def tearDown(self):
         cosmos.stack.pop()
 
+
+class TestWordsSystem(TestCase):
+
+    def system_test(self):
+        with served_api(words, 5000):
+
+            class WordsClient(APIClient):
+                base_url = 'http://127.0.0.1:5000'
+
+            c = WordsClient()
+            self.assertEqual(APISpec.to_json(c.spec), APISpec.to_json(words.spec))
