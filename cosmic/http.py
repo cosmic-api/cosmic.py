@@ -66,8 +66,6 @@ class Server(object):
                 "model_name": model_name,
                 "func": getattr(model_obj, endpoint_name),
             }
-            if endpoint_name in ['create', 'update']:
-                args['patch_validator'] = getattr(model_obj, 'validate_patch')
             endpoint = endpoints[endpoint_name](**args)
 
         try:
@@ -365,15 +363,13 @@ class UpdateEndpoint(Endpoint):
     response_can_be_empty = False
     request_can_be_empty = False
 
-    def __init__(self, api_spec, model_name, func=None, patch_validator=None):
+    def __init__(self, api_spec, model_name, func=None):
         self.model_name = model_name
-        self.patch_validator = patch_validator
         self.full_model_name = "{}.{}".format(api_spec['name'], model_name)
         self.func = func
         self.url = "/%s/<id>" % model_name
 
     def handler(self, id, **patch):
-        self.patch_validator(patch)
         try:
             return Either(value=self.func(id, **patch))
         except NotFound as e:
@@ -425,15 +421,13 @@ class CreateEndpoint(Endpoint):
     response_can_be_empty = False
     request_can_be_empty = False
 
-    def __init__(self, api_spec, model_name, func=None, patch_validator=None):
+    def __init__(self, api_spec, model_name, func=None):
         self.model_name = model_name
-        self.patch_validator = patch_validator
         self.full_model_name = "{}.{}".format(api_spec['name'], model_name)
         self.func = func
         self.url = "/%s" % model_name
 
     def handler(self, **patch):
-        self.patch_validator(patch)
         return self.func(**patch)
 
     def build_request(self, **patch):

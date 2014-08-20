@@ -10,6 +10,7 @@ from werkzeug.wrappers import Response
 
 from .api import BaseAPI, Object
 from .types import *
+from .globals import cosmos
 from .http import CreateEndpoint, DeleteEndpoint, GetByIdEndpoint, \
     GetListEndpoint, UpdateEndpoint, ActionEndpoint
 
@@ -50,6 +51,7 @@ class BaseAPIClient(BaseAPI):
             m.delete = partial(self.call, DeleteEndpoint(spec, name))
             m.get_list = partial(self.call, GetListEndpoint(spec, name))
             m.get_by_id = partial(self.call, GetByIdEndpoint(spec, name))
+            m.validate_patch = lambda patch: None
 
             setattr(self.models, name, m)
 
@@ -76,6 +78,7 @@ class APIClient(BaseAPIClient):
 
 class WsgiAPIClient(BaseAPIClient):
     wsgi_app = None
+    server_cosmos = None
 
     def __init__(self, *args, **kwargs):
         self.client = WerkzeugTestClient(self.wsgi_app, response_wrapper=Response)
@@ -92,7 +95,14 @@ class WsgiAPIClient(BaseAPIClient):
         # access request.mimetype
         if 'Content-Type' in request.headers:
             kwargs['content_type'] = request.headers.pop('Content-Type')
-        r = self.client.open(path=request.url, **kwargs)
+
+        if self.server_cosmos is None:
+            r = self.client.open(path=request.url, **kwargs)
+        else:
+            with cosmos.scope(self.server_cosmos):
+                r = self.client.open(path=request.url, **kwargs)
+
+
         resp = requests.Response()
         resp._content = r.data
         resp.headers = CaseInsensitiveDict(r.headers)

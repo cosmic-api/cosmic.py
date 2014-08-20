@@ -204,6 +204,7 @@ class TestGuideSave(TestCase):
 
             class PlacesClient(WsgiAPIClient):
                 wsgi_app = Server(places).wsgi_app
+                server_cosmos = self.cosmos
 
             self.remote_places = PlacesClient()
 
@@ -226,7 +227,7 @@ class TestGuideSave(TestCase):
 
     def test_remote_save_validation_error(self):
         with cosmos.scope(self.cosmos2):
-            with self.assertRaisesRegexp(HTTPError, "must be capitalized"):
+            with self.assertRaisesRegexp(RemoteHTTPError, "must be capitalized"):
                 self.remote_places.models.City.create(name="moscow")
 
 

@@ -20,7 +20,10 @@ class BaseAPI(object):
         self.spec = spec
         self.models = Object()
         self.actions = Object()
-        cosmos[self.spec['name']] = self
+        name = self.spec['name']
+        if name in cosmos.keys():
+            raise RuntimeError("API already exists: {}".format(name))
+        cosmos[name] = self
 
 
 

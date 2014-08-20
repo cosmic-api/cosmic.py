@@ -75,7 +75,7 @@ class BaseModel(object):
         raise NotImplementedError()
 
     @classmethod
-    def create(cls, **validated_patch):
+    def create(cls, **valid_patch):
         """
         :param validated_patch: The model patch.
         :return: A tuple of model id and model representation.
@@ -83,7 +83,7 @@ class BaseModel(object):
         raise NotImplementedError()
 
     @classmethod
-    def update(cls, id, **validated_patch):
+    def update(cls, id, **valid_patch):
         """
         :param id:
         :param validated_patch:
@@ -99,6 +99,16 @@ class BaseModel(object):
         :raises cosmic.exceptions.NotFound:
         """
         raise NotImplementedError()
+
+    @classmethod
+    def safe_create(cls, **patch):
+        cls.validate_patch(patch)
+        return cls.create(patch)
+
+    @classmethod
+    def safe_update(cls, id, **patch):
+        cls.validate_patch(patch)
+        return cls.update(id, patch)
 
 
 class M(LocalProxy):

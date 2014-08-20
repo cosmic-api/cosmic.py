@@ -77,8 +77,8 @@ class Sphere(DBModel):
             raise ValidationError("Name must be capitalized", datum["name"])
 
     @classmethod
-    def create(cls, **rep):
-        return super(Sphere, cls).create(temperature=60, **rep)
+    def create(cls, **patch):
+        return super(Sphere, cls).create(temperature=60, **patch)
 
 
 @planetarium.action(accepts=Representation('planetarium.Sphere'), returns=String)

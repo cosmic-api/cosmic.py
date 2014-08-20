@@ -7,6 +7,7 @@ from werkzeug.datastructures import Headers as WerkzeugHeaders
 from teleport import standard_types, ParametrizedWrapper, BasicWrapper, \
     required, optional, Box, ValidationError
 
+from .globals import cosmos
 
 __all__ = ['Integer', 'Float', 'Boolean', 'String', 'Binary', 'DateTime',
            'JSON', 'Array', 'Map', 'OrderedMap', 'Struct', 'Schema', 'Model',
@@ -120,13 +121,12 @@ class BaseRepresentation(ParametrizedWrapper):
 
     def __init__(self, param):
         self.param = param
+        self.api_name, self.model_name = self.param.split('.', 1)
         self._lazy_schema = None
 
     @property
     def model_spec(self):
-        from .globals import cosmos
-        api_name, model_name = self.param.split('.', 1)
-        return cosmos[api_name].spec['models'][model_name]
+        return cosmos[self.api_name].spec['models'][self.model_name]
 
     @property
     def schema(self):
@@ -221,6 +221,11 @@ class Patch(BaseRepresentation):
     type_name = "cosmic.Patch"
     all_fields_optional = True
 
+    def assemble(self, datum):
+        self_id, rep = super(Patch, self).assemble(datum)
+        model_obj = getattr(cosmos[self.api_name].models, self.model_name)
+        model_obj.validate_patch(rep)
+        return self_id, rep
 
 class URLParams(ParametrizedWrapper):
     """A Teleport type that behaves mostly like the :class:`Struct`
