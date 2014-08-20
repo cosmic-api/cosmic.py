@@ -34,10 +34,6 @@ class BaseAPIClient(BaseAPI):
     def make_request(self, endpoint, request):
         raise NotImplementedError()
 
-    @classmethod
-    def from_json(cls, datum):
-        return cls(APISpec.from_json(datum))
-
     def _generate_handler_objects(self):
         from functools import partial
 

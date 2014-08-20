@@ -8,7 +8,7 @@ from werkzeug.routing import Map as RuleMap
 
 from .types import *
 from .tools import get_args, string_to_json, args_to_datum, deserialize_json, \
-    serialize_json, json_to_string
+    serialize_json
 from .exceptions import *
 
 
@@ -127,7 +127,7 @@ def get_payload_from_http_message(req):
     except UnicodeDecodeError:
         raise SpecError("Unicode Decode Error")
     try:
-        return string_to_json(data)
+        return Box(json.loads(data))
     except ValueError:
         raise SpecError("Invalid JSON")
 
@@ -142,11 +142,6 @@ def reverse_werkzeug_url(url, values):
 
 
 class Endpoint(object):
-    json_request = False
-    json_response = False
-
-    never_authenticate = False
-
     response_can_be_empty = True
     response_must_be_empty = None
 
@@ -160,13 +155,10 @@ class Endpoint(object):
             'url_args': url_args,
             'headers': request.headers
         }
-        if self.json_request:
-            try:
-                req['json'] = get_payload_from_http_message(request)
-            except SpecError as e:
-                raise HTTPError(code=400, message=e.args[0])
-        else:
-            req['data'] = request.data
+        try:
+            req['json'] = get_payload_from_http_message(request)
+        except SpecError as e:
+            raise HTTPError(code=400, message=e.args[0])
 
         is_empty = request.data == ""
 
@@ -182,20 +174,22 @@ class Endpoint(object):
     def build_response(self, func_input, func_output):
         raise NotImplementedError()
 
-    def build_request(self,
-                      json=None,
-                      data="",
-                      url_args={},
-                      headers={},
-                      query={}):
+    def build_request(self, data=None, url_args=None, headers=None, query=None):
 
-        if self.json_request:
-            data = json_to_string(json)
+        if url_args is None:
+            url_args = {}
+        if headers is None:
+            headers = {}
+        if query is None:
+            query = {}
+
+        if data is not None:
+            headers["Content-Type"] = "application/json"
+            string_data = json.dumps(data.datum)
+        else:
+            string_data = ""
 
         url = reverse_werkzeug_url(self.url, url_args)
-
-        if self.json_request and data:
-            headers["Content-Type"] = "application/json"
 
         if self.query_schema is not None and query:
             query_string = self.query_schema.to_json(query)
@@ -205,7 +199,7 @@ class Endpoint(object):
         return requests.Request(
             method=self.method,
             url=url,
-            data=data,
+            data=string_data,
             headers=headers)
 
     def parse_response(self, res):
@@ -220,13 +214,10 @@ class Endpoint(object):
             'headers': res.headers
         }
 
-        if self.json_response:
-            try:
-                r['json'] = string_to_json(res.text)
-            except ValueError:
-                raise SpecError("Unparseable response")
-        else:
-            r['data'] = res.text
+        try:
+            r['json'] = string_to_json(res.text)
+        except ValueError:
+            raise SpecError("Unparseable response")
 
         if r['code'] not in self.acceptable_response_codes:
             message = None
@@ -255,8 +246,6 @@ class ActionEndpoint(Endpoint):
     """
 
     method = "POST"
-    json_request = True
-    json_response = True
     acceptable_response_codes = [200, 204]
 
     def __init__(self, api_spec, action_name, func=None):
@@ -272,8 +261,8 @@ class ActionEndpoint(Endpoint):
 
     def build_request(self, *args, **kwargs):
         packed = args_to_datum(*args, **kwargs)
-        json = serialize_json(self.accepts, packed)
-        return super(ActionEndpoint, self).build_request(json=json)
+        data = serialize_json(self.accepts, packed)
+        return super(ActionEndpoint, self).build_request(data=data)
 
     def parse_request(self, req, **url_args):
         req = super(ActionEndpoint, self).parse_request(req, **url_args)
@@ -316,7 +305,6 @@ class GetByIdEndpoint(Endpoint):
 
     """
     method = "GET"
-    json_response = True
     acceptable_response_codes = [404, 200]
     response_can_be_empty = True
     request_must_be_empty = True
@@ -373,8 +361,6 @@ class UpdateEndpoint(Endpoint):
 
     """
     method = "PUT"
-    json_request = True
-    json_response = True
     acceptable_response_codes = [200, 404]
     response_can_be_empty = False
     request_can_be_empty = False
@@ -395,7 +381,7 @@ class UpdateEndpoint(Endpoint):
 
     def build_request(self, id, **patch):
         return super(UpdateEndpoint, self).build_request(
-            json=Box(Patch(self.full_model_name).to_json((id, patch))),
+            data=Box(Patch(self.full_model_name).to_json((id, patch))),
             url_args={'id': id})
 
     def parse_request(self, req, **url_args):
@@ -435,8 +421,6 @@ class CreateEndpoint(Endpoint):
 
     """
     method = "POST"
-    json_request = True
-    json_response = True
     acceptable_response_codes = [201]
     response_can_be_empty = False
     request_can_be_empty = False
@@ -454,7 +438,7 @@ class CreateEndpoint(Endpoint):
 
     def build_request(self, **patch):
         return super(CreateEndpoint, self).build_request(
-            json=Box(Patch(self.full_model_name).to_json((None, patch))))
+            data=Box(Patch(self.full_model_name).to_json((None, patch))))
 
     def parse_request(self, req, **url_args):
         req = super(CreateEndpoint, self).parse_request(req, **url_args)
@@ -557,7 +541,6 @@ class GetListEndpoint(Endpoint):
 
     """
     method = "GET"
-    json_response = True
     acceptable_response_codes = [200]
     response_can_be_empty = False
     request_must_be_empty = True

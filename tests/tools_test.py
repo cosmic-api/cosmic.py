@@ -126,10 +126,6 @@ class TestSchemaHelpers(TestCase):
         self.assertEqual(string_to_json(""), None)
         self.assertEqual(string_to_json("1").datum, 1)
 
-    def test_json_to_string(self):
-        self.assertEqual(json_to_string(None), "")
-        self.assertEqual(json_to_string(Box(1)), "1")
-
 
 class TestUnderscoreIdentifier(TestCase):
     def test_okay(self):

@@ -31,9 +31,8 @@ planetarium = API("planetarium")
 
 class PlanetariumServer(Server):
     def parse_request(self, endpoint, request, **url_args):
-        if not endpoint.never_authenticate:
-            if request.headers.get('X-Danish', None) != "poppyseed":
-                raise HTTPError(401, "Unauthorized")
+        if request.headers.get('X-Danish', None) != "poppyseed":
+            raise HTTPError(401, "Unauthorized")
         return super(PlanetariumServer, self).parse_request(endpoint, request, **url_args)
 
 

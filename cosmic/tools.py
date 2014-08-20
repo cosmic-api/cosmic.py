@@ -8,8 +8,9 @@ from .exceptions import SpecError
 from .types import *
 
 
-__all__ = ['get_args', 'args_to_datum', 'assert_is_compatible', 'deserialize_json', 'serialize_json', 'string_to_json',
-           'json_to_string', 'validate_underscore_identifier', 'is_string_type']
+__all__ = ['get_args', 'args_to_datum', 'assert_is_compatible',
+           'deserialize_json', 'serialize_json', 'string_to_json',
+           'validate_underscore_identifier', 'is_string_type']
 
 
 def get_args(func):
@@ -99,12 +100,6 @@ def string_to_json(s):
         return None
     else:
         return Box(json.loads(s))
-
-
-def json_to_string(box):
-    if box is None:
-        return ""
-    return json.dumps(box.datum)
 
 
 def validate_underscore_identifier(id):
