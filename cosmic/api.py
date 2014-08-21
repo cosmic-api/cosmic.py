@@ -15,11 +15,35 @@ class Object(object):
 
 
 class BaseAPI(object):
+    """This class represents the common interface for the server-side and the
+    client-side API objects. It contains the API spec as well as a collection
+    of functions for each API endpoint. On the server side, these functions
+    are user-defined. On the client side, they are created automatically to
+    execute HTTP calls.
+    """
 
     def __init__(self, spec):
+        #: The API spec, in its native form (see
+        #: :class:`~cosmic.types.APISpec`)
         self.spec = spec
-        self.models = Object()
+        #: This stores the action functions as properties of a plain object:
+        #:
+        #: .. code:: python
+        #:
+        #:     >>> spelling.actions.correct('simpl')
+        #:     "simple"
+        #:
         self.actions = Object()
+        #: Through this property you can access the model functions
+        #: :meth:`get_by_id`, :meth:`get_list`, :meth:`create`, :meth:`update`
+        #: and :meth:`delete`. They are accessed as attributes:
+        #:
+        #: .. code:: python
+        #:
+        #:     >>> quotes.models.Quote.get_by_id("1")
+        #:     {"text": "Know thyself.", "author": "Socrates"}
+        #:
+        self.models = Object()
         name = self.spec['name']
         if name in cosmos.keys():
             raise RuntimeError("API already exists: {}".format(name))
@@ -28,16 +52,7 @@ class BaseAPI(object):
 
 
 class API(BaseAPI):
-    """An instance of this class represents a Cosmic API, whether it's your
-    own API being served or a third-party API being consumed. In the former
-    case, the API object is instantiated by the constructor and is bound to a
-    database ORM and other user-defined functions. In the latter case, it is
-    instantiated by the :meth:`API.load` method and these functions are
-    replaced by automatically generated HTTP calls.
-
-    One of the primary goals of Cosmic is to make local and remote APIs behave
-    as similarly as possible.
-
+    """
     :param name: The API name is required, and should be unique
     :param homepage: If you like, the API spec may include a link to your
         homepage
@@ -53,7 +68,7 @@ class API(BaseAPI):
 
     def run(self, port=5000, **kwargs):
         """Simple way to run the API in development. Uses Werkzeug's
-        :meth:`werkzeug.serving.run_simple` internally. See
+        :func:`~werkzeug.serving.run_simple` internally. See
         :ref:`guide-serving` for more options.
         """
         from werkzeug.serving import run_simple
@@ -64,8 +79,7 @@ class API(BaseAPI):
 
 
     def action(self, accepts=None, returns=None):
-        """A decorator for creating actions out of functions and registering
-        them with the API.
+        """A decorator for registering actions with API.
 
         The *accepts* parameter is a schema that describes the input of the
         function, *returns* is a schema that describes the output of the
@@ -73,7 +87,7 @@ class API(BaseAPI):
         the docstring serves as the action's documentation.
 
         Once registered, an action will become accessible as an attribute of
-        the :data:`~cosmic.api.API.actions` object.
+        the :data:`~cosmic.api.BaseAPI.actions` object.
 
         .. code:: python
 
@@ -110,7 +124,9 @@ class API(BaseAPI):
 
     def model(self, model_cls):
         """A decorator for registering a model with an API. The name of the
-        model class is used as the name of the resulting model.
+        model class is used as the name of the resulting model. A subclass
+        of :class:`~cosmic.models.BaseModel` is used to supply the necessary
+        metadata and functions to the API.
 
         .. code:: python
 
@@ -123,7 +139,7 @@ class API(BaseAPI):
             ...
 
         Once registered, a model will become accessible as an attribute of the
-        :data:`~cosmic.api.API.models` object.
+        :data:`~cosmic.api.BaseAPI.models` object.
         """
 
         name = model_cls.__name__

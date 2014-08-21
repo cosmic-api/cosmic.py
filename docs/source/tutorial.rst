@@ -4,8 +4,8 @@ Tutorial
 Step 1: Single-function API
 ---------------------------
 
-Before we get into the features, let's create a blank API to see how an API
-is served and consumed. Here it is:
+In the spirit of `Flask <http://flask.pocoo.org/>`_, let's start with something
+you can copy and paste into a file, say ``words.py``:
 
 .. code:: python
 
@@ -25,7 +25,7 @@ is served and consumed. Here it is:
     if __name__ == "__main__":
         words.run()
 
-Save this as ``words.py`` and run:
+Run it:
 
 .. code:: bash
 
@@ -54,6 +54,10 @@ Did you notice the type definitions above? They help validate the data:
 
 Step 2: Making a REST Model
 ---------------------------
+
+.. seealso::
+
+    :ref:`guide-models`
 
 Here's a simple model:
 
@@ -94,7 +98,7 @@ Step 3: Authenticating
 By default, all models and actions are accessible to all clients. To restrict
 access you use authentication and authorization. Cosmic doesn't currently
 support or recommend a particular method of authentication. However, it allows
-you to implement your own via :data:`~cosmic.api.API.client_hook` and 
-:data:`~cosmic.http.Server`.
+you to implement your own by subclassing :class:`~cosmic.http.Server` and
+:class:`~cosmic.client.APIClient`.
 
 See :ref:`guide-authentication` for an example.

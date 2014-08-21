@@ -6,14 +6,49 @@ APIs
 
 .. module:: cosmic.api
 
+.. autoclass:: cosmic.api.BaseAPI
+
+   .. autoinstanceattribute:: cosmic.api.BaseAPI.spec
+      :annotation:
+
+   .. autoinstanceattribute:: cosmic.api.BaseAPI.actions
+      :annotation:
+
+   .. autoinstanceattribute:: cosmic.api.BaseAPI.models
+      :annotation:
+
 .. autoclass:: cosmic.api.API
+   :show-inheritance:
    :members:
 
 Models
 ------
 
-.. automodule:: cosmic.models
-   :members:
+.. module:: cosmic.models
+
+.. autoclass:: cosmic.models.BaseModel
+
+   .. autoattribute:: cosmic.models.BaseModel.properties
+      :annotation:
+
+   .. autoattribute:: cosmic.models.BaseModel.links
+      :annotation:
+
+   .. autoattribute:: cosmic.models.BaseModel.methods
+      :annotation:
+
+   .. autoattribute:: cosmic.models.BaseModel.query_fields
+      :annotation:
+
+   .. autoattribute:: cosmic.models.BaseModel.list_metadata
+      :annotation:
+
+   .. automethod:: cosmic.models.BaseModel.get_by_id
+   .. automethod:: cosmic.models.BaseModel.get_list
+   .. automethod:: cosmic.models.BaseModel.create
+   .. automethod:: cosmic.models.BaseModel.update
+   .. automethod:: cosmic.models.BaseModel.delete
+   .. automethod:: cosmic.models.BaseModel.validate_patch
 
 Types
 -----

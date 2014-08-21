@@ -5,7 +5,9 @@ __all__ = ['BaseModel', 'M']
 
 class BaseModel(object):
     """Subclasses of this class are fed into the :meth:`~cosmic.api.API.model`
-    decorator to attach models to an API.
+    decorator to attach models to an API. The API object doesn't care about
+    how you implement this class, it just copies the necessary properties and
+    leaves the class alone.
     """
     #: A list of properties which, along with
     #: :data:`~cosmic.models.BaseModel.links` below, will be used for the
@@ -23,7 +25,8 @@ class BaseModel(object):
     #: :class:`~cosmic.types.Patch`.
     properties = []
     #: A list of methods that this model supports. Possible values are
-    #: 'get_by_id', 'create', 'update', 'delete' and 'get_list'.
+    #: ``'get_by_id'``, ``'create'``, ``'update'``, ``'delete'`` and
+    #: ``'get_list'``.
     methods = []
     #: A list of properties for the :meth:`get_list` handler. They are defined
     #: in the same way as :data:`properties` above.
@@ -37,19 +40,6 @@ class BaseModel(object):
     #: :func:`~cosmic.types.required_link` and
     #: :func:`~cosmic.types.optional_link` to specify them.
     links = []
-
-    @classmethod
-    def validate_patch(cls, patch):
-        """
-        :param patch: The model patch
-        :raises cosmic.exceptions.ValidationError:
-
-        Run before any :meth:`~cosmic.models.BaseModel.create` or
-        :meth:`~cosmic.models.BaseModel.update` call to validate the patch.
-        All fields are made optional for the patch, so this method is a chance
-        to ensure that the expected values were indeed passed in.
-        """
-        pass
 
     @classmethod
     def get_by_id(cls, id):
@@ -101,14 +91,17 @@ class BaseModel(object):
         raise NotImplementedError()
 
     @classmethod
-    def safe_create(cls, **patch):
-        cls.validate_patch(patch)
-        return cls.create(patch)
+    def validate_patch(cls, patch):
+        """
+        :param patch: The model patch
+        :raises cosmic.exceptions.ValidationError:
 
-    @classmethod
-    def safe_update(cls, id, **patch):
-        cls.validate_patch(patch)
-        return cls.update(id, patch)
+        Run before any :meth:`~cosmic.models.BaseModel.create` or
+        :meth:`~cosmic.models.BaseModel.update` call to validate the patch.
+        All fields are made optional for the patch, so this method is a chance
+        to ensure that the expected values were indeed passed in.
+        """
+        pass
 
 
 class M(LocalProxy):

@@ -4,19 +4,15 @@ Guide
 Installation
 ------------
 
-Assuming you are running Linux or OS X and are familiar with `pip <http://www.pip-installer.org/en/latest/quickstart.html>`_, installation is as easy as:
+Assuming you are running Linux or OS X and are familiar with
+`pip <http://www.pip-installer.org/en/latest/quickstart.html>`_, installation
+is as easy as:
 
 .. code:: bash
 
    pip install cosmic
 
-If you are not yet familiar with `virtualenv
-<http://www.virtualenv.org/en/latest/>`_, it is an indespensible tool for
-Python development. It lets you create isolated Python environments for every
-project you are working on. This means that different projects can depend on
-different versions of the same library.
-
-If you would like to work on the bleeding edge of Cosmic development, you 
+If you would like to work on the bleeding edge of Cosmic development, you
 can clone the repo using git:
 
 .. code:: bash
@@ -31,6 +27,12 @@ virtualenv):
     cd cosmic-py
     python setup.py develop
 
+If you are not yet familiar with `virtualenv
+<http://www.virtualenv.org/en/latest/>`_, it is an indespensible tool for
+Python development. It lets you create isolated Python environments for every
+project you are working on. This means that different projects can depend on
+different versions of the same library.
+
 What's in an API?
 -----------------
 
@@ -42,20 +44,18 @@ A web API is:
   logic to HTTP.
 
 In the context of Cosmic, an API is represented, unsurprisingly, by an
-instance of the :class:`~cosmic.api.API` class. What is interesting, however,
-is that this object is serializable to JSON. The JSON form of an API is the
-API spec.
+instance of the :class:`~cosmic.api.API` class.
 
-You may find it strange that we say "serialize an API" when we could simply
-say "generate an API spec". The reason we say this is to highlight the fact
-that an API is simply a Teleport datatype. The API object on the server and
-the API object on the client are instances of the same class, in fact, they
-are almost identical. The difference is that for every server endpoint, there
-is a hook into the server's database or business logic, whereas each client
-endpoint replaces this with an HTTP call.
+The API object on the server and the API object on the client are instances
+of the same class, in fact, they are almost identical. The difference is
+that for every server endpoint, there is a hook into the server's database
+or business logic, whereas each client endpoint replaces this with an HTTP
+call.
 
 Let's serialize a trivial API. Note that :meth:`to_json` is a standard
-Teleport method::
+Teleport method:
+
+.. code:: python
 
     >>> from cosmic.api import API
     >>> trivia = API("trivia", homepage="http://example.com")
@@ -129,6 +129,8 @@ a single line of code
 .. code:: python
 
     >>> myapi = API.load('http://localhost:5000/spec.json')
+
+.. _guide-actions:
 
 RPC via Actions
 ---------------
@@ -220,6 +222,8 @@ This may be called remotely as:
     >>> mathy = API.load('http://localhost:5000/spec.json')
     >>> mathy.actions.divide(numerator=10, denominator=5)
     2
+
+.. _guide-models:
 
 REST via Models
 ---------------
