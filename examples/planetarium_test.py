@@ -1,12 +1,10 @@
 import copy
 import json
 
-import requests
 from unittest2 import TestCase
 from werkzeug.wrappers import Response
 from werkzeug.test import Client as TestClient
 
-from cosmic.models import M
 from cosmic.client import WsgiAPIClient, ClientLoggingMixin
 from cosmic.globals import cosmos
 from cosmic.exceptions import *
@@ -151,7 +149,7 @@ class TestPlanitarium(TestCase):
 
     def _test_get_by_id(self):
         with db.scope(planet_db):
-            Sphere = M('planetarium.Sphere')
+            Sphere = cosmos['planetarium'].models.Sphere
             with self.assertRaises(NotFound):
                 Sphere.get_by_id('100')
             rep = Sphere.get_by_id('0')
@@ -190,7 +188,7 @@ class TestPlanitarium(TestCase):
 
     def _test_get_list(self):
         with db.scope(planet_db):
-            Sphere = M('planetarium.Sphere')
+            Sphere = cosmos['planetarium'].models.Sphere
             res = Sphere.get_list(name="Oops")
             self.assertEqual(len(res[0]), 0)
             res = Sphere.get_list(name="Sun")
@@ -275,7 +273,7 @@ class TestPlanitarium(TestCase):
 
     def _test_save_property(self):
         with db.scope(copy.deepcopy(planet_db)):
-            Sphere = M('planetarium.Sphere')
+            Sphere = cosmos['planetarium'].models.Sphere
             moon = Sphere.get_by_id("2")
 
             rep = Sphere.update("2",
@@ -328,7 +326,7 @@ class TestPlanitarium(TestCase):
 
     def _test_save_link(self):
         with db.scope(copy.deepcopy(planet_db)):
-            Sphere = M('planetarium.Sphere')
+            Sphere = cosmos['planetarium'].models.Sphere
             # Save property
             moon = Sphere.get_by_id("2")
             self.assertEqual(moon['revolves_around'], "1")
@@ -383,7 +381,7 @@ class TestPlanitarium(TestCase):
 
     def _test_create_model(self):
         with db.scope(copy.deepcopy(planet_db)):
-            Sphere = M('planetarium.Sphere')
+            Sphere = cosmos['planetarium'].models.Sphere
 
             (id, rep) = Sphere.create(
                 name="Pluto",
@@ -417,7 +415,7 @@ class TestPlanitarium(TestCase):
 
     def _test_delete(self):
         with db.scope(copy.deepcopy(planet_db)):
-            Sphere = M('planetarium.Sphere')
+            Sphere = cosmos['planetarium'].models.Sphere
             Sphere.delete("1")
             self.assertTrue('1' not in db['Sphere'])
 

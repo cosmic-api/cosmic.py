@@ -1,6 +1,4 @@
-from werkzeug.local import LocalProxy
-
-__all__ = ['BaseModel', 'M']
+__all__ = ['BaseModel']
 
 
 class BaseModel(object):
@@ -103,27 +101,3 @@ class BaseModel(object):
         """
         pass
 
-
-class M(LocalProxy):
-    """Creates a lazy reference to a model, useful for defining links.
-
-    .. code:: python
-
-        @familytree.model
-        class Person(BaseModel):
-            links = [
-                optional_link('mother', M('familytree.Person')),
-                optional_link('father', M('familytree.Person')),
-            ]
-    """
-
-    def __init__(self, model_name):
-        object.__setattr__(self, '_M__model_name', model_name)
-
-    def __repr__(self):
-        return "M('{}')".format(self.__model_name)
-
-    def _LocalProxy__local(self):
-        from cosmic.globals import cosmos
-        api_name, model_name = self.__model_name.split('.', 1)
-        return getattr(cosmos[api_name].models, model_name)

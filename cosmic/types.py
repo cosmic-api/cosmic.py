@@ -56,18 +56,7 @@ def optional_link(name, model, doc=None):
 
 class Model(BasicWrapper):
     """A Teleport type representing an API model. Its JSON form is
-    a dotted string, the native form is the model object:
-
-    .. code:: python
-
-        >>> Model.to_json(places.models.City)
-        "places.City"
-
-    Note that when deserializing this type, the returned value isn't exactly
-    a model object, but a :class:`~cosmic.models.M` object, a proxy that
-    behaves identically to the model. The reason for this is that sometimes
-    a reference to the model is needed before the model exists, for example,
-    when defining links.
+    a dotted string, the native form is the same string.
     """
     type_name = "cosmic.Model"
     schema = String
