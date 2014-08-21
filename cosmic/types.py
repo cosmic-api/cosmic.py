@@ -61,13 +61,20 @@ class Model(BasicWrapper):
     type_name = "cosmic.Model"
     schema = String
 
+    def __init__(self, full_name):
+        self.api_name, self.model_name = full_name.split('.', 1)
+
     @classmethod
     def assemble(cls, datum):
-        return datum
+        if '.' in datum:
+            a, m = datum.split('.', 1)
+            if len(a) and len(m):
+                return cls(datum)
+        raise ValidationError('Invalid Model: {}'.format(datum))
 
     @classmethod
     def disassemble(cls, datum):
-        return datum
+        return '{}.{}'.format(datum.api_name, datum.model_name)
 
 
 class Link(ParametrizedWrapper):
@@ -88,7 +95,6 @@ class Link(ParametrizedWrapper):
 
     def __init__(self, param):
         self.param = param
-        self.api_name, self.model_name = param.split('.', 1)
         self.schema = Struct([
             required(u"href", String)
         ])
@@ -96,12 +102,12 @@ class Link(ParametrizedWrapper):
     def assemble(self, datum):
         url = datum['href']
         parts = url.split('/')
-        if parts[-2] != self.model_name:
-            raise ValidationError("Invalid url for %s link: %s" % (self.model_name, url))
+        if parts[-2] != self.param.model_name:
+            raise ValidationError("Invalid url for %s link: %s" % (self.param.model_name, url))
         return parts[-1]
 
     def disassemble(self, datum):
-        href = "/%s/%s" % (self.model_name, datum)
+        href = "/%s/%s" % (self.param.model_name, datum)
         return {"href": href}
 
 
@@ -110,12 +116,11 @@ class BaseRepresentation(ParametrizedWrapper):
 
     def __init__(self, param):
         self.param = param
-        self.api_name, self.model_name = self.param.split('.', 1)
         self._lazy_schema = None
 
     @property
     def model_spec(self):
-        return cosmos[self.api_name].spec['models'][self.model_name]
+        return cosmos[self.param.api_name].spec['models'][self.param.model_name]
 
     @property
     def schema(self):
@@ -212,7 +217,7 @@ class Patch(BaseRepresentation):
 
     def assemble(self, datum):
         self_id, rep = super(Patch, self).assemble(datum)
-        model_obj = getattr(cosmos[self.api_name].models, self.model_name)
+        model_obj = getattr(cosmos[self.param.api_name].models, self.param.model_name)
         model_obj.validate_patch(rep)
         return self_id, rep
 

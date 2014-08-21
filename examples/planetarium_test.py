@@ -397,7 +397,7 @@ class TestPlanitarium(TestCase):
                     "revolves_around": {"href": "/Sphere/0"},
                 }
             }
-            self.assertEqual(Representation('planetarium.Sphere').to_json((id, rep)), full)
+            self.assertEqual(Representation(Model('planetarium.Sphere')).to_json((id, rep)), full)
             self.assertEqual(db['Sphere']['3'], {
                 'name': 'Pluto',
                 'temperature': 60,

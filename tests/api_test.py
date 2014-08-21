@@ -174,12 +174,12 @@ class TestAPI(TestCase):
             "name": "pancake"
         }
 
-        (id, rep) = Representation('cookbook.Recipe').from_json(d)
+        (id, rep) = Representation(Model('cookbook.Recipe')).from_json(d)
         self.assertEqual(rep['name'], "pancake")
-        self.assertEqual(Representation('cookbook.Recipe').to_json((id, rep)), d)
+        self.assertEqual(Representation(Model('cookbook.Recipe')).to_json((id, rep)), d)
 
     def test_model_deserialize_okay(self):
-        (id, rep) = Representation('cookbook.Recipe').from_json({
+        (id, rep) = Representation(Model('cookbook.Recipe')).from_json({
             "_links": {
                 "self": {"href": "/Recipe/14"}
             },
@@ -199,11 +199,11 @@ class TestAPI(TestCase):
 
     def test_model_schema_validation(self):
         with self.assertRaises(ValidationError):
-            Representation('cookbook.Recipe').from_json(1.1)
+            Representation(Model('cookbook.Recipe')).from_json(1.1)
 
     def test_model_custom_validation(self):
         with self.assertRaisesRegexp(ValidationError, "kosher"):
-            (id, rep) = Representation('cookbook.Recipe').from_json({
+            (id, rep) = Representation(Model('cookbook.Recipe')).from_json({
                 "_links": {
                     "self": {"href": "/Recipe/123"}
                 },

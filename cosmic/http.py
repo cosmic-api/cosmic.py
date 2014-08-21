@@ -376,7 +376,7 @@ class GetByIdEndpoint(Endpoint):
         else:
             id = func_input['id']
             rep = func_output.value
-            body = json.dumps(Representation(self.full_model_name).to_json((id, rep)))
+            body = json.dumps(Representation(Model(self.full_model_name)).to_json((id, rep)))
             return Response(body, 200, {"Content-Type": "application/json"})
 
     def parse_response(self, res):
@@ -384,7 +384,7 @@ class GetByIdEndpoint(Endpoint):
         if res['code'] == 404:
             raise NotFound
         if res['code'] == 200:
-            (id, rep) = Representation(self.full_model_name).from_json(res['json'].datum)
+            (id, rep) = Representation(Model(self.full_model_name)).from_json(res['json'].datum)
             return rep
 
 
@@ -415,12 +415,12 @@ class UpdateEndpoint(Endpoint):
 
     def build_request(self, id, **patch):
         return super(UpdateEndpoint, self).build_request(
-            data=Box(Patch(self.full_model_name).to_json((id, patch))),
+            data=Box(Patch(Model(self.full_model_name)).to_json((id, patch))),
             url_args={'id': id})
 
     def parse_request(self, req, **url_args):
         req = super(UpdateEndpoint, self).parse_request(req, **url_args)
-        id, rep = Patch(self.full_model_name).from_json(req['json'].datum)
+        id, rep = Patch(Model(self.full_model_name)).from_json(req['json'].datum)
         rep['id'] = req['url_args']['id']
         return rep
 
@@ -430,13 +430,13 @@ class UpdateEndpoint(Endpoint):
         else:
             id = func_input['id']
             rep = func_output.value
-            body = json.dumps(Representation(self.full_model_name).to_json((id, rep)))
+            body = json.dumps(Representation(Model(self.full_model_name)).to_json((id, rep)))
             return Response(body, 200, {"Content-Type": "application/json"})
 
     def parse_response(self, res):
         res = super(UpdateEndpoint, self).parse_response(res)
         if res['code'] == 200:
-            return Representation(self.full_model_name).from_json(res['json'].datum)[1]
+            return Representation(Model(self.full_model_name)).from_json(res['json'].datum)[1]
         if res['code'] == 404:
             raise NotFound
 
@@ -467,19 +467,19 @@ class CreateEndpoint(Endpoint):
 
     def build_request(self, **patch):
         return super(CreateEndpoint, self).build_request(
-            data=Box(Patch(self.full_model_name).to_json((None, patch))))
+            data=Box(Patch(Model(self.full_model_name)).to_json((None, patch))))
 
     def parse_request(self, req, **url_args):
         req = super(CreateEndpoint, self).parse_request(req, **url_args)
-        id, rep = Patch(self.full_model_name).from_json(req['json'].datum)
+        id, rep = Patch(Model(self.full_model_name)).from_json(req['json'].datum)
         return rep
 
     def parse_response(self, res):
         res = super(CreateEndpoint, self).parse_response(res)
-        return Representation(self.full_model_name).from_json(res['json'].datum)
+        return Representation(Model(self.full_model_name)).from_json(res['json'].datum)
 
     def build_response(self, func_input, func_output):
-        body = json.dumps(Representation(self.full_model_name).to_json(func_output))
+        body = json.dumps(Representation(Model(self.full_model_name)).to_json(func_output))
         href = "/%s/%s" % (self.model_name, func_output[0])
         return Response(body, 201, {
             "Location": href,
@@ -592,7 +592,7 @@ class GetListEndpoint(Endpoint):
         j = res['json'].datum
         l = []
         for jrep in j["_embedded"][self.model_name]:
-            l.append(Representation(self.full_model_name).from_json(jrep))
+            l.append(Representation(Model(self.full_model_name)).from_json(jrep))
 
         if self.list_metadata:
             meta = j.copy()
@@ -623,7 +623,7 @@ class GetListEndpoint(Endpoint):
 
         body["_embedded"][self.model_name] = []
         for inst in l:
-            jrep = Representation(self.full_model_name).to_json(inst)
+            jrep = Representation(Model(self.full_model_name)).to_json(inst)
             body["_embedded"][self.model_name].append(jrep)
 
         return Response(json.dumps(body), 200, {"Content-Type": "application/json"})
