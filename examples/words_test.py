@@ -5,8 +5,8 @@ from werkzeug.test import Client as TestClient
 
 from cosmic.http import Server
 from cosmic.globals import cosmos
-from cosmic.client import APIClient
-from cosmic.testing import served_api
+from cosmic.client import APIClient, ClientLoggingMixin
+from cosmic.testing import served_api, Wildcard
 from cosmic.types import *
 from words import words
 
@@ -28,10 +28,9 @@ class TestWords(TestCase):
     def tearDown(self):
         cosmos.stack.pop()
 
-
 class TestWordsSystem(TestCase):
 
-    def system_test(self):
+    def test_system(self):
         with served_api(words, 5000):
 
             class WordsClient(APIClient):
@@ -39,3 +38,33 @@ class TestWordsSystem(TestCase):
 
             c = WordsClient()
             self.assertEqual(APISpec.to_json(c.spec), APISpec.to_json(words.spec))
+
+    def test_logging(self):
+        with served_api(words, 5001):
+
+            class WordsClient(ClientLoggingMixin, APIClient):
+                base_url = 'http://127.0.0.1:5001'
+
+            c = WordsClient()
+            c.actions.pluralize('pencil')
+            self.assertEqual(c.log[-1][0], {
+                'method': 'POST',
+                'data': '"pencil"',
+                'headers': [('Content-Type', 'application/json')],
+                'url': u'/actions/pluralize'
+            })
+            self.assertEqual(c.log[-1][1], {
+                'status_code': 200,
+                'data': u'"pencils"',
+                'headers': [
+                    ('Content-Length', '9'),
+                    ('Content-Type', 'application/json'),
+                    ('Date', Wildcard),
+                    ('Server', Wildcard),
+                ]
+            })
+
+
+
+
+

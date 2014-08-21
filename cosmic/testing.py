@@ -53,8 +53,11 @@ class DBModel(BaseModel):
 
 @contextmanager
 def served_api(api, port):
+    from time import sleep
+
     p = Process(target=api.run, args=(port,))
     p.start()
+    sleep(0.1)
 
     try:
         with cosmos.scope({}):
@@ -63,3 +66,11 @@ def served_api(api, port):
         raise e
     finally:
         p.terminate()
+
+
+class WildcardClass(object):
+    def __eq__(self, other):
+        return True
+
+Wildcard = WildcardClass()
+

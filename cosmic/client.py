@@ -124,15 +124,18 @@ class ClientLoggingMixin(object):
         self.__last_request = {
             "method": request.method,
             "data": request.data,
-            "headers": copy.deepcopy(request.headers),
+            "headers": copy.deepcopy(request.headers.items()),
             "url": request.url,
-            }
+        }
         return request
 
     def parse_response(self, endpoint, res):
+        headers = []
+        for key in sorted(res.headers.keys()):
+            headers.append((key.title(), res.headers[key]))
         saved_resp = {
             "data": res.text,
-            "headers": res.headers,
+            "headers": headers,
             "status_code": res.status_code
         }
         self.log.append((self.__last_request, saved_resp))

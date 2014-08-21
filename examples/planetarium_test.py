@@ -170,7 +170,7 @@ class TestPlanitarium(TestCase):
             self.assertEqual(req["data"], "")
 
             self.assertEqual(res["status_code"], 200)
-            self.assertEqual(res["headers"]["Content-Type"], "application/json")
+            self.assertEqual(dict(res["headers"])["Content-Type"], "application/json")
             self.assertEqual(json.loads(res["data"]), {
                 u"name": u"Sun",
                 u"temperature": 3000.0,
@@ -243,7 +243,7 @@ class TestPlanitarium(TestCase):
                 },
                 'last_updated': '2014-01-01T00:00:00'
             })
-            self.assertEqual(res["headers"]["Content-Type"], "application/json")
+            self.assertEqual(dict(res["headers"])["Content-Type"], "application/json")
 
             (req, res) = self.remote_planetarium.log.pop()
 
@@ -268,7 +268,7 @@ class TestPlanitarium(TestCase):
                 },
                 'last_updated': '2014-01-01T00:00:00'
             })
-            self.assertEqual(res["headers"]["Content-Type"], "application/json")
+            self.assertEqual(dict(res["headers"])["Content-Type"], "application/json")
 
 
     def _test_save_property(self):
@@ -317,11 +317,11 @@ class TestPlanitarium(TestCase):
             self.assertEqual(req["method"], "PUT")
             self.assertEqual(req["url"], "/Sphere/2")
             self.assertEqual(json.loads(req["data"]), patch)
-            self.assertEqual(req["headers"]["Content-Type"], "application/json")
+            self.assertEqual(dict(req["headers"])["Content-Type"], "application/json")
 
             self.assertEqual(res["status_code"], 200)
             self.assertEqual(json.loads(res["data"]), updated)
-            self.assertEqual(res["headers"]["Content-Type"], "application/json")
+            self.assertEqual(dict(res["headers"])["Content-Type"], "application/json")
 
 
     def _test_save_link(self):
@@ -372,11 +372,11 @@ class TestPlanitarium(TestCase):
             self.assertEqual(req["method"], "PUT")
             self.assertEqual(req["url"], "/Sphere/2")
             self.assertEqual(json.loads(req["data"]), patch)
-            self.assertEqual(req["headers"]["Content-Type"], "application/json")
+            self.assertEqual(dict(req["headers"])["Content-Type"], "application/json")
 
             self.assertEqual(res["status_code"], 200)
             self.assertEqual(json.loads(res["data"]), updated)
-            self.assertEqual(res["headers"]["Content-Type"], "application/json")
+            self.assertEqual(dict(res["headers"])["Content-Type"], "application/json")
 
 
     def _test_create_model(self):
