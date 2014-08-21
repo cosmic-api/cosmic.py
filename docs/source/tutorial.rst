@@ -1,6 +1,8 @@
 Tutorial
 ========
 
+.. _tutorial-single:
+
 Step 1: Single-function API
 ---------------------------
 

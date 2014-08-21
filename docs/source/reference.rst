@@ -68,6 +68,8 @@ Types
 .. autoclass:: cosmic.types.URLParams
    :show-inheritance:
 
+.. autoclass:: cosmic.types.APISpec
+   :show-inheritance:
 
 HTTP Endpoints
 --------------

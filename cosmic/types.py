@@ -3,7 +3,6 @@ from collections import OrderedDict
 
 from werkzeug.urls import url_decode, url_encode
 from werkzeug.datastructures import MultiDict
-from werkzeug.datastructures import Headers as WerkzeugHeaders
 from teleport import standard_types, ParametrizedWrapper, BasicWrapper, \
     required, optional, Box, ValidationError
 
@@ -12,8 +11,8 @@ from .globals import cosmos
 __all__ = ['Integer', 'Float', 'Boolean', 'String', 'Binary', 'DateTime',
            'JSON', 'Array', 'Map', 'OrderedMap', 'Struct', 'Schema', 'Model',
            'Link', 'Representation', 'Patch', 'APISpec', 'URLParams',
-           'Headers', 'Box', 'required', 'optional', 'required_link',
-           'optional_link', 'ValidationError']
+           'Box', 'required', 'optional', 'required_link', 'optional_link',
+           'ValidationError']
 
 
 def getter(name):
@@ -55,14 +54,22 @@ def optional_link(name, model, doc=None):
 
 
 class Model(BasicWrapper):
-    """A Teleport type representing an API model. Its JSON form is
-    a dotted string, the native form is the same string.
+    """A Teleport type representing an API model. Its JSON form is a dotted
+    string, the native form is an instance of this class.
     """
     type_name = "cosmic.Model"
     schema = String
 
     def __init__(self, full_name):
+        self.full_name = full_name
         self.api_name, self.model_name = full_name.split('.', 1)
+
+    @property
+    def model_spec(self):
+        try:
+            return cosmos[self.api_name].spec['models'][self.model_name]
+        except KeyError:
+            raise RuntimeError('Model does not exist: {}'.format(self.full_name))
 
     @classmethod
     def assemble(cls, datum):
@@ -84,9 +91,9 @@ class Link(ParametrizedWrapper):
 
     .. code:: python
 
-        >>> Link(places.models.City).to_json("3")
+        >>> Link(Model('places.City')).to_json("3")
         {"href": "/City/3"}
-        >>> Link(places.models.City).from_json({"href": "/City/3"})
+        >>> Link(Model('places.City')).from_json({"href": "/City/3"})
         "3"
 
     """
@@ -119,10 +126,6 @@ class BaseRepresentation(ParametrizedWrapper):
         self._lazy_schema = None
 
     @property
-    def model_spec(self):
-        return cosmos[self.param.api_name].spec['models'][self.param.model_name]
-
-    @property
     def schema(self):
         if self._lazy_schema is None:
 
@@ -132,7 +135,7 @@ class BaseRepresentation(ParametrizedWrapper):
                     "schema": Link(self.param)
                 })
             ]
-            for name, link in self.model_spec['links'].items():
+            for name, link in self.param.model_spec['links'].items():
                 required = False
                 if not self.all_fields_optional:
                     required = link["required"]
@@ -145,7 +148,7 @@ class BaseRepresentation(ParametrizedWrapper):
             props = [
                 optional("_links", Struct(links)),
             ]
-            for name, field in self.model_spec['properties'].items():
+            for name, field in self.param.model_spec['properties'].items():
                 required = False
                 if not self.all_fields_optional:
                     required = field["required"]
@@ -177,14 +180,14 @@ class BaseRepresentation(ParametrizedWrapper):
         links = {}
         if id:
             links["self"] = id
-        for name, link in self.model_spec['links'].items():
+        for name, link in self.param.model_spec['links'].items():
             value = rep.get(name, None)
             if value != None:
                 links[name] = value
         d = {}
         if links:
             d["_links"] = links
-        for name in self.model_spec['properties'].keys():
+        for name in self.param.model_spec['properties'].keys():
             value = rep.get(name, None)
             if value != None:
                 d[name] = value
@@ -198,7 +201,7 @@ class Representation(BaseRepresentation):
     :data:`~cosmic.models.BaseModel.links`. Links are represented by plain
     string ids.
 
-    It takes a :class:`~cosmic.types.Model` as  parameter.
+    It takes a :class:`~cosmic.types.Model` as parameter.
     """
     type_name = "cosmic.Representation"
     all_fields_optional = False
@@ -210,7 +213,7 @@ class Patch(BaseRepresentation):
     optional. To make a field required, use
     :meth:`~cosmic.models.BaseModel.validate_patch`.
 
-    It takes a :class:`~cosmic.types.Model` as  parameter.
+    It takes a :class:`~cosmic.types.Model` as parameter.
     """
     type_name = "cosmic.Patch"
     all_fields_optional = True
@@ -220,6 +223,7 @@ class Patch(BaseRepresentation):
         model_obj = getattr(cosmos[self.param.api_name].models, self.param.model_name)
         model_obj.validate_patch(rep)
         return self_id, rep
+
 
 class URLParams(ParametrizedWrapper):
     """A Teleport type that behaves mostly like the :class:`Struct`
@@ -293,31 +297,55 @@ class URLParams(ParametrizedWrapper):
         return md
 
 
-class Headers(BasicWrapper):
-    schema = Array(Struct([
-        required("name", String),
-        required("value", String),
-    ]))
-
-    @classmethod
-    def assemble(cls, datum):
-        headers = WerkzeugHeaders()
-        for header in datum:
-            headers.add(header["name"], header["value"])
-        return headers
-
-    @classmethod
-    def disassemble(cls, datum):
-        headers = []
-        for name, value in datum.items():
-            headers.append({
-                "name": name,
-                "value": value
-            })
-        return headers
-
-
 class APISpec(BasicWrapper):
+    """The teleport type that encapsulates all metadata associated with an API.
+    This type is used to prepare the output for the ``/spec.json`` endpoint,
+    as well as to deserialize it when building an API client.
+
+    What's inside? Well, if you insist:
+
+    .. code:: python
+
+        Struct([
+            required("name", String),
+            optional("homepage", String),
+            required("actions", OrderedMap(Struct([
+                optional("accepts", Schema),
+                optional("returns", Schema),
+                optional("doc", String)
+            ]))),
+            required("models", OrderedMap(Struct([
+                required("properties", OrderedMap(Struct([
+                    required("schema", Schema),
+                    required("required", Boolean),
+                    optional("doc", String)
+                ]))),
+                required("links", OrderedMap(Struct([
+                    required("model", Model),
+                    required("required", Boolean),
+                    optional("doc", String)
+                ]))),
+                required("query_fields", OrderedMap(Struct([
+                    required("schema", Schema),
+                    required("required", Boolean),
+                    optional("doc", String)
+                ]))),
+                required("methods", Struct([
+                    required("get_by_id", Boolean),
+                    required("get_list", Boolean),
+                    required("create", Boolean),
+                    required("update", Boolean),
+                    required("delete", Boolean),
+                    ])),
+                required("list_metadata", OrderedMap(Struct([
+                    required("schema", Schema),
+                    required("required", Boolean),
+                    optional("doc", String)
+                ])))
+            ])))
+        ])
+
+    """
     type_name = "cosmic.APISpec"
 
     schema = Struct([
@@ -330,19 +358,19 @@ class APISpec(BasicWrapper):
         ]))),
         required("models", OrderedMap(Struct([
             required("properties", OrderedMap(Struct([
-                required(u"schema", Schema),
-                required(u"required", Boolean),
-                optional(u"doc", String)
+                required("schema", Schema),
+                required("required", Boolean),
+                optional("doc", String)
             ]))),
             required("links", OrderedMap(Struct([
-                required(u"model", Model),
-                required(u"required", Boolean),
-                optional(u"doc", String)
+                required("model", Model),
+                required("required", Boolean),
+                optional("doc", String)
             ]))),
             required("query_fields", OrderedMap(Struct([
-                required(u"schema", Schema),
-                required(u"required", Boolean),
-                optional(u"doc", String)
+                required("schema", Schema),
+                required("required", Boolean),
+                optional("doc", String)
             ]))),
             required("methods", Struct([
                 required("get_by_id", Boolean),
@@ -352,9 +380,9 @@ class APISpec(BasicWrapper):
                 required("delete", Boolean),
                 ])),
             required("list_metadata", OrderedMap(Struct([
-                required(u"schema", Schema),
-                required(u"required", Boolean),
-                optional(u"doc", String)
+                required("schema", Schema),
+                required("required", Boolean),
+                optional("doc", String)
             ])))
         ])))
     ])

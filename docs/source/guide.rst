@@ -44,22 +44,25 @@ A web API is:
   logic to HTTP.
 
 In the context of Cosmic, an API is represented, unsurprisingly, by an
-instance of the :class:`~cosmic.api.API` class.
+instance of the :class:`~cosmic.api.BaseAPI` class. On the server, we use
+the :class:`~cosmic.api.API` subclass, and on the client we use the
+:class:`~cosmic.client.APIClient` subclass.
 
-The API object on the server and the API object on the client are instances
-of the same class, in fact, they are almost identical. The difference is
-that for every server endpoint, there is a hook into the server's database
-or business logic, whereas each client endpoint replaces this with an HTTP
-call.
+The API object on the server and the API object are almost identical. The
+difference is that for every server endpoint, there is a hook into the
+server's database or business logic, whereas each client endpoint replaces
+this with an HTTP call.
 
-Let's serialize a trivial API. Note that :meth:`to_json` is a standard
-Teleport method:
+The client get created automatically from a JSON spec. The format of this
+spec is defined by the Teleport type :class:`~cosmic.types.APISpec`. Let's see
+what the spec looks like:
 
 .. code:: python
 
+    >>> from cosmic.types import APISpec
     >>> from cosmic.api import API
     >>> trivia = API("trivia", homepage="http://example.com")
-    >>> API.to_json(trivia)
+    >>> APISpec.to_json(trivia.spec)
     {
         u'name': 'trivia',
         u'homepage': 'http://example.com',
@@ -74,61 +77,28 @@ the API should be unique. Though this is not yet enforced by Cosmic, we plan on
 indexing Cosmic APIs on our website in which case it will become a requirement.
 
 Then, the API spec contains descriptions of *actions* and *models*. These will
-be explained in detail in the next two sections. Here is the Teleport schema
-for the API type:
+be explained in detail in the next two sections.
+
+Auto-generated Clients
+----------------------
+
+In Cosmic, creating an API client is very easy. If you run the API from the
+:doc:`tutorial <tutorial>`, you can create a client in another file simply by subclassing
+:class:`~cosmic.client.APIClient` like so:
 
 .. code:: python
 
-    schema = Struct([
-        required("name", String),
-        optional("homepage", String),
-        required("actions", OrderedMap(Struct([
-            optional("accepts", Schema),
-            optional("returns", Schema),
-            optional("doc", String)
-        ]))),
-        required("models", OrderedMap(Struct([
-            required("properties", OrderedMap(Struct([
-                required(u"schema", Schema),
-                required(u"required", Boolean),
-                optional(u"doc", String)
-            ]))),
-            required("links", OrderedMap(Struct([
-                required(u"schema", Schema),
-                required(u"required", Boolean),
-                optional(u"doc", String)
-            ]))),
-            required("query_fields", OrderedMap(Struct([
-                required(u"schema", Schema),
-                required(u"required", Boolean),
-                optional(u"doc", String)
-            ]))),
-            required("methods", Struct([
-                required("get_by_id", Boolean),
-                required("get_list", Boolean),
-                required("create", Boolean),
-                required("update", Boolean),
-                required("delete", Boolean),
-            ])),
-            required("list_metadata", OrderedMap(Struct([
-                required(u"schema", Schema),
-                required(u"required", Boolean),
-                optional(u"doc", String)
-            ])))
-        ])))
-    ])
+    from cosmic.client import APIClient
 
-Client and Server
------------------
+    class WordsClient(APIClient):
+        base_url = 'http://127.0.0.1:5000'
 
-In Cosmic, the same :class:`~cosmic.api.API` class is used for the API server
-and the API client. In fact, the server and the client objects behave almost
-identically. After you run your server component, you can build the client in
-a single line of code
+    words = WordsClient()
+    print words.actions.pluralize('pencil')
 
-.. code:: python
-
-    >>> myapi = API.load('http://localhost:5000/spec.json')
+You can use this subclass to override some HTTP functions necessary for
+authentication, for example, to add an ``Authorization`` header to every
+request.
 
 .. _guide-actions:
 
@@ -184,20 +154,6 @@ But now there is another way of accessing it:
     >>> mathy.actions.sum([1, 2, 3])
     6
 
-And from the client, it is accessed identically:
-
-.. code:: python
-
-    >>> mathy = API.load('http://localhost:5000/spec.json')
-    >>> mathy.actions.add([1, 2, 3])
-    6
-
-
-If you are not yet familiar with Teleport, you might be wondering what is the
-purpose of the ``name`` and ``order`` items in the ``actions`` object above.
-This is the way Teleport uses JSON to represent an ordered mapping. Both actions
-and models are contained in the Teleport's :class:`~teleport.OrderedMap` type.
-
 Both *accepts* and *returns* are optional. If no accepts schema is provided,
 the action will take no input data, and if the returns schema is not provided,
 the action will return nothing when it completes.
@@ -215,11 +171,10 @@ argument. If your action needs to take multiple arguments, use the Teleport
     def divide(numerator, denominator):
         return numerator / denominator
 
-This may be called remotely as:
+This may be called as:
 
 .. code:: python
 
-    >>> mathy = API.load('http://localhost:5000/spec.json')
     >>> mathy.actions.divide(numerator=10, denominator=5)
     2
 
@@ -510,33 +465,31 @@ On the server, you can use standard WSGI middleware, and you can subclass
 
     planetarium = API("planetarium")
 
-    class CustomServer(Server):
+    class PlanetariumServer(Server):
 
         def view(self, endpoint, request, **url_args):
             if request.headers.get('Authorization', None) != 'secret':
                 return error_response("Unauthorized", 401)
-            return super(CustomServer, self).view(endpoint, request, **url_args)
+            return super(PlanetariumServer, self).view(endpoint, request, **url_args)
 
-    wsgi_app = CustomServer(planetarium).wsgi_app
+    wsgi_app = PlanetariumServer(planetarium).wsgi_app
 
-On the client, we can subclass :class:`~cosmic.http.ClientHook` to add
+On the client, we can subclass :class:`~cosmic.client.APIClient` to add
 authentication info to each request:
 
 .. code:: python
 
-    from cosmic.api import API
-    from cosmic.http import ClientHook
+    from cosmic.client import APIClient
 
-    planetarium = API.load('https://api.planetarium.com/spec.json')
-
-    class CustomClientHook(ClientHook):
+    class PlanetariumClient(APIClient):
+        base_url = 'https://api.planetarium.com'
 
         def build_request(self, endpoint, *args, **kwargs):
-            request = super(ClientHook, self).build_request(endpoint, *args, **kwargs)
+            request = super(APIClient, self).build_request(endpoint, *args, **kwargs)
             request.headers["Authorization"] = "secret"
             return request
 
-    planetarium.client_hook = CustomClientHook(base_url="https://api.planetarium.com")
+    planetarium = PlanetariumClient()
 
 Storing Global Data
 -------------------
