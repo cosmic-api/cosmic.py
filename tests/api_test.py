@@ -88,8 +88,13 @@ cookbook_spec = {
                     u"order": []
                 },
                 u"query_fields": {
-                    u"map": {},
-                    u"order": []
+                    u"map": {
+                        u"is_gordon_ramsay": {
+                            u"required": True,
+                            u"schema": {u"type": u"Boolean"}
+                        },
+                        },
+                    u"order": [u"is_gordon_ramsay"]
                 },
                 u"list_metadata": {
                     u"map": {},
@@ -97,7 +102,7 @@ cookbook_spec = {
                 },
                 u'methods': {
                     u'get_by_id': False,
-                    u'get_list': False,
+                    u'get_list': True,
                     u'create': False,
                     u'update': False,
                     u'delete': False,
@@ -152,9 +157,16 @@ class TestAPI(TestCase):
 
         @cookbook.model
         class Author(BaseModel):
+            methods = ['get_list']
             properties = [
                 required(u"is_gordon_ramsay", Boolean)
             ]
+            query_fields = [
+                required(u"is_gordon_ramsay", Boolean)
+            ]
+            @classmethod
+            def get_list(cls, is_gordon_ramsey):
+                return [("0", {"is_gordon_ramsey": True})]
 
         self.Author = Author
 
@@ -165,6 +177,10 @@ class TestAPI(TestCase):
 
     def tearDown(self):
         cosmos.stack.pop()
+
+    def test_get_list_missing(self):
+        resp = self.client.get('/Author')
+        self.assertEqual(resp.status_code, 400)
 
     def test_model(self):
         d = {
