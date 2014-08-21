@@ -18,6 +18,7 @@ Contents:
    tutorial
    guide
    reference
+   changelog
 
 Indices and tables
 ==================

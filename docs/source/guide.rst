@@ -10,22 +10,22 @@ is as easy as:
 
 .. code:: bash
 
-   pip install cosmic
+   $ pip install cosmic
 
 If you would like to work on the bleeding edge of Cosmic development, you
 can clone the repo using git:
 
 .. code:: bash
     
-    git clone https://github.com/cosmic-api/cosmic.py.git cosmic-py
+    $ git clone https://github.com/cosmic-api/cosmic.py.git cosmic-py
 
 Then to install the current version (ideally you want to do this in a
 virtualenv):
 
 .. code:: bash
 
-    cd cosmic-py
-    python setup.py develop
+    $ cd cosmic-py
+    $ python setup.py develop
 
 If you are not yet familiar with `virtualenv
 <http://www.virtualenv.org/en/latest/>`_, it is an indespensible tool for
