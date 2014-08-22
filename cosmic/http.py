@@ -301,8 +301,8 @@ class ActionEndpoint(Endpoint):
         self.func = func
         self.action_name = action_name
         self.action_spec = api_spec['actions'][action_name]
-        self.accepts = self.action_spec['accepts']
-        self.returns = self.action_spec['returns']
+        self.accepts = self.action_spec.get('accepts', None)
+        self.returns = self.action_spec.get('returns', None)
         self.url = "/actions/%s" % action_name
 
     def build_request(self, *args, **kwargs):
