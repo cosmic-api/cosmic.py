@@ -1,4 +1,5 @@
 from unittest2 import TestCase
+from multiprocessing import Process
 
 from werkzeug.wrappers import Response
 from werkzeug.test import Client as TestClient
@@ -29,6 +30,30 @@ class TestWords(TestCase):
         cosmos.stack.pop()
 
 class TestWordsSystem(TestCase):
+
+    def test_single_thread(self):
+        with served_api(words, 5003):
+
+            class WordsClient(APIClient):
+                base_url = 'http://127.0.0.1:5003'
+
+            c = WordsClient()
+            p = Process(target=c.actions.lock_thread, args=(1,))
+            p.start()
+            self.assertEqual(c.actions.count_letters((None, {"letters": "rabbit"})), 6)
+            p.terminate()
+
+    def test_multi_thread(self):
+        with served_api(words, 5002, threaded=True):
+
+            class WordsClient(APIClient):
+                base_url = 'http://127.0.0.1:5002'
+
+            c = WordsClient()
+            p = Process(target=c.actions.lock_thread, args=(1,))
+            p.start()
+            self.assertEqual(c.actions.count_letters((None, {"letters": "rabbit"})), 6)
+            p.terminate()
 
     def test_system(self):
         with served_api(words, 5000):

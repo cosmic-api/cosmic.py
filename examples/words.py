@@ -1,3 +1,5 @@
+from time import sleep
+
 from cosmic.api import API
 from cosmic.http import Server
 from cosmic.types import *
@@ -27,6 +29,14 @@ class Word(BaseModel):
             return {"letters": "hello"}
         else:
             raise NotFound
+
+@words.action(accepts=Integer)
+def lock_thread(seconds):
+    sleep(seconds)
+
+@words.action(accepts=Representation(Model('words.Word')), returns=Integer)
+def count_letters(word):
+    return len(word[1]['letters'])
 
 wsgi_app = Server(words).wsgi_app
 

@@ -52,10 +52,10 @@ class DBModel(BaseModel):
 
 
 @contextmanager
-def served_api(api, port):
+def served_api(api, port, **kwargs):
     from time import sleep
 
-    p = Process(target=api.run, args=(port,))
+    p = Process(target=api.run, args=(port,), kwargs=kwargs)
     p.start()
     sleep(0.1)
 
