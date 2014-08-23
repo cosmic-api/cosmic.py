@@ -74,18 +74,18 @@ class Server(object):
         except ValidationError as err:
             return error_response(str(err), 400)
         except Exception as exc:
-            return self.unhandled_exception_hook(exc)
+            if self.debug:
+                raise exc
+            else:
+                return self.unhandled_exception_hook(exc, request)
 
     def wsgi_app(self, environ, start_response):
         request = Request(environ)
         response = self.dispatch_request(request)
         return response(environ, start_response)
 
-    def unhandled_exception_hook(self, exc):
-        if self.debug:
-            raise
-        else:
-            return error_response("Internal Server Error", 500)
+    def unhandled_exception_hook(self, exc, request):
+        return error_response("Internal Server Error", 500)
 
     def view(self, endpoint, request, **url_args):
         func_input = self.parse_request(endpoint, request, **url_args)
