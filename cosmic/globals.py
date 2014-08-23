@@ -5,8 +5,11 @@ from werkzeug.local import LocalStack
 
 class SafeGlobal(UserDict):
 
-    def __init__(self):
-        self.stack = LocalStack()
+    def __init__(self, thread_local=True):
+        if thread_local:
+            self.stack = LocalStack()
+        else:
+            self.stack = GlobalStack()
 
     @property
     def data(self):
@@ -20,7 +23,26 @@ class SafeGlobal(UserDict):
         yield
         self.stack.pop()
 
-cosmos = SafeGlobal()
+
+class GlobalStack(object):
+
+    def __init__(self):
+        self.data = []
+
+    def push(self, item):
+        self.data.append(item)
+
+    def pop(self):
+        self.data.pop()
+
+    @property
+    def top(self):
+        if self.data:
+            return self.data[-1]
+        return None
+
+
+cosmos = SafeGlobal(thread_local=False)
 
 
 
