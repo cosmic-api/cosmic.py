@@ -66,15 +66,16 @@ class API(BaseAPI):
             "models": OrderedDict(),
         })
 
-    def run(self, port=5000, **kwargs):
-        """Simple way to run the API in development. Uses Werkzeug's
-        :func:`~werkzeug.serving.run_simple` internally. See
-        :ref:`guide-serving` for more options.
+    def run(self, port=5000, debug=False, **kwargs):
+        """Simple way to run the API in development. The debug parameter gets
+        passed into a :class:`~cosmic.http.Server` instance, all other
+        parameters - into Werkzeug's :func:`~werkzeug.serving.run_simple`. For
+        more serving options, see :ref:`guide-serving`.
         """
         from werkzeug.serving import run_simple
         from .http import Server
 
-        server = Server(self)
+        server = Server(self, debug=debug)
         run_simple('127.0.0.1', port, server.wsgi_app, **kwargs)
 
 
