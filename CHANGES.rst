@@ -11,7 +11,7 @@ Version 0.4.2
    - Pass request object as second parameter.
    - Don't call it when ``Server.debug`` is true.
 - New thread-local API:
-   - ``SafeGlobal`` gone in favor of ``SwappableDict` and ``ThreadLocalDict``
+   - ``SafeGlobal`` gone in favor of ``SwappableDict`` and ``ThreadLocalDict``
    - Swapping API instead of stack API.
    - ``thread_local`` context manager takes care of cleaning up.
 
