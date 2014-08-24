@@ -501,13 +501,13 @@ authenticated user. Some frameworks, like
 object which gets passed around explicitly. Others, like
 `Flask <http://flask.pocoo.org/>`_, store it in a thread-local object. Cosmic
 borrows the latter approach, offering you a simple dictionary-like class for
-this purpose: :class:`~cosmic.globals.SafeGlobal`.
+this purpose: :class:`~cosmic.globals.ThreadLocalDict`.
 
 .. code:: python
 
-    from cosmic.globals import SafeGlobal
+    from cosmic.globals import ThreadLocalDict
 
-    g = SafeGlobal()
+    g = ThreadLocalDict()
 
 Now we can use it to store the current user:
 
@@ -527,10 +527,13 @@ Now we can use it to store the current user:
 
 For testing, it may be necessary to call some functions with a predefined
 *context*, for example, call a function on behalf of Bob. For this, use the
-:meth:`~cosmic.globals.SafeGlobal.scope` method:
+:meth:`~cosmic.globals.ThreadLocalDict.swap` method:
 
 .. code:: python
 
-    with g.scope({'current_user': 'bob@example.com'}):
-        assert get_account_balance() == 100
+    with g.swap({'current_user': 'dick@example.com'}):
+        assert g['current_user'] == 'dick@example.com'
+
+The value will be swapped when entering the :keyword:`with` block, and swapped
+back when exiting it.
 
