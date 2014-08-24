@@ -10,6 +10,7 @@ from .types import *
 from .tools import get_args, string_to_json, args_to_datum, deserialize_json, \
     serialize_json
 from .exceptions import *
+from .globals import thread_local
 
 
 class Server(object):
@@ -80,9 +81,10 @@ class Server(object):
                 return self.unhandled_exception_hook(exc, request)
 
     def wsgi_app(self, environ, start_response):
-        request = Request(environ)
-        response = self.dispatch_request(request)
-        return response(environ, start_response)
+        with thread_local():
+            request = Request(environ)
+            response = self.dispatch_request(request)
+            return response(environ, start_response)
 
     def unhandled_exception_hook(self, exc, request):
         return error_response("Internal Server Error", 500)

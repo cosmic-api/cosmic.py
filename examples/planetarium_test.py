@@ -91,13 +91,13 @@ class TestPlanitarium(TestCase):
         self.cosmos1 = dict(cosmos.items())
         self.cosmos2 = dict()
 
-        with cosmos.scope(self.cosmos1):
+        with cosmos.swap(self.cosmos1):
             self.planetarium = planetarium
 
             app = planetarium_server.wsgi_app
             self.d = TestClient(app, response_wrapper=Response)
 
-        with cosmos.scope(self.cosmos2):
+        with cosmos.swap(self.cosmos2):
 
             class Retry(Exception):
                 pass
@@ -129,7 +129,7 @@ class TestPlanitarium(TestCase):
             self.remote_planetarium = PlanetariumClient()
 
     def test_spec_endpoint(self):
-        with cosmos.scope(self.cosmos1):
+        with cosmos.swap(self.cosmos1):
             res = self.d.get('/spec.json', headers={'X-Danish': 'poppyseed'})
             self.assertEqual(json.loads(res.data), json_spec)
 
@@ -148,7 +148,7 @@ class TestPlanitarium(TestCase):
         self.assertEqual(self.remote_planetarium.actions.hello((None, pluto)), "Hello, Pluto")
 
     def _test_get_by_id(self):
-        with db.scope(planet_db):
+        with db.swap(planet_db):
             Sphere = cosmos['planetarium'].models.Sphere
             with self.assertRaises(NotFound):
                 Sphere.get_by_id('100')
@@ -156,11 +156,11 @@ class TestPlanitarium(TestCase):
             self.assertEqual(rep['name'], "Sun")
 
     def test_local_get_by_id(self):
-        with cosmos.scope(self.cosmos1):
+        with cosmos.swap(self.cosmos1):
             self._test_get_by_id()
 
     def test_remote_get_by_id(self):
-        with cosmos.scope(self.cosmos2):
+        with cosmos.swap(self.cosmos2):
             self._test_get_by_id()
 
             (req, res) = self.remote_planetarium.log.pop()
@@ -187,7 +187,7 @@ class TestPlanitarium(TestCase):
             self.assertEqual(res["status_code"], 404)
 
     def _test_get_list(self):
-        with db.scope(planet_db):
+        with db.swap(planet_db):
             Sphere = cosmos['planetarium'].models.Sphere
             res = Sphere.get_list(name="Oops")
             self.assertEqual(len(res[0]), 0)
@@ -198,11 +198,11 @@ class TestPlanitarium(TestCase):
             self.assertEqual(len(res[0]), 3)
 
     def test_local_get_list(self):
-        with cosmos.scope(self.cosmos1):
+        with cosmos.swap(self.cosmos1):
             self._test_get_list()
 
     def test_remote_get_list(self):
-        with cosmos.scope(self.cosmos2):
+        with cosmos.swap(self.cosmos2):
             self._test_get_list()
 
             (req, res) = self.remote_planetarium.log.pop()
@@ -272,7 +272,7 @@ class TestPlanitarium(TestCase):
 
 
     def _test_save_property(self):
-        with db.scope(copy.deepcopy(planet_db)):
+        with db.swap(copy.deepcopy(planet_db)):
             Sphere = cosmos['planetarium'].models.Sphere
             moon = Sphere.get_by_id("2")
 
@@ -288,11 +288,11 @@ class TestPlanitarium(TestCase):
             })
 
     def test_local_save_property(self):
-        with cosmos.scope(self.cosmos1):
+        with cosmos.swap(self.cosmos1):
             self._test_save_property()
 
     def test_remote_save_property(self):
-        with cosmos.scope(self.cosmos2):
+        with cosmos.swap(self.cosmos2):
             self._test_save_property()
 
             (req, res) = self.remote_planetarium.log.pop()
@@ -325,7 +325,7 @@ class TestPlanitarium(TestCase):
 
 
     def _test_save_link(self):
-        with db.scope(copy.deepcopy(planet_db)):
+        with db.swap(copy.deepcopy(planet_db)):
             Sphere = cosmos['planetarium'].models.Sphere
             # Save property
             moon = Sphere.get_by_id("2")
@@ -343,11 +343,11 @@ class TestPlanitarium(TestCase):
             })
 
     def test_local_save_link(self):
-        with cosmos.scope(self.cosmos1):
+        with cosmos.swap(self.cosmos1):
             self._test_save_link()
 
     def test_remote_save_link(self):
-        with cosmos.scope(self.cosmos2):
+        with cosmos.swap(self.cosmos2):
             self._test_save_link()
 
             (req, res) = self.remote_planetarium.log.pop()
@@ -380,7 +380,7 @@ class TestPlanitarium(TestCase):
 
 
     def _test_create_model(self):
-        with db.scope(copy.deepcopy(planet_db)):
+        with db.swap(copy.deepcopy(planet_db)):
             Sphere = cosmos['planetarium'].models.Sphere
 
             (id, rep) = Sphere.create(
@@ -405,26 +405,26 @@ class TestPlanitarium(TestCase):
             })
 
     def test_local_create_model(self):
-        with cosmos.scope(self.cosmos1):
+        with cosmos.swap(self.cosmos1):
             self._test_create_model()
 
     def test_remote_create_model(self):
-        with cosmos.scope(self.cosmos2):
+        with cosmos.swap(self.cosmos2):
             self._test_create_model()
 
 
     def _test_delete(self):
-        with db.scope(copy.deepcopy(planet_db)):
+        with db.swap(copy.deepcopy(planet_db)):
             Sphere = cosmos['planetarium'].models.Sphere
             Sphere.delete("1")
             self.assertTrue('1' not in db['Sphere'])
 
     def test_local_delete(self):
-        with cosmos.scope(self.cosmos1):
+        with cosmos.swap(self.cosmos1):
             self._test_delete()
 
     def test_remote_delete(self):
-        with cosmos.scope(self.cosmos2):
+        with cosmos.swap(self.cosmos2):
             self._test_delete()
 
             (req, res) = self.remote_planetarium.log.pop()
@@ -437,14 +437,14 @@ class TestPlanitarium(TestCase):
             self.assertEqual(res["data"], "")
 
     def test_get_by_id_not_found(self):
-        with cosmos.scope(self.cosmos1):
-            with db.scope(planet_db):
+        with cosmos.swap(self.cosmos1):
+            with db.swap(planet_db):
                 res = self.d.get('/Sphere/4', headers={"X-Danish": "poppyseed"})
                 self.assertEqual(res.status_code, 404)
 
     def test_delete_not_found(self):
-        with cosmos.scope(self.cosmos1):
-            with db.scope(planet_db):
+        with cosmos.swap(self.cosmos1):
+            with db.swap(planet_db):
                 res = self.d.delete('/Sphere/4', headers={"X-Danish": "poppyseed"})
                 self.assertEqual(res.status_code, 404)
 

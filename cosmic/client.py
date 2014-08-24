@@ -100,7 +100,7 @@ class WsgiAPIClient(BaseAPIClient):
         if self.server_cosmos is None:
             r = self.client.open(path=request.url, **kwargs)
         else:
-            with cosmos.scope(self.server_cosmos):
+            with cosmos.swap(self.server_cosmos):
                 r = self.client.open(path=request.url, **kwargs)
 
 

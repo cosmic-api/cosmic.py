@@ -15,10 +15,14 @@ from words import words
 class TestWords(TestCase):
 
     def setUp(self):
-        cosmos.stack.push({})
+        self._old_cosmos = cosmos.data
+        cosmos.data = {}
 
         app = Server(words).wsgi_app
         self.client = TestClient(app, response_wrapper=Response)
+
+    def tearDown(self):
+        cosmos.data = self._old_cosmos
 
     def test_pluralize_okay(self):
         resp = self.client.post('/actions/pluralize',
@@ -26,8 +30,6 @@ class TestWords(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.data, '"ponies"')
 
-    def tearDown(self):
-        cosmos.stack.pop()
 
 class TestWordsSystem(TestCase):
 

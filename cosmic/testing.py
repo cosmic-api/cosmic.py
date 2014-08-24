@@ -3,10 +3,10 @@ from contextlib import contextmanager
 
 from .models import BaseModel
 from .exceptions import NotFound
-from .globals import SafeGlobal, cosmos
+from .globals import SwappableDict, cosmos
 
 
-db = SafeGlobal()
+db = SwappableDict()
 
 
 class DBModel(BaseModel):
@@ -60,7 +60,7 @@ def served_api(api, port, **kwargs):
     sleep(0.1)
 
     try:
-        with cosmos.scope({}):
+        with cosmos.swap({}):
             yield
     except Exception as e:
         raise e

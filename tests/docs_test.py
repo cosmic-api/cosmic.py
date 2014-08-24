@@ -13,11 +13,11 @@ class TestGuideWhatIsAPI(TestCase):
 
     def setUp(self):
         self.cosmos = {}
-        with cosmos.scope(self.cosmos):
+        with cosmos.swap(self.cosmos):
             self.mathy = API("trivia", homepage="http://example.com")
 
     def test_to_json(self):
-        with cosmos.scope(self.cosmos):
+        with cosmos.swap(self.cosmos):
             self.assertEqual(APISpec.to_json(self.mathy.spec), {
                 u'name': 'trivia',
                 u'homepage': 'http://example.com',
@@ -31,7 +31,7 @@ class TestGuideModels(TestCase):
 
     def setUp(self):
         self.cosmos = {}
-        with cosmos.scope(self.cosmos):
+        with cosmos.swap(self.cosmos):
             self.places = places = API('places')
 
             @places.model
@@ -44,7 +44,7 @@ class TestGuideModels(TestCase):
 
     def test_to_json(self):
         places = self.places
-        with cosmos.scope(self.cosmos):
+        with cosmos.swap(self.cosmos):
             self.assertEqual(APISpec.to_json(places.spec), {
                 u'name': u'places',
                 u'actions': {u'map': {}, u'order': []},
@@ -86,7 +86,7 @@ class TestGuideModels(TestCase):
 
     def test_serialize_model(self):
         places = self.places
-        with cosmos.scope(self.cosmos):
+        with cosmos.swap(self.cosmos):
             rep = {
                 "number": 31,
                 "street": "Sesame"
@@ -100,7 +100,7 @@ class TestGuideModelLinks(TestCase):
 
     def setUp(self):
         self.cosmos1 = {}
-        with cosmos.scope(self.cosmos1):
+        with cosmos.swap(self.cosmos1):
             self.places = places = API('places')
 
             @places.model
@@ -120,7 +120,7 @@ class TestGuideModelLinks(TestCase):
                 ]
 
         self.cosmos2 = {}
-        with cosmos.scope(self.cosmos2):
+        with cosmos.swap(self.cosmos2):
 
             class PlacesClient(WsgiAPIClient):
                 wsgi_app = Server(places).wsgi_app
@@ -128,7 +128,7 @@ class TestGuideModelLinks(TestCase):
             self.remote_places = PlacesClient()
 
     def remote_create_models(self):
-        with cosmos.scope(self.cosmos2):
+        with cosmos.swap(self.cosmos2):
             elm13 = self.remote_places.models.Address(number=13, street="Elm")
             self.assertEqual(elm13.number, 13)
 
@@ -138,7 +138,7 @@ class TestGuideGetById(TestCase):
 
     def setUp(self):
         self.cosmos = {}
-        with cosmos.scope(self.cosmos):
+        with cosmos.swap(self.cosmos):
 
             self.places = places = API('places')
 
@@ -162,7 +162,7 @@ class TestGuideGetById(TestCase):
 
     def test_access_links(self):
         places = self.places
-        with cosmos.scope(self.cosmos):
+        with cosmos.swap(self.cosmos):
             city = places.models.City.get_by_id("0")
             self.assertEqual(city['name'], "Toronto")
             self.assertEqual(places.models.City.get_by_id("5") is None, True)
@@ -173,7 +173,7 @@ class TestGuideSave(TestCase):
 
     def setUp(self):
         self.cosmos = {}
-        with cosmos.scope(self.cosmos):
+        with cosmos.swap(self.cosmos):
             self.places = places = API('places')
 
             @places.model
@@ -200,7 +200,7 @@ class TestGuideSave(TestCase):
                     return patch
 
         self.cosmos2 = {}
-        with cosmos.scope(self.cosmos2):
+        with cosmos.swap(self.cosmos2):
 
             class PlacesClient(WsgiAPIClient):
                 wsgi_app = Server(places).wsgi_app
@@ -215,18 +215,18 @@ class TestGuideSave(TestCase):
 
     def test_save_good(self):
         places = self.places
-        with cosmos.scope(self.cosmos):
+        with cosmos.swap(self.cosmos):
             (id, rep) = places.models.City.create(name="Moscow")
             self.assertEqual(id, "2")
 
     def test_local_save_validation_error(self):
-        with cosmos.scope(self.cosmos):
+        with cosmos.swap(self.cosmos):
             with self.assertRaisesRegexp(ValidationError, "must be capitalized"):
                 self.places.models.City.validate_patch({"name": "moscow"})
                 self.places.models.City.create(name="moscow")
 
     def test_remote_save_validation_error(self):
-        with cosmos.scope(self.cosmos2):
+        with cosmos.swap(self.cosmos2):
             with self.assertRaisesRegexp(RemoteHTTPError, "must be capitalized"):
                 self.remote_places.models.City.create(name="moscow")
 
@@ -236,7 +236,7 @@ class TestGuideDelete(TestCase):
 
     def setUp(self):
         self.cosmos = {}
-        with cosmos.scope(self.cosmos):
+        with cosmos.swap(self.cosmos):
             self.places = places = API('places')
 
             @places.model
@@ -263,7 +263,7 @@ class TestGuideDelete(TestCase):
 
     def test_save(self):
         places = self.places
-        with cosmos.scope(self.cosmos):
+        with cosmos.swap(self.cosmos):
             city = places.models.City.get_by_id("0")
             places.models.City.delete("0")
             with self.assertRaises(NotFound):
@@ -276,7 +276,7 @@ class TestGuideGetList(TestCase):
     def setUp(self):
 
         self.cosmos = {}
-        with cosmos.scope(self.cosmos):
+        with cosmos.swap(self.cosmos):
 
             self.places = places = API('places')
 
@@ -307,7 +307,7 @@ class TestGuideGetList(TestCase):
 
     def test_get_list(self):
         places = self.places
-        with cosmos.scope(self.cosmos):
+        with cosmos.swap(self.cosmos):
             l1 = places.models.City.get_list()
             self.assertEqual(len(l1), 2)
             l2 = places.models.City.get_list(country="Canada")
@@ -322,7 +322,7 @@ class TestGuideAction(TestCase):
 
     def setUp(self):
         self.cosmos1 = {}
-        with cosmos.scope(self.cosmos1):
+        with cosmos.swap(self.cosmos1):
             self.mathy = mathy = API("mathy")
 
             @mathy.action(accepts=Array(Integer), returns=Integer)
@@ -340,7 +340,7 @@ class TestGuideAction(TestCase):
             self.add = add
 
         self.cosmos2 = {}
-        with cosmos.scope(self.cosmos2):
+        with cosmos.swap(self.cosmos2):
 
             class MathyClient(WsgiAPIClient):
                 wsgi_app = Server(mathy).wsgi_app

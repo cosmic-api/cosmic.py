@@ -87,5 +87,5 @@ def hello(sphere):
 
 
 if __name__ == "__main__":
-    with db.scope(planet_db):
+    with db.swap(planet_db):
         planetarium.run()

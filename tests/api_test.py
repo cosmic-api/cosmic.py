@@ -115,10 +115,12 @@ cookbook_spec = {
 
 
 class TestAPI(TestCase):
+
     def setUp(self):
         self.maxDiff = None
 
-        cosmos.stack.push({})
+        self._old_cosmos = cosmos.data
+        cosmos.data = {}
 
         self.cookbook = cookbook = API(u'cookbook')
 
@@ -176,7 +178,7 @@ class TestAPI(TestCase):
         self.client = TestClient(self.app, response_wrapper=Response)
 
     def tearDown(self):
-        cosmos.stack.pop()
+        cosmos.data = self._old_cosmos
 
     def test_get_list_missing(self):
         resp = self.client.get('/Author')

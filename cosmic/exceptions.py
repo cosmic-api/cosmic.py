@@ -31,3 +31,4 @@ class HTTPError(Exception):
 
 class RemoteHTTPError(HTTPError):
     pass
+
