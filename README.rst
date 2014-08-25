@@ -1,3 +1,6 @@
+.. image:: https://travis-ci.org/cosmic-api/cosmic.py.svg?branch=master
+   :target: https://travis-ci.org/cosmic-api/cosmic.py
+
 Testing
 -------
 
