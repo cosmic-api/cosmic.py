@@ -4,11 +4,11 @@ Testing
 The only Python package that needs to be installed globally is
 `Tox <http://testrun.org/tox/latest/>`_. All the dependencies, testing tools
 and documentation tools will be installed by Tox in virtual environments. Tox
-will test against Python 2.6, Python 2.7 and `PyPy <http://pypy.org/>`_. Python
-2.7 virtual environment will have
-`coverage.py <http://nedbatchelder.com/code/coverage/>`_ installed for unit
-test coverage checking which will be reported in the terminal when you run Tox.
-Detailed HTML reports will be generated in the ``htmlcov`` directory.
+will test against Python 2.7 and `PyPy <http://pypy.org/>`_. Python 2.7 virtual
+environment will have `coverage.py <http://nedbatchelder.com/code/coverage/>`_
+installed for unit test coverage checking which will be reported in the
+terminal when you run Tox. Detailed HTML reports will be generated in the
+``htmlcov`` directory.
 
 .. code:: bash
 
@@ -21,8 +21,7 @@ Usually it will suffice to run:
 
     $ tox -e py27
 
-However, before committing, you should make sure that Python 2.6 and PyPy work
-as well.
+However, before committing, you should make sure that PyPy works as well.
 
 Building documentation
 ----------------------
