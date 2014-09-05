@@ -37,8 +37,9 @@ pip-log.txt
 # Mr Developer
 .mr.developer.cfg
 
-# PyCharm
+# IntelliJ IDEA / PyCharm
 /.idea
+*.iml
 
 # Python virtual env
 /venv
