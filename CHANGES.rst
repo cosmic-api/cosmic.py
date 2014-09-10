@@ -1,3 +1,10 @@
+Version 0.5.0
+-------------
+
+- ``cosmic.Link`` type's JSON form is a string containing a URL, the "href"
+  part was moved into ``cosmic.BaseRepresentation``. This makes the Link type
+  friendlier for actions.
+
 Version 0.4.2
 -------------
 
