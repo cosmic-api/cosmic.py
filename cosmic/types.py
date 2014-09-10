@@ -84,6 +84,13 @@ class Model(BasicWrapper):
         return '{}.{}'.format(datum.api_name, datum.model_name)
 
 
+def link_in_href(model):
+    return Struct([
+        required(u"href", Link(model))
+    ])
+
+
+
 class Link(ParametrizedWrapper):
     """A Teleport type representing a link to an object. Its native form is
     simply a resource id. It takes a :class:`~cosmic.types.Model` as
@@ -92,8 +99,8 @@ class Link(ParametrizedWrapper):
     .. code:: python
 
         >>> Link(Model('places.City')).to_json("3")
-        {"href": "/City/3"}
-        >>> Link(Model('places.City')).from_json({"href": "/City/3"})
+        "/City/3"
+        >>> Link(Model('places.City')).from_json("/City/3")
         "3"
 
     """
@@ -102,20 +109,16 @@ class Link(ParametrizedWrapper):
 
     def __init__(self, param):
         self.param = param
-        self.schema = Struct([
-            required(u"href", String)
-        ])
+        self.schema = String
 
     def assemble(self, datum):
-        url = datum['href']
-        parts = url.split('/')
+        parts = datum.split('/')
         if parts[-2] != self.param.model_name:
             raise ValidationError("Invalid url for %s link: %s" % (self.param.model_name, url))
         return parts[-1]
 
     def disassemble(self, datum):
-        href = "/%s/%s" % (self.param.model_name, datum)
-        return {"href": href}
+        return "/%s/%s" % (self.param.model_name, datum)
 
 
 class BaseRepresentation(ParametrizedWrapper):
@@ -132,29 +135,33 @@ class BaseRepresentation(ParametrizedWrapper):
             links = [
                 ("self", {
                     "required": False,
-                    "schema": Link(self.param)
+                    "schema": Struct([
+                        required(u"href", Link(self.param))
+                    ])
                 })
             ]
             for name, link in self.param.model_spec['links'].items():
-                required = False
+                is_required = False
                 if not self.all_fields_optional:
-                    required = link["required"]
+                    is_required = link["required"]
 
                 links.append((name, {
-                    "required": required,
-                    "schema": Link(link["model"]),
+                    "required": is_required,
+                    "schema": Struct([
+                        required(u"href", Link(self.param))
+                    ])
                 }))
 
             props = [
                 optional("_links", Struct(links)),
             ]
             for name, field in self.param.model_spec['properties'].items():
-                required = False
+                is_required = False
                 if not self.all_fields_optional:
-                    required = field["required"]
+                    is_required = field["required"]
 
                 props.append((name, {
-                    "required": required,
+                    "required": is_required,
                     "schema": field['schema'],
                 }))
 
@@ -163,27 +170,31 @@ class BaseRepresentation(ParametrizedWrapper):
         return self._lazy_schema
 
     def assemble(self, datum):
-
         rep = {}
-        links = datum.pop("_links", {})
+        links = {}
+        for name, hlink in datum.pop("_links", {}).items():
+            links[name] = hlink['href']
+
         self_id = links.pop("self", None)
 
         rep.update(links)
         rep.update(datum)
 
-        return (self_id, rep)
+        return self_id, rep
 
 
     def disassemble(self, datum):
         (id, rep) = datum
 
         links = {}
-        if id:
-            links["self"] = id
+        if id is not None:
+            links["self"] = {'href': id}
         for name, link in self.param.model_spec['links'].items():
             value = rep.get(name, None)
             if value != None:
-                links[name] = value
+                links[name] = {
+                    "href": value
+                }
         d = {}
         if links:
             d["_links"] = links
