@@ -71,6 +71,15 @@ Types
 .. autoclass:: cosmic.types.APISpec
    :show-inheritance:
 
+Globals
+-------
+
+.. autoclass:: cosmic.globals.ThreadLocalDict
+
+.. autofunction:: cosmic.globals.thread_local
+
+.. autofunction:: cosmic.globals.thread_local_middleware
+
 HTTP Endpoints
 --------------
 
@@ -101,6 +110,9 @@ Exceptions
    :members:
 
 .. autoclass:: cosmic.exceptions.RemoteHTTPError
+   :members:
+
+.. autoclass:: cosmic.exceptions.ThreadLocalMissing
    :members:
 
 Tools and Helpers

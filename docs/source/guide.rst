@@ -509,6 +509,38 @@ this purpose: :class:`~cosmic.globals.ThreadLocalDict`.
 
     g = ThreadLocalDict()
 
+What happens when we try to set a value?
+
+.. code:: python
+
+    >>> g = ThreadLocalDict()
+    >>> g['foo'] = 1
+    Traceback (most recent call last):
+      File "<stdin>", line 1, in <module>
+      File "/lib/python2.7/UserDict.py", line 24, in __setitem__
+        def __setitem__(self, key, item): self.data[key] = item
+      File "cosmic/globals.py", line 87, in data
+        raise ThreadLocalMissing()
+    cosmic.exceptions.ThreadLocalMissing
+
+Uh oh. Why wasn't a thread-local created when we created a
+:class:`~cosmic.globals.ThreadLocalDict`? Unlike regular Python
+`thread-locals
+<https://docs.python.org/2/library/threading.html#threading.local>`_, Cosmic
+thread-locals don't clean themselves up after a thread finishes. This is a
+necessary sacrifice in order to make them work with greenlets. Because of this,
+a thread-local's lifetime is controlled explicitly with the
+:func:`~cosmic.globals.thread_local` context manager or, more conveniently,
+with :func:`~cosmic.globals.thread_local_middleware`.
+
+.. code:: python
+
+    >>> with thread_local():
+    ...     g['foo'] = 1
+    ...     print g['foo']
+    ...
+    1
+
 Now we can use it to store the current user:
 
 .. code:: python

@@ -32,3 +32,11 @@ class HTTPError(Exception):
 class RemoteHTTPError(HTTPError):
     pass
 
+
+class ThreadLocalMissing(Exception):
+    """Raised when trying to access a value inside
+    :class:`cosmic.globals.ThreadLocalDict` without creating a thread-local
+    to store it on. See :func:`cosmic.globals.thread_local` and
+    :func:`cosmic.globals.thread_local_middleware`.
+    """
+    pass
