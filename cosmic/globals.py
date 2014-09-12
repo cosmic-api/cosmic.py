@@ -29,6 +29,15 @@ def thread_local():
     del storage[ident]
 
 
+@contextmanager
+def ensure_thread_local():
+    if get_ident() in storage:
+        yield
+    else:
+        with thread_local():
+            yield
+
+
 def thread_local_middleware(app):
     """To put your entire application in a :func:`~cosmic.globals.thread_local`
     context, you must put it at the entry point of your application's thread.
