@@ -1,5 +1,17 @@
+Version 0.5.1
+-------------
+
+(bugfix release, released on September 12th, 2014)
+
+- Wrote documentation for the ``cosmic.globals`` module.
+- Implemented ``cosmic.globals.thread_local_middleware``.
+- Now the server doesn't force the creation of a thread-local on every request,
+  it checks if one exists already. This allows using the middleware explicitly.
+
 Version 0.5.0
 -------------
+
+Released on September 10th, 2014
 
 - ``cosmic.Link`` type's JSON form is a string containing a URL, the "href"
   part was moved into ``cosmic.BaseRepresentation``. This makes the Link type
