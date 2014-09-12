@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from UserDict import UserDict
+from collections import MutableMapping
 from werkzeug.local import get_ident
 
 from cosmic.exceptions import ThreadLocalMissing
@@ -59,7 +59,34 @@ def thread_local_middleware(app):
     return application
 
 
-class SwappableDict(UserDict):
+class SwappableDict(MutableMapping):
+
+    def __init__(self, data=None):
+        if data is None:
+            self.data = {}
+        else:
+            self.data = data
+
+    def __getitem__(self, key):
+        return self.data[key]
+
+    def __setitem__(self, key, val):
+        self.data[key] = val
+
+    def __delitem__(self, key):
+        del self.data[key]
+
+    def __len__(self):
+        return len(self.data)
+
+    def __iter__(self):
+        return self.data.__iter__()
+
+    def keys(self):
+        return self.data.keys()
+
+    def __repr__(self):
+        return repr(self.data)
 
     @contextmanager
     def swap(self, new):
@@ -78,6 +105,12 @@ class ThreadLocalDict(SwappableDict):
 
     def __init__(self):
         pass
+
+    def __repr__(self):
+        if get_ident() in storage:
+            return repr(self.data)
+        else:
+            return '<unbound ThreadLocalDict>'
 
     @property
     def data(self):
