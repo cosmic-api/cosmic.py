@@ -74,16 +74,18 @@ class Server(object):
             return error_response(err.message, err.code)
         except ValidationError as err:
             return error_response(str(err), 400)
-        except Exception as exc:
-            if self.debug:
-                raise exc
-            else:
-                return self.unhandled_exception_hook(exc, request)
 
     def wsgi_app(self, environ, start_response):
         with ensure_thread_local():
             request = Request(environ)
-            response = self.dispatch_request(request)
+            if self.debug:
+                response = self.dispatch_request(request)
+            else:
+                try:
+                    response = self.dispatch_request(request)
+                except Exception as exc:
+                    response = self.unhandled_exception_hook(exc, request)
+
             return response(environ, start_response)
 
     def unhandled_exception_hook(self, exc, request):
