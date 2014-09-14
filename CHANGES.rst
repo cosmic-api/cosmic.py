@@ -1,3 +1,12 @@
+Version 0.5.2
+-------------
+
+(bugfix release, released on September 14th, 2014)
+
+- Fix bug in link representation, foreign links were represented as URLs of
+  the same model.
+- Avoid reraising exceptions in http module to preserve original stack traces.
+
 Version 0.5.1
 -------------
 
