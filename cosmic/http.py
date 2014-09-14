@@ -151,18 +151,14 @@ class Endpoint(object):
 
     acceptable_exceptions = []
 
-
     def handler(self, *args, **kwargs):
         if not self.acceptable_exceptions:
             return self.func(*args, **kwargs)
 
         try:
             return Either(value=self.func(*args, **kwargs))
-        except Exception as e:
-            for exc_class in self.acceptable_exceptions:
-                if isinstance(e, exc_class):
-                    return Either(exception=e)
-            raise e
+        except tuple(self.acceptable_exceptions) as e:
+            return Either(exception=e)
 
     def parse_request(self, request, **url_args):
         req = {
