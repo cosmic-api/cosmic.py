@@ -148,7 +148,7 @@ class BaseRepresentation(ParametrizedWrapper):
                 links.append((name, {
                     "required": is_required,
                     "schema": Struct([
-                        required(u"href", Link(self.param))
+                        required(u"href", Link(link['model']))
                     ])
                 }))
 
