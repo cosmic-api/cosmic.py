@@ -5,6 +5,7 @@ from werkzeug.exceptions import NotFound as WerkzeugNotFound
 from werkzeug.wrappers import Request, Response
 from werkzeug.routing import Rule
 from werkzeug.routing import Map as RuleMap
+from werkzeug.http import parse_options_header
 
 from .types import *
 from .tools import get_args, string_to_json, args_to_datum, deserialize_json, \
@@ -106,21 +107,61 @@ class Server(object):
                                        func_output=func_output)
 
 
+class CannotBeEmpty(object):
+
+    def forward(self, text_data, **kwargs):
+        if text_data == '':
+            raise HTTPError(code=400, message="Invalid data")
+
+    backward = forward
 
 
+class MustBeEmpty(object):
+
+    def forward(self, text_data, **kwargs):
+        if text_data != '':
+            raise HTTPError(code=400, message="Invalid data")
+
+    backward = forward
+
+
+class JSONPayload(object):
+
+    def forward(self, text_data, headers, **kwargs):
+        try:
+            return {
+                'json_data': get_payload_from_http_message(text_data, headers)
+            }
+        except SpecError as e:
+            raise HTTPError(code=400, message=e.args[0])
+
+    def backward(self, json_data, headers=None, **kwargs):
+        _headers = {
+            "Content-Type": "application/json"
+        }
+        if headers is not None:
+            _headers.update(headers)
+        if json_data is not None:
+            text_data = json.dumps(json_data.datum)
+        else:
+            text_data = ""
+        return {
+            "text_data": text_data,
+            "headers": _headers
+        }
 
 def error_response(message, code):
     body = json.dumps({"error": message})
     return Response(body, code, {"Content-Type": "application/json"})
 
 
-def get_payload_from_http_message(req):
-    bytes = req.data
+def get_payload_from_http_message(bytes, headers):
+    mimetype, params = parse_options_header(headers['Content-Type'])
     if not bytes:
         return None
-    if req.mimetype != "application/json":
-        raise SpecError('Content-Type must be "application/json" got "%s" instead' % req.mimetype)
-    charset = req.mimetype_params.get("charset", "utf-8")
+    if mimetype != "application/json":
+        raise SpecError('Content-Type must be "application/json" got "%s" instead' % mimetype)
+    charset = params.get("charset", "utf-8")
     if charset.lower() != "utf-8":
         raise SpecError('Content-Type charset must be "utf-8" got %s instead' % charset)
     try:
@@ -143,15 +184,12 @@ def reverse_werkzeug_url(url, values):
 
 
 class Endpoint(object):
-    response_can_be_empty = True
-    response_must_be_empty = None
-
-    request_can_be_empty = True
-    request_must_be_empty = None
-
     query_schema = None
 
     acceptable_exceptions = []
+
+    request_pipeline = []
+    response_pipeline = []
 
     def handler(self, *args, **kwargs):
         if not self.acceptable_exceptions:
@@ -163,20 +201,21 @@ class Endpoint(object):
             return Either(exception=e)
 
     def parse_request(self, request, **url_args):
-        req = {
-            'url_args': url_args,
+
+        args = {
+            'text_data': request.data,
             'headers': request.headers
         }
-        try:
-            req['json'] = get_payload_from_http_message(request)
-        except SpecError as e:
-            raise HTTPError(code=400, message=e.args[0])
+        for step in self.request_pipeline:
+            more = step.forward(**args)
+            if more is not None:
+                args.update(more)
 
-        is_empty = request.data == ""
-
-        if ((self.request_must_be_empty == True and not is_empty) or
-                (is_empty and self.request_can_be_empty == False)):
-            raise HTTPError(code=400, message="Invalid data")
+        req = {
+            'url_args': url_args,
+            'headers': request.headers,
+            'json': args['json_data']
+        }
 
         if self.query_schema is not None:
             req['query'] = self.query_schema.from_multi_dict(request.args)
@@ -195,11 +234,15 @@ class Endpoint(object):
         if query is None:
             query = {}
 
-        if data is not None:
-            headers["Content-Type"] = "application/json"
-            string_data = json.dumps(data.datum)
-        else:
-            string_data = ""
+        args = {
+            'json_data': data,
+            'headers': headers
+        }
+
+        for step in reversed(self.request_pipeline):
+            more = step.backward(**args)
+            if more is not None:
+                args.update(more)
 
         url = reverse_werkzeug_url(self.url, url_args)
 
@@ -211,15 +254,13 @@ class Endpoint(object):
         return requests.Request(
             method=self.method,
             url=url,
-            data=string_data,
-            headers=headers)
+            data=args['text_data'],
+            headers=args['headers'])
 
     def parse_response(self, res):
 
-        is_empty = res.text == ""
-        if ((self.response_must_be_empty == True and not is_empty) or
-                (is_empty and self.response_can_be_empty == False)):
-            raise SpecError("Invalid response")
+        for step in self.response_pipeline:
+            args = step.forward(text_data=res.text)
 
         r = {
             'code': res.status_code,
@@ -255,6 +296,10 @@ class SpecEndpoint(Endpoint):
     """
     method = "GET"
     acceptable_response_codes = [200]
+
+    request_pipeline = [
+        JSONPayload()
+    ]
 
     def __init__(self, api_spec=None):
         self.url = '/spec.json'
@@ -296,6 +341,10 @@ class ActionEndpoint(Endpoint):
 
     method = "POST"
     acceptable_response_codes = [200, 204]
+
+    request_pipeline = [
+        JSONPayload()
+    ]
 
     def __init__(self, api_spec, action_name, func=None):
         self.func = func
@@ -352,9 +401,12 @@ class GetByIdEndpoint(Endpoint):
     """
     method = "GET"
     acceptable_response_codes = [404, 200]
-    response_can_be_empty = True
-    request_must_be_empty = True
     acceptable_exceptions = [NotFound]
+
+    request_pipeline = [
+        MustBeEmpty(),
+        JSONPayload()
+    ]
 
     def __init__(self, api_spec, model_name, func=None):
         self.model_name = model_name
@@ -403,9 +455,16 @@ class UpdateEndpoint(Endpoint):
     """
     method = "PUT"
     acceptable_response_codes = [200, 404]
-    response_can_be_empty = False
-    request_can_be_empty = False
     acceptable_exceptions = [NotFound]
+
+    request_pipeline = [
+        CannotBeEmpty(),
+        JSONPayload()
+    ]
+
+    response_pipeline = [
+        CannotBeEmpty()
+    ]
 
     def __init__(self, api_spec, model_name, func=None):
         self.model_name = model_name
@@ -456,8 +515,14 @@ class CreateEndpoint(Endpoint):
     """
     method = "POST"
     acceptable_response_codes = [201]
-    response_can_be_empty = False
-    request_can_be_empty = False
+
+    request_pipeline = [
+        JSONPayload()
+    ]
+
+    response_pipeline = [
+        CannotBeEmpty()
+    ]
 
     def __init__(self, api_spec, model_name, func=None):
         self.model_name = model_name
@@ -499,9 +564,16 @@ class DeleteEndpoint(Endpoint):
     """
     method = "DELETE"
     acceptable_response_codes = [204, 404]
-    response_must_be_empty = True
-    request_must_be_empty = True
     acceptable_exceptions = [NotFound]
+
+    request_pipeline = [
+        MustBeEmpty(),
+        JSONPayload()
+    ]
+
+    response_pipeline = [
+        MustBeEmpty()
+    ]
 
     def __init__(self, api_spec, model_name, func=None):
         self.model_name = model_name
@@ -566,8 +638,11 @@ class GetListEndpoint(Endpoint):
     """
     method = "GET"
     acceptable_response_codes = [200]
-    response_can_be_empty = False
-    request_must_be_empty = True
+
+    request_pipeline = [
+        MustBeEmpty(),
+        JSONPayload()
+    ]
 
     def __init__(self, api_spec, model_name, func=None):
         self.model_name = model_name
