@@ -150,6 +150,23 @@ class JSONPayload(object):
             "headers": _headers
         }
 
+
+class QueryParse(object):
+
+    def __init__(self, schema):
+        self.schema = schema
+
+    def forward(self, query_string, **kwargs):
+        return {
+            "query": self.schema.from_json(query_string)
+        }
+
+    def backward(self, query, **kwargs):
+        return {
+            "query_string": self.schema.to_json(query)
+        }
+
+
 def error_response(message, code):
     body = json.dumps({"error": message})
     return Response(body, code, {"Content-Type": "application/json"})
@@ -204,6 +221,7 @@ class Endpoint(object):
 
         args = {
             'text_data': request.data,
+            'query_string': request.query_string,
             'headers': request.headers
         }
         for step in self.request_pipeline:
@@ -214,13 +232,11 @@ class Endpoint(object):
         req = {
             'url_args': url_args,
             'headers': request.headers,
-            'json': args['json_data']
+            'json': args['json_data'],
+            'query': args.get('query', {})
         }
 
-        if self.query_schema is not None:
-            req['query'] = self.query_schema.from_multi_dict(request.args)
-
-        return req
+        return self._parse_request(**req)
 
     def build_response(self, func_input, func_output):
         raise NotImplementedError()
@@ -236,7 +252,8 @@ class Endpoint(object):
 
         args = {
             'json_data': data,
-            'headers': headers
+            'headers': headers,
+            'query': query
         }
 
         for step in reversed(self.request_pipeline):
@@ -246,10 +263,8 @@ class Endpoint(object):
 
         url = reverse_werkzeug_url(self.url, url_args)
 
-        if self.query_schema is not None and query:
-            query_string = self.query_schema.to_json(query)
-            if query_string:
-                url += "?%s" % query_string
+        if 'query_string' in args and args['query_string']:
+            url += "?%s" % args['query_string']
 
         return requests.Request(
             method=self.method,
@@ -305,7 +320,7 @@ class SpecEndpoint(Endpoint):
         self.url = '/spec.json'
         self.api_spec = api_spec
 
-    def parse_request(self, req, **url_args):
+    def _parse_request(self, **kwargs):
         return {}
 
     def build_request(self, *args, **kwargs):
@@ -359,9 +374,8 @@ class ActionEndpoint(Endpoint):
         data = serialize_json(self.accepts, packed)
         return super(ActionEndpoint, self).build_request(data=data)
 
-    def parse_request(self, req, **url_args):
-        req = super(ActionEndpoint, self).parse_request(req, **url_args)
-        data = deserialize_json(self.accepts, req['json'])
+    def _parse_request(self, json, **kwargs):
+        data = deserialize_json(self.accepts, json)
         kwargs = {}
         if data is not None:
             required_args, optional_args = get_args(self.func)
@@ -418,9 +432,8 @@ class GetByIdEndpoint(Endpoint):
         return super(GetByIdEndpoint, self).build_request(
             url_args={'id': id})
 
-    def parse_request(self, req, **url_args):
-        req = super(GetByIdEndpoint, self).parse_request(req, **url_args)
-        return {'id': req['url_args']['id']}
+    def _parse_request(self, url_args, **kwargs):
+        return {'id': url_args['id']}
 
     def build_response(self, func_input, func_output):
         if func_output.exception is not None:
@@ -477,10 +490,9 @@ class UpdateEndpoint(Endpoint):
             data=Box(Patch(Model(self.full_model_name)).to_json((id, patch))),
             url_args={'id': id})
 
-    def parse_request(self, req, **url_args):
-        req = super(UpdateEndpoint, self).parse_request(req, **url_args)
-        id, rep = Patch(Model(self.full_model_name)).from_json(req['json'].datum)
-        rep['id'] = req['url_args']['id']
+    def _parse_request(self, json, url_args, **kwargs):
+        id, rep = Patch(Model(self.full_model_name)).from_json(json.datum)
+        rep['id'] = url_args['id']
         return rep
 
     def build_response(self, func_input, func_output):
@@ -534,9 +546,8 @@ class CreateEndpoint(Endpoint):
         return super(CreateEndpoint, self).build_request(
             data=Box(Patch(Model(self.full_model_name)).to_json((None, patch))))
 
-    def parse_request(self, req, **url_args):
-        req = super(CreateEndpoint, self).parse_request(req, **url_args)
-        id, rep = Patch(Model(self.full_model_name)).from_json(req['json'].datum)
+    def _parse_request(self, json, **kwargs):
+        id, rep = Patch(Model(self.full_model_name)).from_json(json.datum)
         return rep
 
     def parse_response(self, res):
@@ -585,9 +596,8 @@ class DeleteEndpoint(Endpoint):
         return super(DeleteEndpoint, self).build_request(
             url_args={'id': id})
 
-    def parse_request(self, req, **url_args):
-        req = super(DeleteEndpoint, self).parse_request(req, **url_args)
-        return {'id': req['url_args']['id']}
+    def _parse_request(self, url_args, **kwargs):
+        return {'id': url_args['id']}
 
     def parse_response(self, res):
         res = super(DeleteEndpoint, self).parse_response(res)
@@ -653,14 +663,14 @@ class GetListEndpoint(Endpoint):
         self.query_schema = None
         if self.model_spec['query_fields']:
             self.query_schema = URLParams(self.model_spec['query_fields'])
+            self.request_pipeline += [QueryParse(self.query_schema)]
         self.url = "/%s" % model_name
 
     def build_request(self, **query):
         return super(GetListEndpoint, self).build_request(query=query)
 
-    def parse_request(self, req, **url_args):
-        req = super(GetListEndpoint, self).parse_request(req, **url_args)
-        return req.get('query', {})
+    def _parse_request(self, query, **kwargs):
+        return query
 
     def parse_response(self, res):
         res = super(GetListEndpoint, self).parse_response(res)
