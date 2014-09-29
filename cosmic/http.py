@@ -241,20 +241,16 @@ class Endpoint(object):
     def build_response(self, func_input, func_output):
         raise NotImplementedError()
 
-    def build_request(self, data=None, url_args=None, headers=None, query=None):
+    def build_request(self, *args, **kwargs):
 
-        if url_args is None:
-            url_args = {}
-        if headers is None:
-            headers = {}
-        if query is None:
-            query = {}
+        req = self._build_request(*args, **kwargs)
 
         args = {
-            'json_data': data,
-            'headers': headers,
-            'query': query
+            'json_data': req.get('data', None),
+            'headers': req.get('headers', {}),
+            'query': req.get('query', {})
         }
+        url_args = req.get('url_args', {})
 
         for step in reversed(self.request_pipeline):
             more = step.backward(**args)
@@ -323,8 +319,8 @@ class SpecEndpoint(Endpoint):
     def _parse_request(self, **kwargs):
         return {}
 
-    def build_request(self, *args, **kwargs):
-        return super(SpecEndpoint, self).build_request()
+    def _build_request(self, **kwargs):
+        return {}
 
     def handler(self):
         return self.api_spec
@@ -369,10 +365,9 @@ class ActionEndpoint(Endpoint):
         self.returns = self.action_spec.get('returns', None)
         self.url = "/actions/%s" % action_name
 
-    def build_request(self, *args, **kwargs):
+    def _build_request(self, *args, **kwargs):
         packed = args_to_datum(*args, **kwargs)
-        data = serialize_json(self.accepts, packed)
-        return super(ActionEndpoint, self).build_request(data=data)
+        return {"data": serialize_json(self.accepts, packed)}
 
     def _parse_request(self, json, **kwargs):
         data = deserialize_json(self.accepts, json)
@@ -428,9 +423,8 @@ class GetByIdEndpoint(Endpoint):
         self.func = func
         self.url = "/%s/<id>" % model_name
 
-    def build_request(self, id):
-        return super(GetByIdEndpoint, self).build_request(
-            url_args={'id': id})
+    def _build_request(self, id):
+        return {"url_args": {'id': id}}
 
     def _parse_request(self, url_args, **kwargs):
         return {'id': url_args['id']}
@@ -485,10 +479,11 @@ class UpdateEndpoint(Endpoint):
         self.func = func
         self.url = "/%s/<id>" % model_name
 
-    def build_request(self, id, **patch):
-        return super(UpdateEndpoint, self).build_request(
-            data=Box(Patch(Model(self.full_model_name)).to_json((id, patch))),
-            url_args={'id': id})
+    def _build_request(self, id, **patch):
+        return {
+            "data": Box(Patch(Model(self.full_model_name)).to_json((id, patch))),
+            "url_args": {'id': id}
+        }
 
     def _parse_request(self, json, url_args, **kwargs):
         id, rep = Patch(Model(self.full_model_name)).from_json(json.datum)
@@ -542,9 +537,10 @@ class CreateEndpoint(Endpoint):
         self.func = func
         self.url = "/%s" % model_name
 
-    def build_request(self, **patch):
-        return super(CreateEndpoint, self).build_request(
-            data=Box(Patch(Model(self.full_model_name)).to_json((None, patch))))
+    def _build_request(self, **patch):
+        return {
+            "data": Box(Patch(Model(self.full_model_name)).to_json((None, patch)))
+        }
 
     def _parse_request(self, json, **kwargs):
         id, rep = Patch(Model(self.full_model_name)).from_json(json.datum)
@@ -592,9 +588,8 @@ class DeleteEndpoint(Endpoint):
         self.func = func
         self.url = "/%s/<id>" % model_name
 
-    def build_request(self, id):
-        return super(DeleteEndpoint, self).build_request(
-            url_args={'id': id})
+    def _build_request(self, id):
+        return {"url_args": {'id': id}}
 
     def _parse_request(self, url_args, **kwargs):
         return {'id': url_args['id']}
@@ -666,8 +661,8 @@ class GetListEndpoint(Endpoint):
             self.request_pipeline += [QueryParse(self.query_schema)]
         self.url = "/%s" % model_name
 
-    def build_request(self, **query):
-        return super(GetListEndpoint, self).build_request(query=query)
+    def _build_request(self, **query):
+        return {"query": query}
 
     def _parse_request(self, query, **kwargs):
         return query
