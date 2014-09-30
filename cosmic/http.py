@@ -70,7 +70,7 @@ class Server(object):
             endpoint = endpoints[endpoint_name](**args)
 
         try:
-            return self.view(endpoint, request, **values)
+            return self.view(endpoint, request)
         except HTTPError as err:
             return error_response(err.message, err.code)
         except ValidationError as err:
@@ -92,22 +92,42 @@ class Server(object):
     def unhandled_exception_hook(self, exc, request):
         return error_response("Internal Server Error", 500)
 
-    def view(self, endpoint, request, **url_args):
-        func_input = self.parse_request(endpoint, request, **url_args)
+    def view(self, endpoint, request):
+        func_input = self.parse_request(endpoint, request)
         func_output = endpoint.handler(**func_input)
         return self.build_response(endpoint,
                                    func_input=func_input,
                                    func_output=func_output)
 
-    def parse_request(self, endpoint, request, **url_args):
-        return endpoint.parse_request(request, **url_args)
+    def parse_request(self, endpoint, request):
+
+        args = {
+            'text_data': request.data,
+            'query_string': request.query_string,
+            'headers': request.headers,
+            'path': request.path,
+        }
+
+        for step in endpoint.request_pipeline:
+            more = step.forward(**args)
+            if more is not None:
+                args.update(more)
+
+        req = {
+            'url_args': args['url_args'],
+            'headers': request.headers,
+            'json_data': args['json_data'],
+            'query': args.get('query', {})
+        }
+
+        return endpoint._parse_request(**req)
 
     def build_response(self, endpoint, func_input, func_output):
         return endpoint.build_response(func_input=func_input,
                                        func_output=func_output)
 
 
-class CannotBeEmpty(object):
+class PipeCannotBeEmpty(object):
 
     def forward(self, text_data, **kwargs):
         if text_data == '':
@@ -116,7 +136,7 @@ class CannotBeEmpty(object):
     backward = forward
 
 
-class MustBeEmpty(object):
+class PipeMustBeEmpty(object):
 
     def forward(self, text_data, **kwargs):
         if text_data != '':
@@ -125,7 +145,7 @@ class MustBeEmpty(object):
     backward = forward
 
 
-class JSONPayload(object):
+class PipeJSONPayload(object):
 
     def forward(self, text_data, headers, **kwargs):
         if text_data == "":
@@ -158,7 +178,7 @@ class JSONPayload(object):
         }
 
 
-class QueryParse(object):
+class PipeQueryParse(object):
 
     def __init__(self, schema):
         self.schema = schema
@@ -170,18 +190,26 @@ class QueryParse(object):
         return {"query_string": self.schema.to_json(query)}
 
 
+class PipeURL(object):
+
+    def __init__(self, url_template):
+        self.url_template = url_template
+        rule = Rule(url_template, endpoint='_')
+        self.c = RuleMap([rule]).bind('example.com')
+
+    def forward(self, path, **kwargs):
+        url_args = self.c.match(path)[1]
+        return {"url_args": url_args}
+
+    def backward(self, url_args, **kwargs):
+        url = self.c.build('_', url_args)
+        return {"path": url}
+
+
 def error_response(message, code):
     body = json.dumps({"error": message})
     return Response(body, code, {"Content-Type": "application/json"})
 
-
-def reverse_werkzeug_url(url, values):
-    rule = Rule(url)
-    # Rule needs to be bound before building
-    RuleMap([rule])
-    # Note: this seems to be changing in Werkzeug master
-    domain_part, url = rule.build(values)
-    return url
 
 
 class Endpoint(object):
@@ -200,27 +228,6 @@ class Endpoint(object):
         except tuple(self.acceptable_exceptions) as e:
             return Either(exception=e)
 
-    def parse_request(self, request, **url_args):
-
-        args = {
-            'text_data': request.data,
-            'query_string': request.query_string,
-            'headers': request.headers
-        }
-        for step in self.request_pipeline:
-            more = step.forward(**args)
-            if more is not None:
-                args.update(more)
-
-        req = {
-            'url_args': url_args,
-            'headers': request.headers,
-            'json_data': args['json_data'],
-            'query': args.get('query', {})
-        }
-
-        return self._parse_request(**req)
-
     def build_response(self, func_input, func_output):
         raise NotImplementedError()
 
@@ -231,17 +238,17 @@ class Endpoint(object):
         args = {
             'json_data': req.get('data', None),
             'headers': req.get('headers', {}),
-            'query': req.get('query', {})
+            'query': req.get('query', {}),
+            'url_args': req.get('url_args', {})
         }
-        url_args = req.get('url_args', {})
 
         for step in reversed(self.request_pipeline):
             more = step.backward(**args)
             if more is not None:
                 args.update(more)
 
-        url = reverse_werkzeug_url(self.url, url_args)
 
+        url = args['path']
         if 'query_string' in args and args['query_string']:
             url += "?%s" % args['query_string']
 
@@ -292,11 +299,11 @@ class SpecEndpoint(Endpoint):
     acceptable_response_codes = [200]
 
     request_pipeline = [
-        JSONPayload()
+        PipeURL('/spec.json'),
+        PipeJSONPayload()
     ]
 
     def __init__(self, api_spec=None):
-        self.url = '/spec.json'
         self.api_spec = api_spec
 
     def _parse_request(self, **kwargs):
@@ -336,17 +343,16 @@ class ActionEndpoint(Endpoint):
     method = "POST"
     acceptable_response_codes = [200, 204]
 
-    request_pipeline = [
-        JSONPayload()
-    ]
-
     def __init__(self, api_spec, action_name, func=None):
         self.func = func
         self.action_name = action_name
         self.action_spec = api_spec['actions'][action_name]
         self.accepts = self.action_spec.get('accepts', None)
         self.returns = self.action_spec.get('returns', None)
-        self.url = "/actions/%s" % action_name
+        self.request_pipeline = [
+            PipeURL("/actions/%s" % action_name),
+            PipeJSONPayload()
+        ]
 
     def _build_request(self, *args, **kwargs):
         packed = args_to_datum(*args, **kwargs)
@@ -395,16 +401,16 @@ class GetByIdEndpoint(Endpoint):
     acceptable_response_codes = [404, 200]
     acceptable_exceptions = [NotFound]
 
-    request_pipeline = [
-        MustBeEmpty(),
-        JSONPayload()
-    ]
-
     def __init__(self, api_spec, model_name, func=None):
         self.model_name = model_name
         self.full_model_name = "{}.{}".format(api_spec['name'], model_name)
         self.func = func
-        self.url = "/%s/<id>" % model_name
+        self.request_pipeline = [
+            PipeURL("/%s/<id>" % model_name),
+            PipeMustBeEmpty(),
+            PipeJSONPayload()
+        ]
+
 
     def _build_request(self, id):
         return {"url_args": {'id': id}}
@@ -447,20 +453,20 @@ class UpdateEndpoint(Endpoint):
     acceptable_response_codes = [200, 404]
     acceptable_exceptions = [NotFound]
 
-    request_pipeline = [
-        CannotBeEmpty(),
-        JSONPayload()
-    ]
-
     response_pipeline = [
-        CannotBeEmpty()
+        PipeCannotBeEmpty()
     ]
 
     def __init__(self, api_spec, model_name, func=None):
         self.model_name = model_name
         self.full_model_name = "{}.{}".format(api_spec['name'], model_name)
         self.func = func
-        self.url = "/%s/<id>" % model_name
+        self.request_pipeline = [
+            PipeURL("/%s/<id>" % model_name),
+            PipeCannotBeEmpty(),
+            PipeJSONPayload()
+        ]
+
 
     def _build_request(self, id, **patch):
         return {
@@ -506,19 +512,19 @@ class CreateEndpoint(Endpoint):
     method = "POST"
     acceptable_response_codes = [201]
 
-    request_pipeline = [
-        JSONPayload()
-    ]
-
     response_pipeline = [
-        CannotBeEmpty()
+        PipeCannotBeEmpty()
     ]
 
     def __init__(self, api_spec, model_name, func=None):
         self.model_name = model_name
         self.full_model_name = "{}.{}".format(api_spec['name'], model_name)
         self.func = func
-        self.url = "/%s" % model_name
+        self.request_pipeline = [
+            PipeURL("/%s" % model_name),
+            PipeJSONPayload()
+        ]
+
 
     def _build_request(self, **patch):
         return {
@@ -556,20 +562,19 @@ class DeleteEndpoint(Endpoint):
     acceptable_response_codes = [204, 404]
     acceptable_exceptions = [NotFound]
 
-    request_pipeline = [
-        MustBeEmpty(),
-        JSONPayload()
-    ]
-
     response_pipeline = [
-        MustBeEmpty()
+        PipeMustBeEmpty()
     ]
 
     def __init__(self, api_spec, model_name, func=None):
         self.model_name = model_name
         self.full_model_name = "{}.{}".format(api_spec['name'], model_name)
         self.func = func
-        self.url = "/%s/<id>" % model_name
+        self.request_pipeline = [
+            PipeURL("/%s/<id>" % model_name),
+            PipeMustBeEmpty(),
+            PipeJSONPayload()
+        ]
 
     def _build_request(self, id):
         return {"url_args": {'id': id}}
@@ -621,21 +626,20 @@ class GetListEndpoint(Endpoint):
     method = "GET"
     acceptable_response_codes = [200]
 
-    request_pipeline = [
-        MustBeEmpty(),
-        JSONPayload()
-    ]
-
     def __init__(self, api_spec, model_name, func=None):
         self.model_name = model_name
         self.full_model_name = "{}.{}".format(api_spec['name'], model_name)
         self.model_spec = api_spec['models'][model_name]
         self.list_metadata = self.model_spec['list_metadata']
         self.func = func
+        self.request_pipeline = [
+            PipeURL("/%s" % model_name),
+            PipeMustBeEmpty(),
+            PipeJSONPayload()
+        ]
         if self.model_spec['query_fields']:
             query_schema = URLParams(self.model_spec['query_fields'])
-            self.request_pipeline += [QueryParse(query_schema)]
-        self.url = "/%s" % model_name
+            self.request_pipeline += [PipeQueryParse(query_schema)]
 
     def _build_request(self, **query):
         return {"query": query}
