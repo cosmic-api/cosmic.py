@@ -128,19 +128,26 @@ class MustBeEmpty(object):
 class JSONPayload(object):
 
     def forward(self, text_data, headers, **kwargs):
+        if text_data == "":
+            return {"json_data": None}
+        mimetype, params = parse_options_header(headers['Content-Type'])
+        if mimetype != "application/json":
+            raise HTTPError(400, 'Content-Type must be "application/json" got "%s" instead' % mimetype)
+        charset = params.get("charset", "utf-8")
+        if charset.lower() != "utf-8":
+            raise HTTPError(400, 'Content-Type charset must be "utf-8" got %s instead' % charset)
         try:
-            return {
-                'json_data': get_payload_from_http_message(text_data, headers)
-            }
-        except SpecError as e:
-            raise HTTPError(code=400, message=e.args[0])
+            data = text_data.decode('utf-8')
+        except UnicodeDecodeError:
+            raise HTTPError(400, "Unicode Decode Error")
+        try:
+            return {"json_data": Box(json.loads(data))}
+        except ValueError:
+            raise HTTPError(400, "Invalid JSON")
 
-    def backward(self, json_data, headers=None, **kwargs):
-        _headers = {
-            "Content-Type": "application/json"
-        }
-        if headers is not None:
-            _headers.update(headers)
+    def backward(self, json_data, headers, **kwargs):
+        _headers = {"Content-Type": "application/json"}
+        _headers.update(headers)
         if json_data is not None:
             text_data = json.dumps(json_data.datum)
         else:
@@ -157,38 +164,15 @@ class QueryParse(object):
         self.schema = schema
 
     def forward(self, query_string, **kwargs):
-        return {
-            "query": self.schema.from_json(query_string)
-        }
+        return {"query": self.schema.from_json(query_string)}
 
     def backward(self, query, **kwargs):
-        return {
-            "query_string": self.schema.to_json(query)
-        }
+        return {"query_string": self.schema.to_json(query)}
 
 
 def error_response(message, code):
     body = json.dumps({"error": message})
     return Response(body, code, {"Content-Type": "application/json"})
-
-
-def get_payload_from_http_message(bytes, headers):
-    mimetype, params = parse_options_header(headers['Content-Type'])
-    if not bytes:
-        return None
-    if mimetype != "application/json":
-        raise SpecError('Content-Type must be "application/json" got "%s" instead' % mimetype)
-    charset = params.get("charset", "utf-8")
-    if charset.lower() != "utf-8":
-        raise SpecError('Content-Type charset must be "utf-8" got %s instead' % charset)
-    try:
-        data = bytes.decode('utf-8')
-    except UnicodeDecodeError:
-        raise SpecError("Unicode Decode Error")
-    try:
-        return Box(json.loads(data))
-    except ValueError:
-        raise SpecError("Invalid JSON")
 
 
 def reverse_werkzeug_url(url, values):
@@ -231,7 +215,7 @@ class Endpoint(object):
         req = {
             'url_args': url_args,
             'headers': request.headers,
-            'json': args['json_data'],
+            'json_data': args['json_data'],
             'query': args.get('query', {})
         }
 
@@ -368,8 +352,8 @@ class ActionEndpoint(Endpoint):
         packed = args_to_datum(*args, **kwargs)
         return {"data": serialize_json(self.accepts, packed)}
 
-    def _parse_request(self, json, **kwargs):
-        data = deserialize_json(self.accepts, json)
+    def _parse_request(self, json_data, **kwargs):
+        data = deserialize_json(self.accepts, json_data)
         kwargs = {}
         if data is not None:
             required_args, optional_args = get_args(self.func)
@@ -484,8 +468,8 @@ class UpdateEndpoint(Endpoint):
             "url_args": {'id': id}
         }
 
-    def _parse_request(self, json, url_args, **kwargs):
-        id, rep = Patch(Model(self.full_model_name)).from_json(json.datum)
+    def _parse_request(self, json_data, url_args, **kwargs):
+        id, rep = Patch(Model(self.full_model_name)).from_json(json_data.datum)
         rep['id'] = url_args['id']
         return rep
 
@@ -541,8 +525,8 @@ class CreateEndpoint(Endpoint):
             "data": Box(Patch(Model(self.full_model_name)).to_json((None, patch)))
         }
 
-    def _parse_request(self, json, **kwargs):
-        id, rep = Patch(Model(self.full_model_name)).from_json(json.datum)
+    def _parse_request(self, json_data, **kwargs):
+        id, rep = Patch(Model(self.full_model_name)).from_json(json_data.datum)
         return rep
 
     def parse_response(self, res):
