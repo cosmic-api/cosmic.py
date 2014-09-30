@@ -201,7 +201,6 @@ def reverse_werkzeug_url(url, values):
 
 
 class Endpoint(object):
-    query_schema = None
 
     acceptable_exceptions = []
 
@@ -625,19 +624,13 @@ class GetListEndpoint(Endpoint):
             .. code::
 
                 {
-                    "_links": {
-                        "self": {"href": <self>}
-                    },
                     "_embedded": {
                         <model>: [<repr>*]
                     },
                     <metadata>*
                 }
 
-            In the above, *self* is the request URL, *model* is the name of
-            the model that was requested and *repr* is a JSON-encoded
-            representation of an object matched by the query. *Metadata* is
-            defined according to
+            *Metadata* is defined according to
             :data:`~cosmic.models.BaseModel.list_metadata`.
 
     """
@@ -655,10 +648,9 @@ class GetListEndpoint(Endpoint):
         self.model_spec = api_spec['models'][model_name]
         self.list_metadata = self.model_spec['list_metadata']
         self.func = func
-        self.query_schema = None
         if self.model_spec['query_fields']:
-            self.query_schema = URLParams(self.model_spec['query_fields'])
-            self.request_pipeline += [QueryParse(self.query_schema)]
+            query_schema = URLParams(self.model_spec['query_fields'])
+            self.request_pipeline += [QueryParse(query_schema)]
         self.url = "/%s" % model_name
 
     def _build_request(self, **query):
@@ -677,20 +669,12 @@ class GetListEndpoint(Endpoint):
         if self.list_metadata:
             meta = j.copy()
             del meta['_embedded']
-            del meta['_links']
             meta = Struct(self.list_metadata).from_json(meta)
             return l, meta
         return l
 
     def build_response(self, func_input, func_output):
-        self_link = "/%s" % self.model_name
-        if self.query_schema and func_input:
-            self_link += '?' + self.query_schema.to_json(func_input)
-
         body = {
-            "_links": {
-                "self": {"href": self_link}
-            },
             "_embedded": {}
         }
 

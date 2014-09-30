@@ -326,33 +326,30 @@ class TestGetList(_LocalRemotePlanetariumTest):
 
         self.assertEqual(res["status_code"], 200)
         self.assertEqual(json.loads(res["data"]), {
-            "_links": {
-                "self": {"href": "/Sphere"}
-            },
             "_embedded": {
                 "Sphere": [
                     {
                         '_links': {'self': {'href': '/Sphere/0'}},
                         'name': 'Sun',
-                        'temperature': 3000.0,
-                        },
+                        'temperature': 3000.0
+                    },
                     {
                         '_links': {
                             'revolves_around': {'href': '/Sphere/0'},
                             'self': {'href': '/Sphere/1'}
                         },
                         'name': 'Earth',
-                        'temperature': 30.0,
-                        },
+                        'temperature': 30.0
+                    },
                     {
                         '_links': {
                             'revolves_around': {'href': '/Sphere/1'},
                             'self': {'href': '/Sphere/2'}
                         },
                         'name': 'Moon',
-                        'temperature': -50.0,
-                        },
-                    ]
+                        'temperature': -50.0
+                    }
+                ]
             },
             'last_updated': '2014-01-01T00:00:00'
         })
@@ -367,17 +364,14 @@ class TestGetList(_LocalRemotePlanetariumTest):
 
         self.assertEqual(res["status_code"], 200)
         self.assertEqual(json.loads(res["data"]), {
-            "_links": {
-                "self": {"href": "/Sphere?name=Sun"}
-            },
             "_embedded": {
                 "Sphere": [
                     {
                         '_links': {'self': {'href': '/Sphere/0'}},
                         'name': 'Sun',
-                        'temperature': 3000.0,
-                        },
-                    ]
+                        'temperature': 3000.0
+                    }
+                ]
             },
             'last_updated': '2014-01-01T00:00:00'
         })
