@@ -28,7 +28,7 @@ class Word(BaseModel):
         if id == "0":
             return {"letters": "hello"}
         else:
-            raise NotFound
+            raise NotFound()
 
 @words.action(accepts=Integer)
 def lock_thread(seconds):

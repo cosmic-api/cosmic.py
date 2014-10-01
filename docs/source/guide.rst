@@ -282,7 +282,7 @@ doesn't exist, it must raise :exc:`~cosmic.exceptions.NotFound`.
             try:
                 return cities[id]
             except KeyError:
-                raise NotFound
+                raise NotFound()
 
     cities = {
         "0": {"name": "Toronto"},
@@ -333,7 +333,7 @@ either applies the patch, returning the new representation, or raises
     @classmethod
     def update(cls, id, patch):
         if id not in cities:
-            raise NotFound
+            raise NotFound()
         cities[id] = patch
         return cities[id]
 
@@ -353,7 +353,7 @@ does not exist:
     @classmethod
     def delete(cls, id):
         if id not in cities:
-            raise NotFound
+            raise NotFound()
         del cities[id]
 
 .. _get_list:

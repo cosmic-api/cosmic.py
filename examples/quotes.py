@@ -22,7 +22,7 @@ class Quote(BaseModel):
         if id in data:
             return data[id]
         else:
-            raise NotFound
+            raise NotFound()
 
 wsgi_app = Server(words).wsgi_app
 

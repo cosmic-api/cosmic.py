@@ -15,7 +15,7 @@ class DBModel(BaseModel):
         try:
             return db[cls.table_name][id]
         except KeyError:
-            raise NotFound
+            raise NotFound()
 
     @classmethod
     def get_list(cls, **kwargs):
@@ -47,7 +47,7 @@ class DBModel(BaseModel):
     @classmethod
     def delete(cls, id):
         if id not in db[cls.table_name]:
-            raise NotFound
+            raise NotFound()
         del db[cls.table_name][id]
 
 

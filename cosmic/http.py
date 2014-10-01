@@ -472,7 +472,7 @@ class GetByIdEndpoint(Endpoint):
 
     def _parse_response(self, code, data, **kwargs):
         if code == 404:
-            raise NotFound
+            raise NotFound()
         if code == 200:
             _, rep = data
             return rep
@@ -535,7 +535,7 @@ class UpdateEndpoint(Endpoint):
             _, rep = data
             return rep
         if code == 404:
-            raise NotFound
+            raise NotFound()
 
 
 class CreateEndpoint(Endpoint):
@@ -626,7 +626,7 @@ class DeleteEndpoint(Endpoint):
         if code == 204:
             return None
         if code == 404:
-            raise NotFound
+            raise NotFound()
 
     def _build_response(self, func_input, func_output):
         if func_output.exception is not None:

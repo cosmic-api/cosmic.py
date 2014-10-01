@@ -250,7 +250,7 @@ class TestGuideDelete(TestCase):
                 def get_by_id(cls, id):
                     if id in cities:
                         return cities[id]
-                    raise NotFound
+                    raise NotFound()
 
                 @classmethod
                 def delete(cls, id):

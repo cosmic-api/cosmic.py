@@ -79,7 +79,7 @@ Here's a simple model:
             if id == "0":
                 return {"letters": "hello"}
             else:
-                raise NotFound
+                raise NotFound()
 
 .. code:: bash
 
