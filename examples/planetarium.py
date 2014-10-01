@@ -36,7 +36,7 @@ class PlanetariumServer(Server):
         return super(PlanetariumServer, self).parse_request(endpoint, request, **url_args)
 
 
-planetarium_server = PlanetariumServer(planetarium)
+planetarium_server = PlanetariumServer(planetarium, debug=True)
 
 
 @planetarium.model
