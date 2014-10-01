@@ -100,27 +100,7 @@ class Server(object):
                                    func_output=func_output)
 
     def parse_request(self, endpoint, request):
-
-        args = {
-            'text_data': request.data,
-            'query_string': request.query_string,
-            'headers': request.headers,
-            'path': request.path,
-        }
-
-        for step in endpoint.request_pipeline:
-            more = step.forward(**args)
-            if more is not None:
-                args.update(more)
-
-        req = {
-            'url_args': args['url_args'],
-            'headers': request.headers,
-            'json_data': args['json_data'],
-            'query': args.get('query', {})
-        }
-
-        return endpoint._parse_request(**req)
+        return endpoint.parse_request(request)
 
     def build_response(self, endpoint, func_input, func_output):
         return endpoint.build_response(func_input=func_input,
@@ -206,6 +186,27 @@ class PipeURL(object):
         return {"path": url}
 
 
+class PipeResponseCodes(object):
+
+    def __init__(self, *acceptable_codes):
+        self.acceptable_codes = acceptable_codes
+
+    def forward(self, code, text_data, headers, **kwargs):
+        if code not in self.acceptable_codes:
+            message = None
+            try:
+                json_data = PipeJSONPayload().forward(
+                    text_data=text_data,
+                    headers=headers)['json_data']
+                message = json_data.datum['error']
+            except Exception:
+                pass
+            raise RemoteHTTPError(code=code, message=message)
+
+    def backward(self, **kwargs):
+        pass
+
+
 def error_response(message, code):
     body = json.dumps({"error": message})
     return Response(body, code, {"Content-Type": "application/json"})
@@ -228,8 +229,40 @@ class Endpoint(object):
         except tuple(self.acceptable_exceptions) as e:
             return Either(exception=e)
 
+    def parse_request(self, request):
+
+        args = {
+            'text_data': request.data,
+            'query_string': request.query_string,
+            'headers': request.headers,
+            'path': request.path
+        }
+
+        for step in self.request_pipeline:
+            more = step.forward(**args)
+            if more is not None:
+                args.update(more)
+
+        return self._parse_request(**args)
+
     def build_response(self, func_input, func_output):
-        raise NotImplementedError()
+        res = self._build_response(func_input, func_output)
+
+        args = {
+            'json_data': res.get('json_data', None),
+            'headers': res.get('headers', {}),
+            'code': res['code']
+        }
+
+        for step in reversed(self.response_pipeline):
+            more = step.backward(**args)
+            if more is not None:
+                args.update(more)
+
+        body = args['text_data']
+        code = args['code']
+        headers = args.get('headers', {})
+        return Response(body, code, headers)
 
     def build_request(self, *args, **kwargs):
 
@@ -247,7 +280,6 @@ class Endpoint(object):
             if more is not None:
                 args.update(more)
 
-
         url = args['path']
         if 'query_string' in args and args['query_string']:
             url += "?%s" % args['query_string']
@@ -260,27 +292,18 @@ class Endpoint(object):
 
     def parse_response(self, res):
 
-        for step in self.response_pipeline:
-            args = step.forward(text_data=res.text)
-
-        r = {
+        args = {
             'code': res.status_code,
+            'text_data': res.text,
             'headers': res.headers
         }
 
-        try:
-            r['json'] = string_to_json(res.text)
-        except ValueError:
-            raise SpecError("Unparseable response")
+        for step in self.response_pipeline:
+            more = step.forward(**args)
+            if more is not None:
+                args.update(more)
 
-        if r['code'] not in self.acceptable_response_codes:
-            message = None
-            if 'json' in r and r['json'] and type(r['json'].datum) == dict and 'error' in r['json'].datum:
-                message = r['json'].datum['error']
-
-            raise RemoteHTTPError(code=r['code'], message=message)
-
-        return r
+        return self._parse_response(**args)
 
 
 class SpecEndpoint(Endpoint):
@@ -296,10 +319,14 @@ class SpecEndpoint(Endpoint):
 
     """
     method = "GET"
-    acceptable_response_codes = [200]
 
     request_pipeline = [
         PipeURL('/spec.json'),
+        PipeJSONPayload()
+    ]
+
+    response_pipeline = [
+        PipeResponseCodes(200),
         PipeJSONPayload()
     ]
 
@@ -315,13 +342,11 @@ class SpecEndpoint(Endpoint):
     def handler(self):
         return self.api_spec
 
-    def parse_response(self, res):
-        res = super(SpecEndpoint, self).parse_response(res)
-        return APISpec.from_json(res['json'].datum)
+    def _parse_response(self, json_data, **kwargs):
+        return APISpec.from_json(json_data.datum)
 
-    def build_response(self, func_input, func_output):
-        body = json.dumps(APISpec.to_json(func_output))
-        return Response(body, 200, {"Content-Type": "application/json"})
+    def _build_response(self, func_input, func_output):
+        return {'code': 200, 'json_data': Box(APISpec.to_json(func_output))}
 
 
 class ActionEndpoint(Endpoint):
@@ -341,7 +366,6 @@ class ActionEndpoint(Endpoint):
     """
 
     method = "POST"
-    acceptable_response_codes = [200, 204]
 
     def __init__(self, api_spec, action_name, func=None):
         self.func = func
@@ -351,6 +375,10 @@ class ActionEndpoint(Endpoint):
         self.returns = self.action_spec.get('returns', None)
         self.request_pipeline = [
             PipeURL("/actions/%s" % action_name),
+            PipeJSONPayload()
+        ]
+        self.response_pipeline = [
+            PipeResponseCodes(200, 204),
             PipeJSONPayload()
         ]
 
@@ -370,20 +398,19 @@ class ActionEndpoint(Endpoint):
                 kwargs = data
         return kwargs
 
-    def parse_response(self, res):
-        res = super(ActionEndpoint, self).parse_response(res)
-        if self.returns and res['json']:
-            return self.returns.from_json(res['json'].datum)
+    def _parse_response(self, json_data, **kwargs):
+        if self.returns and json_data:
+            return self.returns.from_json(json_data.datum)
         else:
             return None
 
-    def build_response(self, func_input, func_output):
+    def _build_response(self, func_input, func_output):
         data = serialize_json(self.returns, func_output)
         if data is None:
-            return Response("", 204, {})
+            code = 204
         else:
-            body = json.dumps(data.datum)
-            return Response(body, 200, {"Content-Type": "application/json"})
+            code = 200
+        return {'code': code, 'json_data': data}
 
 
 class GetByIdEndpoint(Endpoint):
@@ -398,7 +425,6 @@ class GetByIdEndpoint(Endpoint):
 
     """
     method = "GET"
-    acceptable_response_codes = [404, 200]
     acceptable_exceptions = [NotFound]
 
     def __init__(self, api_spec, model_name, func=None):
@@ -410,6 +436,10 @@ class GetByIdEndpoint(Endpoint):
             PipeMustBeEmpty(),
             PipeJSONPayload()
         ]
+        self.response_pipeline = [
+            PipeResponseCodes(200, 404),
+            PipeJSONPayload()
+        ]
 
 
     def _build_request(self, id):
@@ -418,21 +448,20 @@ class GetByIdEndpoint(Endpoint):
     def _parse_request(self, url_args, **kwargs):
         return {'id': url_args['id']}
 
-    def build_response(self, func_input, func_output):
+    def _build_response(self, func_input, func_output):
         if func_output.exception is not None:
-            return Response("", 404, {})
+            return {'code': 404}
         else:
             id = func_input['id']
             rep = func_output.value
-            body = json.dumps(Representation(Model(self.full_model_name)).to_json((id, rep)))
-            return Response(body, 200, {"Content-Type": "application/json"})
+            data = Box(Representation(Model(self.full_model_name)).to_json((id, rep)))
+            return {'code': 200, 'json_data': data}
 
-    def parse_response(self, res):
-        res = super(GetByIdEndpoint, self).parse_response(res)
-        if res['code'] == 404:
+    def _parse_response(self, code, json_data, **kwargs):
+        if code == 404:
             raise NotFound
-        if res['code'] == 200:
-            (id, rep) = Representation(Model(self.full_model_name)).from_json(res['json'].datum)
+        if code == 200:
+            _, rep = Representation(Model(self.full_model_name)).from_json(json_data.datum)
             return rep
 
 
@@ -450,12 +479,7 @@ class UpdateEndpoint(Endpoint):
 
     """
     method = "PUT"
-    acceptable_response_codes = [200, 404]
     acceptable_exceptions = [NotFound]
-
-    response_pipeline = [
-        PipeCannotBeEmpty()
-    ]
 
     def __init__(self, api_spec, model_name, func=None):
         self.model_name = model_name
@@ -463,6 +487,11 @@ class UpdateEndpoint(Endpoint):
         self.func = func
         self.request_pipeline = [
             PipeURL("/%s/<id>" % model_name),
+            PipeCannotBeEmpty(),
+            PipeJSONPayload()
+        ]
+        self.response_pipeline = [
+            PipeResponseCodes(200, 404),
             PipeCannotBeEmpty(),
             PipeJSONPayload()
         ]
@@ -479,20 +508,19 @@ class UpdateEndpoint(Endpoint):
         rep['id'] = url_args['id']
         return rep
 
-    def build_response(self, func_input, func_output):
+    def _build_response(self, func_input, func_output):
         if func_output.exception is not None:
-            return Response("", 404, {})
+            return {'code': 404}
         else:
             id = func_input['id']
             rep = func_output.value
-            body = json.dumps(Representation(Model(self.full_model_name)).to_json((id, rep)))
-            return Response(body, 200, {"Content-Type": "application/json"})
+            data = Box(Representation(Model(self.full_model_name)).to_json((id, rep)))
+            return {'code': 200, 'json_data': data}
 
-    def parse_response(self, res):
-        res = super(UpdateEndpoint, self).parse_response(res)
-        if res['code'] == 200:
-            return Representation(Model(self.full_model_name)).from_json(res['json'].datum)[1]
-        if res['code'] == 404:
+    def _parse_response(self, code, json_data, **kwargs):
+        if code == 200:
+            return Representation(Model(self.full_model_name)).from_json(json_data.datum)[1]
+        if code == 404:
             raise NotFound
 
 
@@ -510,11 +538,6 @@ class CreateEndpoint(Endpoint):
 
     """
     method = "POST"
-    acceptable_response_codes = [201]
-
-    response_pipeline = [
-        PipeCannotBeEmpty()
-    ]
 
     def __init__(self, api_spec, model_name, func=None):
         self.model_name = model_name
@@ -522,6 +545,11 @@ class CreateEndpoint(Endpoint):
         self.func = func
         self.request_pipeline = [
             PipeURL("/%s" % model_name),
+            PipeJSONPayload()
+        ]
+        self.response_pipeline = [
+            PipeResponseCodes(201),
+            PipeCannotBeEmpty(),
             PipeJSONPayload()
         ]
 
@@ -535,17 +563,17 @@ class CreateEndpoint(Endpoint):
         id, rep = Patch(Model(self.full_model_name)).from_json(json_data.datum)
         return rep
 
-    def parse_response(self, res):
-        res = super(CreateEndpoint, self).parse_response(res)
-        return Representation(Model(self.full_model_name)).from_json(res['json'].datum)
+    def _parse_response(self, json_data, **kwargs):
+        return Representation(Model(self.full_model_name)).from_json(json_data.datum)
 
-    def build_response(self, func_input, func_output):
-        body = json.dumps(Representation(Model(self.full_model_name)).to_json(func_output))
+    def _build_response(self, func_input, func_output):
+        data = Box(Representation(Model(self.full_model_name)).to_json(func_output))
         href = "/%s/%s" % (self.model_name, func_output[0])
-        return Response(body, 201, {
-            "Location": href,
-            "Content-Type": "application/json"
-        })
+        return {
+            'code': 201,
+            'json_data': data,
+            'headers': {"Location": href}
+        }
 
 
 class DeleteEndpoint(Endpoint):
@@ -559,12 +587,7 @@ class DeleteEndpoint(Endpoint):
 
     """
     method = "DELETE"
-    acceptable_response_codes = [204, 404]
     acceptable_exceptions = [NotFound]
-
-    response_pipeline = [
-        PipeMustBeEmpty()
-    ]
 
     def __init__(self, api_spec, model_name, func=None):
         self.model_name = model_name
@@ -575,6 +598,11 @@ class DeleteEndpoint(Endpoint):
             PipeMustBeEmpty(),
             PipeJSONPayload()
         ]
+        self.response_pipeline = [
+            PipeResponseCodes(204, 404),
+            PipeMustBeEmpty(),
+            PipeJSONPayload()
+        ]
 
     def _build_request(self, id):
         return {"url_args": {'id': id}}
@@ -582,18 +610,17 @@ class DeleteEndpoint(Endpoint):
     def _parse_request(self, url_args, **kwargs):
         return {'id': url_args['id']}
 
-    def parse_response(self, res):
-        res = super(DeleteEndpoint, self).parse_response(res)
-        if res['code'] == 204:
+    def _parse_response(self, code, **kwargs):
+        if code == 204:
             return None
-        if res['code'] == 404:
+        if code == 404:
             raise NotFound
 
-    def build_response(self, func_input, func_output):
+    def _build_response(self, func_input, func_output):
         if func_output.exception is not None:
-            return Response("", 404, {})
+            return {'code': 404}
         else:
-            return Response("", 204, {})
+            return {'code': 204}
 
 
 class GetListEndpoint(Endpoint):
@@ -624,7 +651,6 @@ class GetListEndpoint(Endpoint):
 
     """
     method = "GET"
-    acceptable_response_codes = [200]
 
     def __init__(self, api_spec, model_name, func=None):
         self.model_name = model_name
@@ -637,6 +663,11 @@ class GetListEndpoint(Endpoint):
             PipeMustBeEmpty(),
             PipeJSONPayload()
         ]
+        self.response_pipeline = [
+            PipeResponseCodes(200),
+            PipeCannotBeEmpty(),
+            PipeJSONPayload()
+        ]
         if self.model_spec['query_fields']:
             query_schema = URLParams(self.model_spec['query_fields'])
             self.request_pipeline += [PipeQueryParse(query_schema)]
@@ -647,9 +678,8 @@ class GetListEndpoint(Endpoint):
     def _parse_request(self, query, **kwargs):
         return query
 
-    def parse_response(self, res):
-        res = super(GetListEndpoint, self).parse_response(res)
-        j = res['json'].datum
+    def _parse_response(self, json_data, **kwargs):
+        j = json_data.datum
         l = []
         for jrep in j["_embedded"][self.model_name]:
             l.append(Representation(Model(self.full_model_name)).from_json(jrep))
@@ -661,7 +691,7 @@ class GetListEndpoint(Endpoint):
             return l, meta
         return l
 
-    def build_response(self, func_input, func_output):
+    def _build_response(self, func_input, func_output):
         body = {
             "_embedded": {}
         }
@@ -678,6 +708,9 @@ class GetListEndpoint(Endpoint):
             jrep = Representation(Model(self.full_model_name)).to_json(inst)
             body["_embedded"][self.model_name].append(jrep)
 
-        return Response(json.dumps(body), 200, {"Content-Type": "application/json"})
+        return {
+            'code': 200,
+            'json_data': Box(body)
+        }
 
 
