@@ -105,28 +105,6 @@ class TestAssertIsCompatible(TestCase):
             assert_is_compatible(s, ("a",), ("b",))
 
 
-class TestSchemaHelpers(TestCase):
-    def test_deserialize_json(self):
-        with self.assertRaisesRegexp(ValidationError, "Expected Box, found None"):
-            deserialize_json(Integer, None)
-        with self.assertRaisesRegexp(ValidationError, "Expected None, found Box"):
-            deserialize_json(None, Box(1))
-        self.assertEqual(deserialize_json(None, None), None)
-        self.assertEqual(deserialize_json(Integer, Box(1)), 1)
-
-    def test_serialize_json(self):
-        with self.assertRaisesRegexp(ValidationError, "Expected data, found None"):
-            serialize_json(Integer, None)
-        with self.assertRaisesRegexp(ValidationError, "Expected None, found data"):
-            serialize_json(None, 1)
-        self.assertEqual(serialize_json(None, None), None)
-        self.assertEqual(serialize_json(Integer, 1).datum, 1)
-
-    def test_string_to_json(self):
-        self.assertEqual(string_to_json(""), None)
-        self.assertEqual(string_to_json("1").datum, 1)
-
-
 class TestUnderscoreIdentifier(TestCase):
     def test_okay(self):
         validate_underscore_identifier('hello_world')
@@ -151,12 +129,4 @@ class TestUnderscoreIdentifier(TestCase):
     def test_two_underscores(self):
         with self.assertRaisesRegexp(SpecError, "consecutive underscores"):
             validate_underscore_identifier(u'what__what')
-
-
-class TestSerializeJSON(TestCase):
-    def test_falsy(self):
-        self.assertEqual(serialize_json(Integer, 0).datum, 0)
-
-
-
 

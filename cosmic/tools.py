@@ -9,7 +9,6 @@ from .types import *
 
 
 __all__ = ['get_args', 'args_to_datum', 'assert_is_compatible',
-           'deserialize_json', 'serialize_json', 'string_to_json',
            'validate_underscore_identifier', 'is_string_type']
 
 
@@ -73,33 +72,6 @@ def assert_is_compatible(schema, required_args, optional_args):
         if f not in set(required_args + optional_args):
             raise SpecError("The '%s' field must have a corresponding"
                             " function argument" % f)
-
-
-def deserialize_json(schema, datum):
-    if schema and not datum:
-        raise ValidationError("Expected Box, found None")
-    if datum and not schema:
-        raise ValidationError("Expected None, found Box")
-    if schema and datum:
-        return schema.from_json(datum.datum)
-    return None
-
-
-def serialize_json(schema, datum):
-    if schema is not None and datum is None:
-        raise ValidationError("Expected data, found None")
-    if datum is not None and schema is None:
-        raise ValidationError("Expected None, found data")
-    if schema is not None and datum is not None:
-        return Box(schema.to_json(datum))
-    return None
-
-
-def string_to_json(s):
-    if s == "":
-        return None
-    else:
-        return Box(json.loads(s))
 
 
 def validate_underscore_identifier(id):
