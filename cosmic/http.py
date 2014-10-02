@@ -1,4 +1,5 @@
 import json
+import sys
 
 import requests
 from werkzeug.exceptions import NotFound as WerkzeugNotFound
@@ -170,6 +171,18 @@ class PipeQueryParse(object):
         return {"query_string": self.schema.to_json(query)}
 
 
+class PipeMethod(object):
+
+    def __init__(self, method):
+        self.method = method
+
+    def forward(self, **kwargs):
+        pass
+
+    def backward(self, **kwargs):
+        return {'method': self.method}
+
+
 class PipeURL(object):
 
     def __init__(self, url_template):
@@ -186,13 +199,13 @@ class PipeURL(object):
         return {"path": url}
 
 
-class PipeResponseCodes(object):
+class PipeResponseCode(object):
 
-    def __init__(self, *acceptable_codes):
-        self.acceptable_codes = acceptable_codes
+    def __init__(self, code):
+        self.code = code
 
     def forward(self, code, text_data, headers, **kwargs):
-        if code not in self.acceptable_codes:
+        if code != self.code:
             message = None
             try:
                 json_data = PipeJSONPayload().forward(
@@ -204,7 +217,7 @@ class PipeResponseCodes(object):
             raise RemoteHTTPError(code=code, message=message)
 
     def backward(self, **kwargs):
-        pass
+        return {'code': self.code}
 
 
 class PipeBodySchema(object):
@@ -231,19 +244,16 @@ def error_response(message, code):
 
 class Endpoint(object):
 
-    acceptable_exceptions = []
+    exceptions = {}
 
     request_pipeline = []
     response_pipeline = []
 
     def handler(self, *args, **kwargs):
-        if not self.acceptable_exceptions:
-            return self.func(*args, **kwargs)
-
         try:
             return Either(value=self.func(*args, **kwargs))
-        except tuple(self.acceptable_exceptions) as e:
-            return Either(exception=e)
+        except tuple(self.exceptions.values()) as e:
+            return Either(exception=sys.exc_info())
 
     def parse_request(self, request):
 
@@ -262,10 +272,16 @@ class Endpoint(object):
         return self._parse_request(**args)
 
     def build_response(self, func_input, func_output):
+        if func_output.exception:
+            for code, exc_class in self.exceptions.items():
+                if func_output.exception[0] == exc_class:
+                    return Response('', code, {})
+
         res = self._build_response(func_input, func_output)
 
         args = {
             'json_data': None,
+            'text_data': '',
             'data': None,
             'headers': {}
         }
@@ -288,6 +304,7 @@ class Endpoint(object):
         args = {
             'data': req.get('data', None),
             'json_data': req.get('json_data', None),
+            'text_data': req.get('text_data', ''),
             'headers': req.get('headers', {}),
             'query': req.get('query', {}),
             'url_args': req.get('url_args', {})
@@ -303,12 +320,15 @@ class Endpoint(object):
             url += "?%s" % args['query_string']
 
         return requests.Request(
-            method=self.method,
+            method=args['method'],
             url=url,
             data=args['text_data'],
             headers=args['headers'])
 
     def parse_response(self, res):
+
+        if res.status_code in self.exceptions.keys():
+            raise self.exceptions[res.status_code]()
 
         args = {
             'code': res.status_code,
@@ -336,21 +356,20 @@ class SpecEndpoint(Endpoint):
         :ContentType: ``application/json``
 
     """
-    method = "GET"
 
     request_pipeline = [
         PipeURL('/spec.json'),
-        PipeJSONPayload()
+        PipeMethod('GET')
     ]
 
     response_pipeline = [
-        PipeResponseCodes(200),
+        PipeResponseCode(200),
         PipeJSONPayload(),
         PipeBodySchema(APISpec)
     ]
 
     def __init__(self, api_spec=None):
-        self.api_spec = api_spec
+        self.func = lambda: api_spec
 
     def _parse_request(self, **kwargs):
         return {}
@@ -358,14 +377,11 @@ class SpecEndpoint(Endpoint):
     def _build_request(self, **kwargs):
         return {}
 
-    def handler(self):
-        return self.api_spec
-
     def _parse_response(self, data, **kwargs):
         return data
 
     def _build_response(self, func_input, func_output):
-        return {'code': 200, 'data': func_output}
+        return {'code': 200, 'data': func_output.value}
 
 
 class ActionEndpoint(Endpoint):
@@ -384,47 +400,53 @@ class ActionEndpoint(Endpoint):
 
     """
 
-    method = "POST"
 
     def __init__(self, api_spec, action_name, func=None):
         self.func = func
         action_spec = api_spec['actions'][action_name]
-        accepts = action_spec.get('accepts', None)
-        returns = action_spec.get('returns', None)
         self.request_pipeline = [
             PipeURL("/actions/%s" % action_name),
-            PipeJSONPayload(),
-            PipeBodySchema(accepts)
+            PipeMethod('POST'),
         ]
-        self.response_pipeline = [
-            PipeResponseCodes(200, 204),
-            PipeJSONPayload(),
-            PipeBodySchema(returns)
-        ]
+        if 'accepts' in action_spec:
+            self.request_pipeline += [
+                PipeCannotBeEmpty(),
+                PipeJSONPayload(),
+                PipeBodySchema(action_spec['accepts'])
+            ]
+        else:
+            self.request_pipeline += [
+                PipeMustBeEmpty()
+            ]
+            self._parse_request = lambda **kwargs: {}
+            self._build_request = lambda *args, **kwargs: {}
+        if 'returns' in action_spec:
+            self.response_pipeline = [
+                PipeResponseCode(200),
+                PipeCannotBeEmpty(),
+                PipeJSONPayload(),
+                PipeBodySchema(action_spec['returns'])
+            ]
+            self._parse_response = lambda data, **kwargs: data
+            self._build_response = lambda func_input, func_output: {'data': func_output.value}
+        else:
+            self.response_pipeline = [
+                PipeResponseCode(204),
+                PipeMustBeEmpty()
+            ]
+            self._build_response = lambda *args: {}
+            self._parse_response = lambda **kwargs: None
 
     def _build_request(self, *args, **kwargs):
         return {"data": args_to_datum(*args, **kwargs)}
 
     def _parse_request(self, data, **kwargs):
-        kwargs = {}
-        if data is not None:
-            required_args, optional_args = get_args(self.func)
-            # If only one argument, take the whole object
-            if len(required_args + optional_args) == 1:
-                kwargs = {required_args[0]: data}
-            else:
-                kwargs = data
-        return kwargs
-
-    def _parse_response(self, data, **kwargs):
-        return data
-
-    def _build_response(self, func_input, func_output):
-        if func_output is None:
-            code = 204
+        required_args, optional_args = get_args(self.func)
+        # If only one argument, take the whole object
+        if len(required_args + optional_args) == 1:
+            return {required_args[0]: data}
         else:
-            code = 200
-        return {'code': code, 'data': func_output}
+            return data
 
 
 class GetByIdEndpoint(Endpoint):
@@ -438,23 +460,21 @@ class GetByIdEndpoint(Endpoint):
         :ContentType: ``application/json`` if body is not empty.
 
     """
-    method = "GET"
-    acceptable_exceptions = [NotFound]
+    exceptions = {404: NotFound}
 
     def __init__(self, api_spec, model_name, func=None):
         full_model_name = "{}.{}".format(api_spec['name'], model_name)
         self.func = func
         self.request_pipeline = [
             PipeURL("/%s/<id>" % model_name),
-            PipeMustBeEmpty(),
-            PipeJSONPayload()
+            PipeMethod('GET'),
+            PipeMustBeEmpty()
         ]
         self.response_pipeline = [
-            PipeResponseCodes(200, 404),
+            PipeResponseCode(200),
             PipeJSONPayload(),
             PipeBodySchema(Representation(Model(full_model_name)))
         ]
-
 
     def _build_request(self, id):
         return {"url_args": {'id': id}}
@@ -463,19 +483,13 @@ class GetByIdEndpoint(Endpoint):
         return {'id': url_args['id']}
 
     def _build_response(self, func_input, func_output):
-        if func_output.exception is not None:
-            return {'code': 404}
-        else:
-            id = func_input['id']
-            rep = func_output.value
-            return {'code': 200, 'data': (id, rep)}
+        id = func_input['id']
+        rep = func_output.value
+        return {'code': 200, 'data': (id, rep)}
 
     def _parse_response(self, code, data, **kwargs):
-        if code == 404:
-            raise NotFound()
-        if code == 200:
-            _, rep = data
-            return rep
+        _, rep = data
+        return rep
 
 
 class UpdateEndpoint(Endpoint):
@@ -491,25 +505,24 @@ class UpdateEndpoint(Endpoint):
         :ContentType: ``application/json``
 
     """
-    method = "PUT"
-    acceptable_exceptions = [NotFound]
+    exceptions = {404: NotFound}
 
     def __init__(self, api_spec, model_name, func=None):
         full_model_name = "{}.{}".format(api_spec['name'], model_name)
         self.func = func
         self.request_pipeline = [
             PipeURL("/%s/<id>" % model_name),
+            PipeMethod('PUT'),
             PipeCannotBeEmpty(),
             PipeJSONPayload(),
             PipeBodySchema(Patch(Model(full_model_name)))
         ]
         self.response_pipeline = [
-            PipeResponseCodes(200, 404),
+            PipeResponseCode(200),
             PipeCannotBeEmpty(),
             PipeJSONPayload(),
             PipeBodySchema(Representation(Model(full_model_name)))
         ]
-
 
     def _build_request(self, id, **patch):
         return {
@@ -523,19 +536,13 @@ class UpdateEndpoint(Endpoint):
         return rep
 
     def _build_response(self, func_input, func_output):
-        if func_output.exception is not None:
-            return {'code': 404}
-        else:
-            id = func_input['id']
-            rep = func_output.value
-            return {'code': 200, 'data': (id, rep)}
+        id = func_input['id']
+        rep = func_output.value
+        return {'data': (id, rep)}
 
-    def _parse_response(self, code, data, **kwargs):
-        if code == 200:
-            _, rep = data
-            return rep
-        if code == 404:
-            raise NotFound()
+    def _parse_response(self, data, **kwargs):
+        _, rep = data
+        return rep
 
 
 class CreateEndpoint(Endpoint):
@@ -551,7 +558,6 @@ class CreateEndpoint(Endpoint):
         :ContentType: ``application/json``
 
     """
-    method = "POST"
 
     def __init__(self, api_spec, model_name, func=None):
         self.model_name = model_name
@@ -559,14 +565,17 @@ class CreateEndpoint(Endpoint):
         self.func = func
         self.request_pipeline = [
             PipeURL("/%s" % model_name),
+            PipeMethod('POST'),
             PipeJSONPayload(),
-            PipeBodySchema(Patch(Model(full_model_name)))
+            PipeBodySchema(
+                Patch(Model(full_model_name)))
         ]
         self.response_pipeline = [
-            PipeResponseCodes(201),
+            PipeResponseCode(201),
             PipeCannotBeEmpty(),
             PipeJSONPayload(),
-            PipeBodySchema(Representation(Model(full_model_name)))
+            PipeBodySchema(
+                Representation(Model(full_model_name)))
         ]
 
 
@@ -581,10 +590,10 @@ class CreateEndpoint(Endpoint):
         return data
 
     def _build_response(self, func_input, func_output):
-        href = "/%s/%s" % (self.model_name, func_output[0])
+        href = "/%s/%s" % (self.model_name, func_output.value[0])
         return {
             'code': 201,
-            'data': func_output,
+            'data': func_output.value,
             'headers': {"Location": href}
         }
 
@@ -599,21 +608,19 @@ class DeleteEndpoint(Endpoint):
         :Body: Empty.
 
     """
-    method = "DELETE"
-    acceptable_exceptions = [NotFound]
+    exceptions = {404: NotFound}
 
     def __init__(self, api_spec, model_name, func=None):
         model_name = model_name
         self.func = func
         self.request_pipeline = [
             PipeURL("/%s/<id>" % model_name),
-            PipeMustBeEmpty(),
-            PipeJSONPayload()
+            PipeMethod('DELETE'),
+            PipeMustBeEmpty()
         ]
         self.response_pipeline = [
-            PipeResponseCodes(204, 404),
-            PipeMustBeEmpty(),
-            PipeJSONPayload()
+            PipeResponseCode(204),
+            PipeMustBeEmpty()
         ]
 
     def _build_request(self, id):
@@ -622,17 +629,11 @@ class DeleteEndpoint(Endpoint):
     def _parse_request(self, url_args, **kwargs):
         return {'id': url_args['id']}
 
-    def _parse_response(self, code, **kwargs):
-        if code == 204:
-            return None
-        if code == 404:
-            raise NotFound()
+    def _parse_response(self, **kwargs):
+        return None
 
     def _build_response(self, func_input, func_output):
-        if func_output.exception is not None:
-            return {'code': 404}
-        else:
-            return {'code': 204}
+        return {}
 
 
 class GetListEndpoint(Endpoint):
@@ -662,7 +663,6 @@ class GetListEndpoint(Endpoint):
             :data:`~cosmic.models.BaseModel.list_metadata`.
 
     """
-    method = "GET"
 
     def __init__(self, api_spec, model_name, func=None):
         self.model_name = model_name
@@ -681,12 +681,13 @@ class GetListEndpoint(Endpoint):
 
         self.request_pipeline = [
             PipeURL("/%s" % model_name),
+            PipeMethod('GET'),
             PipeMustBeEmpty(),
             PipeJSONPayload(),
             PipeQueryParse(query_fields)
         ]
         self.response_pipeline = [
-            PipeResponseCodes(200),
+            PipeResponseCode(200),
             PipeCannotBeEmpty(),
             PipeJSONPayload(),
             PipeBodySchema(schema)
@@ -711,13 +712,13 @@ class GetListEndpoint(Endpoint):
         data = {"_embedded": {}}
 
         if self.list_metadata:
-            reps, meta = func_output
+            reps, meta = func_output.value
             data.update(meta)
         else:
             reps = func_output
 
         data["_embedded"][self.model_name] = reps
 
-        return {'code': 200, 'data': data}
+        return {'data': data}
 
 

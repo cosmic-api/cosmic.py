@@ -37,9 +37,12 @@ cookbook_spec = {
             },
             u'noop': {
                 u'doc': u"Does not do anything"
+            },
+            u'oneoverzero': {
+                u'returns': {u'type': u'Integer'}
             }
         },
-        u'order': [u'cabbage', u'noop']
+        u'order': [u'cabbage', u'noop', u'oneoverzero']
     },
     u"models": {
         u"map": {
@@ -146,6 +149,10 @@ class TestAPI(TestCase):
             "Does not do anything"
             pass
 
+        @cookbook.action(accepts=None, returns=Integer)
+        def oneoverzero():
+            return 1 / 0
+
         @cookbook.model
         class Recipe(BaseModel):
             properties = [
@@ -179,6 +186,11 @@ class TestAPI(TestCase):
 
     def tearDown(self):
         cosmos.data = self._old_cosmos
+
+    def _test_exception(self):
+        # TODO: This breaks globals test
+        with self.assertRaises(ZeroDivisionError):
+            self.client.post('/actions/oneoverzero', data='')
 
     def test_get_list_missing(self):
         resp = self.client.get('/Author')

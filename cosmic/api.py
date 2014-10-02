@@ -111,11 +111,16 @@ class API(BaseAPI):
                 assert_is_compatible(accepts, required_args, optional_args)
 
             doc = inspect.getdoc(func)
-            self.spec['actions'][name] = {
-                "accepts": accepts,
-                "returns": returns,
-                "doc": doc,
-            }
+
+            spec = {}
+            if doc is not None:
+                spec['doc'] = doc
+            if accepts is not None:
+                spec['accepts'] = accepts
+            if returns is not None:
+                spec['returns'] = returns
+
+            self.spec['actions'][name] = spec
 
             setattr(self.actions, name, func)
 
