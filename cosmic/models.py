@@ -63,7 +63,7 @@ class BaseModel(object):
         raise NotImplementedError()
 
     @classmethod
-    def create(cls, **valid_patch):
+    def create(cls, valid_patch):
         """
         :param validated_patch: The model patch.
         :return: A tuple of model id and model representation.
@@ -71,7 +71,7 @@ class BaseModel(object):
         raise NotImplementedError()
 
     @classmethod
-    def update(cls, id, **valid_patch):
+    def update(cls, id, valid_patch):
         """
         :param id:
         :param validated_patch:

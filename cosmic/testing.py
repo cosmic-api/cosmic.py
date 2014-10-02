@@ -33,13 +33,13 @@ class DBModel(BaseModel):
         return sorted(ret)
 
     @classmethod
-    def create(cls, **patch):
+    def create(cls, patch):
         id = str(len(db[cls.table_name]))
         db[cls.table_name][id] = patch
         return id, patch
 
     @classmethod
-    def update(cls, id, **patch):
+    def update(cls, id, patch):
         rep = db[cls.table_name][id]
         rep.update(patch)
         return rep

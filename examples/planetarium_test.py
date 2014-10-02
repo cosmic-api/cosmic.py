@@ -181,9 +181,10 @@ class TestCreate(_LocalRemotePlanetariumTest):
         with db.swap(copy.deepcopy(planet_db)):
             Sphere = cosmos['planetarium'].models.Sphere
 
-            (id, rep) = Sphere.create(
-                name="Pluto",
-                revolves_around="0")
+            (id, rep) = Sphere.create({
+                "name": "Pluto",
+                "revolves_around": "0"
+            })
 
             self.assertEqual(id, "3")
 
@@ -212,9 +213,10 @@ class TestUpdateLink(_LocalRemotePlanetariumTest):
             moon = Sphere.get_by_id("2")
             self.assertEqual(moon['revolves_around'], "1")
 
-            rep = Sphere.update("2",
-                                name=moon['name'],
-                                revolves_around="0")
+            rep = Sphere.update("2", {
+                "name": moon['name'],
+                "revolves_around": "0"
+            })
 
             self.assertEqual(rep['revolves_around'], "0")
             self.assertEqual(db['Sphere']['2'], {
@@ -261,9 +263,10 @@ class TestUpdateProperty(_LocalRemotePlanetariumTest):
             Sphere = cosmos['planetarium'].models.Sphere
             moon = Sphere.get_by_id("2")
 
-            rep = Sphere.update("2",
-                                name="Luna",
-                                revolves_around=moon['revolves_around'])
+            rep = Sphere.update("2", {
+                "name": "Luna",
+                "revolves_around": moon['revolves_around']
+            })
 
             self.assertEqual(rep['name'], "Luna")
             self.assertEqual(db['Sphere']['2'], {

@@ -107,6 +107,12 @@ class Server(object):
                                        func_output=func_output)
 
 
+def update(d, **kwargs):
+    d = d.copy()
+    d.update(kwargs)
+    return d
+
+
 class PipeJSONPayload(object):
 
     def forward(self, text_data, headers, **kwargs):
@@ -123,21 +129,19 @@ class PipeJSONPayload(object):
         except UnicodeDecodeError:
             raise HTTPError(400, "Unicode Decode Error")
         try:
-            return {"json_data": json.loads(data)}
+            return update(kwargs,
+                          json_data=json.loads(data),
+                          headers=headers)
         except ValueError:
             raise HTTPError(400, "Invalid JSON")
 
-    def backward(self, json_data, headers, **kwargs):
+    def backward(self, json_data, headers=None, **kwargs):
         _headers = {"Content-Type": "application/json"}
-        _headers.update(headers)
-        if json_data is not None:
-            text_data = json.dumps(json_data)
-        else:
-            text_data = ""
-        return {
-            "text_data": text_data,
-            "headers": _headers
-        }
+        if headers: _headers.update(headers)
+        text_data = json.dumps(json_data)
+        return update(kwargs,
+                      text_data=text_data,
+                      headers=_headers)
 
 
 class PipeQueryParse(object):
@@ -146,10 +150,10 @@ class PipeQueryParse(object):
         self.schema = URLParams(query_fields)
 
     def forward(self, query_string, **kwargs):
-        return {"query": self.schema.from_json(query_string)}
+        return update(kwargs, query=self.schema.from_json(query_string))
 
     def backward(self, query, **kwargs):
-        return {"query_string": self.schema.to_json(query)}
+        return update(kwargs, query_string=self.schema.to_json(query))
 
 
 class PipeMethod(object):
@@ -158,10 +162,22 @@ class PipeMethod(object):
         self.method = method
 
     def forward(self, **kwargs):
-        return {}
+        return kwargs
 
     def backward(self, **kwargs):
-        return {'method': self.method}
+        return update(kwargs, method=self.method)
+
+
+class PipeStaticURL(object):
+
+    def __init__(self, url):
+        self.url = url
+
+    def forward(self, **kwargs):
+        return kwargs
+
+    def backward(self, **kwargs):
+        return update(kwargs, path=self.url)
 
 
 class PipeURL(object):
@@ -173,11 +189,11 @@ class PipeURL(object):
 
     def forward(self, path, **kwargs):
         url_args = self.c.match(path)[1]
-        return {"url_args": url_args}
+        return update(kwargs, url_args=url_args)
 
     def backward(self, url_args, **kwargs):
-        url = self.c.build('_', url_args)
-        return {"path": url}
+        path = self.c.build('_', url_args)
+        return update(kwargs, path=path)
 
 
 class PipeResponseCode(object):
@@ -187,7 +203,7 @@ class PipeResponseCode(object):
 
     def forward(self, code, text_data, headers, **kwargs):
         if code == self.code:
-            return {}
+            return update(kwargs, text_data=text_data, code=code, headers=headers)
         message = None
         try:
             json_data = PipeJSONPayload().forward(
@@ -199,7 +215,7 @@ class PipeResponseCode(object):
         raise RemoteHTTPError(code=code, message=message)
 
     def backward(self, **kwargs):
-        return {'code': self.code}
+        return update(kwargs, code=self.code)
 
 
 class PipeBodySchema(object):
@@ -208,10 +224,10 @@ class PipeBodySchema(object):
         self.schema = schema
 
     def forward(self, json_data, **kwargs):
-        return {'data': self.schema.from_json(json_data)}
+        return update(kwargs, data=self.schema.from_json(json_data))
 
     def backward(self, data, **kwargs):
-        return {'json_data': self.schema.to_json(data)}
+        return update(kwargs, json_data=self.schema.to_json(data))
 
 
 def error_response(message, code):
@@ -239,11 +255,12 @@ class Endpoint(object):
             'text_data': request.data,
             'query_string': request.query_string,
             'headers': request.headers,
-            'path': request.path
+            'path': request.path,
+            'method': request.method
         }
 
         for step in self.request_pipeline:
-            args.update(step.forward(**args))
+            args = step.forward(**args)
 
         return self._parse_request(**args)
 
@@ -253,37 +270,22 @@ class Endpoint(object):
                 if func_output.exception[0] == exc_class:
                     return Response('', code, {})
 
-        res = self._build_response(func_input, func_output.value)
-
-        args = {
-            'text_data': '',
-            'data': None,
-            'headers': {}
-        }
-        args.update(res)
+        args = self._build_response(func_input, func_output.value)
 
         for step in reversed(self.response_pipeline):
-            args.update(step.backward(**args))
+            args = step.backward(**args)
 
-        body = args.get('text_data', '')
         code = args['code']
-        headers = args['headers']
+        body = args.get('text_data', '')
+        headers = args.get('headers', {})
         return Response(body, code, headers)
 
     def build_request(self, *args, **kwargs):
 
-        req = self._build_request(*args, **kwargs)
-
-        args = {
-            'data': req.get('data', None),
-            'text_data': req.get('text_data', ''),
-            'headers': req.get('headers', {}),
-            'query': req.get('query', {}),
-            'url_args': req.get('url_args', {})
-        }
+        args = self._build_request(*args, **kwargs)
 
         for step in reversed(self.request_pipeline):
-            args.update(step.backward(**args))
+            args = step.backward(**args)
 
         url = args['path']
         if 'query_string' in args and args['query_string']:
@@ -292,8 +294,8 @@ class Endpoint(object):
         return requests.Request(
             method=args['method'],
             url=url,
-            data=args['text_data'],
-            headers=args['headers'])
+            data=args.get('text_data', ''),
+            headers=args.get('headers', {}))
 
     def parse_response(self, res):
 
@@ -307,7 +309,7 @@ class Endpoint(object):
         }
 
         for step in self.response_pipeline:
-            args.update(step.forward(**args))
+            args = step.forward(**args)
 
         return self._parse_response(**args)
 
@@ -326,7 +328,7 @@ class SpecEndpoint(Endpoint):
     """
 
     request_pipeline = [
-        PipeURL('/spec.json'),
+        PipeStaticURL('/spec.json'),
         PipeMethod('GET')
     ]
 
@@ -373,7 +375,7 @@ class ActionEndpoint(Endpoint):
         self.func = func
         action_spec = api_spec['actions'][action_name]
         self.request_pipeline = [
-            PipeURL("/actions/%s" % action_name),
+            PipeStaticURL("/actions/%s" % action_name),
             PipeMethod('POST'),
         ]
         if 'accepts' in action_spec:
@@ -448,7 +450,7 @@ class GetByIdEndpoint(Endpoint):
         rep = func_output
         return {'data': (id, rep)}
 
-    def _parse_response(self, code, data, **kwargs):
+    def _parse_response(self, data, **kwargs):
         _, rep = data
         return rep
 
@@ -483,7 +485,7 @@ class UpdateEndpoint(Endpoint):
             PipeBodySchema(Representation(Model(full_model_name)))
         ]
 
-    def _build_request(self, id, **patch):
+    def _build_request(self, id, patch):
         return {
             "data": (id, patch),
             "url_args": {'id': id}
@@ -491,8 +493,10 @@ class UpdateEndpoint(Endpoint):
 
     def _parse_request(self, data, url_args, **kwargs):
         id, rep = data
-        rep['id'] = url_args['id']
-        return rep
+        return {
+            'id': url_args['id'],
+            'patch': rep
+        }
 
     def _build_response(self, func_input, func_output):
         id = func_input['id']
@@ -523,7 +527,7 @@ class CreateEndpoint(Endpoint):
         full_model_name = "{}.{}".format(api_spec['name'], model_name)
         self.func = func
         self.request_pipeline = [
-            PipeURL("/%s" % model_name),
+            PipeStaticURL("/%s" % model_name),
             PipeMethod('POST'),
             PipeJSONPayload(),
             PipeBodySchema(
@@ -537,12 +541,12 @@ class CreateEndpoint(Endpoint):
         ]
 
 
-    def _build_request(self, **patch):
+    def _build_request(self, patch):
         return {"data": (None, patch)}
 
     def _parse_request(self, data, **kwargs):
         _, rep = data
-        return rep
+        return {'patch': rep}
 
     def _parse_response(self, data, **kwargs):
         return data
@@ -635,7 +639,7 @@ class GetListEndpoint(Endpoint):
         ] + self.list_metadata.items())
 
         self.request_pipeline = [
-            PipeURL("/%s" % model_name),
+            PipeStaticURL("/%s" % model_name),
             PipeMethod('GET'),
             PipeQueryParse(query_fields)
         ]

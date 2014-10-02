@@ -189,7 +189,7 @@ class TestGuideSave(TestCase):
                         raise ValidationError("Name must be capitalized", datum["name"])
 
                 @classmethod
-                def create(cls, **patch):
+                def create(cls, patch):
                     id = str(len(cities))
                     cities[id] = patch
                     return id, patch
@@ -216,19 +216,19 @@ class TestGuideSave(TestCase):
     def test_save_good(self):
         places = self.places
         with cosmos.swap(self.cosmos):
-            (id, rep) = places.models.City.create(name="Moscow")
+            (id, rep) = places.models.City.create({"name": "Moscow"})
             self.assertEqual(id, "2")
 
     def test_local_save_validation_error(self):
         with cosmos.swap(self.cosmos):
             with self.assertRaisesRegexp(ValidationError, "must be capitalized"):
                 self.places.models.City.validate_patch({"name": "moscow"})
-                self.places.models.City.create(name="moscow")
+                self.places.models.City.create({"name": "moscow"})
 
     def test_remote_save_validation_error(self):
         with cosmos.swap(self.cosmos2):
             with self.assertRaisesRegexp(RemoteHTTPError, "must be capitalized"):
-                self.remote_places.models.City.create(name="moscow")
+                self.remote_places.models.City.create({"name": "moscow"})
 
 
 class TestGuideDelete(TestCase):
