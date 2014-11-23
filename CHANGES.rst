@@ -1,3 +1,10 @@
+Version 0.5.4
+-------------
+
+(bugfix release, released on November 24th, 2014)
+
+- Fix ImportError related to last fix.
+
 Version 0.5.3
 -------------
 

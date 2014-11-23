@@ -41,7 +41,7 @@ Changelog
 
 setup(
     name='cosmic',
-    version="0.5.3",
+    version="0.5.4",
     url='http://www.cosmic-api.com/docs/cosmic/python/',
     packages=['cosmic'],
     description='A tiny web API framework based on Teleport',
@@ -52,6 +52,7 @@ setup(
     install_requires=[
         'Werkzeug>=0.9.1',
         'requests>=2.2.0',
+        'isodate>=0.5.1',
     ],
     classifiers=[
         'Development Status :: 4 - Beta',
