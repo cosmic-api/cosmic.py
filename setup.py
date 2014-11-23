@@ -4,7 +4,7 @@ Cosmic
 ------
 
 Cosmic is a tiny web API framework based on
-`Teleport <http://www.cosmic-api.com/docs/teleport/spec/latest/>`_.
+`Teleport <http://teleport-json.org/>`_.
 
 Links
 `````
@@ -41,7 +41,7 @@ Changelog
 
 setup(
     name='cosmic',
-    version="0.5.2",
+    version="0.5.3",
     url='http://www.cosmic-api.com/docs/cosmic/python/',
     packages=['cosmic'],
     description='A tiny web API framework based on Teleport',
@@ -50,7 +50,6 @@ setup(
     author_email='alexei@boronine.com',
     long_description=long_description,
     install_requires=[
-        'teleport>=0.2.1',
         'Werkzeug>=0.9.1',
         'requests>=2.2.0',
     ],

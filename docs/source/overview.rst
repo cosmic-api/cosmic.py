@@ -56,9 +56,16 @@ purely native data.
 Built on Teleport
 -----------------
 
+.. warning::
+
+    This version of Cosmic relies on an out-of-date version of Teleport.
+    Until Cosmic is ported to Teleport 0.3, it includes a copy of Teleport
+    in the :mod:`cosmic.legacy_teleport`, so you can install it side-by-side
+    with an up-to-date version of Teleport.
+
 .. seealso::
 
-    The `Teleport documentation </docs/teleport/python/latest/>`_ is worth a
+    The `Teleport documentation <http://teleport-json.org>`_ is worth a
     look if you are getting started with Cosmic.
 
 Teleport is our very own tiny library that is used for JSON serialization,

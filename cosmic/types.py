@@ -3,7 +3,7 @@ from collections import OrderedDict
 
 from werkzeug.urls import url_decode, url_encode
 from werkzeug.datastructures import MultiDict
-from teleport import standard_types, ParametrizedWrapper, BasicWrapper, \
+from .legacy_teleport import standard_types, ParametrizedWrapper, BasicWrapper, \
     required, optional, Box, ValidationError
 
 from .globals import cosmos

@@ -160,7 +160,7 @@ the action will return nothing when it completes.
 
 Normally, the action function is expected to take a single non-keyword
 argument. If your action needs to take multiple arguments, use the Teleport
-:class:`~teleport.Struct` type:
+:class:`~cosmic.legacy_teleport.Struct` type:
 
 .. code:: python
 

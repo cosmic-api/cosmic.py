@@ -1,3 +1,11 @@
+Version 0.5.3
+-------------
+
+(bugfix release, released on November 24th, 2014)
+
+- Documentation: note that Cosmic uses an out-of-date version of Teleport.
+- Make it possible to install Teleport side-by-side by using a packaged copy.
+
 Version 0.5.2
 -------------
 
