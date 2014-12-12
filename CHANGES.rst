@@ -1,3 +1,10 @@
+Version 0.5.5
+-------------
+
+(bugfix release, released on December 12th, 2014)
+
+- Fix ValidationError for Link type
+
 Version 0.5.4
 -------------
 

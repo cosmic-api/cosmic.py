@@ -114,7 +114,7 @@ class Link(ParametrizedWrapper):
     def assemble(self, datum):
         parts = datum.split('/')
         if parts[-2] != self.param.model_name:
-            raise ValidationError("Invalid url for %s link: %s" % (self.param.model_name, url))
+            raise ValidationError("Invalid url for %s link: %s" % (self.param.model_name, datum))
         return parts[-1]
 
     def disassemble(self, datum):
