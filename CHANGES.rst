@@ -1,3 +1,11 @@
+Version 0.5.6
+-------------
+
+(bugfix release, released on May 28th, 2015)
+
+- Do not process ValidationError exceptions raised by views, let them bubble up
+  into the custom exception handler.
+
 Version 0.5.5
 -------------
 

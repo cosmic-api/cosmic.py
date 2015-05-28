@@ -72,8 +72,6 @@ class Server(object):
             return self.view(endpoint, request, **values)
         except HTTPError as err:
             return error_response(err.message, err.code)
-        except ValidationError as err:
-            return error_response(str(err), 400)
 
     def wsgi_app(self, environ, start_response):
         with ensure_thread_local():
@@ -92,7 +90,11 @@ class Server(object):
         return error_response("Internal Server Error", 500)
 
     def view(self, endpoint, request, **url_args):
-        func_input = self.parse_request(endpoint, request, **url_args)
+        try:
+            func_input = self.parse_request(endpoint, request, **url_args)
+        except ValidationError as err:
+            return error_response(str(err), 400)
+
         func_output = endpoint.handler(**func_input)
         return self.build_response(endpoint,
                                    func_input=func_input,
